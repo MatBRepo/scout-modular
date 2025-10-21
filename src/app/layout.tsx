@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import ClientRoot from "./ClientRoot";
 
 export const metadata: Metadata = {
@@ -33,8 +34,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Przejdź do treści
         </a>
 
-        {/* All interactive providers & UI live under ClientRoot (ThemeProvider, Sidebar, AuthGate, etc.) */}
-        <ClientRoot>{children}</ClientRoot>
+        {/* Wrap client subtree in Suspense so useSearchParams() can bail out safely */}
+        <Suspense fallback={null}>
+          <ClientRoot>
+            <Suspense fallback={null}>{children}</Suspense>
+          </ClientRoot>
+        </Suspense>
       </body>
     </html>
   );
