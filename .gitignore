@@ -1,0 +1,9 @@
+﻿node_modules/
+.next/
+.out/
+.vercel
+.env*
+!.env.example
+.DS_Store
+coverage/
+dist/
