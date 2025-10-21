@@ -3,6 +3,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import ClientRoot from "./ClientRoot";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "S4S Modular",
