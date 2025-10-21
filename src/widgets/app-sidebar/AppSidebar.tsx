@@ -331,7 +331,7 @@ export default function AppSidebar({
   const inner = (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between px-1">
+      <div className="mb-4 flex flex-wrap items-center justify-between px-1">
         <Link
           href="/"
           className="rounded font-semibold tracking-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -396,7 +396,7 @@ export default function AppSidebar({
           >
             {role === "scout" && (
               <div className="mx-1 mb-2 rounded-md bg-gray-50 p-3 text-xs dark:bg-neutral-900">
-                <div className="mb-1 flex items-center justify-between">
+                <div className="mb-1 flex flex-wrap items-center justify-between">
                   <span className="font-semibold whitespace-normal break-words">Twój poziom</span>
                   <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(rank)}`}>
                     <Trophy className="h-3.5 w-3.5" />
@@ -405,7 +405,7 @@ export default function AppSidebar({
                 </div>
 
                 <div className="mt-1">
-                  <div className="mb-1 flex items-center justify-between whitespace-normal break-words">
+                  <div className="mb-1 flex flex-wrap items-center justify-between whitespace-normal break-words">
                     <span className="opacity-70">Postęp do {rankLabel(next as Rank)}</span>
                     <span className="opacity-70">{pct}%</span>
                   </div>
@@ -428,7 +428,7 @@ export default function AppSidebar({
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
                     className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
                     onClick={readCounts}
@@ -448,10 +448,10 @@ export default function AppSidebar({
             <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
               Szybkie akcje
             </div>
-            <Link role="menuitem" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-900" href="/settings" onClick={onClose}>
+            <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-900" href="/settings" onClick={onClose}>
               <Settings className="h-4 w-4" /> Ustawienia
             </Link>
-            <Link role="menuitem" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-900" href="/settings/navigation" onClick={onClose}>
+            <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-900" href="/settings/navigation" onClick={onClose}>
               <Map className="h-4 w-4" /> Nawigacja
             </Link>
 
@@ -528,7 +528,7 @@ function NavItem({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`group relative flex items-center gap-2 rounded-md px-3 py-2 text-sm transition ${
+      className={`group relative flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-sm transition ${
         active ? "bg-gray-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
                : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
@@ -557,7 +557,7 @@ function SubNavItem({ href, label, active }: { href: string; label: string; acti
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] transition ${
+      className={`flex flex-wrap items-center gap-2 rounded-md px-3 py-1.5 text-[13px] transition ${
         active ? "bg-gray-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
                : "text-gray-600 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}

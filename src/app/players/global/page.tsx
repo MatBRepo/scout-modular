@@ -126,7 +126,7 @@ export default function GlobalDatabasePage() {
       {!isAdmin ? (
         <Card className="border-rose-200 dark:border-rose-900/50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
+            <CardTitle className="flex flex-wrap items-center gap-2 text-rose-700 dark:text-rose-300">
               <ShieldAlert className="h-5 w-5" />
               Brak uprawnień
             </CardTitle>
@@ -146,7 +146,7 @@ export default function GlobalDatabasePage() {
             title="Zawodnicy — globalna baza (Admin)"
             right={
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Search className="h-4 w-4 text-gray-500" />
                   <Input
                     value={q}
@@ -239,7 +239,7 @@ export default function GlobalDatabasePage() {
                                   className="h-24 w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                                   placeholder="Twoja prywatna notatka (widoczna tylko dla Admina w tym widoku)…"
                                 />
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                   <Button className="bg-gray-900 text-white hover:bg-gray-800" size="sm" onClick={saveNote}>
                                     <CheckCircle2 className="mr-1 h-4 w-4" /> Zapisz
                                   </Button>

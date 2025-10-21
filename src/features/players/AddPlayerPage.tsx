@@ -145,7 +145,7 @@ export default function AddPlayerPage() {
                 : "border-gray-300 dark:border-neutral-700")
             }
           >
-            <div className="mb-1 flex items-center gap-2 text-sm font-medium">
+            <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-medium">
               <User2 className="h-4 w-4" />
               Znam zawodnika
             </div>
@@ -168,7 +168,7 @@ export default function AddPlayerPage() {
                 : "border-gray-300 dark:border-neutral-700")
             }
           >
-            <div className="mb-1 flex items-center gap-2 text-sm font-medium">
+            <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-medium">
               <Shirt className="h-4 w-4" />
               Nie znam zawodnika
             </div>
@@ -181,7 +181,7 @@ export default function AddPlayerPage() {
             <p className="text-xs text-red-600">{errors["choice"]}</p>
           )}
 
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               onClick={() => history.back()}
@@ -317,7 +317,7 @@ export default function AddPlayerPage() {
                 />
               </div>
 
-              <div className="mt-4 flex items-center gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setStep(1)}
@@ -583,7 +583,7 @@ export default function AddPlayerPage() {
                 />
               </div>
 
-              <div className="mt-4 flex items-center gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setStep(1)}

@@ -276,7 +276,7 @@ function revokeInvite(id: string) {
       {/* Filters */}
       <Card className="border-gray-200 dark:border-neutral-800">
         <CardHeader className="space-y-1">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <CardTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
             <Filter className="h-4 w-4" />
             Filtry i wyszukiwanie
           </CardTitle>
@@ -403,7 +403,7 @@ function revokeInvite(id: string) {
       <Card className="border-gray-200 dark:border-neutral-800">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base font-semibold">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Users className="h-4 w-4" />
               Użytkownicy ({filtered.length})
             </div>
@@ -437,11 +437,11 @@ function revokeInvite(id: string) {
                     </div>
                   </td>
                   <td className="p-3">
-                    <div className="flex items-center gap-2 text-xs text-gray-700 dark:text-neutral-300">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700 dark:text-neutral-300">
                       <Mail className="h-3.5 w-3.5" /> {a.email}
                     </div>
                     {a.phone && (
-                      <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-400">
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-neutral-400">
                         <Phone className="h-3.5 w-3.5" /> {a.phone}
                       </div>
                     )}
@@ -679,7 +679,7 @@ function Row({ label, value, icon }: { label: string; value: React.ReactNode; ic
     <div className="grid grid-cols-3 gap-2">
       <div className="col-span-1 text-xs font-medium text-gray-500 dark:text-neutral-400">{label}</div>
       <div className="col-span-2">
-        <div className="inline-flex items-center gap-2">{icon}{value}</div>
+        <div className="inline-flex flex-wrap items-center gap-2">{icon}{value}</div>
       </div>
     </div>
   );
@@ -698,8 +698,8 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
         "
         role="dialog" aria-modal="true"
       >
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <Shield className="h-4 w-4" />
             <h2 className="text-base font-semibold">{title}</h2>
           </div>

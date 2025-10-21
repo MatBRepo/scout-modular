@@ -117,7 +117,7 @@ export default function ScoutProfilePage() {
         <Crumb items={[{ label: "Start", href: "/" }, { label: "Scouts", href: "/scouts" }, { label: "Profil" }]} />
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
+            <CardTitle className="flex flex-wrap items-center gap-2 text-rose-700 dark:text-rose-300">
               <ShieldAlert className="h-5 w-5" />
               Brak uprawnień
             </CardTitle>
@@ -206,7 +206,7 @@ export default function ScoutProfilePage() {
                           <td className="p-3">{p.pos}</td>
                           <td className="p-3">{p.age ?? "—"}</td>
                           <td className="p-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Progress percent={pct} compact />
                               <span className="text-xs">{pct}%</span>
                             </div>

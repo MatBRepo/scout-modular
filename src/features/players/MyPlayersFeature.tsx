@@ -445,7 +445,7 @@ const rowH = "h-12";
                   <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Pozycje</div>
                   <div className="mb-3 grid grid-cols-4 gap-2">
                     {POS.map((p) => (
-                      <label key={p} className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-gray-50 dark:hover:bg-neutral-800">
+                      <label key={p} className="flex flex-wrap items-center justify-between rounded-md px-2 py-1 hover:bg-gray-50 dark:hover:bg-neutral-800">
                         <span>{p}</span>
                         <input type="checkbox" checked={pos[p]} onChange={(e) => { setPos((prev) => ({ ...prev, [p]: e.target.checked })); setPage(1); }} />
                       </label>
@@ -466,7 +466,7 @@ const rowH = "h-12";
                     </div>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between">
+                  <div className="mt-3 flex flex-wrap items-center justify-between">
                     <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={()=>{
 setPos({
   GK: true, DF: true, MF: true, FW: true,
@@ -568,9 +568,9 @@ setPos({ GK:true, DF:true, MF:true, FW:true, RB:true, CB:true, CW:true, LW:true,
 
       {/* Bulk bar */}
       {selected.size > 0 && content === "table" && (
-        <div className="mt-3 flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="mt-3 flex flex-wrap items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
           <div>Zaznaczono: <b>{selected.size}</b></div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {scope === "active" ? (
               <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={bulkTrash}>
                 <Trash2 className="mr-2 h-4 w-4" /> Do kosza
@@ -610,7 +610,7 @@ setPos({ GK:true, DF:true, MF:true, FW:true, RB:true, CB:true, CW:true, LW:true,
 
             {/* Pagination footer */}
             <div className="mt-3 flex flex-col items-center justify-between gap-3 rounded-md border border-gray-200 bg-white p-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-950 md:flex-row">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-gray-600 dark:text-neutral-300">Wiersze na stronę:</span>
                 <select
                   className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
@@ -623,7 +623,7 @@ setPos({ GK:true, DF:true, MF:true, FW:true, RB:true, CB:true, CW:true, LW:true,
                   {total === 0 ? "0" : ((currentPage - 1) * pageSize + 1)}–{Math.min(currentPage * pageSize, total)} z {total}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   className="border-gray-300 dark:border-neutral-700"
@@ -847,7 +847,7 @@ function PlayersTable({
 
                 {visibleCols.name && (
                   <td className={`${cellPad} text-gray-900 dark:text-neutral-100`}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate">{r.name}</span>
                       <KnownBadge known={r._known} />
                     </div>
@@ -1009,7 +1009,7 @@ function QuickObservation({
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between">
         <div className="text-sm text-gray-600 dark:text-neutral-300">
           <span className="font-medium">Szybka obserwacja:</span> {player.name}
         </div>
@@ -1085,7 +1085,7 @@ function QuickObservation({
 
         {/* EXISTING */}
         <TabsContent value="existing" className="space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Search className="h-4 w-4 text-gray-500" />
             <Input value={obsQuery} onChange={(e) => setObsQuery(e.target.value)} placeholder="Szukaj po meczu, zawodniku, dacie…" />
           </div>
@@ -1144,12 +1144,12 @@ function QuickObservation({
             </table>
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex flex-wrap items-center justify-between">
             <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={onBack}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Wróć
             </Button>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" className="border-gray-300 dark:border-neutral-700" disabled={obsSelectedId == null} onClick={onDuplicate}>
                 Skopiuj do zawodnika
               </Button>

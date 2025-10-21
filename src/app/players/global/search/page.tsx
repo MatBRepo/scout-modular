@@ -212,7 +212,7 @@ export default function GlobalSearchPage() {
             <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={stop} disabled={!running}>
               <XCircle className="mr-2 h-4 w-4" /> Stop
             </Button>
-            <div className="ml-2 inline-flex items-center gap-2 rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700">
+            <div className="ml-2 inline-flex flex-wrap items-center gap-2 rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700">
               <label className="flex items-center gap-1">
                 <input type="checkbox" checked={onlyNew} onChange={(e) => setOnlyNew(e.target.checked)} />
                 Tylko nowe
@@ -242,7 +242,7 @@ export default function GlobalSearchPage() {
             <button
               key={s.id}
               onClick={() => setEnabled((prev) => ({ ...prev, [s.id]: !prev[s.id] }))}
-              className={`inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs transition ${
+              className={`inline-flex flex-wrap items-center gap-2 rounded-md border px-2 py-1 text-xs transition ${
                 enabled[s.id]
                   ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200"
                   : "border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
@@ -335,7 +335,7 @@ function ResultsTable({
             <div className="mt-1 text-[11px] text-rose-600 dark:text-rose-300">Błąd źródła: {error}</div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={onAddAll} disabled={rows.length === 0}>
             <CheckCircle2 className="mr-2 h-4 w-4" />
             Dodaj wszystkie

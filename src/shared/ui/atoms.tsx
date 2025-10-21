@@ -27,7 +27,7 @@ export function Crumb({ items }: { items: Array<{ label: string; href?: string }
 
 export function Toolbar({ title, subtitle, right }: ToolbarProps) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-wrap items-center justify-between">
       <div>
         {/* If you had <h2> here, keep it, but render the node */}
         {typeof title === "string" ? <h2 className="text-lg font-semibold">{title}</h2> : title}

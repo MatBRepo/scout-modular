@@ -362,16 +362,16 @@ export default function DuplicatesPage() {
 
   return (
     <div className="w-full p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">Duplikaty (wszyscy skauci)</h1>
           <p className="text-sm text-gray-500">
             Wykrywa tych samych zawodników dodanych przez różnych scoutów. Tylko dla Administratora.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            className="inline-flex flex-wrap items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
             onClick={runRefresh}
             title={lastRefreshAt ? `Ostatnie odświeżenie: ${fmtTime(lastRefreshAt)}` : "Odśwież teraz"}
           >
@@ -380,7 +380,7 @@ export default function DuplicatesPage() {
           </button>
           <Link
             href="/scouts"
-            className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800"
+            className="inline-flex flex-wrap items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800"
             title="Lista scoutów"
           >
             <UserCircle2 className="h-4 w-4" />
@@ -416,7 +416,7 @@ export default function DuplicatesPage() {
               />
               <Search className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             </div>
-            <label className="inline-flex items-center gap-2 text-sm">
+            <label className="inline-flex flex-wrap items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={includeTrashed}
@@ -424,7 +424,7 @@ export default function DuplicatesPage() {
               />
               Pokaż także „Kosz”
             </label>
-            <label className="inline-flex items-center gap-2 text-sm">
+            <label className="inline-flex flex-wrap items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={showOnlyUnresolved}
@@ -439,7 +439,7 @@ export default function DuplicatesPage() {
 
           {groups.length === 0 ? (
             <div className="rounded-md border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Info className="h-4 w-4 text-gray-500" />
                 Brak potencjalnych duplikatów.
               </div>
@@ -634,7 +634,7 @@ export default function DuplicatesPage() {
           aria-modal="true"
         >
           <div className="w-full max-w-2xl overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950">
-            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-neutral-800">
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-neutral-800">
               <div className="text-sm font-semibold">Szczegóły zawodnika skauta</div>
               <button
                 className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
@@ -689,7 +689,7 @@ export default function DuplicatesPage() {
                 <b> „Powiąż z globalnym”</b>, aby dopiąć nowy wpis do istn. rekordu globalnego.
               </div>
             </div>
-            <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-4 py-2 text-xs dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="flex flex-wrap items-center justify-between border-t border-gray-200 bg-gray-50 px-4 py-2 text-xs dark:border-neutral-800 dark:bg-neutral-900">
               <span className="text-gray-500">Klucz: <code>{dupKey(details)}</code></span>
               <div className="text-gray-500">Kompletność: {completenessScore(details)}/4</div>
             </div>

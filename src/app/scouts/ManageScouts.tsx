@@ -163,7 +163,7 @@ function PositionPill({ pos, delta }: { pos: number; delta: number }) {
       : "text-gray-400";
   const deltaTxt = delta === 0 ? "→" : delta > 0 ? `↑${delta}` : `↓${Math.abs(delta)}`;
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold dark:bg-neutral-800">
         {pos}
       </div>
@@ -210,7 +210,7 @@ function KpiCell({
       <div className="text-base font-semibold leading-none">{kpi}</div>
       <div className="mt-1 grid grid-cols-3 gap-2 text-[10px] text-gray-500">
         <div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between">
             <span>Comp</span>
             <span>{Math.round(comp01 * 100)}%</span>
           </div>
@@ -221,7 +221,7 @@ function KpiCell({
           />
         </div>
         <div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between">
             <span>Akt</span>
             <span>{Math.round(act01 * 100)}%</span>
           </div>
@@ -232,7 +232,7 @@ function KpiCell({
           />
         </div>
         <div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between">
             <span>Vol</span>
             <span>{Math.round(vol01 * 100)}%</span>
           </div>
@@ -450,7 +450,7 @@ export default function ScoutsAdminPage() {
         <Crumb items={[{ label: "Start", href: "/" }, { label: "Scouts" }]} />
         <Card className="border-rose-200 dark:border-rose-900/50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
+            <CardTitle className="flex flex-wrap items-center gap-2 text-rose-700 dark:text-rose-300">
               <ShieldAlert className="h-5 w-5" />
               Brak uprawnień
             </CardTitle>
@@ -480,7 +480,7 @@ export default function ScoutsAdminPage() {
         title="Scouts (podgląd – Admin)"
         right={
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Search className="h-4 w-4 text-gray-500" />
               <Input
                 value={q}
@@ -805,7 +805,7 @@ export default function ScoutsAdminPage() {
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/30" onClick={() => setDetail(null)} />
           <div className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l border-gray-200 bg-white p-4 shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex flex-wrap items-center justify-between">
               <div className="text-sm font-semibold">{detail.name}</div>
               <Button
                 variant="outline"

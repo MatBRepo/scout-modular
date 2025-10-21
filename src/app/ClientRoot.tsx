@@ -112,7 +112,7 @@ function AuthGate({ onLoggedIn }: { onLoggedIn: (auth: AuthState) => void }) {
   };
 
   return (
-    <div className="grid  place-items-center p-6">
+    <div className="grid  place-items-center p-0">
       <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/70">
         <div className="mb-4 flex items-center justify-center gap-2">
           <div className="rounded-full bg-indigo-600/10 p-2">
@@ -128,7 +128,7 @@ function AuthGate({ onLoggedIn }: { onLoggedIn: (auth: AuthState) => void }) {
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-left hover:bg-gray-50 active:scale-[0.99] dark:border-neutral-700 dark:hover:bg-neutral-900"
             disabled={!!pending}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between">
               <span className="font-medium">Zaloguj jako Admin</span>
               <span className="text-xs text-gray-500">demo</span>
             </div>
@@ -139,7 +139,7 @@ function AuthGate({ onLoggedIn }: { onLoggedIn: (auth: AuthState) => void }) {
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-left hover:bg-gray-50 active:scale-[0.99] dark:border-neutral-700 dark:hover:bg-neutral-900"
             disabled={!!pending}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between">
               <span className="font-medium">Zaloguj jako Scout Agent</span>
               <span className="text-xs text-gray-500">demo</span>
             </div>
@@ -150,7 +150,7 @@ function AuthGate({ onLoggedIn }: { onLoggedIn: (auth: AuthState) => void }) {
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-left hover:bg-gray-50 active:scale-[0.99] dark:border-neutral-700 dark:hover:bg-neutral-900"
             disabled={!!pending}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between">
               <span className="font-medium">Zaloguj jako Scout</span>
               <span className="text-xs text-gray-500">demo</span>
             </div>
@@ -214,7 +214,7 @@ function AppShell({
                 S4S · Workspace
               </span>
             </div>
-            <div className="flex items-center gap-2">{/* global actions slot */}</div>
+            <div className="flex flex-wrap items-center gap-2">{/* global actions slot */}</div>
           </div>
         </header>
 

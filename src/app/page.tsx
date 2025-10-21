@@ -295,7 +295,7 @@ export default function Page() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ChipToggle active={obsModeFilter === ""} label="Wszystkie tryby" onClick={() => setObsModeFilter("")} />
           <ChipToggle active={obsModeFilter === "live"} icon={<Radio className="h-3.5 w-3.5" />} label="Live" onClick={() => setObsModeFilter("live")} />
           <ChipToggle active={obsModeFilter === "tv"} icon={<Tv className="h-3.5 w-3.5" />} label="TV" onClick={() => setObsModeFilter("tv")} />
@@ -388,7 +388,7 @@ export default function Page() {
                           {initials(p.name)}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Link href={`/players/${p.id}`} className="truncate font-medium hover:underline">
                               {p.name}
                             </Link>
@@ -441,7 +441,7 @@ export default function Page() {
                         <Star className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="truncate font-medium">{o.match || "—"}</span>
                           {/* status */}
                           <span
@@ -493,7 +493,7 @@ export default function Page() {
       {/* Timeline / activity feed */}
       <Card className="border-gray-200 dark:border-neutral-800">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <CardTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
             <Activity className="h-4 w-4" /> Ostatnie aktywności
           </CardTitle>
           <Link href="/players/global/search" className="text-sm text-gray-600 hover:underline dark:text-neutral-300">
@@ -517,7 +517,7 @@ export default function Page() {
               </li>
             ))}
             {buildActivityTimeline(players, obs).length === 0 && (
-              <div className="flex items-center justify-between rounded-md border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
+              <div className="flex flex-wrap items-center justify-between rounded-md border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
                 <span className="text-gray-500 dark:text-neutral-400">Brak aktywności — dodaj zawodnika lub obserwację.</span>
                 <Link href="/players/new">
                   <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
@@ -594,7 +594,7 @@ function KpiCard({
 
 function EmptyRow({ text, actionHref, actionText }: { text: string; actionHref: string; actionText: string }) {
   return (
-    <div className="flex items-center justify-between rounded-md border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
+    <div className="flex flex-wrap items-center justify-between rounded-md border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
       <span className="text-gray-500 dark:text-neutral-400">{text}</span>
       <Link href={actionHref}>
         <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
@@ -654,7 +654,7 @@ function ChipToggle({
 
 function ActiveFilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700 dark:bg-neutral-800 dark:text-neutral-300">
+    <span className="inline-flex flex-wrap items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700 dark:bg-neutral-800 dark:text-neutral-300">
       {label}
       <button onClick={onClear} aria-label="Usuń filtr" className="rounded-full p-0.5 hover:bg-gray-200 dark:hover:bg-neutral-700">
         <X className="h-3.5 w-3.5" />

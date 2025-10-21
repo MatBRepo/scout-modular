@@ -180,7 +180,7 @@ export function ObservationEditor({
           </div>
         }
         right={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={onClose}>
               Anuluj
             </Button>
@@ -193,7 +193,7 @@ export function ObservationEditor({
 
       <Card className="border-gray-300 dark:border-neutral-700">
         <CardHeader className="border-b border-gray-200 pb-0 dark:border-neutral-800">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between">
             <CardTitle>Formularz obserwacji</CardTitle>
             <Helper>Uzupełnij podstawowe dane, potem dodaj zawodników i notatki</Helper>
           </div>
@@ -301,7 +301,7 @@ export function ObservationEditor({
                     </div>
                   </Section>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between">
                     <Helper>Wskazówka: dokładny tytuł ułatwia wyszukiwanie</Helper>
                     <div className="text-xs text-gray-500">
                       Ostatnia edycja: {fmtDateHuman(o.date, o.time)}
@@ -364,7 +364,7 @@ export function ObservationEditor({
                       {/* Known free text */}
                       <div className="space-y-2">
                         <Label>Znany (wpisz ręcznie)</Label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Input placeholder="Imię i nazwisko" id="known-name" />
                           <Button
                             variant="outline"
@@ -387,7 +387,7 @@ export function ObservationEditor({
                       {/* Unknown by shirt no. */}
                       <div className="space-y-2">
                         <Label>Nieznany (numer na koszulce)</Label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Input placeholder="np. 27" id="unknown-no" />
                           <Button
                             variant="outline"
