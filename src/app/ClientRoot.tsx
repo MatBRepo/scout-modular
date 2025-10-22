@@ -238,7 +238,7 @@ function AppShell({
           className="mx-auto max-w-7xl px-4 pb-8 pt-2 text-xs text-gray-500 dark:text-neutral-400"
           role="contentinfo"
         >
-          © {new Date().getFullYear()} S4S • v0.1
+          © {new Date().getFullYear()} entrisoScounting • v1.0
         </footer>
       </div>
       <div id="portal-root" />

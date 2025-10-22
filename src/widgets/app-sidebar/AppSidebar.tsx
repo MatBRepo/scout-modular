@@ -206,6 +206,12 @@ export default function AppSidebar({
   const playersBadge = mounted && isAuthed && playersCount > 0 ? String(playersCount) : undefined;
   const obsBadge = mounted && isAuthed && obsCount > 0 ? String(obsCount) : undefined;
 
+  // accordion: "Moi zawodnicy"
+  const [playersOpen, setPlayersOpen] = useState(false);
+  useEffect(() => {
+    setPlayersOpen(Boolean(isPlayersSection));
+  }, [isPlayersSection]);
+
   // role switcher
   function setRoleAndClose(v: Role) {
     try {
@@ -268,63 +274,71 @@ export default function AppSidebar({
           <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
             Zawodnicy
           </div>
-          <NavItem
+
+          <AccordionNav
             href="/players"
             icon={<Users className="h-4 w-4" />}
             label="Moi zawodnicy"
             active={isPlayersSection}
+            open={playersOpen}
+            onToggle={() => setPlayersOpen(o => !o)}
             badge={playersBadge}
             badgeTitle="Aktywni zawodnicy"
-          />
-          <div className="mt-1 space-y-1 pl-9">
-            <SubNavItem href="/players?tab=known" label="Znani zawodnicy" active={knownActive} />
-            <SubNavItem href="/players?tab=unknown" label="Nieznani zawodnicy" active={unknownActive} />
-          </div>
+          >
+            <div className="mt-1 space-y-1 pl-9">
+              <SubNavItem href="/players?tab=known"   label="Znani zawodnicy"    active={knownActive} />
+              <SubNavItem href="/players?tab=unknown" label="Nieznani zawodnicy" active={unknownActive} />
+            </div>
+          </AccordionNav>
         </div>
       )}
 
-      {/* ADMIN ONLY */}
-      {role === "admin" && (
-        <>
-          <div className="mt-3 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
-            Administracja
+     
+{role === "admin" && (
+  <>
+    <SectionHeader label="Administracja" />
+
+    <div className="rounded-lg bg-slate-50/70 p-2.5 dark:bg-neutral-900/40">
+      <div className="space-y-0.5">
+        <div>
+          <NavItem
+            href="/players/global"
+            icon={<Globe className="h-4 w-4" />}
+            label="Zawodnicy (global)"
+            active={isGlobalSection}
+          />
+          <div className="mt-0.5 space-y-0.5 pl-9">
+            <SubNavItem href="/players/global"        label="Globalna baza" active={globalBaseActive} />
+            <SubNavItem href="/players/global/search" label="Wyszukaj"      active={globalSearchActive} />
           </div>
+        </div>
 
-          <div>
-            <NavItem
-              href="/players/global"
-              icon={<Globe className="h-4 w-4" />}
-              label="Zawodnicy (global)"
-              active={isGlobalSection}
-            />
-            <div className="mt-1 space-y-1 pl-9">
-              <SubNavItem href="/players/global"        label="Globalna baza" active={globalBaseActive} />
-              <SubNavItem href="/players/global/search" label="Wyszukaj"      active={globalSearchActive} />
-            </div>
-          </div>
+        <NavItem
+          href="/admin/manage"
+          icon={<Settings className="h-4 w-4" />}
+          label="Zarządzanie"
+          active={pathname?.startsWith("/admin/manage")}
+        />
 
-          <NavItem
-            href="/admin/manage"
-            icon={<Shield className="h-4 w-4" />}
-            label="Zarządzanie"
-            active={pathname?.startsWith("/admin/manage")}
-          />
+        <NavItem
+          href="/scouts"
+          icon={<Users className="h-4 w-4" />}
+          label="Lista scoutów"
+          active={pathname === "/scouts" || pathname?.startsWith("/scouts/")}
+        />
 
-          <NavItem
-            href="/scouts"
-            icon={<Shield className="h-4 w-4" />}
-            label="Lista scoutów"
-            active={pathname === "/scouts" || pathname?.startsWith("/scouts/")}
-          />
+        <NavItem
+          href="/duplicates"
+          icon={<TriangleAlert className="h-4 w-4" />}
+          label="Duplikaty"
+          active={pathname === "/duplicates"}
+        />
+      </div>
+    </div>
+  </>
+)}
 
-          <NavItem
-            href="/duplicates"
-            icon={<TriangleAlert className="h-4 w-4" />}
-            label="Duplikaty"
-            active={pathname === "/duplicates"}
-          />
-        </>
-      )}
+
     </nav>
   );
 
@@ -479,7 +493,7 @@ export default function AppSidebar({
         )}
       </div>
 
-      <div className="mt-2 px-2 pb-1 text-[10px] text-gray-400 dark:text-neutral-500">v0.1.0 • S4S Modular</div>
+      <div className="mt-2 px-2 pb-1 text-[10px] text-gray-400 dark:text-neutral-500">v1.0 • S4S Modular</div>
     </div>
   );
 
@@ -512,6 +526,20 @@ export default function AppSidebar({
     </aside>
   );
 }
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="mt-4 mb-1 flex items-center gap-2 px-2">
+      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-neutral-700" />
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+        {label}
+      </span>
+      <div className="h-px flex-1 bg-slate-200/70 dark:bg-neutral-800/70" />
+    </div>
+  );
+}
+
+
 
 /* Small components */
 function NavItem({
@@ -596,4 +624,83 @@ function labelForRole(r: Role) {
   if (r === "admin") return "Admin";
   if (r === "scout-agent") return "Scout Agent";
   return "Scout";
+}
+
+function AccordionNav({
+  href,
+  icon,
+  label,
+  active,
+  open,
+  onToggle,
+  badge,
+  badgeTitle,
+  children,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  open: boolean;
+  onToggle: () => void;
+  badge?: string;
+  badgeTitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-stretch gap-1">
+        {/* main link behaves like NavItem */}
+        <Link
+          href={href}
+          aria-current={active ? "page" : undefined}
+          className={`group relative flex min-w-0 flex-1 items-center gap-2 rounded-md px-3 py-2 text-sm transition ${
+            active
+              ? "bg-gray-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+              : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+          }`}
+          title={badge && badgeTitle ? `${badgeTitle}: ${badge}` : undefined}
+        >
+          <span
+            aria-hidden
+            className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-sm transition-all ${
+              active
+                ? "w-1 bg-indigo-500"
+                : "w-0 bg-transparent group-hover:w-1 group-hover:bg-gray-300 dark:group-hover:bg-neutral-700"
+            }`}
+          />
+          <span className="shrink-0">{icon}</span>
+          <span className="truncate">{label}</span>
+          {badge && (
+            <span className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+              <span className="truncate">{badge}</span>
+            </span>
+          )}
+        </Link>
+
+        {/* chevron toggler (does NOT navigate) */}
+        <button
+          type="button"
+          aria-label={open ? "Zwiń sekcję Moi zawodnicy" : "Rozwiń sekcję Moi zawodnicy"}
+          aria-expanded={open}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle();
+          }}
+          className={`rounded-md px-2 text-xs transition ${
+            open
+              ? "bg-gray-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+              : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+          }`}
+          title={open ? "Zwiń" : "Rozwiń"}
+        >
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {/* panel */}
+      {open && <div>{children}</div>}
+    </div>
+  );
 }

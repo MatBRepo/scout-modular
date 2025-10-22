@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Crumb, Toolbar } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
@@ -18,39 +18,72 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Player } from "@/shared/types";
-import { User2, Shirt } from "lucide-react";
+import { User2, Shirt, Info } from "lucide-react";
 
-type Pos = Player["pos"];
+import {
+  loadMetrics,
+  type MetricsConfig,
+  type MetricGroupKey,
+} from "@/shared/metrics";
 
+import StarRating from "@/shared/ui/StarRating";
+
+/* ----------------------------------------
+   Types
+----------------------------------------- */
+type Pos = Player["pos"]; // "GK" | "DF" | "MF" | "FW"
+
+/* =======================================
+   Page
+======================================= */
 export default function AddPlayerPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [choice, setChoice] = useState<"known" | "unknown" | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // --- Znam zawodnika ---
+  // ---- Znam zawodnika ----
   const [known, setKnown] = useState({
     firstName: "",
     lastName: "",
-    pos: "MF" as Pos,
+    pos: "MF" as Pos, // kategoria do tabeli (4-bucket)
     age: "",
     club: "",
     birthDate: "",
     nationality: "",
   });
 
-  // --- Nie znam zawodnika ---
+  // ---- Nie znam zawodnika ----
   const [unknown, setUnknown] = useState({
-    optionalName: "",
-    jerseyNumber: "",
-    pos: "MF" as Pos,
-    age: "",
-    club: "",
+    jerseyNumber: "", // wymagane dla „nie znany”
+    club: "",         // aktualny klub
+    clubCountry: "",  // kraj aktualnego klubu
+    note: "",         // notatka własna (opcjonalna)
+    pos: "MF" as Pos, // kategoria pozycji (dla warunkowych metryk)
   });
 
+  /* ================= Metrics config & ratings ================= */
+  const [mCfg, setMCfg] = useState<MetricsConfig>(loadMetrics());
+
+  // Ratings (stored under meta.metricsRatings => group -> key -> 1..6)
+  const [mBase, setMBase] = useState<Record<string, number>>({});
+  const [mGK, setMGK] = useState<Record<string, number>>({});
+  const [mDEF, setMDEF] = useState<Record<string, number>>({});
+  const [mMID, setMMID] = useState<Record<string, number>>({});
+  const [mATT, setMATT] = useState<Record<string, number>>({});
+
+  // Sync with changes from “Zarządzanie”
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "s4s.obs.metrics") setMCfg(loadMetrics());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  /* ================= Validation ================= */
   function validateStep1() {
     if (!choice) {
       setErrors({ choice: "Wybierz jedną z opcji." });
@@ -66,15 +99,16 @@ export default function AddPlayerPage() {
       if (!known.firstName.trim()) next["known.firstName"] = "Imię jest wymagane.";
       if (!known.lastName.trim()) next["known.lastName"] = "Nazwisko jest wymagane.";
     } else {
-      if (!unknown.optionalName.trim() && !unknown.jerseyNumber.trim()) {
-        next["unknown.jerseyNumber"] =
-          "Podaj numer na koszulce lub imię i nazwisko.";
-      }
+      // unknown flow
+      if (!unknown.jerseyNumber.trim()) next["unknown.jerseyNumber"] = "Podaj numer na koszulce.";
+      if (!unknown.club.trim()) next["unknown.club"] = "Podaj aktualny klub.";
+      if (!unknown.clubCountry.trim()) next["unknown.clubCountry"] = "Podaj kraj aktualnego klubu.";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
 
+  /* ================= Save ================= */
   function save() {
     const id = Date.now();
     let newPlayer: Player;
@@ -94,18 +128,33 @@ export default function AddPlayerPage() {
         birthDate: known.birthDate || undefined,
         nationality: known.nationality || undefined,
       };
+
+      // Dołącz oceny metryk
+      (newPlayer as any).meta = {
+        ...(newPlayer as any).meta,
+        metricsRatings: packRatings(),
+      };
     } else {
-      const labelName =
-        unknown.optionalName.trim() ||
-        (unknown.jerseyNumber ? `#${unknown.jerseyNumber.trim()}` : "") ||
-        "Szkic zawodnika";
+      const labelName = `#${unknown.jerseyNumber.trim()}`;
       newPlayer = {
         id,
-        name: labelName,
-        pos: unknown.pos,
+        name: labelName || "Szkic zawodnika",
+        pos: unknown.pos, // 4-bucket (warunkuje sekcje metryk)
         club: unknown.club.trim(),
-        age: unknown.age ? parseInt(unknown.age, 10) || 0 : 0,
+        age: 0,
         status: "active",
+      };
+
+      // wszystko istotne + oceny metryk do meta
+      (newPlayer as any).meta = {
+        jerseyNumber: unknown.jerseyNumber || undefined,
+        clubCountry: unknown.clubCountry || undefined,
+        note: unknown.note || undefined,
+        metricsRatings: packRatings(),
+        recommendation: {
+          targetLevel: (newPlayer as any)?.meta?.recommendation?.targetLevel || "",
+          summary: (newPlayer as any)?.meta?.recommendation?.summary || "",
+        },
       };
     }
 
@@ -118,6 +167,18 @@ export default function AddPlayerPage() {
     router.push(`/players/${id}`);
   }
 
+  function packRatings() {
+    const out: Record<MetricGroupKey, Record<string, number>> = {
+      BASE: { ...mBase },
+      GK: { ...mGK },
+      DEF: { ...mDEF },
+      MID: { ...mMID },
+      ATT: { ...mATT },
+    };
+    return out;
+  }
+
+  /* ================= UI ================= */
   return (
     <div className="w-full">
       <Crumb
@@ -131,13 +192,10 @@ export default function AddPlayerPage() {
 
       {/* --- KROK 1 --- */}
       {step === 1 && (
-        <div className="max-w-xl space-y-3">
-          {/* Znam zawodnika (z ikoną) */}
+        <div className="max-w space-y-3">
+          {/* Znam */}
           <button
-            onClick={() => {
-              setChoice("known");
-              setErrors({});
-            }}
+            onClick={() => { setChoice("known"); setErrors({}); }}
             className={
               "w-full rounded-lg border p-4 text-left transition hover:bg-gray-50 dark:hover:bg-neutral-900 " +
               (choice === "known"
@@ -150,17 +208,13 @@ export default function AddPlayerPage() {
               Znam zawodnika
             </div>
             <div className="text-xs text-gray-500">
-              Wpisz imię, nazwisko i podstawowe informacje. Resztę ustawisz później
-              w profilu.
+              Uzupełnij imię i nazwisko – resztę możesz dodać później w profilu.
             </div>
           </button>
 
-          {/* Nie znam zawodnika (z ikoną koszulki) */}
+          {/* Nie znam */}
           <button
-            onClick={() => {
-              setChoice("unknown");
-              setErrors({});
-            }}
+            onClick={() => { setChoice("unknown"); setErrors({}); }}
             className={
               "w-full rounded-lg border p-4 text-left transition hover:bg-gray-50 dark:hover:bg-neutral-900 " +
               (choice === "unknown"
@@ -173,7 +227,7 @@ export default function AddPlayerPage() {
               Nie znam zawodnika
             </div>
             <div className="text-xs text-gray-500">
-              Podaj numer na koszulce (lub imię i nazwisko, jeśli chcesz).
+              Zanotuj numer na koszulce, klub i kraj klubu + krótką notatkę. Dodasz szczegóły później.
             </div>
           </button>
 
@@ -191,9 +245,7 @@ export default function AddPlayerPage() {
             </Button>
             <Button
               className="bg-gray-900 text-white hover:bg-gray-800"
-              onClick={() => {
-                if (validateStep1()) setStep(2);
-              }}
+              onClick={() => { if (validateStep1()) setStep(2); }}
             >
               Dalej
             </Button>
@@ -204,59 +256,43 @@ export default function AddPlayerPage() {
       {/* --- KROK 2: ZNAM --- */}
       {step === 2 && choice === "known" && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {/* Lewa kolumna (50%) — podstawowe wymagane */}
+          {/* Podstawowe dane (wymagane) */}
           <Card>
-            <CardHeader>
-              <CardTitle>Podstawowe dane</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Podstawowe dane</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>
-                    Imię <span className="text-red-600">*</span>
-                  </Label>
+                  <Label>Imię <span className="text-red-600">*</span></Label>
                   <Input
                     value={known.firstName}
-                    onChange={(e) =>
-                      setKnown((d) => ({ ...d, firstName: e.target.value }))
-                    }
+                    onChange={(e) => setKnown((d) => ({ ...d, firstName: e.target.value }))}
                     aria-invalid={!!errors["known.firstName"]}
                     className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
                   />
                   {errors["known.firstName"] && (
-                    <p className="text-xs text-red-600">
-                      {errors["known.firstName"]}
-                    </p>
+                    <p className="text-xs text-red-600">{errors["known.firstName"]}</p>
                   )}
                 </div>
                 <div>
-                  <Label>
-                    Nazwisko <span className="text-red-600">*</span>
-                  </Label>
+                  <Label>Nazwisko <span className="text-red-600">*</span></Label>
                   <Input
                     value={known.lastName}
-                    onChange={(e) =>
-                      setKnown((d) => ({ ...d, lastName: e.target.value }))
-                    }
+                    onChange={(e) => setKnown((d) => ({ ...d, lastName: e.target.value }))}
                     aria-invalid={!!errors["known.lastName"]}
                     className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
                   />
                   {errors["known.lastName"] && (
-                    <p className="text-xs text-red-600">
-                      {errors["known.lastName"]}
-                    </p>
+                    <p className="text-xs text-red-600">{errors["known.lastName"]}</p>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Pozycja</Label>
+                  <Label>Kategoria pozycji (tabela)</Label>
                   <Select
                     value={known.pos}
-                    onValueChange={(v) =>
-                      setKnown((d) => ({ ...d, pos: v as Pos }))
-                    }
+                    onValueChange={(v) => setKnown((d) => ({ ...d, pos: v as Pos }))}
                   >
                     <SelectTrigger className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
                       <SelectValue placeholder="Wybierz" />
@@ -274,9 +310,7 @@ export default function AddPlayerPage() {
                   <Input
                     type="number"
                     value={known.age}
-                    onChange={(e) =>
-                      setKnown((d) => ({ ...d, age: e.target.value }))
-                    }
+                    onChange={(e) => setKnown((d) => ({ ...d, age: e.target.value }))}
                     className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
                   />
                 </div>
@@ -287,9 +321,7 @@ export default function AddPlayerPage() {
                   <Label>Klub</Label>
                   <Input
                     value={known.club}
-                    onChange={(e) =>
-                      setKnown((d) => ({ ...d, club: e.target.value }))
-                    }
+                    onChange={(e) => setKnown((d) => ({ ...d, club: e.target.value }))}
                     className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
                   />
                 </div>
@@ -297,256 +329,58 @@ export default function AddPlayerPage() {
                   <Label>Narodowość</Label>
                   <Input
                     value={known.nationality}
-                    onChange={(e) =>
-                      setKnown((d) => ({ ...d, nationality: e.target.value }))
-                    }
+                    onChange={(e) => setKnown((d) => ({ ...d, nationality: e.target.value }))}
                     className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
                   />
                 </div>
               </div>
 
-              <div>
-                <Label>Data urodzenia</Label>
-                <Input
-                  type="date"
-                  value={known.birthDate}
-                  onChange={(e) =>
-                    setKnown((d) => ({ ...d, birthDate: e.target.value }))
-                  }
-                  className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
-                />
-              </div>
-
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep(1)}
-                  className="border-gray-300 dark:border-neutral-700"
-                >
-                  Wstecz
-                </Button>
-                <Button
-                  className="bg-gray-900 text-white hover:bg-gray-800"
-                  onClick={() => {
-                    if (validateStep2()) save();
-                  }}
-                >
+                <Button variant="outline" onClick={() => setStep(1)} className="border-gray-300 dark:border-neutral-700">Wstecz</Button>
+                <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => { if (validateStep2()) save(); }}>
                   Zapisz
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Prawa kolumna — Accordion + Tabs (opcjonalne) */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Rozszerzone informacje (opcjonalne)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="ext">
-                    <AccordionTrigger>Rozwiń / Zwiń</AccordionTrigger>
-                    <AccordionContent>
-                      <Tabs defaultValue="basic" className="w-full">
-                        <TabsList className="grid w-full grid-cols-6">
-                          <TabsTrigger value="basic">Basic</TabsTrigger>
-                          <TabsTrigger value="club">Club</TabsTrigger>
-                          <TabsTrigger value="physical">Physical</TabsTrigger>
-                          <TabsTrigger value="contact">Contact</TabsTrigger>
-                          <TabsTrigger value="contract">Contract</TabsTrigger>
-                          <TabsTrigger value="stats">Stats</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="basic" className="mt-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label>Pseudonim</Label>
-                              <Input placeholder="—" />
-                            </div>
-                            <div>
-                              <Label>Dominująca noga</Label>
-                              <Input placeholder="—" />
-                            </div>
-                          </div>
-                        </TabsContent>
-
-                        <TabsContent value="club" className="mt-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label>Klub</Label>
-                              <Input
-                                value={known.club}
-                                onChange={(e) =>
-                                  setKnown((d) => ({ ...d, club: e.target.value }))
-                                }
-                              />
-                            </div>
-                            <div>
-                              <Label>Drużyna/Rocznik</Label>
-                              <Input placeholder="U19 / Rezerwy…" />
-                            </div>
-                          </div>
-                        </TabsContent>
-
-                        <TabsContent value="physical" className="mt-4">
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <Label>Wzrost (cm)</Label>
-                              <Input type="number" placeholder="—" />
-                            </div>
-                            <div>
-                              <Label>Waga (kg)</Label>
-                              <Input type="number" placeholder="—" />
-                            </div>
-                            <div>
-                              <Label>Budowa</Label>
-                              <Input placeholder="—" />
-                            </div>
-                          </div>
-                        </TabsContent>
-
-                        <TabsContent value="contact" className="mt-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label>E-mail</Label>
-                              <Input type="email" placeholder="—" />
-                            </div>
-                            <div>
-                              <Label>Telefon</Label>
-                              <Input placeholder="—" />
-                            </div>
-                            <div className="col-span-2">
-                              <Label>Agent</Label>
-                              <Input placeholder="—" />
-                            </div>
-                          </div>
-                        </TabsContent>
-
-                        <TabsContent value="contract" className="mt-4">
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <Label>Do kiedy</Label>
-                              <Input type="date" />
-                            </div>
-                            <div>
-                              <Label>Kara/klauzula</Label>
-                              <Input placeholder="—" />
-                            </div>
-                            <div>
-                              <Label>Status</Label>
-                              <Input placeholder="—" />
-                            </div>
-                          </div>
-                        </TabsContent>
-
-                        <TabsContent value="stats" className="mt-4">
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <Label>Mecze</Label>
-                              <Input type="number" placeholder="—" />
-                            </div>
-                            <div>
-                              <Label>Gole</Label>
-                              <Input type="number" placeholder="—" />
-                            </div>
-                            <div>
-                              <Label>Asysty</Label>
-                              <Input type="number" placeholder="—" />
-                            </div>
-                          </div>
-                        </TabsContent>
-                      </Tabs>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Komentarze</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="comments">
-                    <AccordionTrigger>Rozwiń / Zwiń</AccordionTrigger>
-                    <AccordionContent>
-                      <Tabs defaultValue="notes" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2">
-                          <TabsTrigger value="notes">Notatki</TabsTrigger>
-                          <TabsTrigger value="final">Final</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="notes" className="mt-4">
-                          <Input placeholder="Krótka notatka…" />
-                        </TabsContent>
-                        <TabsContent value="final" className="mt-4">
-                          <Input placeholder="Final comment…" />
-                        </TabsContent>
-                      </Tabs>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Ocena skauta (1–6) – gwiazdki bazujące na „Zarządzanie” */}
+          <RatingsCard
+            title="Ocena skauta (1–6)"
+            pos={known.pos}
+            config={mCfg}
+            ratings={{ BASE: mBase, GK: mGK, DEF: mDEF, MID: mMID, ATT: mATT }}
+            setByGroup={{ setBASE: setMBase, setGK: setMGK, setDEF: setMDEF, setMID: setMMID, setATT: setMATT }}
+          />
         </div>
       )}
 
       {/* --- KROK 2: NIE ZNAM --- */}
       {step === 2 && choice === "unknown" && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {/* Lewa kolumna — numer na koszulce + pola pomocnicze */}
+          {/* Lewa kolumna — Pola istotne aby zapisać zawodnika "nie znanego" */}
           <Card>
-            <CardHeader>
-              <CardTitle>Szkic zawodnika</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Label>Imię i nazwisko (opcjonalnie)</Label>
-                <Input
-                  value={unknown.optionalName}
-                  onChange={(e) =>
-                    setUnknown((d) => ({ ...d, optionalName: e.target.value }))
-                  }
-                  className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
-                />
-              </div>
-
-              <div>
-                <Label>
-                  Numer na koszulce{" "}
-                  {unknown.optionalName ? (
-                    <span className="text-gray-400">(opcjonalnie)</span>
-                  ) : (
-                    <span className="text-red-600">*</span>
-                  )}
-                </Label>
-                <Input
-                  value={unknown.jerseyNumber}
-                  onChange={(e) =>
-                    setUnknown((d) => ({ ...d, jerseyNumber: e.target.value }))
-                  }
-                  aria-invalid={!!errors["unknown.jerseyNumber"]}
-                  placeholder="np. 27"
-                  className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
-                />
-                {errors["unknown.jerseyNumber"] && (
-                  <p className="text-xs text-red-600">
-                    {errors["unknown.jerseyNumber"]}
-                  </p>
-                )}
-              </div>
-
+            <CardHeader><CardTitle>Szkic zawodnika (nie znany)</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-1">
+                  <Label>Numer na koszulce <span className="text-red-600">*</span></Label>
+                  <Input
+                    value={unknown.jerseyNumber}
+                    onChange={(e) => setUnknown((d) => ({ ...d, jerseyNumber: e.target.value }))}
+                    aria-invalid={!!errors["unknown.jerseyNumber"]}
+                    placeholder="np. 27"
+                    className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
+                  />
+                  {errors["unknown.jerseyNumber"] && (
+                    <p className="text-xs text-red-600">{errors["unknown.jerseyNumber"]}</p>
+                  )}
+                </div>
                 <div>
-                  <Label>Pozycja</Label>
+                  <Label>Kategoria pozycji</Label>
                   <Select
                     value={unknown.pos}
-                    onValueChange={(v) =>
-                      setUnknown((d) => ({ ...d, pos: v as Pos }))
-                    }
+                    onValueChange={(v) => setUnknown((d) => ({ ...d, pos: v as Pos }))}
                   >
                     <SelectTrigger className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
                       <SelectValue placeholder="Wybierz" />
@@ -559,69 +393,258 @@ export default function AddPlayerPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Wiek (opcjonalnie)</Label>
+                  <Label>Aktualny klub <span className="text-red-600">*</span></Label>
                   <Input
-                    type="number"
-                    value={unknown.age}
-                    onChange={(e) =>
-                      setUnknown((d) => ({ ...d, age: e.target.value }))
-                    }
+                    value={unknown.club}
+                    onChange={(e) => setUnknown((d) => ({ ...d, club: e.target.value }))}
+                    aria-invalid={!!errors["unknown.club"]}
                     className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
                   />
+                  {errors["unknown.club"] && (
+                    <p className="text-xs text-red-600">{errors["unknown.club"]}</p>
+                  )}
+                </div>
+                <div>
+                  <Label>Kraj aktualnego klubu <span className="text-red-600">*</span></Label>
+                  <Input
+                    value={unknown.clubCountry}
+                    onChange={(e) => setUnknown((d) => ({ ...d, clubCountry: e.target.value }))}
+                    aria-invalid={!!errors["unknown.clubCountry"]}
+                    className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
+                  />
+                  {errors["unknown.clubCountry"] && (
+                    <p className="text-xs text-red-600">{errors["unknown.clubCountry"]}</p>
+                  )}
                 </div>
               </div>
 
               <div>
-                <Label>Klub (jeśli znany)</Label>
+                <Label>Notatka własna (opcjonalne)</Label>
                 <Input
-                  value={unknown.club}
-                  onChange={(e) =>
-                    setUnknown((d) => ({ ...d, club: e.target.value }))
-                  }
+                  value={unknown.note}
+                  onChange={(e) => setUnknown((d) => ({ ...d, note: e.target.value }))}
+                  placeholder="Krótka notatka…"
                   className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950"
                 />
               </div>
 
+              {/* Preview koszulki wewnątrz tej karty */}
+              <div className="mt-2 rounded-lg border border-dashed border-gray-300 p-4 dark:border-neutral-800">
+                <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">
+                  Podgląd koszulki
+                </div>
+                <div className="flex items-center justify-center">
+                  <JerseyPreview number={unknown.jerseyNumber} />
+                </div>
+              </div>
+
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep(1)}
-                  className="border-gray-300 dark:border-neutral-700"
-                >
+                <Button variant="outline" onClick={() => setStep(1)} className="border-gray-300 dark:border-neutral-700">
                   Wstecz
                 </Button>
-                <Button
-                  className="bg-gray-900 text-white hover:bg-gray-800"
-                  onClick={() => {
-                    if (validateStep2()) save();
-                  }}
-                >
+                <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => { if (validateStep2()) save(); }}>
                   Zapisz
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Prawa kolumna — PREVIEW z Twoim SVG */}
-          <Card className="flex items-center justify-center">
-            <div className="p-6">
-              <JerseyPreview number={unknown.jerseyNumber} />
-            </div>
-          </Card>
+          {/* Prawa kolumna — Ocena + Potencjał, Ryzyka, Rekomendacja */}
+          <div className="space-y-4">
+            <RatingsCard
+              title="Ocena skauta (1–6)"
+              pos={unknown.pos}
+              config={mCfg}
+              ratings={{ BASE: mBase, GK: mGK, DEF: mDEF, MID: mMID, ATT: mATT }}
+              setByGroup={{ setBASE: setMBase, setGK: setMGK, setDEF: setMDEF, setMID: setMMID, setATT: setMATT }}
+            />
+
+            <Card>
+              <CardHeader><CardTitle>Potencjał, ryzyka, rekomendacja</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label>Poziom docelowy gdzie mógłby grać zawodnik</Label>
+                  <Input placeholder="np. Ekstraklasa / 2. Bundesliga…" />
+                </div>
+                <div>
+                  <Label>Podsumowanie z własnym opisem</Label>
+                  <Input placeholder="Krótka rekomendacja / opis…" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-/** Podgląd koszulki (Twoje SVG) + realtime numer */
-function JerseyPreview({ number }: { number: string }) {
-  const n = (number || "").trim().slice(0, 3);
+/* ----------------------------------------
+   Ratings Card (shared by known/unknown)
+   (uses StarRating instead of sliders)
+----------------------------------------- */
+function RatingsCard({
+  title,
+  pos,
+  config,
+  ratings,
+  setByGroup,
+}: {
+  title: string;
+  pos: Pos;
+  config: MetricsConfig;
+  ratings: {
+    BASE: Record<string, number>;
+    GK: Record<string, number>;
+    DEF: Record<string, number>;
+    MID: Record<string, number>;
+    ATT: Record<string, number>;
+  };
+  setByGroup: {
+    setBASE: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+    setGK: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+    setDEF: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+    setMID: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+    setATT: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  };
+}) {
+  const { BASE, GK, DEF, MID, ATT } = ratings;
+  const { setBASE, setGK, setDEF, setMID, setATT } = setByGroup;
+
+  const showGK = pos === "GK";
+  const showDEF = pos === "DF";
+  const showMID = pos === "MF";
+  const showATT = pos === "FW";
 
   return (
-    <div className="relative mx-auto h-[320px] w-[320px]">
-      {/* SVG skalowane z Twojego pliku (kolor przez currentColor, działa w dark) */}
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <span>{title}</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+            <Info className="h-3.5 w-3.5" />
+            Skala: 1–6 • Etykiety edytujesz w „Zarządzanie → Metryki”
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <Accordion type="multiple" className="w-full">
+          {/* BASE */}
+          <AccordionItem value="base">
+            <AccordionTrigger>Kategorie bazowe</AccordionTrigger>
+            <AccordionContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              {config.BASE.filter((m) => m.enabled).map((m) => (
+                <RatingRow
+                  key={m.id}
+                  label={m.label}
+                  value={BASE[m.key] ?? 0}
+                  onChange={(v) => setBASE((s) => ({ ...s, [m.key]: v }))}
+                />
+              ))}
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* GK */}
+          {showGK && (
+            <AccordionItem value="gk">
+              <AccordionTrigger>Bramkarz (GK)</AccordionTrigger>
+              <AccordionContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {config.GK.filter((m) => m.enabled).map((m) => (
+                  <RatingRow
+                    key={m.id}
+                    label={m.label}
+                    value={GK[m.key] ?? 0}
+                    onChange={(v) => setGK((s) => ({ ...s, [m.key]: v }))}
+                  />
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          )}
+
+          {/* DEF */}
+          {showDEF && (
+            <AccordionItem value="def">
+              <AccordionTrigger>Obrońca</AccordionTrigger>
+              <AccordionContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {config.DEF.filter((m) => m.enabled).map((m) => (
+                  <RatingRow
+                    key={m.id}
+                    label={m.label}
+                    value={DEF[m.key] ?? 0}
+                    onChange={(v) => setDEF((s) => ({ ...s, [m.key]: v }))}
+                  />
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          )}
+
+          {/* MID */}
+          {showMID && (
+            <AccordionItem value="mid">
+              <AccordionTrigger>Pomocnik</AccordionTrigger>
+              <AccordionContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {config.MID.filter((m) => m.enabled).map((m) => (
+                  <RatingRow
+                    key={m.id}
+                    label={m.label}
+                    value={MID[m.key] ?? 0}
+                    onChange={(v) => setMID((s) => ({ ...s, [m.key]: v }))}
+                  />
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          )}
+
+          {/* ATT */}
+          {showATT && (
+            <AccordionItem value="att">
+              <AccordionTrigger>Napastnik</AccordionTrigger>
+              <AccordionContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {config.ATT.filter((m) => m.enabled).map((m) => (
+                  <RatingRow
+                    key={m.id}
+                    label={m.label}
+                    value={ATT[m.key] ?? 0}
+                    onChange={(v) => setATT((s) => ({ ...s, [m.key]: v }))}
+                  />
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          )}
+        </Accordion>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ----------------------------------------
+   Small reusable rows/components
+----------------------------------------- */
+function RatingRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-neutral-800">
+      <div className="min-w-0 text-sm">{label}</div>
+      <StarRating value={value} onChange={onChange} max={6} />
+    </div>
+  );
+}
+
+function JerseyPreview({ number }: { number: string }) {
+  const n = (number || "").trim().slice(0, 3) || "—";
+  return (
+    <div className="relative mx-auto h-[220px] w-[220px] sm:h-[280px] sm:w-[280px]">
       <svg
         className="h-full w-full text-gray-800 dark:text-neutral-200"
         viewBox="0 0 16 16"
@@ -636,11 +659,9 @@ function JerseyPreview({ number }: { number: string }) {
           fill="none"
         />
       </svg>
-
-      {/* Numer overlay, wycentrowany */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <span className="select-none text-7xl font-extrabold leading-none text-gray-900 dark:text-neutral-100">
-          {n || "—"}
+        <span className="select-none text-6xl font-extrabold leading-none text-gray-900 dark:text-neutral-100">
+          {n}
         </span>
       </div>
     </div>

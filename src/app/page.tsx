@@ -209,7 +209,7 @@ export default function Page() {
             Szybka obserwacja
             <ChevronDown className="ml-2 h-4 w-4" />
           </Button>
-          <Button
+          {/* <Button
             variant="outline"
             className="border-gray-300 dark:border-neutral-700"
             onClick={seedDemo}
@@ -217,7 +217,7 @@ export default function Page() {
           >
             <Database className="mr-2 h-4 w-4" />
             Seed demo
-          </Button>
+          </Button> */}
         </div>
       </div>
 

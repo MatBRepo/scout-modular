@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "S4S Modular",
-  description: "Modular features demo",
+  title: "entrisoScouting",
+  description: " entrisoScouting zarządzanie graczami",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

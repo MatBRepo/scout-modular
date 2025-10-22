@@ -1,6 +1,6 @@
 // src/app/(players)/players/[id]/PlayerEditorPage.tsx
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Crumb, Toolbar } from "@/shared/ui/atoms";
 import {
@@ -15,14 +15,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import type { Player } from "@/shared/types";
+
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+
+type Pos = Player["pos"]; // "GK" | "DF" | "MF" | "FW"
 
 export default function PlayerEditorPage({ id }: { id: string }) {
   const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
   const [p, setP] = useState<Player | null>(null);
 
+  // Oryginalny snapshot (do przycisku „Anuluj”)
+  const originalRef = useRef<Player | null>(null);
+
+  // Status autosave
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Ładowanie
   useEffect(() => {
     try {
       const raw = localStorage.getItem("s4s.players");
@@ -30,26 +48,89 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       setPlayers(arr);
       const found = arr.find((x) => String(x.id) === id) || null;
       setP(found);
+      // snapshot
+      originalRef.current = found ? structuredClone(found) : null;
     } catch {
       setP(null);
+      originalRef.current = null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // „Nieznany” = brak imienia i nazwiska
   const isUnknown = useMemo(
     () => (p ? !(p as any).firstName && !(p as any).lastName : false),
     [p]
   );
 
-  function saveBasic(next: Partial<Player>) {
-    if (!p) return;
-    const updated = { ...p, ...next };
-    setP(updated);
-    const arr = players.map((x) => (x.id === updated.id ? updated : x));
+  // Zapis całego obiektu do localStorage
+  function overwritePlayer(next: Player) {
+    setP(next);
+    const arr = players.map((x) => (x.id === next.id ? next : x));
     setPlayers(arr);
     try {
       localStorage.setItem("s4s.players", JSON.stringify(arr));
     } catch {}
   }
+
+  // Debounce UX dla statusu zapisu
+  function bumpSaving() {
+    setSaveStatus("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
+  }
+
+  // Autosave — aktualizacja podstawowych pól
+  function saveBasic(next: Partial<Player>) {
+    if (!p) return;
+    const updated = { ...p, ...next };
+    bumpSaving();
+    overwritePlayer(updated);
+  }
+
+  // Ręczne „Zapisz” (potwierdzenie; autosave i tak zapisuje on-change)
+  function manualSave() {
+    if (!p) return;
+    bumpSaving();
+    overwritePlayer({ ...p });
+  }
+
+  // „Anuluj” — przywrócenie snapshotu
+  function cancelToOriginal() {
+    const orig = originalRef.current;
+    if (!orig) return;
+    setSaveStatus("saving");
+    overwritePlayer(structuredClone(orig));
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
+  }
+
+  // Drobna plakietka statusu w toolbarze
+  const SaveChip = () => (
+    <div
+      className={
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ring-1 " +
+        (saveStatus === "saving"
+          ? "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-900/40"
+          : saveStatus === "saved"
+          ? "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-100 dark:ring-emerald-900/40"
+          : "bg-slate-50 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700")
+      }
+      aria-live="polite"
+    >
+      {saveStatus === "saving" ? (
+        <>
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Zapisywanie…
+        </>
+      ) : saveStatus === "saved" ? (
+        <>
+          <CheckCircle2 className="h-3.5 w-3.5" /> Zapisano
+        </>
+      ) : (
+        "—"
+      )}
+    </div>
+  );
 
   if (!p) {
     return (
@@ -80,24 +161,37 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       <Toolbar
         title={`Profil: ${p.name}`}
         right={
-          <Button
-            className="bg-gray-900 text-white hover:bg-gray-800"
-            onClick={() => router.push("/players")}
-          >
-            Wróć do listy
-          </Button>
+          <div className="flex items-center gap-2 mb-4">
+            <SaveChip />
+            <Button
+              className="bg-gray-900 text-white hover:bg-gray-800"
+              onClick={() => router.push("/players")}
+            >
+              Wróć do listy
+            </Button>
+          </div>
         }
       />
 
-      {/* Info o nieznanym zawodniku */}
+      {/* Baner „Nieznany zawodnik” + akcje */}
       {isUnknown && (
-        <div className="mb-3 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <div className="font-medium">Edytujesz nieznanego zawodnika</div>
-            <div className="opacity-90">
-              Uzupełnij przynajmniej <b>imię</b> lub <b>nazwisko</b>, aby oznaczyć profil jako znany.
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <div className="font-medium">Edytujesz nieznanego zawodnika</div>
+              <div className="opacity-90">
+                Uzupełnij przynajmniej <b>imię</b> lub <b>nazwisko</b>, aby oznaczyć profil jako znany.
+              </div>
             </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" className="h-8 border-amber-300 dark:border-amber-800" onClick={cancelToOriginal}>
+              Anuluj
+            </Button>
+            <Button className="h-8 bg-gray-900 text-white hover:bg-gray-800" onClick={manualSave}>
+              Zapisz
+            </Button>
           </div>
         </div>
       )}
@@ -150,13 +244,24 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                 )}
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Pozycja</Label>
-                <Input
-                  value={p.pos}
-                  onChange={(e) => saveBasic({ pos: e.target.value as Player["pos"] })}
-                />
+                <Select
+                  value={p.pos as Pos}
+                  onValueChange={(v) => saveBasic({ pos: v as Pos })}
+                >
+                  <SelectTrigger className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
+                    <SelectValue placeholder="Wybierz" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GK">GK</SelectItem>
+                    <SelectItem value="DF">DF</SelectItem>
+                    <SelectItem value="MF">MF</SelectItem>
+                    <SelectItem value="FW">FW</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Wiek</Label>
@@ -167,6 +272,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                 />
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Klub</Label>
@@ -180,6 +286,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                 />
               </div>
             </div>
+
             <div>
               <Label>Data urodzenia</Label>
               <Input
@@ -199,18 +306,19 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               <CardTitle>Rozszerzone informacje</CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Tylko jedna sekcja na raz (accordion single) */}
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="ext">
                   <AccordionTrigger>Rozwiń / Zwiń</AccordionTrigger>
                   <AccordionContent>
                     <Tabs defaultValue="basic" className="w-full">
                       <TabsList className="grid w-full grid-cols-6">
-                        <TabsTrigger value="basic">Basic</TabsTrigger>
-                        <TabsTrigger value="club">Club</TabsTrigger>
-                        <TabsTrigger value="physical">Physical</TabsTrigger>
-                        <TabsTrigger value="contact">Contact</TabsTrigger>
-                        <TabsTrigger value="contract">Contract</TabsTrigger>
-                        <TabsTrigger value="stats">Stats</TabsTrigger>
+                        <TabsTrigger value="basic">Podstawowe</TabsTrigger>
+                        <TabsTrigger value="club">Klub</TabsTrigger>
+                        <TabsTrigger value="physical">Fizyczne</TabsTrigger>
+                        <TabsTrigger value="contact">Kontakt</TabsTrigger>
+                        <TabsTrigger value="contract">Kontrakt</TabsTrigger>
+                        <TabsTrigger value="stats">Statystyki</TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="basic" className="mt-4">
@@ -322,6 +430,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               <CardTitle>Ocena</CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Tylko jedna sekcja na raz (accordion single) */}
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="grade">
                   <AccordionTrigger>Rozwiń / Zwiń</AccordionTrigger>
@@ -330,53 +439,56 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="notes">Notatki</TabsTrigger>
                         <TabsTrigger value="aspects">Oceny</TabsTrigger>
-                        <TabsTrigger value="final">Final</TabsTrigger>
+                        <TabsTrigger value="final">Komentarz końcowy</TabsTrigger>
                       </TabsList>
 
                       {/* Notatki */}
                       <TabsContent value="notes" className="mt-4 space-y-3">
-                        <div className="text-sm font-medium">Scout notes</div>
-                        <Textarea placeholder="Short comment…" />
-                        <div className="text-xs text-gray-500">Only visible to you</div>
+                        <div className="text-sm font-medium">Notatki skauta</div>
+                        <Textarea
+                          placeholder="Krótki komentarz…"
+                          onChange={() => setSaveStatus("idle")}
+                        />
+                        <div className="text-xs text-gray-500">Widoczne tylko dla Ciebie</div>
                         <div className="flex flex-wrap gap-2">
                           <Button
                             variant="outline"
                             className="border-gray-300 dark:border-neutral-700"
                           >
-                            Assistant suggestions
+                            Sugestie asystenta
                           </Button>
                           <Button
                             variant="outline"
                             className="border-gray-300 dark:border-neutral-700"
                           >
-                            Copy
+                            Kopiuj
                           </Button>
                           <Button
                             variant="outline"
                             className="border-gray-300 dark:border-neutral-700"
                           >
-                            Generate
+                            Generuj
                           </Button>
                         </div>
                         <div className="text-xs text-gray-500">
-                          1 = poor · 3–4 = solid · 6 = elite
+                          1 = słabo · 3–4 = solidnie · 6 = elita
                         </div>
                       </TabsContent>
 
-                      {/* Oceny */}
+                      {/* Oceny (przykładowe pola liczbowo) */}
                       <TabsContent value="aspects" className="mt-4">
                         <div className="space-y-3">
                           {[
-                            "Motor skills – speed, stamina",
-                            "Strength, duels, agility",
-                            "Technique",
-                            "Moves with a ball",
-                            "Moves without a ball",
-                            "Set pieces",
-                            "Defensive phase",
-                            "Attacking phase",
-                            "Transitional phases",
-                            "Attitude (mentality)",
+                            "Motoryka – szybkość, wytrzymałość",
+                            "Siła, pojedynki, zwinność",
+                            "Technika",
+                            "Gra z piłką",
+                            "Gra bez piłki",
+                            "Stałe fragmenty",
+                            "Faza defensywna",
+                            "Faza ofensywna",
+                            "Fazy przejściowe",
+                            "Postawa (mentalność)",
                           ].map((k) => (
                             <div
                               key={k}
@@ -389,25 +501,25 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                         </div>
                       </TabsContent>
 
-                      {/* Final */}
+                      {/* Komentarz końcowy */}
                       <TabsContent value="final" className="mt-4 space-y-3">
-                        <Label>Final comment</Label>
+                        <Label>Komentarz końcowy</Label>
                         <Textarea placeholder="—" />
                         <div className="flex flex-wrap gap-2">
                           <Button
                             variant="outline"
                             className="border-gray-300 dark:border-neutral-700"
                           >
-                            Copy
+                            Kopiuj
                           </Button>
                           <Button
                             variant="outline"
                             className="border-gray-300 dark:border-neutral-700"
                           >
-                            Generate
+                            Generuj
                           </Button>
                           <Button className="bg-gray-900 text-white hover:bg-gray-800">
-                            Insert into “Final comment”
+                            Wstaw do „Komentarza końcowego”
                           </Button>
                         </div>
                       </TabsContent>
