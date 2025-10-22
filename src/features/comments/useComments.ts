@@ -1,16 +1,17 @@
+// src/features/comments/useComments.ts
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getSupabase } from "@/lib/supabaseClient";
 
 /** Row shape that matches your DB schema */
 export type CommentRow = {
   id: string;
   page_key: string;
-  thread_id: string | null;         // root has thread_id = id
-  body: string;                     // NOT NULL
+  thread_id: string | null;  // root has thread_id = id
+  body: string;              // NOT NULL
   author_id: string | null;
   author_name: string | null;
-  x: number | null;                 // 0..1 for root pins
+  x: number | null;          // 0..1 for root pins
   y: number | null;
   created_at: string;
 };
@@ -20,6 +21,9 @@ function isUUID(v?: string) {
 }
 
 export function useComments(pageKey: string) {
+  // supabase client is created on the client only
+  const supabase = useRef(getSupabase()).current;
+
   const [rows, setRows] = useState<CommentRow[]>([]);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -29,51 +33,41 @@ export function useComments(pageKey: string) {
       .select("*")
       .eq("page_key", pageKey)
       .order("created_at", { ascending: true });
-
-    if (error) {
-      // eslint-disable-next-line no-console
-      console.error(error);
-      return;
-    }
-    setRows((data ?? []) as CommentRow[]);
-  }, [pageKey]);
+    if (!error && data) setRows(data as CommentRow[]);
+    if (error) console.error(error);
+  }, [pageKey, supabase]);
 
   useEffect(() => {
     // initial load
     refresh();
 
-    // tear down previous channel (don’t return the promise!)
-    if (channelRef.current) {
-      void channelRef.current.unsubscribe();
-      channelRef.current = null;
-    }
-
-    // subscribe for this pageKey
-    const ch = supabase
+    // realtime subscription scoped to pageKey
+    channelRef.current?.unsubscribe();
+    channelRef.current = supabase
       .channel(`comments:${pageKey}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "comments", filter: `page_key=eq.${pageKey}` },
-        () => { void refresh(); }
+        () => refresh()
       )
       .subscribe();
 
-    channelRef.current = ch;
-
-    // cleanup: fire-and-forget promise so React sees a sync function
+    // IMPORTANT: cleanup must NOT return a Promise
     return () => {
-      void ch.unsubscribe();
+      try {
+        channelRef.current?.unsubscribe();
+      } catch {}
     };
-  }, [pageKey, refresh]);
+  }, [pageKey, refresh, supabase]);
 
-  /** Create a root pin (anchor) and set thread_id = id */
+  /** Create a root pin (thread). Then make it the root by setting thread_id=id. */
   async function addPoint(opts: {
     xPct: number; yPct: number;
     body: string;
     authorId?: string | null;
     authorName?: string | null;
   }) {
-    const payload: Record<string, any> = {
+    const payload: any = {
       page_key: pageKey,
       body: opts.body,
       x: opts.xPct,
@@ -87,11 +81,9 @@ export function useComments(pageKey: string) {
       .insert(payload)
       .select("*")
       .single();
-
     if (error) throw error;
 
-    // Make it the thread root (thread_id = id)
-    if (data?.id && !data.thread_id) {
+    if (data && data.id && !data.thread_id) {
       const { error: e2 } = await supabase
         .from("comments")
         .update({ thread_id: data.id })
@@ -102,25 +94,32 @@ export function useComments(pageKey: string) {
 
   /** Move a root pin */
   async function movePoint(id: string, xPct: number, yPct: number) {
-    const { error } = await supabase
-      .from("comments")
-      .update({ x: xPct, y: yPct })
-      .eq("id", id);
+    const { error } = await supabase.from("comments").update({ x: xPct, y: yPct }).eq("id", id);
     if (error) throw error;
   }
 
-  /** Delete any comment (root or reply) */
+  /** Delete a single comment (reply or orphan) */
   async function remove(id: string) {
     const { error } = await supabase.from("comments").delete().eq("id", id);
     if (error) throw error;
   }
 
-  /** Add a reply to threadId */
-  async function addReply(
-    threadId: string,
-    opts: { body: string; authorId?: string | null; authorName?: string | null }
-  ) {
-    const payload: Record<string, any> = {
+  /** Delete a whole thread: root + its replies */
+  async function removeThread(threadId: string) {
+    const { error } = await supabase
+      .from("comments")
+      .delete()
+      .or(`id.eq.${threadId},thread_id.eq.${threadId}`);
+    if (error) throw error;
+  }
+
+  /** Add a reply to a thread */
+  async function addReply(threadId: string, opts: {
+    body: string;
+    authorId?: string | null;
+    authorName?: string | null;
+  }) {
+    const payload: any = {
       page_key: pageKey,
       thread_id: threadId,
       body: opts.body,
@@ -129,19 +128,20 @@ export function useComments(pageKey: string) {
       y: null,
     };
     if (opts.authorId && isUUID(opts.authorId)) payload.author_id = opts.authorId;
-
     const { error } = await supabase.from("comments").insert(payload);
     if (error) throw error;
   }
 
-  // Split into roots and replies
-  const roots = rows.filter((r) => r.thread_id === r.id);
-  const repliesByThread = rows
-    .filter((r) => r.thread_id && r.thread_id !== r.id)
-    .reduce<Record<string, CommentRow[]>>((acc, r) => {
-      (acc[r.thread_id!] ||= []).push(r);
-      return acc;
-    }, {});
+  // split into roots & replies
+  const roots = rows.filter(r => r.thread_id === r.id);
+  const repliesByThread = useMemo(() => {
+    return rows
+      .filter(r => r.thread_id && r.thread_id !== r.id)
+      .reduce<Record<string, CommentRow[]>>((acc, r) => {
+        (acc[r.thread_id!] ||= []).push(r);
+        return acc;
+      }, {});
+  }, [rows]);
 
-  return { rows, roots, repliesByThread, addPoint, addReply, movePoint, remove };
+  return { rows, roots, repliesByThread, addPoint, addReply, movePoint, remove, removeThread };
 }

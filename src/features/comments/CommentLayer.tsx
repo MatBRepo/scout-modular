@@ -1,16 +1,8 @@
+// src/features/comments/CommentLayer.tsx
 "use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useComments } from "./useComments";
-
-/**
- * CommentLayer
- * - Desktop: Alt+Klik w obszarze treści => nowa pinezka + okno wpisu
- * - Mobile/Tablet: włącz "Dodaj pinezkę", potem tapnij w obszar, aby dodać
- * - Najazd (hover) => podgląd skrótu
- * - Kliknięcie pinezki => otwiera wątek (komentarz + odpowiedzi)
- * - Przeciąganie pinezki => zmiana pozycji (zapis po puszczeniu)
- * - Przełącznik widoku: Desktop / Tablet / Mobile -> osobne zestawy komentarzy
- */
 
 type ViewKind = "desktop" | "tablet" | "mobile";
 
@@ -20,47 +12,36 @@ export default function CommentLayer({
   currentUser,
   initialView = "desktop",
 }: {
-  pageKey: string | null; // np. pathname
-  containerSelector?: string; // CSS selektor wrappera
+  pageKey: string | null;
+  containerSelector?: string;
   currentUser?: { id?: string; name?: string } | null;
   initialView?: ViewKind;
 }) {
-  // ===== view switch: namespace comments per view =====
   const [view, setView] = useState<ViewKind>(initialView);
   const key = (pageKey ?? "global") + "::" + view;
 
-  // ===== hook to Supabase comments =====
-  const { roots, repliesByThread, addPoint, addReply, movePoint, remove } = useComments(key);
+  const { roots, repliesByThread, addPoint, addReply, movePoint, removeThread } = useComments(key);
 
-  // ===== container / geometry =====
   const [rect, setRect] = useState<DOMRect | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
 
-  // ===== UI state =====
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
   const [hoverThreadId, setHoverThreadId] = useState<string | null>(null);
 
-  // Composer to create a new root comment
   const [composer, setComposer] = useState<{ xPct: number; yPct: number; left: number; top: number } | null>(null);
   const [draft, setDraft] = useState("");
 
-  // “Add pin” mode for touch devices
   const [addMode, setAddMode] = useState(false);
 
-  // Drag state (no-jump + rAF)
   const [drag, setDrag] = useState<{
     id: string;
-    // where the cursor grabbed the pin (offset from pin center), px
-    grabOffsetX: number;
-    grabOffsetY: number;
-    // live position (percentages)
-    livePctX: number;
-    livePctY: number;
+    startX: number; startY: number;
+    startPctX: number; startPctY: number;
+    livePctX: number; livePctY: number;
     moved: boolean;
   } | null>(null);
-  const moveRAF = useRef<number | null>(null);
 
-  // ===== container rect & hydration-safe mount =====
+  // mount container + rect
   useEffect(() => {
     const el = document.querySelector(containerSelector) as HTMLElement | null;
     containerRef.current = el || null;
@@ -83,11 +64,11 @@ export default function CommentLayer({
     };
   }, [containerSelector]);
 
-  // Helpers: screen coords → percentages within container
-  function toPctFromClient(clientX: number, clientY: number) {
+  // helpers
+  function toPct(clientX: number, clientY: number) {
     if (!rect) return { xPct: 0, yPct: 0, left: 0, top: 0 };
-    const xPct = clamp01((clientX - rect.left) / rect.width);
-    const yPct = clamp01((clientY - rect.top) / rect.height);
+    const xPct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const yPct = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
     return { xPct, yPct, left: clientX - rect.left, top: clientY - rect.top };
   }
   function pinPos(xPct: number, yPct: number) {
@@ -95,16 +76,14 @@ export default function CommentLayer({
     return { left: rect.left + xPct * rect.width, top: rect.top + yPct * rect.height };
   }
 
-  // ===== placing pins =====
-
-  // Desktop: Alt+click places composer
+  // alt+click to compose
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (!rect || !e.altKey) return;
       const wrap = containerRef.current;
       if (!wrap || !wrap.contains(e.target as Node)) return;
       e.preventDefault();
-      const p = toPctFromClient(e.clientX, e.clientY);
+      const p = toPct(e.clientX, e.clientY);
       setOpenThreadId(null);
       setHoverThreadId(null);
       setDraft("");
@@ -114,7 +93,7 @@ export default function CommentLayer({
     return () => window.removeEventListener("click", onClick);
   }, [rect]);
 
-  // Touch / mobile: “addMode” tap anywhere inside container to place
+  // mobile add mode
   useEffect(() => {
     if (!addMode) return;
     const handler = (e: MouseEvent | TouchEvent) => {
@@ -123,26 +102,22 @@ export default function CommentLayer({
       const target = e.target as Node;
       if (!wrap.contains(target)) return;
 
-      let clientX = 0,
-        clientY = 0;
+      let clientX = 0, clientY = 0;
       if (e instanceof TouchEvent) {
-        const t = e.touches[0] || e.changedTouches[0];
+        const t = e.changedTouches[0] || e.touches[0];
         if (!t) return;
-        clientX = t.clientX;
-        clientY = t.clientY;
+        clientX = t.clientX; clientY = t.clientY;
       } else {
-        clientX = (e as MouseEvent).clientX;
-        clientY = (e as MouseEvent).clientY;
+        clientX = (e as MouseEvent).clientX; clientY = (e as MouseEvent).clientY;
       }
-      const p = toPctFromClient(clientX, clientY);
+      const p = toPct(clientX, clientY);
       setOpenThreadId(null);
       setHoverThreadId(null);
       setDraft("");
       setComposer({ xPct: p.xPct, yPct: p.yPct, left: p.left, top: p.top });
-      setAddMode(false); // single-shot place
+      setAddMode(false);
     };
 
-    // Use capture on click to beat inner elements
     window.addEventListener("click", handler, true);
     window.addEventListener("touchend", handler, true);
     return () => {
@@ -170,65 +145,37 @@ export default function CommentLayer({
     setDraft("");
   }
 
-  // ===== Pin interactions (NO-JUMP drag with cursor–center offset) =====
+  // drag handlers (with gentle transitions)
   function startDrag(e: React.MouseEvent, id: string, xPct: number, yPct: number) {
     e.preventDefault();
     setComposer(null);
-    setOpenThreadId(null);
     setHoverThreadId(null);
-
-    // Calculate offset: how far the cursor is from pin center at grab time
-    const pinCenter = pinPos(xPct, yPct); // absolute px
-    const centerX = pinCenter.left;
-    const centerY = pinCenter.top;
-
-    const grabOffsetX = e.clientX - centerX;
-    const grabOffsetY = e.clientY - centerY;
-
+    setOpenThreadId(null);
     setDrag({
       id,
-      grabOffsetX,
-      grabOffsetY,
+      startX: e.clientX,
+      startY: e.clientY,
+      startPctX: xPct,
+      startPctY: yPct,
       livePctX: xPct,
       livePctY: yPct,
       moved: false,
     });
   }
 
-  // rAF-throttled mouse move
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!drag || !rect) return;
-
-      const targetCenterX = e.clientX - drag.grabOffsetX;
-      const targetCenterY = e.clientY - drag.grabOffsetY;
-
-      // clamp to container
-      const clampedX = Math.min(Math.max(targetCenterX, rect.left), rect.right);
-      const clampedY = Math.min(Math.max(targetCenterY, rect.top), rect.bottom);
-
-      const next = toPctFromClient(clampedX, clampedY);
-      const moved = drag.moved || true; // treat as moved when mouse moves
-
-      if (moveRAF.current) cancelAnimationFrame(moveRAF.current);
-      moveRAF.current = requestAnimationFrame(() => {
-        setDrag((d) =>
-          d && d.id === drag.id
-            ? {
-                ...d,
-                livePctX: next.xPct,
-                livePctY: next.yPct,
-                moved,
-              }
-            : d
-        );
-      });
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      const moved = drag.moved || Math.hypot(dx, dy) > 4;
+      const p = toPct(e.clientX, e.clientY);
+      setDrag({ ...drag, livePctX: p.xPct, livePctY: p.yPct, moved });
     }
-
     async function onUp() {
       if (!drag) return;
       if (!drag.moved) {
-        // treat as click -> open thread
+        // treat as click
         setOpenThreadId(drag.id);
         setDrag(null);
         return;
@@ -239,30 +186,14 @@ export default function CommentLayer({
         setDrag(null);
       }
     }
-
-    window.addEventListener("mousemove", onMove, { passive: true });
-    window.addEventListener("mouseup", onUp, { passive: true });
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
   }, [drag, rect, movePoint]);
 
-  // Keyboard delete on open thread
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!openThreadId) return;
-      if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
-        remove(openThreadId);
-        setOpenThreadId(null);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [openThreadId, remove]);
-
-  // ===== compute threads with live positions =====
   const threads = useMemo(() => {
     return roots.map((r) => ({
       root: r,
@@ -274,9 +205,10 @@ export default function CommentLayer({
 
   if (!rect) return null;
 
+  const isDraggingId = drag?.id || null;
+
   return (
     <>
-      {/* Helper panel: instructions + view switch + add pin toggle */}
       <HelperPanel
         view={view}
         onView={(v) => {
@@ -289,7 +221,7 @@ export default function CommentLayer({
         setAddMode={setAddMode}
       />
 
-      {/* Composer bubble (new thread) */}
+      {/* composer bubble */}
       {composer && (
         <div
           style={{
@@ -328,7 +260,7 @@ export default function CommentLayer({
         </div>
       )}
 
-      {/* Pins + hover previews + thread cards */}
+      {/* pins */}
       {threads.map(({ root, replies, liveX, liveY }) => {
         const pos = pinPos(liveX, liveY);
         const isOpen = openThreadId === root.id;
@@ -336,7 +268,6 @@ export default function CommentLayer({
 
         return (
           <div key={root.id} style={{ pointerEvents: "none" }}>
-            {/* Pin button */}
             <button
               type="button"
               aria-label="Komentarz"
@@ -351,24 +282,18 @@ export default function CommentLayer({
                 transform: "translate(-50%, -100%)",
                 zIndex: 55,
                 pointerEvents: "auto",
-                transition: drag?.id === root.id ? "none" : "transform 140ms ease-out, box-shadow 140ms ease-out, background-color 120ms ease-out",
+                transition:
+                  isDraggingId === root.id
+                    ? "none"
+                    : "left 120ms linear, top 120ms linear, transform 120ms ease",
               }}
-              className="relative inline-flex h-[30px] w-[30px] items-center justify-center active:scale-[.97]"
-              onClick={(e) => {
-                e.stopPropagation(); // avoid bubbling while toggling
-                if (drag?.id) return; // ignore click at the end of drag
-                setOpenThreadId((id) => (id === root.id ? null : root.id));
-              }}
+              className="group relative inline-flex h-[30px] w-[30px] items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
             >
-              {/* The pin UI (chat bubble icon you requested) */}
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow ring-2 ring-white hover:bg-indigo-700">
-                <ChatBubblePin />
-              </div>
-              {/* Tail */}
-              <span className="absolute -bottom-1 left-1/2 block h-2 w-2 -translate-x-1/2 rotate-45 rounded-[2px] bg-indigo-600" />
+              <ChatBubblePin className="drop-shadow-sm transition-transform group-active:scale-95 text-indigo-600 dark:text-indigo-400" />
             </button>
 
-            {/* Hover preview */}
+            {/* hover preview */}
             {isHover && !isOpen && (
               <HoverPreview
                 left={pos.left + 14}
@@ -379,7 +304,7 @@ export default function CommentLayer({
               />
             )}
 
-            {/* Thread card */}
+            {/* thread card */}
             {isOpen && (
               <ThreadCard
                 left={pos.left + 14}
@@ -387,10 +312,6 @@ export default function CommentLayer({
                 root={root}
                 replies={replies}
                 onClose={() => setOpenThreadId(null)}
-                onRemove={() => {
-                  remove(root.id);
-                  setOpenThreadId(null);
-                }}
                 onReply={async (text) => {
                   const t = text.trim();
                   if (!t) return;
@@ -399,6 +320,12 @@ export default function CommentLayer({
                     authorId: currentUser?.id ?? null,
                     authorName: currentUser?.name ?? null,
                   });
+                }}
+                onDelete={async () => {
+                  if (confirm("Usunąć cały wątek komentarzy?")) {
+                    await removeThread(root.id);
+                    setOpenThreadId(null);
+                  }
                 }}
               />
             )}
@@ -409,18 +336,26 @@ export default function CommentLayer({
   );
 }
 
-/* ===================== Visuals & UI bits ===================== */
+/* ===== visuals ===== */
 
-function clamp01(v: number) {
-  if (Number.isNaN(v)) return 0;
-  return Math.min(1, Math.max(0, v));
-}
-
-/** Your chat-bubble-with-dots pin (exact path; color via currentColor) */
-function ChatBubblePin() {
+function ChatBubblePin({ className = "" }: { className?: string }) {
+  // Your requested icon (chat-bubble with three dots)
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="currentColor">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      width="26"
+      height="26"
+      className={className}
+      style={{
+        filter: "drop-shadow(0 1px 1px rgba(0,0,0,.25))",
+        background: "white",
+        borderRadius: 8,
+      }}
+    >
       <path
+        fill="currentColor"
         fillRule="evenodd"
         clipRule="evenodd"
         d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 0 1-.814 1.686.75.75 0 0 0 .44 1.223ZM8.25 10.875a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25ZM10.875 12a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Zm4.875-1.125a1.125 1.125 0 1 0 0 2.25 1.125 1.125 0 0 0 0-2.25Z"
@@ -429,7 +364,6 @@ function ChatBubblePin() {
   );
 }
 
-/** Tiny hover preview */
 function HoverPreview({
   left,
   top,
@@ -457,23 +391,22 @@ function HoverPreview({
   );
 }
 
-/** Thread card with replies + composer + delete */
 function ThreadCard({
   left,
   top,
   root,
   replies,
   onClose,
-  onRemove,
   onReply,
+  onDelete,
 }: {
   left: number;
   top: number;
   root: { id: string; body: string; author_name: string | null; created_at: string };
   replies: { id: string; body: string; author_name: string | null; created_at: string }[];
   onClose: () => void;
-  onRemove: () => void;
   onReply: (text: string) => Promise<void>;
+  onDelete: () => Promise<void>;
 }) {
   const [text, setText] = useState("");
   const canSend = text.trim().length > 0;
@@ -498,9 +431,9 @@ function ThreadCard({
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={onRemove}
+            onClick={onDelete}
             className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-            title="Usuń pinezkę"
+            title="Usuń wątek"
           >
             Usuń
           </button>
@@ -516,7 +449,7 @@ function ThreadCard({
 
       {/* Replies */}
       {replies.length > 0 && (
-        <div className="mb-2 max-h-40 space-y-2 overflow-auto border-l-2 border-gray-200 pl-2 pr-1 dark:border-neutral-800">
+        <div className="mb-2 space-y-2 border-l-2 border-gray-200 pl-2 dark:border-neutral-800">
           {replies.map((r) => (
             <div key={r.id} className="text-sm">
               <div className="text-[11px] text-gray-500 dark:text-neutral-400">
@@ -555,7 +488,6 @@ function ThreadCard({
   );
 }
 
-/** Floating helper with instructions + view switch + add-pin toggle */
 function HelperPanel({
   view,
   onView,
@@ -582,7 +514,7 @@ function HelperPanel({
         <li>
           <b>Mobile/Tablet:</b> włącz <i>Dodaj pinezkę</i>, a następnie tapnij w miejscu komentarza.
         </li>
-        <li>Kliknij pinezkę, aby otworzyć wątek, dodawać odpowiedzi lub przeciągnąć, by zmienić pozycję.</li>
+        <li>Kliknij pinezkę, aby otworzyć wątek, dodawać odpowiedzi lub przeciągnij, by zmienić pozycję.</li>
       </ol>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
