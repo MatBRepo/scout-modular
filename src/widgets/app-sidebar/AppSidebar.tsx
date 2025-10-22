@@ -298,7 +298,7 @@ export default function AppSidebar({
   <>
     <SectionHeader label="Administracja" />
 
-    <div className="rounded-lg bg-slate-50/70 p-2.5 dark:bg-neutral-900/40">
+    <div className="rounded-lg bg-slate-100 p-2.5 dark:bg-neutral-900/40">
       <div className="space-y-0.5">
         <div>
           <NavItem

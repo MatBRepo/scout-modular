@@ -23,8 +23,40 @@ import {
 /* =======================================
    Types & constants
 ======================================= */
-type Pos = Player["pos"];
-const POS: Pos[] = ["GK", "DF", "MF", "FW"];
+
+const POS: PosGroup[] = ["GK", "DF", "MF", "FW"];
+
+type PosGroup = "GK" | "DF" | "MF" | "FW";
+
+function toPosGroup(p: Player["pos"]): PosGroup {
+  switch (p) {
+    case "GK":
+      return "GK";
+
+    // obrońcy (wszystko, co obronne, mapujemy na DF)
+    case "DF":
+    case "CB":
+    case "RB":
+    case "CW": // jeśli w Twoim modelu to "center back/wing-back" – traktuj jako obrońca
+      return "DF";
+
+    // pomocnicy
+    case "MF":
+    case "CM":
+      return "MF";
+
+    // napastnicy / skrzydła ofensywne
+    case "FW":
+    case "LW":
+      return "FW";
+
+    // nieznane -> wrzuć do MF (albo wybierz inną domyślną grupę)
+    case "?":
+    default:
+      return "MF";
+  }
+}
+
 
 const DEFAULT_COLS = {
   photo: true,
@@ -85,12 +117,12 @@ export default function MyPlayersFeature({
   const [scope, setScope] = useState<Scope>("active");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [pos, setPos] = useState<Record<Pos, boolean>>({
-    GK: true,
-    DF: true,
-    MF: true,
-    FW: true,
-  });
+const [pos, setPos] = useState<Record<PosGroup, boolean>>({
+  GK: true,
+  DF: true,
+  MF: true,
+  FW: true,
+});
   const [club, setClub] = useState("");
   const [ageMin, setAgeMin] = useState<number | "">("");
   const [ageMax, setAgeMax] = useState<number | "">("");
@@ -185,7 +217,7 @@ export default function MyPlayersFeature({
           : r.name.toLowerCase().includes(q.toLowerCase()) ||
             r.club.toLowerCase().includes(q.toLowerCase())
       )
-      .filter((r) => pos[r.pos])
+      .filter((r) => toPosGroup[r.pos])
       .filter((r) => (club ? r.club.toLowerCase().includes(club.toLowerCase()) : true))
       .filter((r) => (ageMin === "" ? true : r.age >= Number(ageMin)))
       .filter((r) => (ageMax === "" ? true : r.age <= Number(ageMax)));
@@ -361,7 +393,7 @@ export default function MyPlayersFeature({
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
     if (q.trim()) chips.push({ key: "q", label: `Szukaj: “${q.trim()}”`, clear: () => { setQ(""); setPage(1); } });
-    const visiblePositions = POS.filter(p => pos[p]);
+const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
     if (visiblePositions.length < POS.length) {
       chips.push({
         key: "pos",

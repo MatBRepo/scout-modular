@@ -7,6 +7,8 @@ import AppSidebar from "@/widgets/app-sidebar/AppSidebar";
 import PageTransition from "@/shared/ui/PageTransition";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, LogIn } from "lucide-react";
+import CommentLayer from "@/features/comments/CommentLayer";
+
 
 /* ===== Keys ===== */
 const AUTH_KEY = "s4s.auth";
@@ -219,8 +221,8 @@ function AppShell({
         </header>
 
         {/* Content container */}
-        <main id="content" className="mx-auto max-w-7xl px-4 py-6">
-          <PageTransition>
+<main id="content" className="mx-auto max-w-7xl px-4 py-6"> 
+           <PageTransition>
             <div
               className="
                 rounded-2xl border border-gray-200/70 bg-white/70
@@ -317,6 +319,19 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
       </div>
 
       <AppShell onOpenMobile={() => setMobileOpen(true)}>{content}</AppShell>
+
+<CommentLayer
+  pageKey={pathname}
+  containerSelector="#content"
+  currentUser={{
+    id: (auth.ok ? (auth as any).userId : undefined), // if you store a UUID
+    name: auth.ok ? (auth as any).user : "demo",
+  }}
+/>
+
+
     </ThemeProvider>
+
+    
   );
 }

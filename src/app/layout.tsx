@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import ClientRoot from "./ClientRoot";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -14,7 +15,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl" suppressHydrationWarning>
-      <body className="min-h-screen bg-white text-gray-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-white text-gray-900 antialiased dark:bg-neutral-950 dark:text-neutral-100"
+      >
         {/* ===== Background (server-rendered only) ===== */}
         <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 hidden md:block">
           {/* Radial glow (top) */}

@@ -23,8 +23,8 @@ import {
   Columns as ColumnsIcon,
 } from "lucide-react";
 import { ObservationEditor } from "./ObservationEditor";
+import type { XO as EditorXO } from "./ObservationEditor";
 
-// NEW: shadcn tooltip
 import {
   TooltipProvider,
   Tooltip,
@@ -37,17 +37,20 @@ import {
 type Bucket = "active" | "trash";
 type Mode = "live" | "tv";
 
+// patrz opis w poprzedniej wiadomości
+type PositionKey = string;
+
 type ObsPlayer = {
   id: string;
   type: "known" | "unknown";
   name?: string;
   shirtNo?: string;
   minutes?: number;
-  position?: string;
+  position?: PositionKey;
   overall?: number;
   voiceUrl?: string | null;
   note?: string;
-  ratings: { off: number; def: number; tech: number; motor: number };
+  ratings?: { off: number; def: number; tech: number; motor: number };
 };
 
 type XO = Observation & {
@@ -71,7 +74,6 @@ const DEFAULT_COLS = {
 };
 type ColKey = keyof typeof DEFAULT_COLS;
 
-// NEW: Polish labels for the Columns popover
 const COL_PL: Record<ColKey, string> = {
   select: "#",
   match: "Mecz",
@@ -105,6 +107,83 @@ function fmtDate(d?: string) {
   }
 }
 
+function splitMatch(match?: string): { teamA?: string; teamB?: string } {
+  if (!match) return {};
+  const [a, b] = match.split(/vs|VS| Vs | v\. | – | - /i).map((x) => x.trim());
+  if (!a || !b) return { teamA: match };
+  return { teamA: a, teamB: b };
+}
+
+/* ---------------------------- Adapters (safe) --------------------------- */
+function toEditorXO(row: XO): EditorXO {
+  const { teamA, teamB } = splitMatch(row.match);
+  const players = (row.players ?? []).map((p) => ({
+    id: p.id,
+    type: p.type,
+    name: p.name,
+    shirtNo: p.shirtNo,
+    minutes: p.minutes,
+    position: p.position,
+    overall: p.overall,
+    note: p.note,
+  }));
+  const editorObj: any = {
+    reportDate: row.date || "",
+    competition: "",
+    teamA: teamA || "",
+    teamB: teamB || "",
+    conditions: row.mode ?? "live",
+    contextNote: row.note ?? "",
+    note: row.note ?? "",
+    players,
+    __listMeta: {
+      id: row.id,
+      status: row.status,
+      bucket: row.bucket ?? "active",
+      time: row.time ?? "",
+      player: row.player ?? "",
+    },
+  };
+  return editorObj as EditorXO;
+}
+
+function fromEditorXO(e: EditorXO, prev?: XO): XO {
+  const anyE: any = e;
+  const teamA = anyE.teamA ?? "";
+  const teamB = anyE.teamB ?? "";
+  const match =
+    teamA && teamB ? `${teamA} vs ${teamB}` : teamA || teamB || (prev?.match ?? "");
+
+  const players: ObsPlayer[] = (anyE.players ?? []).map((p: any) => ({
+    id: p.id,
+    type: p.type,
+    name: p.name,
+    shirtNo: p.shirtNo,
+    minutes: p.minutes,
+    position: p.position as PositionKey,
+    overall: p.overall,
+    note: p.note,
+  }));
+
+  const meta = anyE.__listMeta || {};
+
+  const listRow: XO = {
+    id: meta.id ?? prev?.id ?? 0,
+    player: meta.player ?? prev?.player ?? "",
+    match,
+    date: anyE.reportDate ?? prev?.date ?? "",
+    time: meta.time ?? prev?.time ?? "",
+    status: meta.status ?? prev?.status ?? "draft",
+    bucket: meta.bucket ?? prev?.bucket ?? "active",
+    mode: (anyE.conditions ?? prev?.mode ?? "live") as Mode,
+    note: anyE.note ?? anyE.contextNote ?? prev?.note ?? "",
+    voiceUrl: prev?.voiceUrl ?? null,
+    players,
+  };
+
+  return listRow;
+}
+
 /* =============================== Feature ================================ */
 
 export default function ObservationsFeature({
@@ -114,7 +193,6 @@ export default function ObservationsFeature({
   data: Observation[];
   onChange: (next: Observation[]) => void;
 }) {
-  // Extend incoming rows—non-destructive
   const rows: XO[] = (data as XO[]).map((o) => ({
     bucket: "active",
     mode: "live",
@@ -122,11 +200,9 @@ export default function ObservationsFeature({
     ...o,
   }));
 
-  // ====== page state ======
   const [pageMode, setPageMode] = useState<"list" | "editor">("list");
   const [editing, setEditing] = useState<XO | null>(null);
 
-  // ---- DEMO SEED
   useEffect(() => {
     try {
       const already = localStorage.getItem(SEED_FLAG);
@@ -152,8 +228,6 @@ export default function ObservationsFeature({
                 position: "CF",
                 overall: 7,
                 note: "Dużo ruchu bez piłki.",
-                voiceUrl: null,
-                ratings: { off: 4, def: 3, tech: 4, motor: 5 },
               },
               {
                 id: crypto.randomUUID(),
@@ -164,8 +238,6 @@ export default function ObservationsFeature({
                 position: "RW",
                 overall: 6,
                 note: "Dobre 1v1, decyzje do poprawy.",
-                voiceUrl: null,
-                ratings: { off: 3, def: 3, tech: 4, motor: 4 },
               },
             ],
           },
@@ -189,8 +261,6 @@ export default function ObservationsFeature({
                 position: "CB",
                 overall: 8,
                 note: "Świetna gra w powietrzu.",
-                voiceUrl: null,
-                ratings: { off: 3, def: 5, tech: 4, motor: 4 },
               },
             ],
           },
@@ -204,7 +274,6 @@ export default function ObservationsFeature({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // toolbar state (persisted)
   const [tabScope, setTabScope] = useState<Bucket>("active");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -222,7 +291,6 @@ export default function ObservationsFeature({
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  // load persisted UI
   useEffect(() => {
     try {
       const raw = localStorage.getItem(UI_KEY);
@@ -270,7 +338,6 @@ export default function ObservationsFeature({
     sortDir,
   ]);
 
-  // ====== computed list ======
   const filtered = useMemo(() => {
     let base = rows
       .filter((r) => (r.bucket ?? "active") === tabScope)
@@ -348,7 +415,6 @@ export default function ObservationsFeature({
     sortDir,
   ]);
 
-  // ====== actions ======
   function addNew() {
     setEditing({
       id: 0,
@@ -402,7 +468,6 @@ export default function ObservationsFeature({
     onChange(next as unknown as Observation[]);
   }
 
-  // export
   function exportCSV() {
     const headers = ["id", "match", "date", "time", "mode", "status", "bucket", "players"];
     const rowsCsv = filtered.map((r) => [
@@ -429,6 +494,7 @@ export default function ObservationsFeature({
     a.click();
     URL.revokeObjectURL(url);
   }
+
   function exportExcel() {
     const headers = ["ID", "Mecz", "Data", "Godzina", "Tryb", "Status", "Kosz", "Zawodnicy"];
     const rowsX = filtered.map((r) => [
@@ -531,8 +597,11 @@ export default function ObservationsFeature({
   if (pageMode === "editor" && editing) {
     return (
       <ObservationEditor
-        initial={editing}
-        onSave={save}
+        initial={toEditorXO(editing)}
+        onSave={(editorObj) => {
+          const nextListRow = fromEditorXO(editorObj, editing ?? undefined);
+          save(nextListRow);
+        }}
         onClose={() => {
           setPageMode("list");
           setEditing(null);
@@ -583,7 +652,7 @@ export default function ObservationsFeature({
                   className="border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                   onClick={() => {
                     setFiltersOpen((v) => !v);
-                    setColsOpen(false); // close columns when opening filters
+                    setColsOpen(false);
                   }}
                   aria-pressed={filtersOpen}
                 >
@@ -682,7 +751,7 @@ export default function ObservationsFeature({
                 open={colsOpen}
                 setOpen={(v) => {
                   setColsOpen(v);
-                  if (v) setFiltersOpen(false); // close filters when opening columns
+                  if (v) setFiltersOpen(false);
                 }}
                 visibleCols={visibleCols}
                 setVisibleCols={setVisibleCols}
@@ -914,7 +983,6 @@ export default function ObservationsFeature({
                     {visibleCols.actions && (
                       <td className="p-2 sm:p-3 text-right">
                         <div className="inline-flex items-center gap-2">
-                          {/* Edit */}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
@@ -933,7 +1001,6 @@ export default function ObservationsFeature({
                             <TooltipContent side="top">Edytuj</TooltipContent>
                           </Tooltip>
 
-                          {/* Trash / Restore */}
                           {(r.bucket ?? "active") === "active" ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
