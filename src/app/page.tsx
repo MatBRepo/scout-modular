@@ -284,8 +284,8 @@ export default function Page() {
       )}
 
       {/* Smart search & quick observation filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full max-w-xl">
+      <div className="flex flex-wrap items-center gap-2 w-full">
+        <div className="relative w-full">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             placeholder="Szukaj (zawodnik, klub, mecz)…"
@@ -295,7 +295,7 @@ export default function Page() {
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full">
           <ChipToggle active={obsModeFilter === ""} label="Wszystkie tryby" onClick={() => setObsModeFilter("")} />
           <ChipToggle active={obsModeFilter === "live"} icon={<Radio className="h-3.5 w-3.5" />} label="Live" onClick={() => setObsModeFilter("live")} />
           <ChipToggle active={obsModeFilter === "tv"} icon={<Tv className="h-3.5 w-3.5" />} label="TV" onClick={() => setObsModeFilter("tv")} />
@@ -321,7 +321,7 @@ export default function Page() {
 
       {/* Active filter summary */}
       {hasActiveFilters && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full">
           <span className="text-xs text-gray-500 dark:text-neutral-400">Aktywne filtry:</span>
           {query && <ActiveFilterChip label={`Szukaj: “${query}”`} onClear={() => setQuery("")} />}
           {obsModeFilter && <ActiveFilterChip label={`Tryb: ${obsModeFilter === "live" ? "Live" : "TV"}`} onClear={() => setObsModeFilter("")} />}

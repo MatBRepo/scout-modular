@@ -488,6 +488,7 @@ function ThreadCard({
   );
 }
 
+// --- replace your existing HelperPanel with this version ---
 function HelperPanel({
   view,
   onView,
@@ -499,24 +500,72 @@ function HelperPanel({
   addMode: boolean;
   setAddMode: (v: boolean) => void;
 }) {
+  const STORAGE_KEY = "s4s.comments.panel";
+  const [collapsed, setCollapsed] = useState(false);
+
+  // load saved collapsed state (client-only)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.collapsed === "boolean") setCollapsed(parsed.collapsed);
+    } catch {}
+  }, []);
+
+  // persist collapsed state
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ collapsed }));
+    } catch {}
+  }, [collapsed]);
+
   return (
     <div
       style={{ position: "fixed", right: 16, bottom: 16, zIndex: 90 }}
       className="pointer-events-auto w-[320px] max-w-[92vw] rounded-xl border border-gray-200 bg-white/90 p-3 text-sm shadow-xl backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/85"
     >
-      <div className="mb-2 font-semibold">Komentarze (Figma-style)</div>
+      {/* header with title + collapse toggle */}
+      <div className="mb-2 flex items-center justify-between">
+        <div className="font-semibold">Komentarze</div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          className="rounded-md px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+          aria-expanded={!collapsed}
+          title={collapsed ? "Pokaż instrukcje" : "Zwiń panel"}
+        >
+          {/* simple chevron icon without extra deps */}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+            style={{ transform: collapsed ? "rotate(180deg)" : "none", transition: "transform 120ms linear" }}
+          >
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
 
-      <ol className="mb-3 list-decimal space-y-1 pl-5 text-xs text-gray-700 dark:text-neutral-300">
-        <li>
-          <b>Desktop:</b> przytrzymaj{" "}
-          <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-neutral-800">Alt</code> i kliknij — dodasz pinezkę.
-        </li>
-        <li>
-          <b>Mobile/Tablet:</b> włącz <i>Dodaj pinezkę</i>, a następnie tapnij w miejscu komentarza.
-        </li>
-        <li>Kliknij pinezkę, aby otworzyć wątek, dodawać odpowiedzi lub przeciągnij, by zmienić pozycję.</li>
-      </ol>
+      {/* instructions (hidden when collapsed) */}
+      {!collapsed && (
+        <ol className="mb-3 list-decimal space-y-1 pl-5 text-xs text-gray-700 dark:text-neutral-300">
+          <li>
+            <b>Desktop:</b> przytrzymaj{" "}
+            <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-neutral-800">Alt</code> i kliknij — dodasz pinezkę.
+          </li>
+          <li>
+            <b>Mobile/Tablet:</b> włącz <i>Dodaj pinezkę</i>, a następnie tapnij w miejscu komentarza.
+          </li>
+          <li>
+            Kliknij pinezkę, aby otworzyć wątek, dodawać odpowiedzi lub przeciągnij, by zmienić pozycję.
+          </li>
+        </ol>
+      )}
 
+      {/* controls (always visible) */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="inline-flex overflow-hidden rounded-md border border-gray-300 dark:border-neutral-700">
           {(["desktop", "tablet", "mobile"] as ViewKind[]).map((v) => (
@@ -527,6 +576,7 @@ function HelperPanel({
               }`}
               onClick={() => onView(v)}
               aria-pressed={view === v}
+              title={`Widok: ${v}`}
             >
               {v === "desktop" ? "Desktop" : v === "tablet" ? "Tablet" : "Mobile"}
             </button>
@@ -546,3 +596,4 @@ function HelperPanel({
     </div>
   );
 }
+

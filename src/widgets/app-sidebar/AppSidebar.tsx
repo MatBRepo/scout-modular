@@ -492,8 +492,6 @@ export default function AppSidebar({
           </div>
         )}
       </div>
-
-      <div className="mt-2 px-2 pb-1 text-[10px] text-gray-400 dark:text-neutral-500">v1.0 • S4S Modular</div>
     </div>
   );
 

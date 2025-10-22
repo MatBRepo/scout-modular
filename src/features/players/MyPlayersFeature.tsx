@@ -210,14 +210,14 @@ const [pos, setPos] = useState<Record<PosGroup, boolean>>({
   // Apply all filters except known tab for per-tab counters
   const baseFilteredNoKnown = useMemo(() => {
     return withObsCount
-      .filter((r) => r.status === scope)
+      .filter((r) => (r.status ?? "active") === scope)
       .filter((r) =>
         !q
           ? true
           : r.name.toLowerCase().includes(q.toLowerCase()) ||
             r.club.toLowerCase().includes(q.toLowerCase())
       )
-      .filter((r) => toPosGroup[r.pos])
+      .filter((r) => pos[toPosGroup(r.pos)])
       .filter((r) => (club ? r.club.toLowerCase().includes(club.toLowerCase()) : true))
       .filter((r) => (ageMin === "" ? true : r.age >= Number(ageMin)))
       .filter((r) => (ageMax === "" ? true : r.age <= Number(ageMax)));
