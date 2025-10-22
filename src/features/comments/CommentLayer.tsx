@@ -41,7 +41,31 @@ export default function CommentLayer({
     moved: boolean;
   } | null>(null);
 
-  // mount container + rect
+  /* ========= “seen” state (for new indicator) ========= */
+  const SEEN_KEY = `s4s.comments.seen.${key}`;
+  const [seen, setSeen] = useState<Record<string, string>>({});
+  // load per key
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SEEN_KEY);
+      setSeen(raw ? JSON.parse(raw) : {});
+    } catch {
+      setSeen({});
+    }
+  }, [SEEN_KEY]);
+  function markSeen(threadId: string, iso: string) {
+    setSeen(prev => {
+      const next = { ...prev, [threadId]: iso };
+      try { localStorage.setItem(SEEN_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+  function openThread(id: string, latestIso: string) {
+    setOpenThreadId(id);
+    markSeen(id, latestIso);
+  }
+
+  /* ========= mount container + rect ========= */
   useEffect(() => {
     const el = document.querySelector(containerSelector) as HTMLElement | null;
     containerRef.current = el || null;
@@ -64,7 +88,7 @@ export default function CommentLayer({
     };
   }, [containerSelector]);
 
-  // helpers
+  /* ========= helpers ========= */
   function toPct(clientX: number, clientY: number) {
     if (!rect) return { xPct: 0, yPct: 0, left: 0, top: 0 };
     const xPct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
@@ -76,7 +100,7 @@ export default function CommentLayer({
     return { left: rect.left + xPct * rect.width, top: rect.top + yPct * rect.height };
   }
 
-  // alt+click to compose
+  /* ========= Alt+click to compose ========= */
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (!rect || !e.altKey) return;
@@ -93,7 +117,7 @@ export default function CommentLayer({
     return () => window.removeEventListener("click", onClick);
   }, [rect]);
 
-  // mobile add mode
+  /* ========= mobile add mode ========= */
   useEffect(() => {
     if (!addMode) return;
     const handler = (e: MouseEvent | TouchEvent) => {
@@ -126,6 +150,7 @@ export default function CommentLayer({
     };
   }, [addMode]);
 
+  /* ========= create thread ========= */
   async function confirmCreate() {
     if (!composer) return;
     const body = draft.trim();
@@ -145,7 +170,7 @@ export default function CommentLayer({
     setDraft("");
   }
 
-  // drag handlers (with gentle transitions)
+  /* ========= drag handlers (with gentle transitions) ========= */
   function startDrag(e: React.MouseEvent, id: string, xPct: number, yPct: number) {
     e.preventDefault();
     setComposer(null);
@@ -175,7 +200,7 @@ export default function CommentLayer({
     async function onUp() {
       if (!drag) return;
       if (!drag.moved) {
-        // treat as click
+        // treat as click; open thread (latestAt resolved below in map)
         setOpenThreadId(drag.id);
         setDrag(null);
         return;
@@ -194,13 +219,23 @@ export default function CommentLayer({
     };
   }, [drag, rect, movePoint]);
 
+  /* ========= compute threads + counters + latestAt ========= */
   const threads = useMemo(() => {
-    return roots.map((r) => ({
-      root: r,
-      replies: repliesByThread[r.id] ?? [],
-      liveX: drag?.id === r.id ? drag.livePctX : r.x ?? 0,
-      liveY: drag?.id === r.id ? drag.livePctY : r.y ?? 0,
-    }));
+    return roots.map((r) => {
+      const reps = repliesByThread[r.id] ?? [];
+      const latestAt = [...reps, r]
+        .map(x => new Date(x.created_at).toISOString())
+        .sort()
+        .at(-1)!;
+      return {
+        root: r,
+        replies: reps,
+        liveX: drag?.id === r.id ? drag.livePctX : r.x ?? 0,
+        liveY: drag?.id === r.id ? drag.livePctY : r.y ?? 0,
+        count: 1 + reps.length,
+        latestAt,
+      };
+    });
   }, [roots, repliesByThread, drag]);
 
   if (!rect) return null;
@@ -260,14 +295,24 @@ export default function CommentLayer({
         </div>
       )}
 
-      {/* pins */}
-      {threads.map(({ root, replies, liveX, liveY }) => {
+      {/* pins + previews + threads */}
+      {threads.map(({ root, replies, liveX, liveY, count, latestAt }) => {
         const pos = pinPos(liveX, liveY);
         const isOpen = openThreadId === root.id;
         const isHover = hoverThreadId === root.id && !drag;
 
+        // if a thread was opened via short-click in mouseup, mark seen here
+        if (isOpen && (!seen[root.id] || new Date(latestAt) > new Date(seen[root.id]))) {
+          // non-blocking mark
+          markSeen(root.id, latestAt);
+        }
+
+        const lastSeen = seen[root.id];
+        const isNew = !lastSeen || new Date(latestAt) > new Date(lastSeen);
+
         return (
           <div key={root.id} style={{ pointerEvents: "none" }}>
+            {/* Pin button */}
             <button
               type="button"
               aria-label="Komentarz"
@@ -275,6 +320,10 @@ export default function CommentLayer({
               onMouseEnter={() => setHoverThreadId(root.id)}
               onMouseLeave={() => setHoverThreadId((c) => (c === root.id ? null : c))}
               onMouseDown={(e) => startDrag(e, root.id, root.x ?? 0, root.y ?? 0)}
+              onClick={(e) => {
+                e.stopPropagation();
+                openThread(root.id, latestAt);
+              }}
               style={{
                 position: "fixed",
                 left: pos.left,
@@ -288,9 +337,26 @@ export default function CommentLayer({
                     : "left 120ms linear, top 120ms linear, transform 120ms ease",
               }}
               className="group relative inline-flex h-[30px] w-[30px] items-center justify-center"
-              onClick={(e) => e.stopPropagation()}
             >
               <ChatBubblePin className="drop-shadow-sm transition-transform group-active:scale-95 text-indigo-600 dark:text-indigo-400" />
+
+              {/* Count badge */}
+              <span
+                className="pointer-events-none absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full
+                           bg-gray-900 px-1.5 text-[10px] font-semibold leading-4 text-white ring-2 ring-white
+                           dark:bg-neutral-100 dark:text-neutral-900 dark:ring-neutral-950"
+                aria-hidden="true"
+              >
+                {count}
+              </span>
+
+              {/* New ping */}
+              {isNew ? (
+                <span className="pointer-events-none absolute -right-[6px] -top-[6px] h-3 w-3">
+                  <span className="absolute inset-0 rounded-full bg-orange-500 opacity-80" />
+                  <span className="absolute inset-0 animate-ping rounded-full bg-orange-500 opacity-30" />
+                </span>
+              ) : null}
             </button>
 
             {/* hover preview */}
@@ -320,6 +386,8 @@ export default function CommentLayer({
                     authorId: currentUser?.id ?? null,
                     authorName: currentUser?.name ?? null,
                   });
+                  // optimistically mark seen now
+                  markSeen(root.id, new Date().toISOString());
                 }}
                 onDelete={async () => {
                   if (confirm("Usunąć cały wątek komentarzy?")) {
@@ -339,7 +407,7 @@ export default function CommentLayer({
 /* ===== visuals ===== */
 
 function ChatBubblePin({ className = "" }: { className?: string }) {
-  // Your requested icon (chat-bubble with three dots)
+  // Chat-bubble icon
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -488,7 +556,7 @@ function ThreadCard({
   );
 }
 
-// --- replace your existing HelperPanel with this version ---
+/* ===== Helper panel (collapsible, persisted) ===== */
 function HelperPanel({
   view,
   onView,
@@ -503,7 +571,6 @@ function HelperPanel({
   const STORAGE_KEY = "s4s.comments.panel";
   const [collapsed, setCollapsed] = useState(false);
 
-  // load saved collapsed state (client-only)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -513,7 +580,6 @@ function HelperPanel({
     } catch {}
   }, []);
 
-  // persist collapsed state
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ collapsed }));
@@ -525,7 +591,6 @@ function HelperPanel({
       style={{ position: "fixed", right: 16, bottom: 16, zIndex: 90 }}
       className="pointer-events-auto w-[320px] max-w-[92vw] rounded-xl border border-gray-200 bg-white/90 p-3 text-sm shadow-xl backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/85"
     >
-      {/* header with title + collapse toggle */}
       <div className="mb-2 flex items-center justify-between">
         <div className="font-semibold">Komentarze</div>
         <button
@@ -535,7 +600,6 @@ function HelperPanel({
           aria-expanded={!collapsed}
           title={collapsed ? "Pokaż instrukcje" : "Zwiń panel"}
         >
-          {/* simple chevron icon without extra deps */}
           <svg
             width="14"
             height="14"
@@ -549,7 +613,6 @@ function HelperPanel({
         </button>
       </div>
 
-      {/* instructions (hidden when collapsed) */}
       {!collapsed && (
         <ol className="mb-3 list-decimal space-y-1 pl-5 text-xs text-gray-700 dark:text-neutral-300">
           <li>
@@ -565,7 +628,6 @@ function HelperPanel({
         </ol>
       )}
 
-      {/* controls (always visible) */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="inline-flex overflow-hidden rounded-md border border-gray-300 dark:border-neutral-700">
           {(["desktop", "tablet", "mobile"] as ViewKind[]).map((v) => (
@@ -596,4 +658,3 @@ function HelperPanel({
     </div>
   );
 }
-
