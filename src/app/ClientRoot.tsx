@@ -322,7 +322,7 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
 
 <CommentLayer
   pageKey={pathname}
-  containerSelector="#content"
+  containerSelector="body"
   currentUser={{
     id: (auth.ok ? (auth as any).userId : undefined), // if you store a UUID
     name: auth.ok ? (auth as any).user : "demo",
