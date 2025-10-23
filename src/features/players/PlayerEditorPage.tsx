@@ -1,1541 +1,536 @@
-// src/features/players/MyPlayersFeature.tsx
+// src/app/(players)/players/[id]/PlayerEditorPage.tsx
 "use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { Crumb, Toolbar } from "@/shared/ui/atoms";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Crumb, Toolbar } from "@/shared/ui/atoms";
-import type { Player, Observation } from "@/shared/types";
-import {
-  PlusCircle, Pencil, Undo2, Trash2, ListFilter, ChevronUp, ChevronDown,
-  ImageUp, Download, RotateCcw, PlusSquare, Search, ArrowLeft, X,
-  ChevronLeft, ChevronRight, Columns3
-} from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import type { Player } from "@/shared/types";
+
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
-/* =======================================
-   Motion variants (subtle, elegant)
-======================================= */
-const fadeInUp = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0, transition: { duration: .22, ease: [0.22, 1, 0.36, 1] } },
-};
-const itemPop = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0, transition: { duration: .18 } },
-};
+type Pos = Player["pos"]; // "GK" | "DF" | "MF" | "FW"
 
-/* =======================================
-   Types & constants
-======================================= */
-const POS: PosGroup[] = ["GK", "DF", "MF", "FW"];
-type PosGroup = "GK" | "DF" | "MF" | "FW";
-
-function toPosGroup(p: Player["pos"]): PosGroup {
-  switch (p) {
-    case "GK":
-      return "GK";
-    case "DF":
-    case "CB":
-    case "RB":
-    case "CW":
-      return "DF";
-    case "MF":
-    case "CM":
-      return "MF";
-    case "FW":
-    case "LW":
-      return "FW";
-    case "?":
-    default:
-      return "MF";
-  }
-}
-
-const DEFAULT_COLS = {
-  photo: true,
-  select: true,
-  name: true,
-  club: true,
-  pos: true,
-  age: true,
-  status: true,
-  obs: true,
-  actions: true,
-};
-type ColKey = keyof typeof DEFAULT_COLS;
-
-const COL_LABELS: Record<ColKey, string> = {
-  photo: "Foto",
-  select: "Zaznacz",
-  name: "Nazwa",
-  club: "Klub",
-  pos: "Pozycja",
-  age: "Wiek",
-  status: "Status",
-  obs: "Obserwacje",
-  actions: "Akcje",
-};
-
-type KnownScope = "known" | "unknown" | "all";
-type Scope = "active" | "trash";
-type SortKey = "name" | "club" | "pos" | "age" | "status" | "obs";
-type SortDir = "asc" | "desc";
-
-const UI_KEY = "s4s.players.ui";
-
-/* =======================================
-   Main feature
-======================================= */
-export default function MyPlayersFeature({
-  players,
-  observations,
-  onChangePlayers,
-  onQuickAddObservation,
-}: {
-  players: Player[];
-  observations: Observation[];
-  onChangePlayers: (next: Player[]) => void;
-  onQuickAddObservation?: (o: Observation) => void;
-}) {
+export default function PlayerEditorPage({ id }: { id: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [p, setP] = useState<Player | null>(null);
 
-  // Content swap inside table region
-  const [content, setContent] = useState<"table" | "quick">("table");
-  const [quickFor, setQuickFor] = useState<Player | null>(null);
-  const [quickTab, setQuickTab] = useState<"new" | "existing">("new");
+  // Oryginalny snapshot (do przycisku „Anuluj”)
+  const originalRef = useRef<Player | null>(null);
 
-  // Restored UI state
-  const [scope, setScope] = useState<Scope>("active");
-  const [q, setQ] = useState("");
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [pos, setPos] = useState<Record<PosGroup, boolean>>({
-    GK: true, DF: true, MF: true, FW: true,
-  });
-  const [club, setClub] = useState("");
-  const [ageMin, setAgeMin] = useState<number | "">("");
-  const [ageMax, setAgeMax] = useState<number | "">("");
-  const [colsOpen, setColsOpen] = useState(false);
-  const [visibleCols, setVisibleCols] = useState({ ...DEFAULT_COLS });
-  const [knownScope, setKnownScope] = useState<KnownScope>("known");
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  // Status autosave
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Pagination
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<10 | 25 | 50 | 100>(25);
-
-  // Quick creator fields
-  const [qaMatch, setQaMatch] = useState("");
-  const [qaDate, setQaDate] = useState("");
-  theconst [qaTime, setQaTime] = useState("");
-  const [qaMode, setQaMode] = useState<"live" | "tv">("live");
-  const [qaStatus, setQaStatus] = useState<Observation["status"]>("draft");
-  // Existing picker
-  const [obsQuery, setObsQuery] = useState("");
-  const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
-
-  // Refs
-  const searchRef = useRef<HTMLInputElement | null>(null);
-
-  // Load UI prefs
+  // Ładowanie
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(UI_KEY);
-      if (!raw) return;
-      const u = JSON.parse(raw);
-      if (u.scope) setScope(u.scope);
-      if (u.knownScope) setKnownScope(u.knownScope);
-      if (u.q) setQ(u.q);
-      if (u.pos) setPos(u.pos);
-      if (typeof u.club === "string") setClub(u.club);
-      if (u.ageMin ?? false) setAgeMin(u.ageMin);
-      if (u.ageMax ?? false) setAgeMax(u.ageMax);
-      if (u.visibleCols) setVisibleCols({ ...DEFAULT_COLS, ...u.visibleCols });
-      if (u.sortKey) setSortKey(u.sortKey);
-      if (u.sortDir) setSortDir(u.sortDir);
-      if (u.pageSize) setPageSize(u.pageSize);
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      const ui = { scope, knownScope, q, pos, club, ageMin, ageMax, visibleCols, sortKey, sortDir, pageSize };
-      localStorage.setItem(UI_KEY, JSON.stringify(ui));
-    } catch {}
-  }, [scope, knownScope, q, pos, club, ageMin, ageMax, visibleCols, sortKey, sortDir, pageSize]);
-
-  /* URL param -> tab sync */
-  useEffect(() => {
-    const tab = (searchParams?.get("tab") as KnownScope | null) ?? null;
-    if (tab === "known" || tab === "unknown" || tab === "all") {
-      setKnownScope(tab);
-    } else {
-      setKnownScope("known");
+      const raw = localStorage.getItem("s4s.players");
+      const arr: Player[] = raw ? JSON.parse(raw) : [];
+      setPlayers(arr);
+      const found = arr.find((x) => String(x.id) === id) || null;
+      setP(found);
+      // snapshot
+      originalRef.current = found ? structuredClone(found) : null;
+    } catch {
+      setP(null);
+      originalRef.current = null;
     }
-    setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [id]);
 
-  function changeKnownScope(next: KnownScope) {
-    setKnownScope(next);
-    setPage(1);
-    const sp = new URLSearchParams(searchParams?.toString() ?? "");
-    sp.set("tab", next);
-    router.replace(`/players?${sp.toString()}`, { scroll: false });
-  }
-
-  // Base with obs count + known flag
-  const withObsCount = useMemo(
-    () =>
-      players.map((p) => ({
-        ...p,
-        _obs: observations.filter((o) => o.player === p.name).length,
-        _known: Boolean((p as any).firstName || (p as any).lastName),
-      })),
-    [players, observations]
+  // „Nieznany” = brak imienia i nazwiska
+  const isUnknown = useMemo(
+    () => (p ? !(p as any).firstName && !(p as any).lastName : false),
+    [p]
   );
 
-  // Apply all filters except known tab for per-tab counters
-  const baseFilteredNoKnown = useMemo(() => {
-    return withObsCount
-      .filter((r) => (r.status ?? "active") === scope)
-      .filter((r) =>
-        !q
-          ? true
-          : r.name.toLowerCase().includes(q.toLowerCase()) ||
-            r.club.toLowerCase().includes(q.toLowerCase())
-      )
-      .filter((r) => pos[toPosGroup(r.pos)])
-      .filter((r) => (club ? r.club.toLowerCase().includes(club.toLowerCase()) : true))
-      .filter((r) => (ageMin === "" ? true : r.age >= Number(ageMin)))
-      .filter((r) => (ageMax === "" ? true : r.age <= Number(ageMax)));
-  }, [withObsCount, scope, q, pos, club, ageMin, ageMax]);
-
-  const tabCounts = useMemo(() => {
-    const known = baseFilteredNoKnown.filter((r) => r._known).length;
-    const unknown = baseFilteredNoKnown.filter((r) => !r._known).length;
-    const all = baseFilteredNoKnown.length;
-    return { known, unknown, all };
-  }, [baseFilteredNoKnown]);
-
-  // Final filtered (includes current knownScope)
-  const filtered = useMemo(() => {
-    let base = [...baseFilteredNoKnown];
-    if (knownScope === "known") base = base.filter((r) => r._known);
-    if (knownScope === "unknown") base = base.filter((r) => !r._known);
-
-    base.sort((a: any, b: any) => {
-      const dir = sortDir === "asc" ? 1 : -1;
-      let av: any; let bv: any;
-      switch (sortKey) {
-        case "name":
-        case "club":
-        case "pos":
-          av = (a[sortKey] || "").toString().toLowerCase();
-          bv = (b[sortKey] || "").toString().toLowerCase();
-          return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
-        case "age":
-          av = a.age || 0; bv = b.age || 0; return (av - bv) * dir;
-        case "status":
-          av = a.status === "active" ? 1 : 0; bv = b.status === "active" ? 1 : 0; return (av - bv) * dir;
-        case "obs":
-          av = a._obs || 0; bv = b._obs || 0; return (av - bv) * dir;
-        default:
-          return 0;
-      }
-    });
-    return base;
-  }, [baseFilteredNoKnown, knownScope, sortKey, sortDir]);
-
-  // Pagination slice
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, currentPage, pageSize]);
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages, page]);
-
-  // ====== actions ======
-  function trash(id: number) {
-    const next: Player[] = players.map(p =>
-      p.id === id ? { ...p, status: 'trash' as Player['status'] } : p
-    );
-    onChangePlayers(next);
-    setSelected(s => { const copy = new Set(s); copy.delete(id); return copy; });
-  }
-  function restore(id: number) {
-    const next: Player[] = players.map(p =>
-      p.id === id ? { ...p, status: 'active' as Player['status'] } : p
-    );
-    onChangePlayers(next);
-    setSelected(s => { const copy = new Set(s); copy.delete(id); return copy; });
-  }
-  function bulkTrash() {
-    const next: Player[] = players.map(p =>
-      selected.has(p.id) ? { ...p, status: 'trash' as Player['status'] } : p
-    );
-    onChangePlayers(next);
-    setSelected(new Set());
-  }
-  function bulkRestore() {
-    const next: Player[] = players.map(p =>
-      selected.has(p.id) ? { ...p, status: 'active' as Player['status'] } : p
-    );
-    onChangePlayers(next);
-    setSelected(new Set());
-  }
-
-  // exports
-  function exportCSV() {
-    const headers = ["id", "name", "club", "pos", "age", "status", "obs"];
-    const rows = filtered.map((p) => [p.id, p.name, p.club, p.pos, p.age, p.status, (p as any)._obs]);
-    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "players.csv"; a.click(); URL.revokeObjectURL(url);
-  }
-  function exportExcel() {
-    const headers = ["ID", "Nazwa", "Klub", "Pozycja", "Wiek", "Status", "Obserwacje"];
-    const rows = filtered.map((p) => [p.id, p.name, p.club, p.pos, p.age, p.status, (p as any)._obs]);
-    const tableHtml =
-      `<table><thead><tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>` +
-      rows.map(r=>`<tr>${r.map(c=>`<td>${escapeHtml(String(c??""))}</td>`).join("")}</tr>`).join("") +
-      `</tbody></table>`;
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${tableHtml}</body></html>`;
-    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "players.xls"; a.click(); URL.revokeObjectURL(url);
-  }
-  function escapeHtml(s: string) {
-    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  }
-
-  // photos
-  function handlePhotoChange(pId: number, file: File) {
-    const url = URL.createObjectURL(file);
-    const next = players.map((p) => (p.id === pId ? ({ ...p, photo: url } as any) : p));
-    onChangePlayers(next);
-  }
-
-  // Quick area controls
-  function openQuick(player: Player) {
-    setQuickFor(player);
-    setQuickTab("new");
-    setQaMatch(""); setQaDate(""); setQaTime(""); setQaMode("live"); setQaStatus("draft");
-    setObsQuery(""); setObsSelectedId(null);
-    setContent("quick");
-  }
-  function closeQuick() {
-    setContent("table");
-    setQuickFor(null);
-  }
-  function appendObsLocalStorage(newObs: Observation) {
+  // Zapis całego obiektu do localStorage
+  function overwritePlayer(next: Player) {
+    setP(next);
+    const arr = players.map((x) => (x.id === next.id ? next : x));
+    setPlayers(arr);
     try {
-      const raw = localStorage.getItem("s4s.observations");
-      const arr: Observation[] = raw ? JSON.parse(raw) : [];
-      localStorage.setItem("s4s.observations", JSON.stringify([newObs, ...arr]));
+      localStorage.setItem("s4s.players", JSON.stringify(arr));
     } catch {}
   }
-  function updateObsLocalStorage(targetId: number, patch: Partial<Observation>) {
-    try {
-      const raw = localStorage.getItem("s4s.observations");
-      const arr: Observation[] = raw ? JSON.parse(raw) : [];
-      const next = arr.map(o => o.id===targetId ? { ...o, ...patch } : o);
-      localStorage.setItem("s4s.observations", JSON.stringify(next));
-    } catch {}
-  }
-  function saveQuickNew() {
-    if (!quickFor) return;
-    const obs: Observation = {
-      id: Date.now(),
-      player: quickFor.name,
-      match: qaMatch.trim() || "—",
-      date: qaDate || "",
-      time: qaTime || "",
-      status: qaStatus,
-      // @ts-ignore
-      mode: qaMode,
-    };
-    if (onQuickAddObservation) onQuickAddObservation(obs);
-    else appendObsLocalStorage(obs);
-    closeQuick();
-  }
-  function duplicateExistingToPlayer() {
-    if (!quickFor || obsSelectedId == null) return;
-    const base = observations.find(o => o.id === obsSelectedId);
-    if (!base) return;
-    const copy: Observation = { ...base, id: Date.now(), player: quickFor.name };
-    if (onQuickAddObservation) onQuickAddObservation(copy);
-    else appendObsLocalStorage(copy);
-    closeQuick();
-  }
-  function reassignExistingToPlayer() {
-    if (!quickFor || obsSelectedId == null) return;
-    updateObsLocalStorage(obsSelectedId, { player: quickFor.name });
-    closeQuick();
+
+  // Debounce UX dla statusu zapisu
+  function bumpSaving() {
+    setSaveStatus("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
   }
 
-  // Active filter chips
-  const activeChips = useMemo(() => {
-    const chips: { key: string; label: string; clear: () => void }[] = [];
-    if (q.trim()) chips.push({ key: "q", label: `Szukaj: “${q.trim()}”`, clear: () => { setQ(""); setPage(1); } });
-    const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
-    if (visiblePositions.length < POS.length) {
-      chips.push({
-        key: "pos",
-        label: `Pozycje: ${visiblePositions.join(", ")}`,
-        clear: () => { setPos({ GK:true, DF:true, MF:true, FW:true }); setPage(1); },
-      });
-    }
-    if (club.trim()) chips.push({ key: "club", label: `Klub: ${club.trim()}`, clear: () => { setClub(""); setPage(1); } });
-    if (ageMin !== "") chips.push({ key: "ageMin", label: `Wiek ≥ ${ageMin}`, clear: () => { setAgeMin(""); setPage(1); } });
-    if (ageMax !== "") chips.push({ key: "ageMax", label: `Wiek ≤ ${ageMax}`, clear: () => { setAgeMax(""); setPage(1); } });
-    if (knownScope !== "all") chips.push({
-      key: "known",
-      label: knownScope === "known" ? "Znani" : "Nieznani",
-      clear: () => changeKnownScope("all"),
-    });
-    return chips;
-  }, [q, pos, club, ageMin, ageMax, knownScope]);
+  // Autosave — aktualizacja podstawowych pól
+  function saveBasic(next: Partial<Player>) {
+    if (!p) return;
+    const updated = { ...p, ...next };
+    bumpSaving();
+    overwritePlayer(updated);
+  }
 
-  const cellPad = "p-3";
-  const rowH = "h-12";
+  // Ręczne „Zapisz” (potwierdzenie; autosave i tak zapisuje on-change)
+  function manualSave() {
+    if (!p) return;
+    bumpSaving();
+    overwritePlayer({ ...p });
+  }
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      const typing = tag === "input" || tag === "textarea" || (e as any).isComposing;
-      if (typing) return;
+  // „Anuluj” — przywrócenie snapshotu
+  function cancelToOriginal() {
+    const orig = originalRef.current;
+    if (!orig) return;
+    setSaveStatus("saving");
+    overwritePlayer(structuredClone(orig));
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
+  }
 
-      if (e.key === "/") {
-        e.preventDefault();
-        searchRef.current?.focus();
-      } else if (e.key.toLowerCase() === "n") {
-        e.preventDefault();
-        router.push("/players/new");
-      } else if (e.key.toLowerCase() === "e") {
-        e.preventDefault();
-        exportCSV();
-      } else if (e.key.toLowerCase() === "x") {
-        e.preventDefault();
-        setColsOpen((o) => !o);
+  // Drobna plakietka statusu w toolbarze
+  const SaveChip = () => (
+    <div
+      className={
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ring-1 " +
+        (saveStatus === "saving"
+          ? "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-900/40"
+          : saveStatus === "saved"
+          ? "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-100 dark:ring-emerald-900/40"
+          : "bg-slate-50 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700")
       }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [router]);
-
-  return (
-    <TooltipProvider delayDuration={150}>
-      <motion.div {...fadeInUp} className="w-full">
-        <Crumb items={[{ label: "Start", href: "/" }, { label: "Baza zawodników" }]} />
-
-        {/* TOOLBAR */}
-        <Toolbar
-          title="Baza zawodników"
-          right={
-            <div className="flex flex-wrap items-center gap-3">
-              {/* active / trash */}
-              <div className="inline-flex overflow-hidden rounded-md border border-border bg-muted/60 backdrop-blur supports-[backdrop-filter]:bg-muted/50">
-                {(["active", "trash"] as const).map((s) => (
-                  <button
-                    key={s}
-                    className={`px-3 py-2 text-sm transition
-                      ${scope === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/90"}`}
-                    onClick={() => { setScope(s); setSelected(new Set()); setPage(1); }}
-                  >
-                    {s === "active" ? "aktywni" : "kosz"}
-                  </button>
-                ))}
-              </div>
-
-              {/* search */}
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-                <Input
-                  ref={searchRef}
-                  value={q}
-                  onChange={(e) => { setQ(e.target.value); setPage(1); }}
-                  placeholder="Szukaj po nazwisku/klubie… (/) "
-                  className="w-64 pl-8 bg-muted/70 dark:bg-neutral-900 border-white/10 rounded-xl"
-                  aria-label="Szukaj w bazie zawodników"
-                />
-              </div>
-
-              {/* filters */}
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  className="border-border px-3 py-2"
-                  onClick={() => setFiltersOpen((v) => !v)}
-                >
-                  <ListFilter className="mr-2 h-4 w-4" />
-                  Filtry
-                </Button>
-                {filtersOpen && (
-                  <div className="absolute right-0 top-full z-20 mt-2 w-96 rounded-xl border border-border bg-card p-4 text-sm shadow-lg">
-                    <div className="mb-2 text-xs font-medium text-muted-foreground">Pozycje</div>
-                    <div className="mb-3 grid grid-cols-4 gap-2">
-                      {POS.map((p) => (
-                        <label key={p} className="flex flex-wrap items-center justify-between rounded-md px-2 py-1 hover:bg-muted/60">
-                          <span>{p}</span>
-                          <input
-                            type="checkbox"
-                            checked={pos[p]}
-                            onChange={(e) => { setPos((prev) => ({ ...prev, [p]: e.target.checked })); setPage(1); }}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                    <div className="mb-3">
-                      <Label className="text-xs">Klub</Label>
-                      <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-border bg-muted/70" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Wiek min</Label>
-                        <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-border bg-muted/70" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Wiek max</Label>
-                        <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-border bg-muted/70" />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap items-center justify-between">
-                      <Button
-                        variant="outline"
-                        className="border-border"
-                        onClick={()=>{
-                          setPos({ GK:true, DF:true, MF:true, FW:true });
-                          setClub("");
-                          setAgeMin("");
-                          setAgeMax("");
-                          setQ("");
-                          changeKnownScope("all");
-                          setPage(1);
-                        }}
-                      >
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Resetuj wszystko
-                      </Button>
-                      <Button className="bg-foreground text-background hover:bg-foreground/90" onClick={() => setFiltersOpen(false)}>
-                        Zastosuj
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* columns */}
-              <ColumnsButton
-                open={colsOpen}
-                setOpen={setColsOpen}
-                visibleCols={visibleCols}
-                setVisibleCols={(next) => setVisibleCols(next)}
-              />
-
-              {/* export */}
-              <Button variant="outline" className="border-border px-3 py-2" onClick={exportCSV} title="Skrót: E">
-                <Download className="mr-2 h-4 w-4" />
-                CSV
-              </Button>
-              <Button variant="outline" className="border-border px-3 py-2" onClick={exportExcel}>
-                <Download className="mr-2 h-4 w-4" />
-                Excel
-              </Button>
-
-              {/* add player */}
-              <Button className="bg-foreground px-4 py-2 text-background hover:bg-foreground/90" onClick={() => router.push("/players/new")} title="Skrót: N">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Dodaj
-              </Button>
-            </div>
-          }
-        />
-
-        {/* Tabs with counts (clearly visible in dark) */}
-        <div className="mt-3">
-          <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-            <TabsList
-              className="
-                inline-flex w-full items-center gap-1 rounded-2xl
-                border border-border bg-muted/70 p-1 shadow-sm
-                backdrop-blur supports-[backdrop-filter]:bg-muted/50
-              "
-            >
-              <TabsTrigger
-                value="known"
-                className="
-                  rounded-xl px-3 py-1.5 text-sm text-muted-foreground transition
-                  hover:text-foreground/90
-                  data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60
-                "
-              >
-                Znani
-                <span className="ml-2 inline-flex items-center rounded-full border border-border bg-secondary px-1.5 text-[10px] font-semibold">
-                  {tabCounts.known}
-                </span>
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="unknown"
-                className="
-                  rounded-xl px-3 py-1.5 text-sm text-muted-foreground transition
-                  hover:text-foreground/90
-                  data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60
-                "
-              >
-                Nieznani
-                <span className="ml-2 inline-flex items-center rounded-full border border-border bg-secondary px-1.5 text-[10px] font-semibold">
-                  {tabCounts.unknown}
-                </span>
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="all"
-                className="
-                  rounded-xl px-3 py-1.5 text-sm text-muted-foreground transition
-                  hover:text-foreground/90
-                  data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60
-                "
-              >
-                Wszyscy
-                <span className="ml-2 inline-flex items-center rounded-full border border-border bg-secondary px-1.5 text-[10px] font-semibold">
-                  {tabCounts.all}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="known" />
-            <TabsContent value="unknown" />
-            <TabsContent value="all" />
-          </Tabs>
-        </div>
-
-        {/* Active filter chips */}
-        <AnimatePresence initial={false}>
-          {activeChips.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              className="mt-3 flex flex-wrap items-center gap-2"
-            >
-              {activeChips.map((c) => (
-                <button
-                  key={c.key}
-                  onClick={c.clear}
-                  className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-900"
-                  title="Wyczyść filtr"
-                >
-                  <X className="h-3 w-3" />
-                  {c.label}
-                </button>
-              ))}
-              <button
-                onClick={()=>{
-                  setPos({ GK:true, DF:true, MF:true, FW:true });
-                  setClub(""); setAgeMin(""); setAgeMax(""); setQ(""); changeKnownScope("all"); setPage(1);
-                }}
-                className="ml-1 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
-                title="Wyczyść wszystkie filtry"
-              >
-                <RotateCcw className="h-3 w-3" /> Wyczyść wszystkie
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Bulk bar */}
-        <AnimatePresence initial={false}>
-          {selected.size > 0 && content === "table" && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              className="mt-3 flex flex-wrap items-center justify-between rounded-md border border-border bg-muted/70 p-2 text-sm shadow-sm backdrop-blur supports-[backdrop-filter]:bg-muted/50"
-            >
-              <div>Zaznaczono: <b>{selected.size}</b></div>
-              <div className="flex flex-wrap items-center gap-2">
-                {scope === "active" ? (
-                  <Button className="bg-foreground text-background hover:bg-foreground/90" onClick={bulkTrash}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Do kosza
-                  </Button>
-                ) : (
-                  <Button className="bg-foreground text-background hover:bg-foreground/90" onClick={bulkRestore}>
-                    <Undo2 className="mr-2 h-4 w-4" /> Przywróć
-                  </Button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* CONTENT REGION */}
-        <div className="mt-3">
-          {content === "table" ? (
-            <>
-              <PlayersTable
-                rows={paginated}
-                observations={observations}
-                visibleCols={visibleCols}
-                selected={selected}
-                setSelected={setSelected}
-                scope={scope}
-                onOpen={(id) => router.push(`/players/${id}`)}
-                onTrash={trash}
-                onRestore={restore}
-                onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
-                sortKey={sortKey}
-                sortDir={sortDir}
-                onPhotoChange={handlePhotoChange}
-                onQuick={(p) => openQuick(p)}
-                cellPad={cellPad}
-                rowH={rowH}
-                pageSliceCount={paginated.length}
-              />
-
-              {/* Pagination footer */}
-              <div className="mt-3 flex flex-col items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm shadow-sm md:flex-row">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-muted-foreground">Wiersze na stronę:</span>
-                  <select
-                    className="rounded-md border border-border bg-muted/70 px-2 py-1 text-sm"
-                    value={pageSize}
-                    onChange={(e)=>{ setPageSize(Number(e.target.value) as any); setPage(1); }}
-                  >
-                    {[10,25,50,100].map(n=><option key={n} value={n}>{n}</option>)}
-                  </select>
-                  <span className="ml-2 text-muted-foreground">
-                    {total === 0 ? "0" : ((currentPage - 1) * pageSize + 1)}–{Math.min(currentPage * pageSize, total)} z {total}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    className="border-border"
-                    disabled={currentPage <= 1}
-                    onClick={()=>setPage((p)=>Math.max(1, p-1))}
-                  >
-                    <ChevronLeft className="mr-1 h-4 w-4" /> Poprzednia
-                  </Button>
-                  <div className="min-w-[80px] text-center">
-                    Strona {currentPage} / {totalPages}
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="border-border"
-                    disabled={currentPage >= totalPages}
-                    onClick={()=>setPage((p)=>Math.min(totalPages, p+1))}
-                  >
-                    Następna <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <QuickObservation
-              player={quickFor!}
-              onBack={closeQuick}
-              quickTab={quickTab}
-              setQuickTab={setQuickTab}
-              qaMatch={qaMatch}
-              setQaMatch={setQaMatch}
-              qaDate={qaDate}
-              setQaDate={setQaDate}
-              qaTime={qaTime}
-              setQaTime={setQaTime}
-              qaMode={qaMode}
-              setQaMode={setQaMode}
-              qaStatus={qaStatus}
-              setQaStatus={setQaStatus}
-              onSaveNew={saveQuickNew}
-              observations={observations}
-              obsQuery={obsQuery}
-              setObsQuery={setObsQuery}
-              obsSelectedId={obsSelectedId}
-              setObsSelectedId={setObsSelectedId}
-              onDuplicate={duplicateExistingToPlayer}
-              onReassign={reassignExistingToPlayer}
-            />
-          )}
-        </div>
-      </motion.div>
-    </TooltipProvider>
-  );
-}
-
-/* =======================================
-   Table
-======================================= */
-function PlayersTable({
-  rows,
-  observations,
-  visibleCols,
-  selected,
-  setSelected,
-  scope,
-  onOpen,
-  onTrash,
-  onRestore,
-  onSortChange,
-  sortKey,
-  sortDir,
-  onPhotoChange,
-  onQuick,
-  cellPad,
-  rowH,
-  pageSliceCount,
-}: {
-  rows: (Player & { _known: boolean; _obs: number })[];
-  observations: Observation[];
-  visibleCols: Record<keyof typeof DEFAULT_COLS, boolean>;
-  selected: Set<number>;
-  setSelected: (s: Set<number>) => void;
-  scope: "active" | "trash";
-  onOpen: (id: number) => void;
-  onTrash: (id: number) => void;
-  onRestore: (id: number) => void;
-  onSortChange: (k: SortKey, d: SortDir) => void;
-  sortKey: SortKey;
-  sortDir: SortDir;
-  onPhotoChange: (id: number, file: File) => void;
-  onQuick: (p: Player) => void;
-  cellPad: string;
-  rowH: string;
-  pageSliceCount: number;
-}) {
-  const allChecked = pageSliceCount > 0 && rows.every((r) => selected.has(r.id));
-  const someChecked = !allChecked && rows.some((r) => selected.has(r.id));
-
-  function SortHeader({ k, children }: { k: SortKey; children: React.ReactNode }) {
-    const active = sortKey === k;
-    return (
-      <button
-        className={"flex items-center gap-1 font-medium " + (active ? "text-foreground" : "text-muted-foreground")}
-        onClick={() => onSortChange(k, active && sortDir === "asc" ? "desc" : "asc")}
-      >
-        {children}
-        {active ? (sortDir === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />) : null}
-      </button>
-    );
-  }
-
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(/\s+/);
-    const first = parts[0]?.[0] ?? ""; const last = parts.length > 1 ? parts[parts.length-1][0] ?? "" : "";
-    return (first + last).toUpperCase();
-  };
-
-  const getJerseyNo = (name: string) => {
-    const m = name.match(/#(\d{1,3})/);
-    return m ? m[1] : null;
-  };
-
-  const KnownBadge = ({ known }: { known: boolean }) => (
-    <span className={"inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium " + (known ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200")}>
-      {known ? "znany" : "nieznany"}
-    </span>
-  );
-
-  return (
-    <div className="w-full overflow-x-auto rounded-lg border border-border bg-card p-2 shadow-sm">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 z-10 bg-muted text-muted-foreground dark:bg-neutral-900/95 backdrop-blur supports-[backdrop-filter]:bg-neutral-900/80">
-          <tr>
-            {visibleCols.photo && <th className={`${cellPad} text-left font-medium w-16`}>{COL_LABELS.photo}</th>}
-            {visibleCols.select && (
-              <th className={`${cellPad} text-left font-medium w-9`}>
-                <input
-                  type="checkbox"
-                  aria-checked={(!rows.length ? false : undefined) || (someChecked ? "mixed" : undefined)}
-                  checked={pageSliceCount > 0 && rows.every((r) => selected.has(r.id))}
-                  onChange={(e) => {
-                    if (e.target.checked) setSelected(new Set([...selected, ...rows.map((f) => f.id)]));
-                    else {
-                      const set = new Set(selected);
-                      rows.forEach(r => set.delete(r.id));
-                      setSelected(set);
-                    }
-                  }}
-                />
-              </th>
-            )}
-            {visibleCols.name && <th className={`${cellPad} text-left`}><SortHeader k="name">{COL_LABELS.name}</SortHeader></th>}
-            {visibleCols.club && <th className={`${cellPad} text-left`}><SortHeader k="club">{COL_LABELS.club}</SortHeader></th>}
-            {visibleCols.pos && <th className={`${cellPad} text-left`}><SortHeader k="pos">{COL_LABELS.pos}</SortHeader></th>}
-            {visibleCols.age && <th className={`${cellPad} text-left`}><SortHeader k="age">{COL_LABELS.age}</SortHeader></th>}
-            {visibleCols.status && <th className={`${cellPad} text-left font-medium`}>{COL_LABELS.status}</th>}
-            {visibleCols.obs && <th className={`${cellPad} text-left`}><SortHeader k="obs">{COL_LABELS.obs}</SortHeader></th>}
-            {visibleCols.actions && <th className={`${cellPad} text-right font-medium`}>{COL_LABELS.actions}</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            const jersey = !r._known ? getJerseyNo(r.name) : null;
-            return (
-              <motion.tr
-                key={r.id}
-                {...itemPop}
-                className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-gray-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
-                onDoubleClick={() => onOpen(r.id)}
-              >
-                {visibleCols.photo && (
-                  <td className={cellPad}>
-                    <div className="relative">
-                      {!r._known ? (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
-                          <svg className="h-5 w-5 text-gray-800 dark:text-neutral-200" viewBox="0 0 16 16" aria-hidden="true">
-                            <path d="M13.5867 2.30659L10.6667 1.33325C10.6667 2.0405 10.3857 2.71877 9.88565 3.21887C9.38555 3.71897 8.70727 3.99992 8.00003 3.99992C7.29278 3.99992 6.61451 3.71897 6.11441 3.21887C5.61431 2.71877 5.33336 2.0405 5.33336 1.33325L2.41336 2.30659C2.11162 2.40711 1.85575 2.6122 1.69193 2.88481C1.52811 3.15743 1.46715 3.47963 1.52003 3.79325L1.90669 6.10659C1.93208 6.26319 2.01248 6.40562 2.13345 6.50826C2.25443 6.61091 2.40804 6.66704 2.56669 6.66659H4.00003V13.3333C4.00003 14.0666 4.60003 14.6666 5.33336 14.6666H10.6667C11.0203 14.6666 11.3595 14.5261 11.6095 14.2761C11.8596 14.026 12 13.6869 12 13.3333V6.66659H13.4334C13.592 6.66704 13.7456 6.61091 13.8666 6.50826C13.9876 6.40562 14.068 6.26319 14.0934 6.10659L14.48 3.79325C14.5329 3.47963 14.4719 3.15743 14.3081 2.88481C14.1443 2.6122 13.8884 2.40711 13.5867 2.30659Z" stroke="currentColor" strokeWidth="0.222" strokeLinecap="round" strokeLinejoin="round" fill="none"></path>
-                          </svg>
-                          {jersey && (
-                            <span className="absolute -bottom-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-neutral-950">
-                              {jersey}
-                            </span>
-                          )}
-                        </div>
-                      ) : r.photo ? (
-                        <img src={r.photo} alt={r.name} className="h-10 w-10 rounded-full object-cover ring-1 ring-black/5 transition group-hover:shadow-sm" loading="lazy" />
-                      ) : (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
-                          {getInitials(r.name)}
-                        </div>
-                      )}
-                      {r._known && (
-                        <label className="absolute -bottom-1 -right-1 hidden cursor-pointer items-center gap-1 rounded-full bg-card px-1.5 py-0.5 text-[10px] shadow ring-1 ring-border transition group-hover:flex">
-                          <ImageUp className="h-3 w-3" />
-                          Zmień
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) onPhotoChange(r.id, file);
-                            }}
-                          />
-                        </label>
-                      )}
-                    </div>
-                  </td>
-                )}
-
-                {visibleCols.select && (
-                  <td className={cellPad}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(r.id)}
-                      onChange={(e) => {
-                        const copy = new Set(selected);
-                        if (e.target.checked) copy.add(r.id); else copy.delete(r.id);
-                        setSelected(copy);
-                      }}
-                    />
-                  </td>
-                )}
-
-                {visibleCols.name && (
-                  <td className={`${cellPad} max-w-[260px] text-foreground`}>
-                    <div className="flex items-center gap-2">
-                      <span className="truncate" title={r.name}>{r.name}</span>
-                      <KnownBadge known={r._known} />
-                    </div>
-                  </td>
-                )}
-                {visibleCols.club && (
-                  <td className={`${cellPad} max-w-[220px] text-foreground/80`}>
-                    <span className="truncate" title={r.club}>{r.club}</span>
-                  </td>
-                )}
-                {visibleCols.pos && (
-                  <td className={cellPad}>
-                    <span className="inline-flex rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium">
-                      {r.pos}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.age && <td className={`${cellPad} text-foreground/80`}>{r.age}</td>}
-                {visibleCols.status && (
-                  <td className={cellPad}>
-                    <span className={"inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium " + (r.status === "active" ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200" : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200")}>
-                      {r.status === "active" ? "aktywny" : "w koszu"}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.obs && (
-                  <td className={cellPad}>
-                    <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-                      {r._obs}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.actions && (
-                  <td className={`${cellPad} text-right`}>
-                    <div className="flex justify-end gap-1.5">
-                      {/* Obs (icon-only) */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 border-border p-0 transition hover:scale-105 hover:border-border/80"
-                            onClick={() => onQuick(r)}
-                            aria-label="Szybka obserwacja / Wybierz istniejącą"
-                          >
-                            <PlusSquare className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Obserwacje</TooltipContent>
-                      </Tooltip>
-
-                      {/* Edit (icon-only) */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 border-border p-0 transition hover:scale-105 hover:border-border/80"
-                            onClick={() => onOpen(r.id)}
-                            aria-label={r._known ? "Edytuj" : "Uzupełnij dane"}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{r._known ? "Edytuj" : "Uzupełnij dane"}</TooltipContent>
-                      </Tooltip>
-
-                      {/* Trash/Restore (icon-only) */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            className="h-8 w-8 p-0 transition hover:scale-105"
-                            variant={scope === "active" ? "destructive" : "default"}
-                            onClick={() => (scope === "active" ? onTrash(r.id) : onRestore(r.id))}
-                            aria-label={scope === "active" ? "Do kosza" : "Przywróć"}
-                          >
-                            {scope === "active" ? <Trash2 className="h-4 w-4" /> : <Undo2 className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{scope === "active" ? "Do kosza" : "Przywróć"}</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </td>
-                )}
-              </motion.tr>
-            );
-          })}
-          {rows.length === 0 && (
-            <tr>
-              <td
-                colSpan={Object.values(visibleCols).filter(Boolean).length || 1}
-                className={`${cellPad} text-center text-sm text-muted-foreground`}
-              >
-                Brak wyników dla bieżących filtrów.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/* Columns popover */
-function ColumnsButton({
-  open, setOpen, visibleCols, setVisibleCols,
-}: {
-  open: boolean;
-  setOpen: (v: boolean) => void;
-  visibleCols: Record<keyof typeof DEFAULT_COLS, boolean>;
-  setVisibleCols: (v: Record<keyof typeof DEFAULT_COLS, boolean>) => void;
-}) {
-  return (
-    <div className="relative">
-      <Button
-        variant="outline"
-        className="border-border px-3 py-2"
-        onClick={() => setOpen(!open)}
-      >
-        <Columns3 className="mr-2 h-4 w-4" />
-        Kolumny
-      </Button>
-      {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-60 rounded-xl border border-border bg-card p-3 shadow-lg">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">Widoczność kolumn</div>
-          {Object.keys(DEFAULT_COLS).map((k) => {
-            const key = k as ColKey;
-            return (
-              <label
-                key={key}
-                className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-muted/60"
-              >
-                <span className="text-foreground">{COL_LABELS[key]}</span>
-                <input
-                  type="checkbox"
-                  checked={visibleCols[key]}
-                  onChange={(e) => setVisibleCols({ ...visibleCols, [key]: e.target.checked })}
-                />
-              </label>
-            );
-          })}
-        </div>
+      aria-live="polite"
+    >
+      {saveStatus === "saving" ? (
+        <>
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Zapisywanie…
+        </>
+      ) : saveStatus === "saved" ? (
+        <>
+          <CheckCircle2 className="h-3.5 w-3.5" /> Zapisano
+        </>
+      ) : (
+        "—"
       )}
     </div>
   );
-}
 
-/* =======================================
-   Quick Observation (teams builder + autosave)
-======================================= */
-function QuickObservation({
-  player,
-  onBack,
-  quickTab, setQuickTab,
-  qaMatch, setQaMatch,
-  qaDate, setQaDate,
-  qaTime, setQaTime,
-  qaMode, setQaMode,
-  qaStatus, setQaStatus,
-  onSaveNew,
-  observations, obsQuery, setObsQuery, obsSelectedId, setObsSelectedId,
-  onDuplicate, onReassign,
-}: {
-  player: Player;
-  onBack: () => void;
-  quickTab: "new" | "existing";
-  setQuickTab: (t: "new" | "existing") => void;
-  qaMatch: string; setQaMatch: (v: string) => void;
-  qaDate: string; setQaDate: (v: string) => void;
-  qaTime: string; setQaTime: (v: string) => void;
-  qaMode: "live"|"tv"; setQaMode: (v: "live"|"tv") => void;
-  qaStatus: Observation["status"]; setQaStatus: (v: Observation["status"]) => void;
-  onSaveNew: () => void;
-  observations: Observation[];
-  obsQuery: string; setObsQuery: (v: string) => void;
-  obsSelectedId: number | null; setObsSelectedId: (v: number | null) => void;
-  onDuplicate: () => void; onReassign: () => void;
-}) {
-  /* ------- helpers ------- */
-  const parseTeams = (m?: string) => {
-    if (!m) return { a: "", b: "" };
-    const parts = m.split(/ *vs *| *VS *| *Vs */i);
-    if (parts.length >= 2) return { a: parts[0].trim(), b: parts[1].trim() };
-    return { a: m.trim(), b: "" };
-  };
-  const composeMatch = (a: string, b: string) =>
-    a.trim() && b.trim() ? `${a.trim()} vs ${b.trim()}` : (a + " " + b).trim();
-
-  const chip = (txt: string) => (
-    <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-      {txt}
-    </span>
-  );
-
-  /* ------- existing list for "Istniejąca" ------- */
-  const existingFiltered = useMemo(() => {
-    const q = obsQuery.trim().toLowerCase();
-    const arr = [...observations].sort((a, b) =>
-      ((b.date || "") + (b.time || "")).localeCompare((a.date || "") + (a.time || ""))
+  if (!p) {
+    return (
+      <div className="w-full">
+        <Crumb
+          items={[
+            { label: "Start", href: "/" },
+            { label: "Baza zawodników", href: "/players" },
+            { label: "Profil" },
+          ]}
+        />
+        <Card>
+          <CardContent className="p-4">Nie znaleziono zawodnika.</CardContent>
+        </Card>
+      </div>
     );
-    if (!q) return arr;
-    return arr.filter(
-      (o) =>
-        (o.match || "").toLowerCase().includes(q) ||
-        (o.player || "").toLowerCase().includes(q) ||
-        (o.date || "").includes(q)
-    );
-  }, [observations, obsQuery]);
-
-  /* ------- local teamA/teamB builder ------- */
-  const initial = useMemo(() => parseTeams(qaMatch), []); // only for first mount
-  const [teamA, setTeamA] = useState(initial.a);
-  const [teamB, setTeamB] = useState(initial.b);
-
-  // keep local team inputs in sync if parent qaMatch changes
-  useEffect(() => {
-    const { a, b } = parseTeams(qaMatch);
-    setTeamA(a);
-    setTeamB(b);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qaMatch]);
-
-  function updateMatchFromTeams(a: string, b: string) {
-    setTeamA(a); setTeamB(b);
-    setQaMatch(composeMatch(a, b));
   }
-
-  /* ------- autosave (localStorage) ------- */
-  type SaveState = "idle" | "saving" | "saved";
-  const [saveState, setSaveState] = useState<SaveState>("idle");
-  const draftKey = useMemo(
-    () => `s4s.quickobs.draft.${player.id}`,
-    [player.id]
-  );
-  const tRef = useRef<number | null>(null);
-
-  // load draft on mount
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(draftKey);
-      if (!raw) return;
-      const d = JSON.parse(raw);
-      if (typeof d.qaMatch === "string") setQaMatch(d.qaMatch);
-      if (typeof d.qaDate === "string") setQaDate(d.qaDate);
-      if (typeof d.qaTime === "string") setQaTime(d.qaTime);
-      if (d.qaMode === "live" || d.qaMode === "tv") setQaMode(d.qaMode);
-      if (d.qaStatus === "draft" || d.qaStatus === "final") setQaStatus(d.qaStatus);
-      if (typeof d.teamA === "string") setTeamA(d.teamA);
-      if (typeof d.teamB === "string") setTeamB(d.teamB);
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // save draft with debounce
-  useEffect(() => {
-    setSaveState("saving");
-    window.clearTimeout(tRef.current || undefined);
-    // @ts-ignore
-    tRef.current = window.setTimeout(() => {
-      try {
-        const payload = {
-          qaMatch, qaDate, qaTime, qaMode, qaStatus, teamA, teamB, _ts: Date.now(),
-        };
-        localStorage.setItem(draftKey, JSON.stringify(payload));
-        setSaveState("saved");
-        setTimeout(() => setSaveState("idle"), 1000);
-      } catch {
-        setSaveState("idle");
-      }
-    }, 600);
-    return () => window.clearTimeout(tRef.current || undefined);
-  }, [qaMatch, qaDate, qaTime, qaMode, qaStatus, teamA, teamB, draftKey]);
-
-  function handleSave() {
-    try { localStorage.removeItem(draftKey); } catch {}
-    onSaveNew();
-  }
-
-  /* ------- misc ------- */
-  const canSave = qaMatch.trim().length > 0 && qaDate.trim().length > 0;
 
   return (
-    <motion.div {...itemPop} className="rounded-xl border border-border bg-card p-0 shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">Szybka obserwacja</div>
-          <div className="truncate text-sm font-semibold">{player.name}</div>
+    <div className="w-full">
+      <Crumb
+        items={[
+          { label: "Start", href: "/" },
+          { label: "Baza zawodników", href: "/players" },
+          { label: p.name },
+        ]}
+      />
+      <Toolbar
+        title={`Profil: ${p.name}`}
+        right={
+          <div className="flex items-center gap-2 mb-4">
+            <SaveChip />
+            <Button
+              className="bg-gray-900 text-white hover:bg-gray-800"
+              onClick={() => router.push("/players")}
+            >
+              Wróć do listy
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Baner „Nieznany zawodnik” + akcje */}
+      {isUnknown && (
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <div className="font-medium">Edytujesz nieznanego zawodnika</div>
+              <div className="opacity-90">
+                Uzupełnij przynajmniej <b>imię</b> lub <b>nazwisko</b>, aby oznaczyć profil jako znany.
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" className="h-8 border-amber-300 dark:border-amber-800" onClick={cancelToOriginal}>
+              Anuluj
+            </Button>
+            <Button className="h-8 bg-gray-900 text-white hover:bg-gray-800" onClick={manualSave}>
+              Zapisz
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {saveState !== "idle" && (
-            <span
-              className={`hidden sm:inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${
-                saveState === "saving"
-                  ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/50"
-                  : "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-800/50"
-              }`}
-            >
-              {saveState === "saving" ? "Zapisywanie…" : "Zapisano"}
-            </span>
-          )}
-          <Button variant="outline" className="border-border" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Wróć
-          </Button>
-        </div>
-      </div>
+      )}
 
-      {/* Tabs */}
-      <div className="px-4 pt-3">
-        <Tabs value={quickTab} onValueChange={(v)=>setQuickTab(v as "new"|"existing")}>
-          <TabsList className="mb-2 inline-flex h-10 items-center rounded-lg border border-border bg-muted/70 p-1 shadow-sm">
-            <TabsTrigger
-              value="new"
-              className="px-3 py-2 rounded-md data-[state=active]:bg-card data-[state=active]:shadow"
-            >
-              <PlusSquare className="mr-2 h-4 w-4" />
-              Nowa
-            </TabsTrigger>
-            <TabsTrigger
-              value="existing"
-              className="px-3 py-2 rounded-md data-[state=active]:bg-card data-[state=active]:shadow"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Istniejąca
-            </TabsTrigger>
-          </TabsList>
-
-          {/* ===== NEW ===== */}
-          <TabsContent value="new" className="mt-2 space-y-4">
-            {/* Mecz section */}
-            <div className="rounded-xl border border-border p-4">
-              <div className="mb-2 text-sm font-semibold">Mecz</div>
-              <div className="text-xs text-muted-foreground mb-3">
-                Wpisz drużyny — pole „Mecz” składa się automatycznie.
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Lewa kolumna */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Podstawowe dane</CardTitle>
+            {isUnknown && (
+              <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-900/40">
+                Nieznany
+              </span>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Imię</Label>
+                <Input
+                  value={p.firstName ?? ""}
+                  onChange={(e) =>
+                    saveBasic({
+                      firstName: e.target.value,
+                      name: `${e.target.value} ${p.lastName ?? ""}`.trim(),
+                    })
+                  }
+                />
+                {isUnknown && (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-200">
+                    Wpisz imię, by łatwiej go zidentyfikować.
+                  </p>
+                )}
               </div>
-
-              <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
-                <div>
-                  <Label>Drużyna A</Label>
-                  <Input
-                    value={teamA}
-                    onChange={(e) => updateMatchFromTeams(e.target.value, teamB)}
-                    placeholder="np. Lech U19"
-                    className="mt-1"
-                  />
-                </div>
-                <div className="hidden select-none items-end justify-center pb-2 text-sm text-muted-foreground sm:flex">vs</div>
-                <div>
-                  <Label>Drużyna B</Label>
-                  <Input
-                    value={teamB}
-                    onChange={(e) => updateMatchFromTeams(teamA, e.target.value)}
-                    placeholder="np. Wisła U19"
-                    className="mt-1"
-                  />
-                </div>
-                <div className="sm:hidden text-center text-sm text-muted-foreground">vs</div>
-              </div>
-
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <Label>Data meczu</Label>
-                  <Input
-                    type="date"
-                    value={qaDate}
-                    onChange={(e) => setQaDate(e.target.value)}
-                    placeholder="dd.mm.rrrr"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label>Godzina meczu</Label>
-                  <Input
-                    type="time"
-                    value={qaTime}
-                    onChange={(e) => setQaTime(e.target.value)}
-                    placeholder="--:--"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-
-              {/* Summary line */}
-              <div className="mt-3 text-xs text-muted-foreground">
-                Mecz: <span className="font-medium text-foreground">{qaMatch || "—"}</span>
-                <span className="ml-2">{chip(qaMode === "tv" ? "TV" : "Live")}</span>
+              <div>
+                <Label>Nazwisko</Label>
+                <Input
+                  value={p.lastName ?? ""}
+                  onChange={(e) =>
+                    saveBasic({
+                      lastName: e.target.value,
+                      name: `${p.firstName ?? ""} ${e.target.value}`.trim(),
+                    })
+                  }
+                />
+                {isUnknown && (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-200">
+                    Dodanie nazwiska oznaczy zawodnika jako znanego.
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Tryb / Status */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-border p-4">
-                <Label>Tryb</Label>
-                <div className="mt-2 inline-flex overflow-hidden rounded-md border border-border bg-muted/60">
-                  {(["live", "tv"] as const).map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => setQaMode(m)}
-                      className={`px-3 py-1 text-sm transition-colors ${
-                        qaMode === m
-                          ? "bg-foreground text-background"
-                          : "text-foreground/80 hover:bg-muted/70"
-                      }`}
-                    >
-                      {m === "live" ? "Live" : "TV"}
-                    </button>
-                  ))}
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Pozycja</Label>
+                <Select
+                  value={p.pos as Pos}
+                  onValueChange={(v) => saveBasic({ pos: v as Pos })}
+                >
+                  <SelectTrigger className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
+                    <SelectValue placeholder="Wybierz" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GK">GK</SelectItem>
+                    <SelectItem value="DF">DF</SelectItem>
+                    <SelectItem value="MF">MF</SelectItem>
+                    <SelectItem value="FW">FW</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="rounded-xl border border-border p-4">
-                <Label>Status</Label>
-                <div className="mt-2 inline-flex overflow-hidden rounded-md border border-border bg-muted/60">
-                  {(["draft", "final"] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setQaStatus(s)}
-                      className={`px-3 py-1 text-sm transition-colors ${
-                        qaStatus === s
-                          ? "bg-foreground text-background"
-                          : "text-foreground/80 hover:bg-muted/70"
-                      }`}
-                    >
-                      {s === "draft" ? "Szkic" : "Finalna"}
-                    </button>
-                  ))}
-                </div>
+              <div>
+                <Label>Wiek</Label>
+                <Input
+                  type="number"
+                  value={p.age}
+                  onChange={(e) => saveBasic({ age: Number(e.target.value) || 0 })}
+                />
               </div>
             </div>
 
-            {/* Sticky action bar */}
-            <div className="sticky bottom-0 mt-1 -mx-4 border-t border-border bg-card/90 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/70">
-              <div className="flex items-center justify-end gap-2">
-                <div className="mr-auto hidden text-[11px] text-muted-foreground sm:block">
-                  Skróty: <span className="font-medium">Enter</span> — Zapisz, <span className="font-medium">Esc</span> — Wróć
-                </div>
-                <Button variant="outline" className="border-border" onClick={onBack}>
-                  Anuluj
-                </Button>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      className="bg-foreground text-background hover:bg-foreground/90"
-                      onClick={handleSave}
-                      disabled={!canSave}
-                    >
-                      Zapisz
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {canSave ? "Zapisz nową obserwację" : "Uzupełnij: Drużyna A/B i Datę"}
-                  </TooltipContent>
-                </Tooltip>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Klub</Label>
+                <Input value={p.club} onChange={(e) => saveBasic({ club: e.target.value })} />
+              </div>
+              <div>
+                <Label>Narodowość</Label>
+                <Input
+                  value={p.nationality ?? ""}
+                  onChange={(e) => saveBasic({ nationality: e.target.value })}
+                />
               </div>
             </div>
-          </TabsContent>
 
-          {/* ===== EXISTING ===== */}
-          <TabsContent value="existing" className="mt-2 space-y-3">
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <Label>Data urodzenia</Label>
               <Input
-                value={obsQuery}
-                onChange={(e) => setObsQuery(e.target.value)}
-                placeholder="Szukaj po meczu, zawodniku, dacie…"
-                className="flex-1 bg-muted/70 border-white/10 rounded-xl"
+                type="date"
+                value={p.birthDate ?? ""}
+                onChange={(e) => saveBasic({ birthDate: e.target.value })}
               />
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="max-h-80 overflow-auto rounded-md border border-border">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-muted text-muted-foreground">
-                  <tr>
-                    <th className="p-2 text-left font-medium">#</th>
-                    <th className="p-2 text-left font-medium">Mecz</th>
-                    <th className="p-2 text-left font-medium">Zawodnik</th>
-                    <th className="p-2 text-left font-medium">Data</th>
-                    <th className="p-2 text-left font-medium">Tryb</th>
-                    <th className="p-2 text-left font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {existingFiltered.map((o) => (
-                    <tr
-                      key={o.id}
-                      className={`cursor-pointer border-t border-border transition-colors hover:bg-muted/60 ${
-                        obsSelectedId === o.id ? "bg-indigo-50/60 dark:bg-indigo-900/20" : ""
-                      }`}
-                      onClick={() => setObsSelectedId(o.id)}
-                    >
-                      <td className="p-2">
-                        <input
-                          type="radio"
-                          name="obsPick"
-                          checked={obsSelectedId === o.id}
-                          onChange={() => setObsSelectedId(o.id)}
+        {/* Prawa kolumna */}
+        <div className="space-y-4">
+          {/* --- Rozszerzone informacje --- */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Rozszerzone informacje</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Tylko jedna sekcja na raz (accordion single) */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="ext">
+                  <AccordionTrigger>Rozwiń / Zwiń</AccordionTrigger>
+                  <AccordionContent>
+                    <Tabs defaultValue="basic" className="w-full">
+                      <TabsList className="grid w-full grid-cols-6">
+                        <TabsTrigger value="basic">Podstawowe</TabsTrigger>
+                        <TabsTrigger value="club">Klub</TabsTrigger>
+                        <TabsTrigger value="physical">Fizyczne</TabsTrigger>
+                        <TabsTrigger value="contact">Kontakt</TabsTrigger>
+                        <TabsTrigger value="contract">Kontrakt</TabsTrigger>
+                        <TabsTrigger value="stats">Statystyki</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="basic" className="mt-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label>Pseudonim</Label>
+                            <Input placeholder="—" />
+                          </div>
+                          <div>
+                            <Label>Dominująca noga</Label>
+                            <Input placeholder="—" />
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="club" className="mt-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label>Klub</Label>
+                            <Input
+                              value={p.club}
+                              onChange={(e) => saveBasic({ club: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label>Drużyna/Rocznik</Label>
+                            <Input placeholder="U19 / Rezerwy…" />
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="physical" className="mt-4">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label>Wzrost (cm)</Label>
+                            <Input type="number" placeholder="—" />
+                          </div>
+                          <div>
+                            <Label>Waga (kg)</Label>
+                            <Input type="number" placeholder="—" />
+                          </div>
+                          <div>
+                            <Label>Budowa</Label>
+                            <Input placeholder="—" />
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="contact" className="mt-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label>E-mail</Label>
+                            <Input type="email" placeholder="—" />
+                          </div>
+                          <div>
+                            <Label>Telefon</Label>
+                            <Input placeholder="—" />
+                          </div>
+                          <div className="col-span-2">
+                            <Label>Agent</Label>
+                            <Input placeholder="—" />
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="contract" className="mt-4">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label>Do kiedy</Label>
+                            <Input type="date" />
+                          </div>
+                          <div>
+                            <Label>Kara/klauzula</Label>
+                            <Input placeholder="—" />
+                          </div>
+                          <div>
+                            <Label>Status</Label>
+                            <Input placeholder="—" />
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="stats" className="mt-4">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label>Mecze</Label>
+                            <Input type="number" placeholder="—" />
+                          </div>
+                          <div>
+                            <Label>Gole</Label>
+                            <Input type="number" placeholder="—" />
+                          </div>
+                          <div>
+                            <Label>Asysty</Label>
+                            <Input type="number" placeholder="—" />
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+
+          {/* --- Ocena --- */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Ocena</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Tylko jedna sekcja na raz (accordion single) */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="grade">
+                  <AccordionTrigger>Rozwiń / Zwiń</AccordionTrigger>
+                  <AccordionContent>
+                    <Tabs defaultValue="notes" className="w-full">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="notes">Notatki</TabsTrigger>
+                        <TabsTrigger value="aspects">Oceny</TabsTrigger>
+                        <TabsTrigger value="final">Komentarz końcowy</TabsTrigger>
+                      </TabsList>
+
+                      {/* Notatki */}
+                      <TabsContent value="notes" className="mt-4 space-y-3">
+                        <div className="text-sm font-medium">Notatki skauta</div>
+                        <Textarea
+                          placeholder="Krótki komentarz…"
+                          onChange={() => setSaveStatus("idle")}
                         />
-                      </td>
-                      <td className="p-2">{o.match || "—"}</td>
-                      <td className="p-2">{o.player || "—"}</td>
-                      <td className="p-2">{[o.date || "—", o.time || ""].filter(Boolean).join(" ")}</td>
-                      <td className="p-2">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            // @ts-ignore
-                            (o as any).mode === "tv"
-                              ? "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200"
-                              : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                          }`}
-                        >
-                          {/* @ts-ignore */}
-                          {(o as any).mode === "tv" ? "TV" : "Live"}
-                        </span>
-                      </td>
-                      <td className="p-2">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            o.status === "final"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
-                              : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-                          }`}
-                        >
-                          {o.status === "final" ? "Finalna" : "Szkic"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {existingFiltered.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-6 text-center text-sm text-muted-foreground">
-                        Brak obserwacji dla podanych kryteriów.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        <div className="text-xs text-gray-500">Widoczne tylko dla Ciebie</div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            className="border-gray-300 dark:border-neutral-700"
+                          >
+                            Sugestie asystenta
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="border-gray-300 dark:border-neutral-700"
+                          >
+                            Kopiuj
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="border-gray-300 dark:border-neutral-700"
+                          >
+                            Generuj
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          1 = słabo · 3–4 = solidnie · 6 = elita
+                        </div>
+                      </TabsContent>
 
-            <div className="flex flex-wrap items-center justify-between">
-              <Button variant="outline" className="border-border" onClick={onBack}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Wróć
-              </Button>
-              <div className="flex items-center gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="border-border"
-                      disabled={obsSelectedId == null}
-                      onClick={onDuplicate}
-                    >
-                      Skopiuj do zawodnika
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Utwórz kopię wskazanej obserwacji</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      className="bg-foreground text-background hover:bg-foreground/90"
-                      disabled={obsSelectedId == null}
-                      onClick={onReassign}
-                    >
-                      Przypisz do zawodnika
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Zmień przypisanie bez kopiowania</TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+                      {/* Oceny (przykładowe pola liczbowo) */}
+                      <TabsContent value="aspects" className="mt-4">
+                        <div className="space-y-3">
+                          {[
+                            "Motoryka – szybkość, wytrzymałość",
+                            "Siła, pojedynki, zwinność",
+                            "Technika",
+                            "Gra z piłką",
+                            "Gra bez piłki",
+                            "Stałe fragmenty",
+                            "Faza defensywna",
+                            "Faza ofensywna",
+                            "Fazy przejściowe",
+                            "Postawa (mentalność)",
+                          ].map((k) => (
+                            <div
+                              key={k}
+                              className="grid grid-cols-[1fr_120px] items-center gap-3"
+                            >
+                              <Label className="text-sm">{k}</Label>
+                              <Input type="number" min={1} max={6} placeholder="—" />
+                            </div>
+                          ))}
+                        </div>
+                      </TabsContent>
+
+                      {/* Komentarz końcowy */}
+                      <TabsContent value="final" className="mt-4 space-y-3">
+                        <Label>Komentarz końcowy</Label>
+                        <Textarea placeholder="—" />
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            className="border-gray-300 dark:border-neutral-700"
+                          >
+                            Kopiuj
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="border-gray-300 dark:border-neutral-700"
+                          >
+                            Generuj
+                          </Button>
+                          <Button className="bg-gray-900 text-white hover:bg-gray-800">
+                            Wstaw do „Komentarza końcowego”
+                          </Button>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
-}
-
-/* date util */
-function addDays(iso: string, delta: number) {
-  const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() + delta);
-  return d.toISOString().slice(0, 10);
 }
