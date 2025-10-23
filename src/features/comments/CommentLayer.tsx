@@ -25,10 +25,7 @@ const PANEL_KEY = "s4s.comments.panel";
 const META_FALLBACK_KEY = "s4s.comments.meta"; // { [commentId]: ResolutionMeta }
 
 // Most-used logical viewport sizes (CSS px).
-const PRESETS: Record<
-  ViewKind,
-  { id: string; label: string; w: number; h: number }[]
-> = {
+const PRESETS: Record<ViewKind, { id: string; label: string; w: number; h: number }[]> = {
   desktop: [
     { id: "d-1920x1080", label: "1920×1080 (FHD)", w: 1920, h: 1080 },
     { id: "d-1536x864", label: "1536×864", w: 1536, h: 864 },
@@ -72,6 +69,7 @@ const ANON =
 function hasRest() {
   return Boolean(REST_BASE && ANON);
 }
+
 async function getJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
@@ -82,9 +80,10 @@ async function getJSON<T>(url: string, init?: RequestInit): Promise<T> {
       "Content-Type": "application/json",
     },
   });
-  if (!res.ok) throw await res.json().catch(() => res.text());
+  if (!res.ok) throw (await res.json().catch(() => res.text()));
   return res.json();
 }
+
 async function patchJSON<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: "PATCH",
@@ -96,7 +95,7 @@ async function patchJSON<T>(url: string, body: unknown): Promise<T> {
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw await res.json().catch(() => res.text());
+  if (!res.ok) throw (await res.json().catch(() => res.text()));
   return res.json();
 }
 
@@ -158,19 +157,12 @@ export default function CommentLayer({
     const data = (await getJSON<any[]>(`${REST_BASE}/comments?${q.toString()}`)) || [];
     return data.filter((r) => r.thread_id && r.thread_id === r.id).length;
   }
+
   async function refreshCounts() {
     if (hasRest()) {
       try {
-        const [d, t, m] = await Promise.all([
-          countRootsFor("desktop"),
-          countRootsFor("tablet"),
-          countRootsFor("mobile"),
-        ]);
-        setCounts({
-          desktop: d ?? "–",
-          tablet: t ?? "–",
-          mobile: m ?? "–",
-        });
+        const [d, t, m] = await Promise.all([countRootsFor("desktop"), countRootsFor("tablet"), countRootsFor("mobile")]);
+        setCounts({ desktop: d ?? "–", tablet: t ?? "–", mobile: m ?? "–" });
       } catch {
         setCounts({ desktop: "–", tablet: "–", mobile: "–" });
       }
@@ -195,13 +187,16 @@ export default function CommentLayer({
   /* ===== Geometry ===== */
   const [rect, setRect] = useState<DOMRect | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     const el = document.querySelector(containerSelector) as HTMLElement | null;
     containerRef.current = el || null;
+
     const updateRect = () => {
       if (!containerRef.current) return setRect(null);
       setRect(containerRef.current.getBoundingClientRect());
     };
+
     updateRect();
     const ro = new ResizeObserver(updateRect);
     if (el) ro.observe(el);
@@ -214,15 +209,66 @@ export default function CommentLayer({
     };
   }, [containerSelector]);
 
+  // Immediately refresh rect when the view changes (1920 -> 1280, etc.)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setRect(el.getBoundingClientRect());
+  }, [view]);
+
   function toPct(clientX: number, clientY: number) {
     if (!rect) return { xPct: 0, yPct: 0, left: 0, top: 0 };
     const xPct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     const yPct = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
     return { xPct, yPct, left: clientX - rect.left, top: clientY - rect.top };
   }
+
   function pinPos(xPct: number, yPct: number) {
     if (!rect) return { left: -9999, top: -9999 };
     return { left: rect.left + xPct * rect.width, top: rect.top + yPct * rect.height };
+  }
+
+  /* ===== Popover placement + clamping (NEW) ===== */
+  function clamp(n: number, min: number, max: number) {
+    return Math.min(max, Math.max(min, n));
+  }
+  function placePopover(
+    baseLeft: number,
+    baseTop: number,
+    w: number,
+    h: number,
+    anchor: "below" | "right" = "below"
+  ) {
+    const M = 8; // viewport margin
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1920;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 1080;
+
+    if (anchor === "below") {
+      const willOverflowBottom = baseTop + M + h > vh;
+      const top = willOverflowBottom ? baseTop - M : baseTop + M;
+      const transform = `translate(-50%, ${willOverflowBottom ? "-100%" : "0"})`;
+      const half = w / 2;
+      const left = clamp(baseLeft, M + half, vw - M - half);
+      return { left, top, transform };
+    }
+
+    let left = baseLeft;
+    let top = baseTop;
+    left = clamp(left, M, vw - M - w);
+    top = clamp(top, M, vh - M - h);
+    return { left, top, transform: undefined as string | undefined };
+  }
+  function pinScreenPos(xPct: number, yPct: number, pinSize = 30) {
+    if (!rect) return { left: -9999, top: -9999 };
+    const rawLeft = rect.left + xPct * rect.width;
+    const rawTop = rect.top + yPct * rect.height;
+    const M = Math.ceil(pinSize / 2) + 2;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1920;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 1080;
+    return {
+      left: clamp(rawLeft, M, vw - M),
+      top: clamp(rawTop, M, vh - M),
+    };
   }
 
   /* ===== Create (Alt+Click / Add mode) ===== */
@@ -255,6 +301,7 @@ export default function CommentLayer({
       if (!wrap) return;
       const target = e.target as Node;
       if (!wrap.contains(target)) return;
+
       let cx = 0,
         cy = 0;
       if (e instanceof TouchEvent) {
@@ -312,6 +359,7 @@ export default function CommentLayer({
     livePctY: number;
     moved: boolean;
   } | null>(null);
+
   function startDrag(e: React.MouseEvent, id: string, xPct: number, yPct: number) {
     e.preventDefault();
     setComposer(null);
@@ -328,6 +376,7 @@ export default function CommentLayer({
       moved: false,
     });
   }
+
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!drag || !rect) return;
@@ -377,6 +426,7 @@ export default function CommentLayer({
 
   /* ===== Early bail ===== */
   if (!rect) return null;
+
   const isDraggingId = drag?.id || null;
 
   return (
@@ -407,62 +457,72 @@ export default function CommentLayer({
         />
       )}
 
-      {/* New comment composer bubble */}
-      {composer && (
-        <div
-          style={{
-            position: "fixed",
-            left: rect.left + composer.left,
-            top: rect.top + composer.top + 12,
-            transform: "translate(-50%, 0)",
-            zIndex: 70,
-            pointerEvents: "auto",
-          }}
-        >
-          <div className="w-72 max-w-[86vw] rounded-lg border border-gray-300 bg-white p-2 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-            <div className="mb-1 flex items-center justify-between">
-              <div className="text-[11px] text-gray-500 dark:text-neutral-400">
-                {(displayName || currentUser?.name)
-                  ? `Komentujesz jako: ${displayName || currentUser?.name}`
-                  : "Komentujesz jako: —"}
+      {/* New comment composer bubble (edge-safe) */}
+      {composer &&
+        (() => {
+          // w-72 => 18rem = 288px; approx height for clamp
+          const compW = 288;
+          const compH = 180;
+          const baseLeft = rect.left + composer.left;
+          const baseTop = rect.top + composer.top;
+          const placed = placePopover(baseLeft, baseTop, compW, compH, "below");
+          return (
+            <div
+              style={{
+                position: "fixed",
+                left: placed.left,
+                top: placed.top,
+                transform: placed.transform,
+                zIndex: 70,
+                pointerEvents: "auto",
+              }}
+            >
+              <div className="w-72 max-w-[86vw] rounded-lg border border-gray-300 bg-white p-2 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+                    {(displayName || currentUser?.name)
+                      ? `Komentujesz jako: ${displayName || currentUser?.name}`
+                      : "Komentujesz jako: —"}
+                  </div>
+                  <button
+                    onClick={() => setAskName(true)}
+                    className="rounded-md text-[11px] text-gray-600 underline-offset-2 hover:underline dark:text-neutral-300"
+                    type="button"
+                  >
+                    Ustaw nazwę
+                  </button>
+                </div>
+                <textarea
+                  autoFocus
+                  rows={3}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Dodaj komentarz…"
+                  className="w-full resize-none rounded border border-gray-300 p-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-950"
+                />
+                <div className="mt-2 flex justify-end gap-2">
+                  <button className="rounded-md border px-3 py-1 text-sm dark:border-neutral-700" onClick={cancelCreate}>
+                    Anuluj
+                  </button>
+                  <button
+                    className={`rounded-md px-3 py-1 text-sm text-white ${
+                      draft.trim() ? "bg-gray-900 hover:bg-gray-800" : "bg-gray-400 opacity-70"
+                    }`}
+                    disabled={!draft.trim()}
+                    onClick={confirmCreate}
+                  >
+                    Dodaj
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => setAskName(true)}
-                className="rounded-md text-[11px] text-gray-600 underline-offset-2 hover:underline dark:text-neutral-300"
-                type="button"
-              >
-                Ustaw nazwę
-              </button>
             </div>
-            <textarea
-              autoFocus
-              rows={3}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Dodaj komentarz…"
-              className="w-full resize-none rounded border border-gray-300 p-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-950"
-            />
-            <div className="mt-2 flex justify-end gap-2">
-              <button className="rounded-md border px-3 py-1 text-sm dark:border-neutral-700" onClick={cancelCreate}>
-                Anuluj
-              </button>
-              <button
-                className={`rounded-md px-3 py-1 text-sm text-white ${
-                  draft.trim() ? "bg-gray-900 hover:bg-gray-800" : "bg-gray-400 opacity-70"
-                }`}
-                disabled={!draft.trim()}
-                onClick={confirmCreate}
-              >
-                Dodaj
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
 
       {/* Pins + previews + thread cards */}
       {threads.map(({ root, replies, liveX, liveY, fresh, count }) => {
-        const pos = pinPos(liveX, liveY);
+        // keep pins nicely visible even on drastic viewport changes
+        const pos = pinScreenPos(liveX, liveY);
         const isOpen = openThreadId === root.id;
         const isHover = hoverThreadId === root.id && !drag;
 
@@ -484,9 +544,7 @@ export default function CommentLayer({
                 zIndex: 55,
                 pointerEvents: "auto",
                 transition:
-                  isDraggingId === root.id
-                    ? "none"
-                    : "left 120ms linear, top 120ms linear, transform 120ms ease",
+                  isDraggingId === root.id ? "none" : "left 120ms linear, top 120ms linear, transform 120ms ease",
               }}
               className="group relative inline-flex h-[30px] w-[30px] items-center justify-center"
               onClick={(e) => {
@@ -512,52 +570,65 @@ export default function CommentLayer({
               )}
             </button>
 
-            {/* Hover preview */}
-            {isHover && !isOpen && (
-              <HoverPreview
-                left={pos.left + 14}
-                top={pos.top - 8}
-                body={root.body}
-                author={root.author_name || "Gość"}
-                createdAt={root.created_at}
-              />
-            )}
+            {/* Hover preview (edge-safe) */}
+            {isHover &&
+              !isOpen &&
+              (() => {
+                const prevW = 260,
+                  prevH = 90;
+                const placed = placePopover(pos.left + 14, pos.top - 8, prevW, prevH, "right");
+                return (
+                  <HoverPreview
+                    left={placed.left}
+                    top={placed.top}
+                    body={root.body}
+                    author={root.author_name || "Gość"}
+                    createdAt={root.created_at}
+                  />
+                );
+              })()}
 
-            {/* Thread card */}
-            {isOpen && (
-              <ThreadCard
-                left={pos.left + 14}
-                top={pos.top - 8}
-                root={root}
-                replies={replies}
-                onClose={() => setOpenThreadId(null)}
-                onReply={async (text) => {
-                  const t = text.trim();
-                  if (!t) return;
-                  const authorName = displayName || currentUser?.name || (await ensureName());
-                  await addReply(root.id, {
-                    body: t,
-                    authorId: currentUser?.id ?? null,
-                    authorName,
-                  });
-                }}
-                onUpdateMeta={async (nextMeta) => {
-                  if (hasRest()) {
-                    try {
-                      await patchJSON(`${REST_BASE}/comments?id=eq.${root.id}`, { meta: nextMeta });
-                    } catch {
-                      saveMetaLocal(root.id, nextMeta);
-                    }
-                  } else {
-                    saveMetaLocal(root.id, nextMeta);
-                  }
-                }}
-                onDelete={async () => {
-                  await removeThread(root.id);
-                  setOpenThreadId(null);
-                }}
-              />
-            )}
+            {/* Thread card (edge-safe) */}
+            {isOpen &&
+              (() => {
+                const cardW = 320,
+                  cardH = 420; // approx; clamping keeps it safe
+                const placed = placePopover(pos.left + 14, pos.top - 8, cardW, cardH, "right");
+                return (
+                  <ThreadCard
+                    left={placed.left}
+                    top={placed.top}
+                    root={root}
+                    replies={replies}
+                    onClose={() => setOpenThreadId(null)}
+                    onReply={async (text) => {
+                      const t = text.trim();
+                      if (!t) return;
+                      const authorName = displayName || currentUser?.name || (await ensureName());
+                      await addReply(root.id, {
+                        body: t,
+                        authorId: currentUser?.id ?? null,
+                        authorName,
+                      });
+                    }}
+                    onUpdateMeta={async (nextMeta) => {
+                      if (hasRest()) {
+                        try {
+                          await patchJSON(`${REST_BASE}/comments?id=eq.${root.id}`, { meta: nextMeta });
+                        } catch {
+                          saveMetaLocal(root.id, nextMeta);
+                        }
+                      } else {
+                        saveMetaLocal(root.id, nextMeta);
+                      }
+                    }}
+                    onDelete={async () => {
+                      await removeThread(root.id);
+                      setOpenThreadId(null);
+                    }}
+                  />
+                );
+              })()}
           </div>
         );
       })}
@@ -576,11 +647,7 @@ function ChatBubblePin({ className = "" }: { className?: string }) {
       width="26"
       height="26"
       className={className}
-      style={{
-        filter: "drop-shadow(0 1px 1px rgba(0,0,0,.25))",
-        background: "white",
-        borderRadius: 8,
-      }}
+      style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,.25))", background: "white", borderRadius: 8 }}
     >
       <path
         fill="currentColor"
@@ -655,8 +722,7 @@ function ThreadCard({
   // Compute current preset list (by selected view; default to desktop)
   const activeView: ViewKind = meta.view ?? "desktop";
   const presetList = PRESETS[activeView];
-  const currentPreset =
-    presetList.find((p) => p.id === meta.presetId) || presetList[0];
+  const currentPreset = presetList.find((p) => p.id === meta.presetId) || presetList[0];
 
   // Helper: build derived width/height from preset + orientation
   function dimsFor(preset: { w: number; h: number }, orient: Orientation) {
@@ -681,39 +747,20 @@ function ThreadCard({
   function changeView(v: ViewKind) {
     const firstPreset = PRESETS[v][0];
     const { width, height } = dimsFor(firstPreset, meta.orientation ?? "portrait");
-    queueSave({
-      ...meta,
-      view: v,
-      presetId: firstPreset.id,
-      width,
-      height,
-    });
+    queueSave({ ...meta, view: v, presetId: firstPreset.id, width, height });
   }
   function changePreset(presetId: string) {
     const preset = presetList.find((p) => p.id === presetId) || presetList[0];
     const { width, height } = dimsFor(preset, meta.orientation ?? "portrait");
-    queueSave({
-      ...meta,
-      presetId: preset.id,
-      width,
-      height,
-    });
+    queueSave({ ...meta, presetId: preset.id, width, height });
   }
   function changeOrientation(orient: Orientation) {
     const preset = currentPreset;
     const { width, height } = dimsFor(preset, orient);
-    queueSave({
-      ...meta,
-      orientation: orient,
-      width,
-      height,
-    });
+    queueSave({ ...meta, orientation: orient, width, height });
   }
   function changeNote(val: string) {
-    queueSave({
-      ...meta,
-      note: val || null,
-    });
+    queueSave({ ...meta, note: val || null });
   }
 
   return (
@@ -921,7 +968,7 @@ function HelperPanel({
     >
       <div className="mb-2 flex items-center justify-between">
         <div className="font-semibold">
-          Komentarze
+          Komentarze{" "}
           <span className="ml-2 text-xs text-gray-600 dark:text-neutral-300">
             D:{counts.desktop} · T:{counts.tablet} · M:{counts.mobile}
           </span>
@@ -961,11 +1008,7 @@ function HelperPanel({
 
       <div className="mb-2 text-xs text-gray-600 dark:text-neutral-300">
         Jako: {displayName || "—"}{" "}
-        <button
-          onClick={onAskName}
-          className="ml-2 rounded px-1 text-[11px] underline-offset-2 hover:underline"
-          title="Ustaw nazwę komentującego"
-        >
+        <button onClick={onAskName} className="ml-2 rounded px-1 text-[11px] underline-offset-2 hover:underline" title="Ustaw nazwę komentującego">
           Zmień
         </button>
       </div>
