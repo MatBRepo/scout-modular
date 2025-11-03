@@ -1,5 +1,7 @@
 // src/features/observations/Observations.tsx
 "use client";
+import { useSearchParams, useRouter } from "next/navigation";
+
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -45,7 +47,8 @@ function useIsMobile(maxPx = 640) {
   const [is, setIs] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia(`(max-width:${maxPx - 1}px)`);
-    const on = (e: MediaQueryListEvent | MediaQueryList) => setIs((e as any).matches ?? mq.matches);
+    const on = (e: MediaQueryListEvent | MediaQueryList) =>
+      setIs((e as any).matches ?? mq.matches);
     setIs(mq.matches);
     mq.addEventListener?.("change", on as any);
     return () => mq.removeEventListener?.("change", on as any);
@@ -97,7 +100,7 @@ const DEFAULT_COLS = {
   time: true,
   mode: true,
   status: true,
-  // bucket: false, // removed from table
+  // bucket: false,
   players: true,
   actions: true,
 };
@@ -224,19 +227,28 @@ export default function ObservationsFeature({
 }) {
   const isMobile = useIsMobile();
 
-const rows: XO[] = useMemo(() => {
-  return (data as XO[]).map((o) => ({
-    bucket: "active",
-    mode: "live",
-    players: [],
-    ...o,
-  }));
-}, [data]);
+  const rows: XO[] = useMemo(() => {
+    return (data as XO[]).map((o) => ({
+      bucket: "active",
+      mode: "live",
+      players: [],
+      ...o,
+    }));
+  }, [data]);
 
   const [pageMode, setPageMode] = useState<"list" | "editor">("list");
   const [editing, setEditing] = useState<XO | null>(null);
+    const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+     if (searchParams?.get("create") === "1") {
+      addNew();
+      const sp = new URLSearchParams(searchParams);
+      sp.delete("create");
+      const qs = sp.toString();
+      router.replace(qs ? `/observations?${qs}` : "/observations", { scroll: false });
+    }
     try {
       const already = localStorage.getItem(SEED_FLAG);
       if ((data?.length ?? 0) === 0 && !already) {
@@ -305,12 +317,12 @@ const rows: XO[] = useMemo(() => {
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   // Tabs at top (default: active)
-  const [tab, setTab] = useState<TabKey>("active"); // default Aktywne obserwacje
+  const [tab, setTab] = useState<TabKey>("active");
 
-  const [scope, setScope] = useState<Bucket>("active"); // retained for "Aktywni/Kosz" switch in 3-dots
+  const [scope, setScope] = useState<Bucket>("active");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [colsOpen, setColsOpen] = useState(false);
@@ -337,7 +349,7 @@ const rows: XO[] = useMemo(() => {
       if (!raw) return;
       const u = JSON.parse(raw);
       if (u.scope) setScope(u.scope);
-      if (u.tab) setTab(u.tab); // remember active/draft/final tab
+      if (u.tab) setTab(u.tab);
       if (u.q) setQ(u.q);
       if (u.matchFilter) setMatchFilter(u.matchFilter);
       if (u.modeFilter) setModeFilter(u.modeFilter);
@@ -420,7 +432,7 @@ const rows: XO[] = useMemo(() => {
     base = base.filter((r) => {
       if (tab === "draft") return r.status === "draft";
       if (tab === "final") return r.status === "final";
-      return true; // active = both
+      return true;
     });
 
     const dir = sortDir === "asc" ? 1 : -1;
@@ -480,25 +492,32 @@ const rows: XO[] = useMemo(() => {
   ]);
 
   // Keep selection sane if scope/filters change
-useEffect(() => {
-  setSelected((prev) => {
-    if (prev.size === 0) return prev;
+  useEffect(() => {
+    setSelected((prev) => {
+      if (prev.size === 0) return prev;
 
-    const visibleIds = new Set(filtered.map((r) => r.id));
+      const visibleIds = new Set(filtered.map((r) => r.id));
 
-    // Build next as intersection
-    const next = new Set<number>();
-    prev.forEach((id) => { if (visibleIds.has(id)) next.add(id); });
+      // Build next as intersection
+      const next = new Set<number>();
+      prev.forEach((id) => {
+        if (visibleIds.has(id)) next.add(id);
+      });
 
-    // If nothing actually changed, return the same reference to avoid an update
-    if (next.size === prev.size) {
-      let same = true;
-      for (const id of prev) { if (!next.has(id)) { same = false; break; } }
-      if (same) return prev;
-    }
-    return next;
-  });
-}, [filtered]);
+      // If nothing changed, keep same reference
+      if (next.size === prev.size) {
+        let same = true;
+        for (const id of prev) {
+          if (!next.has(id)) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return prev;
+      }
+      return next;
+    });
+  }, [filtered]);
 
   const allChecked = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
   const someChecked = !allChecked && filtered.some((r) => selected.has(r.id));
@@ -585,7 +604,8 @@ useEffect(() => {
       r.players?.length ?? 0,
     ]);
     const csv = [
-      headers.join(","), ...rowsCsv.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")),
+      headers.join(","),
+      ...rowsCsv.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")),
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -609,15 +629,11 @@ useEffect(() => {
       r.players?.length ?? 0,
     ]);
     const tableHtml =
-      `<table><thead><tr>${headers
-        .map((h) => `<th>${escapeHtml(h)}</th>`)
-        .join("")}</tr></thead><tbody>` +
+      `<table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>` +
       rowsX
         .map(
           (r) =>
-            `<tr>${r
-              .map((c) => `<td>${escapeHtml(String(c ?? ""))}</td>`)
-              .join("")}</tr>`
+            `<tr>${r.map((c) => `<td>${escapeHtml(String(c ?? ""))}</td>`).join("")}</tr>`
         )
         .join("") +
       `</tbody></table>`;
@@ -695,6 +711,16 @@ useEffect(() => {
     );
   }
 
+  /* ===== Counters for tabs ===== */
+  const counts = useMemo(() => {
+    const withinScope = rows.filter((r) => (r.bucket ?? "active") === scope);
+    const all = withinScope.length;
+    const draft = withinScope.filter((r) => r.status === "draft").length;
+    const final = withinScope.filter((r) => r.status === "final").length;
+    return { all, draft, final };
+  }, [rows, scope]);
+
+  // ✅ Early return AFTER all hooks are declared above
   if (pageMode === "editor" && editing) {
     return (
       <ObservationEditor
@@ -710,15 +736,6 @@ useEffect(() => {
       />
     );
   }
-
-  /* ===== Counters for tabs ===== */
-  const counts = useMemo(() => {
-    const withinScope = rows.filter((r) => (r.bucket ?? "active") === scope);
-    const all = withinScope.length;
-    const draft = withinScope.filter((r) => r.status === "draft").length;
-    const final = withinScope.filter((r) => r.status === "final").length;
-    return { all, draft, final };
-  }, [rows, scope]);
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -744,7 +761,11 @@ useEffect(() => {
                   size="sm"
                   variant="outline"
                   className="border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                  onClick={() => { setFiltersOpen((v) => !v); setColsOpen(false); setMoreOpen(false); }}
+                  onClick={() => {
+                    setFiltersOpen((v) => !v);
+                    setColsOpen(false);
+                    setMoreOpen(false);
+                  }}
                   aria-pressed={filtersOpen}
                 >
                   <ListFilter className="mr-0 md:mr-2 h-4 w-4" />
@@ -754,8 +775,8 @@ useEffect(() => {
                 </Button>
 
                 {/* FILTRY PANEL */}
-                {filtersOpen && (
-                  isMobile ? (
+                {filtersOpen &&
+                  (isMobile ? (
                     <Portal>
                       <div
                         className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
@@ -770,7 +791,9 @@ useEffect(() => {
                       >
                         <div className="mb-3 flex items-center justify-between">
                           <div className="text-sm font-semibold">Filtry</div>
-                          <Button variant="outline" size="sm"
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="border-gray-300 dark:border-neutral-700"
                             onClick={() => setFiltersOpen(false)}
                           >
@@ -944,33 +967,43 @@ useEffect(() => {
                         </Button>
                       </div>
                     </div>
-                  )
-                )}
+                  ))}
               </div>
 
               {/* columns */}
               <ColumnsButton
                 isMobile={isMobile}
                 open={colsOpen}
-                setOpen={(v) => { setColsOpen(v); if (v) { setFiltersOpen(false); setMoreOpen(false); } }}
+                setOpen={(v) => {
+                  setColsOpen(v);
+                  if (v) {
+                    setFiltersOpen(false);
+                    setMoreOpen(false);
+                  }
+                }}
                 visibleCols={visibleCols}
                 setVisibleCols={setVisibleCols}
               />
 
-              {/* add + more (3 dots to the RIGHT after Dodaj) */}
+              {/* add + more */}
               <div className="relative flex items-center gap-2">
                 <Button
                   size="sm"
                   className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
                   onClick={addNew}
                 >
-                  <PlusCircle className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden sm:inline">Dodaj</span>
+                  <PlusCircle className="mr-0 md:mr-2 h-4 w-4" />{" "}
+                  <span className="hidden sm:inline">Dodaj</span>
                 </Button>
 
                 <Button
                   variant="outline"
                   className="h-9 w-9 border-gray-300 p-0 dark:border-neutral-700"
-                  onClick={() => { setMoreOpen((o) => !o); setFiltersOpen(false); setColsOpen(false); }}
+                  onClick={() => {
+                    setMoreOpen((o) => !o);
+                    setFiltersOpen(false);
+                    setColsOpen(false);
+                  }}
                   aria-label="Więcej"
                 >
                   <EllipsisVertical className="h-5 w-5" />
@@ -983,26 +1016,38 @@ useEffect(() => {
                   >
                     <button
                       className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => { setScope("active"); setMoreOpen(false); }}
+                      onClick={() => {
+                        setScope("active");
+                        setMoreOpen(false);
+                      }}
                     >
                       <Users className="h-4 w-4" /> Aktywni
                     </button>
                     <button
                       className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => { setScope("trash"); setMoreOpen(false); }}
+                      onClick={() => {
+                        setScope("trash");
+                        setMoreOpen(false);
+                      }}
                     >
                       <Trash2 className="h-4 w-4" /> Kosz
                     </button>
                     <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                     <button
                       className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => { setMoreOpen(false); exportCSV(); }}
+                      onClick={() => {
+                        setMoreOpen(false);
+                        exportCSV();
+                      }}
                     >
                       <FileDown className="h-4 w-4" /> Eksport CSV
                     </button>
                     <button
                       className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => { setMoreOpen(false); exportExcel(); }}
+                      onClick={() => {
+                        setMoreOpen(false);
+                        exportExcel();
+                      }}
                     >
                       <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
                     </button>
@@ -1023,7 +1068,9 @@ useEffect(() => {
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`px-3 py-2 text-sm rounded-md transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${tab === t.key ? "bg-white shadow dark:bg-neutral-800" : ""}`}
+                className={`px-3 py-2 text-sm rounded-md transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${
+                  tab === t.key ? "bg-white shadow dark:bg-neutral-800" : ""
+                }`}
                 data-active={tab === t.key}
               >
                 <span className="inline-flex items-center gap-2">
@@ -1036,17 +1083,22 @@ useEffect(() => {
             ))}
           </div>
 
-          {/* bulk bar (appears to the right of tabs when any checkbox is selected) */}
+          {/* bulk bar */}
           {selected.size > 0 && (
             <div className="mt-1 flex flex-wrap items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-900 sm:mt-0">
-              <div className="mr-0 md:mr-2">Zaznaczono: <b>{selected.size}</b></div>
+              <div className="mr-0 md:mr-2">
+                Zaznaczono: <b>{selected.size}</b>
+              </div>
               <div className="flex items-center gap-2">
                 {scope === "active" ? (
                   <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={bulkTrash}>
                     <Trash2 className="mr-0 md:mr-2 h-4 w-4" /> Do kosza
                   </Button>
                 ) : (
-                  <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={bulkRestore}>
+                  <Button
+                    className="bg-gray-900 text-white hover:bg-gray-800"
+                    onClick={bulkRestore}
+                  >
                     <Undo2 className="mr-0 md:mr-2 h-4 w-4" /> Przywróć
                   </Button>
                 )}
@@ -1139,7 +1191,9 @@ useEffect(() => {
                     <SortHeader k="players">Zawodnicy</SortHeader>
                   </th>
                 )}
-                {visibleCols.actions && <th className="p-2 text-right font-medium sm:p-3">Akcje</th>}
+                {visibleCols.actions && (
+                  <th className="p-2 text-right font-medium sm:p-3">Akcje</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -1160,7 +1214,8 @@ useEffect(() => {
                           checked={selected.has(r.id)}
                           onCheckedChange={(v) => {
                             const copy = new Set(selected);
-                            if (Boolean(v)) copy.add(r.id); else copy.delete(r.id);
+                            if (Boolean(v)) copy.add(r.id);
+                            else copy.delete(r.id);
                             setSelected(copy);
                           }}
                         />
@@ -1379,8 +1434,8 @@ function ColumnsButton({
         <span className="ml-2 hidden sm:inline">Kolumny</span>
       </Button>
 
-      {open && (
-        isMobile ? (
+      {open &&
+        (isMobile ? (
           <Portal>
             <div
               className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
@@ -1395,7 +1450,9 @@ function ColumnsButton({
             >
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-sm font-semibold">Kolumny</div>
-                <Button variant="outline" size="sm"
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="border-gray-300 dark:border-neutral-700"
                   onClick={() => setOpen(false)}
                 >
@@ -1452,8 +1509,7 @@ function ColumnsButton({
               );
             })}
           </div>
-        )
-      )}
+        ))}
     </div>
   );
 }

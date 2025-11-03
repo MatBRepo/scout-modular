@@ -333,7 +333,7 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
   }, [auth.ok, showBootLoader, children]);
 
   const handleAddPlayer = () => router.push("/players/new");
-  const handleAddObservation = () => router.push("/observations/new");
+    const handleAddObservation = () => router.push("/observations?create=1");
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>

@@ -87,7 +87,7 @@ function fmtDateHuman(date?: string, time?: string) {
 }
 function parseTeams(match?: string): { a: string; b: string } {
   if (!match) return { a: "", b: "" };
-  const parts = match.split(/ *vs *| *VS *| *Vs */i);
+  const parts = match.split(/ *vs *| *VS *| *Vs *| – | - | v\. /i);
   if (parts.length >= 2) return { a: parts[0].trim(), b: parts[1].trim() };
   return { a: match.trim(), b: "" };
 }
@@ -139,6 +139,31 @@ function Helper({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Compact metric item (no hooks). */
+function MetricItem({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value?: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div
+      className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm transition hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+      title={label}
+    >
+      <div className="break-words pr-2 text-[12px] text-gray-700 dark:text-neutral-300">
+        {label}
+      </div>
+      <div className="shrink-0">
+        <StarRating value={value ?? 0} onChange={onChange} /* @ts-ignore */ max={6} />
+      </div>
+    </div>
+  );
+}
+
 /* ========================= Editor ========================= */
 export function ObservationEditor({
   initial,
@@ -149,8 +174,9 @@ export function ObservationEditor({
   onSave: (o: XO) => void;
   onClose: () => void;
 }) {
-  const [o, setO] = useState<XO>(initial);
-  useEffect(() => setO(initial), [initial]);
+  /** Freeze the first `initial` to avoid mid-edit resets / hook reorder symptoms. */
+  const frozenInitialRef = useRef<XO>(initial);
+  const [o, setO] = useState<XO>(frozenInitialRef.current);
 
   const [tab, setTab] = useState<"basic" | "players" | "notes">("basic");
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
@@ -206,11 +232,11 @@ export function ObservationEditor({
     };
     setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
   }
-  function updatePlayer(id: string, patch: Partial<ObsPlayer>) {
+  function updatePlayer(id: string, patchPartial: Partial<ObsPlayer>) {
     setO((prev) => ({
       ...prev,
       players: (prev.players ?? []).map((p) =>
-        p.id === id ? { ...p, ...patch } : p
+        p.id === id ? ({ ...p, ...patchPartial } as ObsPlayer) : p
       ),
     }));
   }
@@ -221,8 +247,14 @@ export function ObservationEditor({
     value: number,
     player: ObsPlayer
   ) {
-    const groupObj = (player as any)[group] || {};
-    updatePlayer(player.id, { [group]: { ...groupObj, [key]: value } } as any);
+    setO((prev) => {
+      const players = (prev.players ?? []).map((p) => {
+        if (p.id !== player.id) return p;
+        const g = (p as any)[group] ?? {};
+        return { ...p, [group]: { ...g, [key]: value } } as ObsPlayer;
+      });
+      return { ...prev, players };
+    });
   }
 
   /** Positions: single-select + human labels */
@@ -259,7 +291,7 @@ export function ObservationEditor({
   }
 
   /* Team vs Team */
-  const initialTeams = useMemo(() => parseTeams(o.match), []);
+  const initialTeams = useMemo(() => parseTeams(o.match), []); // seed once
   const [teamA, setTeamA] = useState(initialTeams.a);
   const [teamB, setTeamB] = useState(initialTeams.b);
   useEffect(() => {
@@ -289,28 +321,40 @@ export function ObservationEditor({
     [o.id]
   );
   const tRef = useRef<number | null>(null);
+
+  // one-time load from draft (no early return)
+  const loadedDraftOnce = useRef(false);
   useEffect(() => {
+    if (loadedDraftOnce.current) return;
+    loadedDraftOnce.current = true;
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) setO((prev) => ({ ...prev, ...JSON.parse(raw) }));
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   useEffect(() => {
     setSaveState("saving");
-    window.clearTimeout(tRef.current || undefined);
+    if (tRef.current) window.clearTimeout(tRef.current);
     // @ts-ignore
     tRef.current = window.setTimeout(() => {
       try {
-        localStorage.setItem(draftKey, JSON.stringify({ ...o, _ts: Date.now() }));
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ ...o, _ts: Date.now() })
+        );
         setSaveState("saved");
-        setTimeout(() => setSaveState("idle"), 1000);
+        setTimeout(() => setSaveState("idle"), 800);
       } catch {
         setSaveState("idle");
       }
     }, 600);
-    return () => window.clearTimeout(tRef.current || undefined);
+    return () => {
+      if (tRef.current) window.clearTimeout(tRef.current);
+    };
   }, [o, draftKey]);
+
   function handleSave() {
     try {
       localStorage.removeItem(draftKey);
@@ -337,29 +381,6 @@ export function ObservationEditor({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const OPPONENT_LEVELS: OpponentLevel[] = ["niski", "średni", "wysoki"];
   const CONDITIONS: Mode[] = ["live", "wideo", "mix"];
-
-  /* Compact metric card item — NO TRUNCATION now */
-  const MetricItem = ({
-    label,
-    value,
-    onChange,
-  }: {
-    label: string;
-    value?: number;
-    onChange: (v: number) => void;
-  }) => (
-    <div
-      className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm transition hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
-      title={label}
-    >
-      <div className="pr-2 text-[12px] text-gray-700 dark:text-neutral-300 break-words">
-        {label}
-      </div>
-      <div className="shrink-0">
-        <StarRating value={value ?? 0} onChange={onChange} /* @ts-ignore */ max={6} />
-      </div>
-    </div>
-  );
 
   /* Render */
   return (
@@ -417,12 +438,7 @@ export function ObservationEditor({
           </div>
 
           <div className="sticky top-0 z-[5] -mx-6 mt-4 border-b border-gray-200 bg-white/90 px-4 sm:px-6 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
-            <Tabs
-              defaultValue="basic"
-              value={tab}
-              onValueChange={(v) => setTab(v as any)}
-              className="py-3"
-            >
+            <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="py-3">
               <TabsList className="flex w-full justify-start gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1 dark:bg-neutral-900">
                 <TabsTrigger
                   value="basic"
@@ -483,7 +499,7 @@ export function ObservationEditor({
                           className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                         >
                           <option value="">— wybierz —</option>
-                          {OPPONENT_LEVELS.map((x) => (
+                          {["niski", "średni", "wysoki"].map((x) => (
                             <option key={x} value={x}>
                               {x}
                             </option>
@@ -499,7 +515,7 @@ export function ObservationEditor({
                           }
                           className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                         >
-                          {CONDITIONS.map((x) => (
+                          {(["live", "wideo", "mix"] as const).map((x) => (
                             <option key={x} value={x}>
                               {x === "wideo" ? "Wideo" : x === "mix" ? "Mix" : "Live"}
                             </option>
@@ -695,11 +711,17 @@ export function ObservationEditor({
                                   value={p.position ?? ""}
                                   onChange={(e) =>
                                     updatePlayer(p.id, {
-                                      position: (e.target.value || undefined) as PositionKey | undefined,
+                                      position: (e.target.value || undefined) as
+                                        | PositionKey
+                                        | undefined,
                                     })
                                   }
                                   className="w-[11rem] rounded-md border border-gray-300 bg-white p-2 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
-                                  title={p.position ? `${p.position} — ${POS_INFO[p.position]}` : "Wybierz pozycję"}
+                                  title={
+                                    p.position
+                                      ? `${p.position} — ${POS_INFO[p.position]}`
+                                      : "Wybierz pozycję"
+                                  }
                                 >
                                   <option value="">— wybierz pozycję —</option>
                                   {POSITIONS.map((pos) => (
@@ -820,7 +842,7 @@ export function ObservationEditor({
                           key={p.id}
                           className="border-t border-gray-200 p-3 text-sm dark:border-neutral-800"
                         >
-                          {/* BASE – compact metric grid (no truncation) */}
+                          {/* BASE – compact metric grid */}
                           <Group title="Kategorie bazowe">
                             {metrics.BASE.filter((m) => m.enabled).map((m) => (
                               <MetricItem
