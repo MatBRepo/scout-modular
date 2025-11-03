@@ -168,7 +168,7 @@ export default function GlobalDatabasePage() {
             }
           />
 
-          <Card className="border-gray-200 dark:border-neutral-800">
+          <Card className="border-gray-200 dark:border-neutral-800 mt-3">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">
                 Globalna baza •{" "}

@@ -1,15 +1,18 @@
 // src/features/players/MyPlayersFeature.tsx
 "use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Crumb, Toolbar } from "@/shared/ui/atoms";
 import type { Player, Observation } from "@/shared/types";
 import {
   PlusCircle, Pencil, Undo2, Trash2, ListFilter, ChevronUp, ChevronDown,
-  ImageUp, Download, RotateCcw, PlusSquare, Search, ArrowLeft, X,
-  ChevronLeft, ChevronRight, Columns3
+  Download, PlusSquare, Search, ArrowLeft, X, ChevronLeft, ChevronRight,
+  Columns3, EllipsisVertical, Users, FileDown, FileSpreadsheet, FileEdit, Tv, Radio
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,43 +23,46 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 
+/* ====== helpers: mobile detection + portal ====== */
+function useIsMobile(maxPx = 640) {
+  const [is, setIs] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width:${maxPx - 1}px)`);
+    const on = (e: MediaQueryListEvent | MediaQueryList) =>
+      setIs((e as any).matches ?? mq.matches);
+    setIs(mq.matches);
+    mq.addEventListener?.("change", on as any);
+    return () => mq.removeEventListener?.("change", on as any);
+  }, [maxPx]);
+  return is;
+}
+function Portal({ children }: { children: React.ReactNode }) {
+  const [el, setEl] = useState<HTMLElement | null>(null);
+  useEffect(() => setEl(document.getElementById("portal-root")), []);
+  return el ? createPortal(children, el) : null;
+}
+
 /* =======================================
    Types & constants
 ======================================= */
-
 const POS: PosGroup[] = ["GK", "DF", "MF", "FW"];
-
 type PosGroup = "GK" | "DF" | "MF" | "FW";
 
 function toPosGroup(p: Player["pos"]): PosGroup {
   switch (p) {
-    case "GK":
-      return "GK";
-
-    // obrońcy (wszystko, co obronne, mapujemy na DF)
+    case "GK": return "GK";
     case "DF":
     case "CB":
     case "RB":
-    case "CW": // jeśli w Twoim modelu to "center back/wing-back" – traktuj jako obrońca
-      return "DF";
-
-    // pomocnicy
+    case "CW": return "DF";
     case "MF":
-    case "CM":
-      return "MF";
-
-    // napastnicy / skrzydła ofensywne
+    case "CM": return "MF";
     case "FW":
-    case "LW":
-      return "FW";
-
-    // nieznane -> wrzuć do MF (albo wybierz inną domyślną grupę)
+    case "LW": return "FW";
     case "?":
-    default:
-      return "MF";
+    default: return "MF";
   }
 }
-
 
 const DEFAULT_COLS = {
   photo: true,
@@ -65,28 +71,25 @@ const DEFAULT_COLS = {
   club: true,
   pos: true,
   age: true,
-  status: true,
   obs: true,
   actions: true,
 };
 type ColKey = keyof typeof DEFAULT_COLS;
 
-// Polish labels for columns
 const COL_LABELS: Record<ColKey, string> = {
-  photo: "Foto",
+  photo: "",
   select: "Zaznacz",
   name: "Nazwa",
   club: "Klub",
   pos: "Pozycja",
   age: "Wiek",
-  status: "Status",
   obs: "Obserwacje",
   actions: "Akcje",
 };
 
 type KnownScope = "known" | "unknown" | "all";
 type Scope = "active" | "trash";
-type SortKey = "name" | "club" | "pos" | "age" | "status" | "obs";
+type SortKey = "name" | "club" | "pos" | "age" | "obs";
 type SortDir = "asc" | "desc";
 
 const UI_KEY = "s4s.players.ui";
@@ -107,31 +110,30 @@ export default function MyPlayersFeature({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isMobile = useIsMobile();
 
-  // Content swap inside table region
   const [content, setContent] = useState<"table" | "quick">("table");
   const [quickFor, setQuickFor] = useState<Player | null>(null);
   const [quickTab, setQuickTab] = useState<"new" | "existing">("new");
 
-  // Restored UI state
   const [scope, setScope] = useState<Scope>("active");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-const [pos, setPos] = useState<Record<PosGroup, boolean>>({
-  GK: true,
-  DF: true,
-  MF: true,
-  FW: true,
-});
+  const [pos, setPos] = useState<Record<PosGroup, boolean>>({
+    GK: true, DF: true, MF: true, FW: true,
+  });
   const [club, setClub] = useState("");
   const [ageMin, setAgeMin] = useState<number | "">("");
   const [ageMax, setAgeMax] = useState<number | "">("");
   const [colsOpen, setColsOpen] = useState(false);
   const [visibleCols, setVisibleCols] = useState({ ...DEFAULT_COLS });
-  const [knownScope, setKnownScope] = useState<KnownScope>("known");
+  const [knownScope, setKnownScope] = useState<KnownScope>("all"); // default = Wszyscy
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  // 3-dots menu
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -147,7 +149,6 @@ const [pos, setPos] = useState<Record<PosGroup, boolean>>({
   const [obsQuery, setObsQuery] = useState("");
   const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
 
-  // Refs
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   // Load UI prefs
@@ -176,13 +177,13 @@ const [pos, setPos] = useState<Record<PosGroup, boolean>>({
     } catch {}
   }, [scope, knownScope, q, pos, club, ageMin, ageMax, visibleCols, sortKey, sortDir, pageSize]);
 
-  /* URL param -> tab sync */
+  /* URL param -> tab sync; default = all */
   useEffect(() => {
-    const tab = (searchParams?.get("tab") as KnownScope | null) ?? null;
+    const tab = (searchParams?.get("tab") as KnownScope | null) ?? "all";
     if (tab === "known" || tab === "unknown" || tab === "all") {
       setKnownScope(tab);
     } else {
-      setKnownScope("known");
+      setKnownScope("all");
     }
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,7 +208,7 @@ const [pos, setPos] = useState<Record<PosGroup, boolean>>({
     [players, observations]
   );
 
-  // Apply all filters except known tab for per-tab counters
+  // Apply all filters except known tab
   const baseFilteredNoKnown = useMemo(() => {
     return withObsCount
       .filter((r) => (r.status ?? "active") === scope)
@@ -230,7 +231,7 @@ const [pos, setPos] = useState<Record<PosGroup, boolean>>({
     return { known, unknown, all };
   }, [baseFilteredNoKnown]);
 
-  // Final filtered (includes current knownScope)
+  // Final filtered (includes knownScope)
   const filtered = useMemo(() => {
     let base = [...baseFilteredNoKnown];
     if (knownScope === "known") base = base.filter((r) => r._known);
@@ -248,8 +249,6 @@ const [pos, setPos] = useState<Record<PosGroup, boolean>>({
           return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
         case "age":
           av = a.age || 0; bv = b.age || 0; return (av - bv) * dir;
-        case "status":
-          av = a.status === "active" ? 1 : 0; bv = b.status === "active" ? 1 : 0; return (av - bv) * dir;
         case "obs":
           av = a._obs || 0; bv = b._obs || 0; return (av - bv) * dir;
         default:
@@ -324,13 +323,6 @@ const [pos, setPos] = useState<Record<PosGroup, boolean>>({
     return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
 
-  // photos
-  function handlePhotoChange(pId: number, file: File) {
-    const url = URL.createObjectURL(file);
-    const next = players.map((p) => (p.id === pId ? ({ ...p, photo: url } as any) : p));
-    onChangePlayers(next);
-  }
-
   // Quick area controls
   function openQuick(player: Player) {
     setQuickFor(player);
@@ -389,11 +381,10 @@ const [pos, setPos] = useState<Record<PosGroup, boolean>>({
     closeQuick();
   }
 
-  // Active filter chips
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
     if (q.trim()) chips.push({ key: "q", label: `Szukaj: “${q.trim()}”`, clear: () => { setQ(""); setPage(1); } });
-const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
+    const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
     if (visiblePositions.length < POS.length) {
       chips.push({
         key: "pos",
@@ -440,6 +431,15 @@ const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
     return () => window.removeEventListener("keydown", onKey);
   }, [router]);
 
+  /* ====== filtersCount for badge ====== */
+  const filtersCount =
+    (q.trim() ? 1 : 0) +
+    (Object.values(pos).some(v => !v) ? 1 : 0) +
+    (club.trim() ? 1 : 0) +
+    (ageMin !== "" ? 1 : 0) +
+    (ageMax !== "" ? 1 : 0) +
+    (knownScope !== "all" ? 1 : 0);
+
   return (
     <TooltipProvider delayDuration={150}>
       <div className="w-full">
@@ -449,22 +449,7 @@ const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
         <Toolbar
           title="Baza zawodników"
           right={
-            <div className="flex flex-wrap items-center gap-3">
-              {/* active / trash */}
-              <div className="inline-flex overflow-hidden rounded-md border border-gray-300 dark:border-neutral-700">
-                {(["active", "trash"] as const).map((s) => (
-                  <button
-                    key={s}
-                    className={`px-3 py-2 text-sm transition-colors ${
-                      scope === s ? "bg-gray-900 text-white" : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    }`}
-                    onClick={() => { setScope(s); setSelected(new Set()); setPage(1); }}
-                  >
-                    {s === "active" ? "aktywni" : "kosz"}
-                  </button>
-                ))}
-              </div>
-
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {/* search */}
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -473,7 +458,7 @@ const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
                   value={q}
                   onChange={(e) => { setQ(e.target.value); setPage(1); }}
                   placeholder="Szukaj po nazwisku/klubie… (/) "
-                  className="w-64 pl-8"
+                  className="w-36 pl-8 sm:w-56 md:w-64"
                   aria-label="Szukaj w bazie zawodników"
                 />
               </div>
@@ -483,111 +468,249 @@ const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
                 <Button
                   variant="outline"
                   className="border-gray-300 px-3 py-2 dark:border-neutral-700"
-                  onClick={() => setFiltersOpen((v) => !v)}
+                  onClick={() => { setFiltersOpen((v) => !v); setColsOpen(false); setMoreOpen(false); }}
+                  aria-pressed={filtersOpen}
                 >
-                  <ListFilter className="mr-2 h-4 w-4" />
-                  Filtry
+                  <ListFilter className="mr-0 md:mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Filtry{filtersCount ? ` (${filtersCount})` : ""}</span>
                 </Button>
-                {filtersOpen && (
-                  <div className="absolute right-0 top-full z-20 mt-2 w-96 rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-                    <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Pozycje</div>
-                    <div className="mb-3 grid grid-cols-4 gap-2">
-                      {POS.map((p) => (
-                        <label key={p} className="flex flex-wrap items-center justify-between rounded-md px-2 py-1 hover:bg-gray-50 dark:hover:bg-neutral-800">
-                          <span>{p}</span>
-                          <input
-                            type="checkbox"
-                            checked={pos[p]}
-                            onChange={(e) => { setPos((prev) => ({ ...prev, [p]: e.target.checked })); setPage(1); }}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                    <div className="mb-3">
-                      <Label className="text-xs text-gray-600 dark:text-neutral-300">Klub</Label>
-                      <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek min</Label>
-                        <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek max</Label>
-                        <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                      </div>
-                    </div>
 
-                    <div className="mt-3 flex flex-wrap items-center justify-between">
-                      <Button
-                        variant="outline"
-                        className="border-gray-300 dark:border-neutral-700"
-                        onClick={()=>{
-                          setPos({ GK:true, DF:true, MF:true, FW:true });
-                          setClub("");
-                          setAgeMin("");
-                          setAgeMax("");
-                          setQ("");
-                          changeKnownScope("all");
-                          setPage(1);
-                        }}
+                {/* FILTRY panel: bottom-sheet on mobile, popover on desktop */}
+                {filtersOpen && (
+                  isMobile ? (
+                    <Portal>
+                      <div
+                        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                        onClick={() => setFiltersOpen(false)}
+                        aria-hidden
+                      />
+                      <div
+                        className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                        role="dialog"
+                        aria-modal="true"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Resetuj wszystko
-                      </Button>
-                      <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => setFiltersOpen(false)}>
-                        Zastosuj
-                      </Button>
+                        <div className="mb-3 flex items-center justify-between">
+                          <div className="text-sm font-semibold">Filtry</div>
+                          <Button variant="outline" size="sm" className="border-gray-300 dark:border-neutral-700" onClick={() => setFiltersOpen(false)}>Zamknij</Button>
+                        </div>
+
+                        <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Pozycje</div>
+                        <div className="mb-3 grid grid-cols-2 gap-2">
+                          {POS.map((p) => (
+                            <label key={p} className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800">
+                              <span>{p}</span>
+                              <Checkbox
+                                checked={pos[p]}
+                                onCheckedChange={(v) => { setPos(prev => ({ ...prev, [p]: Boolean(v) })); setPage(1); }}
+                              />
+                            </label>
+                          ))}
+                        </div>
+
+                        <div className="mb-3">
+                          <Label className="text-xs text-gray-600 dark:text-neutral-300">Klub</Label>
+                          <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek min</Label>
+                            <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek max</Label>
+                            <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center justify-between">
+                          <Button
+                            variant="outline"
+                            className="border-gray-300 dark:border-neutral-700"
+                            onClick={()=>{
+                              setPos({ GK:true, DF:true, MF:true, FW:true });
+                              setClub("");
+                              setAgeMin("");
+                              setAgeMax("");
+                              setQ("");
+                              changeKnownScope("all");
+                              setPage(1);
+                            }}
+                          >
+                            Resetuj wszystko
+                          </Button>
+                          <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => setFiltersOpen(false)}>
+                            Zastosuj
+                          </Button>
+                        </div>
+                      </div>
+                    </Portal>
+                  ) : (
+                    <div
+                      className="absolute right-0 top-full z-[120] mt-2 w-96 max-w-[92vw] rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+                      onMouseLeave={() => setFiltersOpen(false)}
+                    >
+                      <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Pozycje</div>
+                      <div className="mb-3 grid grid-cols-4 gap-2">
+                        {POS.map((p) => (
+                          <label key={p} className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-gray-50 dark:hover:bg-neutral-800">
+                            <span>{p}</span>
+                            <Checkbox
+                              checked={pos[p]}
+                              onCheckedChange={(v) => { setPos(prev => ({ ...prev, [p]: Boolean(v) })); setPage(1); }}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                      <div className="mb-3">
+                        <Label className="text-xs text-gray-600 dark:text-neutral-300">Klub</Label>
+                        <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek min</Label>
+                          <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek max</Label>
+                          <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center justify-between">
+                        <Button
+                          variant="outline"
+                          className="border-gray-300 dark:border-neutral-700"
+                          onClick={()=>{
+                            setPos({ GK:true, DF:true, MF:true, FW:true });
+                            setClub("");
+                            setAgeMin("");
+                            setAgeMax("");
+                            setQ("");
+                            changeKnownScope("all");
+                            setPage(1);
+                          }}
+                        >
+                          Resetuj wszystko
+                        </Button>
+                        <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => setFiltersOpen(false)}>
+                          Zastosuj
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )
                 )}
               </div>
 
-              {/* columns */}
+              {/* columns → mobile bottom-sheet, desktop popover */}
               <ColumnsButton
+                isMobile={isMobile}
                 open={colsOpen}
-                setOpen={setColsOpen}
+                setOpen={(v) => { setColsOpen(v); if (v) { setFiltersOpen(false); setMoreOpen(false); } }}
                 visibleCols={visibleCols}
                 setVisibleCols={(next) => setVisibleCols(next)}
               />
 
-              {/* export */}
-              <Button variant="outline" className="border-gray-300 px-3 py-2 dark:border-neutral-700" onClick={exportCSV} title="Skrót: E">
-                <Download className="mr-2 h-4 w-4" />
-                CSV
-              </Button>
-              <Button variant="outline" className="border-gray-300 px-3 py-2 dark:border-neutral-700" onClick={exportExcel}>
-                <Download className="mr-2 h-4 w-4" />
-                Excel
-              </Button>
+              {/* add + more (3 dots to the RIGHT after Dodaj) */}
+              <div className="relative flex items-center gap-2">
+                <Button className="bg-gray-900 px-4 py-2 text-white hover:bg-gray-800" onClick={() => router.push("/players/new")} title="Skrót: N">
+                  <PlusCircle className="mr-0 md:mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Dodaj</span>
+                </Button>
 
-              {/* add player */}
-              <Button className="bg-gray-900 px-4 py-2 text-white hover:bg-gray-800" onClick={() => router.push("/players/new")} title="Skrót: N">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Dodaj
-              </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 w-10 border-gray-300 p-0 dark:border-neutral-700"
+                  onClick={() => { setMoreOpen((o) => !o); setFiltersOpen(false); setColsOpen(false); }}
+                  aria-label="Więcej"
+                >
+                  <EllipsisVertical className="h-5 w-5" />
+                </Button>
+
+                {moreOpen && (
+                  <div
+                    className="absolute right-0 top-full z-[150] mt-2 w-56 overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+                    onMouseLeave={() => setMoreOpen(false)}
+                  >
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => { setScope("active"); setMoreOpen(false); }}
+                    >
+                      <Users className="h-4 w-4" /> Aktywni
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => { setScope("trash"); setMoreOpen(false); }}
+                    >
+                      <Trash2 className="h-4 w-4" /> Kosz
+                    </button>
+                    <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => { setMoreOpen(false); exportCSV(); }}
+                    >
+                      <FileDown className="h-4 w-4" /> Eksport CSV
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => { setMoreOpen(false); exportExcel(); }}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           }
         />
 
-        {/* Tabs with counts */}
-        <div className="mt-3">
-          <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-            <TabsList className="rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
-              <TabsTrigger value="known" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                Znani <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">{tabCounts.known}</span>
-              </TabsTrigger>
-              <TabsTrigger value="unknown" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                Nieznani <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">{tabCounts.unknown}</span>
-              </TabsTrigger>
-              <TabsTrigger value="all" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                Wszyscy <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">{tabCounts.all}</span>
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="known" />
-            <TabsContent value="unknown" />
-            <TabsContent value="all" />
-          </Tabs>
+        {/* Tabs + compact selection bar */}
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
+              <TabsList className="rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+                <TabsTrigger value="all" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                  Wszyscy
+                  <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    {tabCounts.all}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="known" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                  Znani
+                  <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    {tabCounts.known}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="unknown" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                  Nieznani
+                  <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    {tabCounts.unknown}
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="all" />
+              <TabsContent value="known" />
+              <TabsContent value="unknown" />
+            </Tabs>
+          </div>
+
+          {selected.size > 0 && content === "table" && (
+            <div className="flex shrink-0 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+              <div>
+                Zaznaczono: <b>{selected.size}</b>
+              </div>
+              {scope === "active" ? (
+                <Button className="h-8 bg-gray-900 px-3 text-white hover:bg-gray-800" onClick={bulkTrash}>
+                  <Trash2 className="mr-1 h-4 w-4" /> Do kosza
+                </Button>
+              ) : (
+                <Button className="h-8 bg-gray-900 px-3 text-white hover:bg-gray-800" onClick={bulkRestore}>
+                  <Undo2 className="mr-1 h-4 w-4" /> Przywróć
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Active filter chips */}
@@ -612,26 +735,8 @@ const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
               className="ml-1 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
               title="Wyczyść wszystkie filtry"
             >
-              <RotateCcw className="h-3 w-3" /> Wyczyść wszystkie
+              Wyczyść wszystkie
             </button>
-          </div>
-        )}
-
-        {/* Bulk bar */}
-        {selected.size > 0 && content === "table" && (
-          <div className="mt-3 flex flex-wrap items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
-            <div>Zaznaczono: <b>{selected.size}</b></div>
-            <div className="flex flex-wrap items-center gap-2">
-              {scope === "active" ? (
-                <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={bulkTrash}>
-                  <Trash2 className="mr-2 h-4 w-4" /> Do kosza
-                </Button>
-              ) : (
-                <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={bulkRestore}>
-                  <Undo2 className="mr-2 h-4 w-4" /> Przywróć
-                </Button>
-              )}
-            </div>
           </div>
         )}
 
@@ -652,7 +757,6 @@ const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
                 onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
                 sortKey={sortKey}
                 sortDir={sortDir}
-                onPhotoChange={handlePhotoChange}
                 onQuick={(p) => openQuick(p)}
                 cellPad={cellPad}
                 rowH={rowH}
@@ -745,7 +849,6 @@ function PlayersTable({
   onSortChange,
   sortKey,
   sortDir,
-  onPhotoChange,
   onQuick,
   cellPad,
   rowH,
@@ -763,7 +866,6 @@ function PlayersTable({
   onSortChange: (k: SortKey, d: SortDir) => void;
   sortKey: SortKey;
   sortDir: SortDir;
-  onPhotoChange: (id: number, file: File) => void;
   onQuick: (p: Player) => void;
   cellPad: string;
   rowH: string;
@@ -809,13 +911,11 @@ function PlayersTable({
           <tr>
             {visibleCols.photo && <th className={`${cellPad} text-left font-medium w-16`}>{COL_LABELS.photo}</th>}
             {visibleCols.select && (
-              <th className={`${cellPad} text-left font-medium w-9`}>
-                <input
-                  type="checkbox"
-                  aria-checked={(!rows.length ? false : undefined) || (someChecked ? "mixed" : undefined)}
-                  checked={pageSliceCount > 0 && rows.every((r) => selected.has(r.id))}
-                  onChange={(e) => {
-                    if (e.target.checked) setSelected(new Set([...selected, ...rows.map((f) => f.id)]));
+              <th className={`${cellPad} text-left font-medium w-10`}>
+                <Checkbox
+                  checked={rows.length === 0 ? false : (allChecked ? true : (someChecked ? "indeterminate" : false))}
+                  onCheckedChange={(v) => {
+                    if (v) setSelected(new Set([...selected, ...rows.map((f) => f.id)]));
                     else {
                       const set = new Set(selected);
                       rows.forEach(r => set.delete(r.id));
@@ -829,7 +929,6 @@ function PlayersTable({
             {visibleCols.club && <th className={`${cellPad} text-left`}><SortHeader k="club">{COL_LABELS.club}</SortHeader></th>}
             {visibleCols.pos && <th className={`${cellPad} text-left`}><SortHeader k="pos">{COL_LABELS.pos}</SortHeader></th>}
             {visibleCols.age && <th className={`${cellPad} text-left`}><SortHeader k="age">{COL_LABELS.age}</SortHeader></th>}
-            {visibleCols.status && <th className={`${cellPad} text-left font-medium`}>{COL_LABELS.status}</th>}
             {visibleCols.obs && <th className={`${cellPad} text-left`}><SortHeader k="obs">{COL_LABELS.obs}</SortHeader></th>}
             {visibleCols.actions && <th className={`${cellPad} text-right font-medium`}>{COL_LABELS.actions}</th>}
           </tr>
@@ -864,33 +963,17 @@ function PlayersTable({
                           {getInitials(r.name)}
                         </div>
                       )}
-                      {r._known && (
-                        <label className="absolute -bottom-1 -right-1 hidden cursor-pointer items-center gap-1 rounded-full bg-white px-1.5 py-0.5 text-[10px] shadow ring-1 ring-black/5 transition group-hover:flex dark:bg-neutral-800">
-                          <ImageUp className="h-3 w-3" />
-                          Zmień
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) onPhotoChange(r.id, file);
-                            }}
-                          />
-                        </label>
-                      )}
                     </div>
                   </td>
                 )}
 
                 {visibleCols.select && (
                   <td className={cellPad}>
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selected.has(r.id)}
-                      onChange={(e) => {
+                      onCheckedChange={(v) => {
                         const copy = new Set(selected);
-                        if (e.target.checked) copy.add(r.id); else copy.delete(r.id);
+                        if (v) copy.add(r.id); else copy.delete(r.id);
                         setSelected(copy);
                       }}
                     />
@@ -912,19 +995,12 @@ function PlayersTable({
                 )}
                 {visibleCols.pos && (
                   <td className={cellPad}>
-                    <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
                       {r.pos}
                     </span>
                   </td>
                 )}
                 {visibleCols.age && <td className={`${cellPad} text-gray-700 dark:text-neutral-200`}>{r.age}</td>}
-                {visibleCols.status && (
-                  <td className={cellPad}>
-                    <span className={"inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium " + (r.status === "active" ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200" : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200")}>
-                      {r.status === "active" ? "aktywny" : "w koszu"}
-                    </span>
-                  </td>
-                )}
                 {visibleCols.obs && (
                   <td className={cellPad}>
                     <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
@@ -951,7 +1027,7 @@ function PlayersTable({
                         <TooltipContent>Obserwacje</TooltipContent>
                       </Tooltip>
 
-                      {/* Edit (icon-only) */}
+                      {/* Edit */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -961,13 +1037,13 @@ function PlayersTable({
                             onClick={() => onOpen(r.id)}
                             aria-label={r._known ? "Edytuj" : "Uzupełnij dane"}
                           >
-                            <Pencil className="h-4 w-4" />
+                            {r._known ? <Pencil className="h-4 w-4" /> : <FileEdit className="h-4 w-4" />}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>{r._known ? "Edytuj" : "Uzupełnij dane"}</TooltipContent>
                       </Tooltip>
 
-                      {/* Trash/Restore (icon-only) */}
+                      {/* Trash/Restore */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -1004,52 +1080,98 @@ function PlayersTable({
   );
 }
 
-/* Columns popover */
+/* Columns popover / bottom-sheet */
 function ColumnsButton({
+  isMobile,
   open, setOpen, visibleCols, setVisibleCols,
 }: {
+  isMobile: boolean;
   open: boolean;
   setOpen: (v: boolean) => void;
   visibleCols: Record<keyof typeof DEFAULT_COLS, boolean>;
   setVisibleCols: (v: Record<keyof typeof DEFAULT_COLS, boolean>) => void;
 }) {
+  const panel = (
+    <div
+      className="absolute right-0 top-full z-[120] mt-2 w-60 max-w-[92vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+      onMouseLeave={() => setOpen(false)}
+    >
+      <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Widoczność kolumn</div>
+      {Object.keys(DEFAULT_COLS).map((k) => {
+        const key = k as ColKey;
+        return (
+          <label
+            key={key}
+            className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+          >
+            <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
+            <Checkbox
+              checked={visibleCols[key]}
+              onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
+            />
+          </label>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="relative">
       <Button
         variant="outline"
         className="border-gray-300 px-3 py-2 dark:border-neutral-700"
         onClick={() => setOpen(!open)}
+        aria-pressed={open}
       >
-        <Columns3 className="mr-2 h-4 w-4" />
-        Kolumny
+        <Columns3 className="mr-0 md:mr-2 h-4 w-4" />
+        <span className="hidden sm:inline">Kolumny</span>
       </Button>
+
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-60 rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-          <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Widoczność kolumn</div>
-          {Object.keys(DEFAULT_COLS).map((k) => {
-            const key = k as ColKey;
-            return (
-              <label
-                key={key}
-                className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-              >
-                <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
-                <input
-                  type="checkbox"
-                  checked={visibleCols[key]}
-                  onChange={(e) => setVisibleCols({ ...visibleCols, [key]: e.target.checked })}
-                />
-              </label>
-            );
-          })}
-        </div>
+        isMobile ? (
+          <Portal>
+            <div
+              className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+              onClick={() => setOpen(false)}
+              aria-hidden
+            />
+            <div
+              className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+              role="dialog"
+              aria-modal="true"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-semibold">Kolumny</div>
+                <Button variant="outline" size="sm" className="border-gray-300 dark:border-neutral-700" onClick={() => setOpen(false)}>
+                  Zamknij
+                </Button>
+              </div>
+              {Object.keys(DEFAULT_COLS).map((k) => {
+                const key = k as ColKey;
+                return (
+                  <label
+                    key={key}
+                    className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  >
+                    <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
+                    <Checkbox
+                      checked={visibleCols[key]}
+                      onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </Portal>
+        ) : panel
       )}
     </div>
   );
 }
 
 /* =======================================
-   Quick Observation (teams builder + autosave)
+   Quick Observation (unchanged, minor tweaks)
 ======================================= */
 function QuickObservation({
   player,
@@ -1079,7 +1201,6 @@ function QuickObservation({
   obsSelectedId: number | null; setObsSelectedId: (v: number | null) => void;
   onDuplicate: () => void; onReassign: () => void;
 }) {
-  /* ------- helpers ------- */
   const parseTeams = (m?: string) => {
     if (!m) return { a: "", b: "" };
     const parts = m.split(/ *vs *| *VS *| *Vs */i);
@@ -1095,27 +1216,9 @@ function QuickObservation({
     </span>
   );
 
-  /* ------- existing list for "Istniejąca" ------- */
-  const existingFiltered = useMemo(() => {
-    const q = obsQuery.trim().toLowerCase();
-    const arr = [...observations].sort((a, b) =>
-      ((b.date || "") + (b.time || "")).localeCompare((a.date || "") + (a.time || ""))
-    );
-    if (!q) return arr;
-    return arr.filter(
-      (o) =>
-        (o.match || "").toLowerCase().includes(q) ||
-        (o.player || "").toLowerCase().includes(q) ||
-        (o.date || "").includes(q)
-    );
-  }, [observations, obsQuery]);
+  const [teamA, setTeamA] = useState(parseTeams(qaMatch).a);
+  const [teamB, setTeamB] = useState(parseTeams(qaMatch).b);
 
-  /* ------- local teamA/teamB builder ------- */
-  const initial = useMemo(() => parseTeams(qaMatch), []); // only for first mount
-  const [teamA, setTeamA] = useState(initial.a);
-  const [teamB, setTeamB] = useState(initial.b);
-
-  // keep local team inputs in sync if parent qaMatch changes (e.g. draft load elsewhere)
   useEffect(() => {
     const { a, b } = parseTeams(qaMatch);
     setTeamA(a);
@@ -1128,16 +1231,11 @@ function QuickObservation({
     setQaMatch(composeMatch(a, b));
   }
 
-  /* ------- autosave (localStorage) ------- */
   type SaveState = "idle" | "saving" | "saved";
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const draftKey = useMemo(
-    () => `s4s.quickobs.draft.${player.id}`,
-    [player.id]
-  );
+  const draftKey = `s4s.quickobs.draft.${player.id}`;
   const tRef = useRef<number | null>(null);
 
-  // load draft on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem(draftKey);
@@ -1154,16 +1252,13 @@ function QuickObservation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // save draft with debounce
   useEffect(() => {
     setSaveState("saving");
     window.clearTimeout(tRef.current || undefined);
     // @ts-ignore
     tRef.current = window.setTimeout(() => {
       try {
-        const payload = {
-          qaMatch, qaDate, qaTime, qaMode, qaStatus, teamA, teamB, _ts: Date.now(),
-        };
+        const payload = { qaMatch, qaDate, qaTime, qaMode, qaStatus, teamA, teamB, _ts: Date.now() };
         localStorage.setItem(draftKey, JSON.stringify(payload));
         setSaveState("saved");
         setTimeout(() => setSaveState("idle"), 1000);
@@ -1179,8 +1274,22 @@ function QuickObservation({
     onSaveNew();
   }
 
-  /* ------- misc ------- */
   const canSave = qaMatch.trim().length > 0 && qaDate.trim().length > 0;
+
+  // existing list
+  const existingFiltered = useMemo(() => {
+    const q = obsQuery.trim().toLowerCase();
+    const arr = [...observations].sort((a, b) =>
+      ((b.date || "") + (b.time || "")).localeCompare((a.date || "") + (a.time || ""))
+    );
+    if (!q) return arr;
+    return arr.filter(
+      (o) =>
+        (o.match || "").toLowerCase().includes(q) ||
+        (o.player || "").toLowerCase().includes(q) ||
+        (o.date || "").includes(q)
+    );
+  }, [observations, obsQuery]);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-0 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
@@ -1207,7 +1316,7 @@ function QuickObservation({
             </span>
           )}
           <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-0 md:mr-2 h-4 w-4" />
             Wróć
           </Button>
         </div>
@@ -1221,24 +1330,23 @@ function QuickObservation({
               value="new"
               className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
-              <PlusSquare className="mr-2 h-4 w-4" />
+              <PlusSquare className="mr-0 md:mr-2 h-4 w-4" />
               Nowa
             </TabsTrigger>
             <TabsTrigger
               value="existing"
               className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
-              <Download className="mr-2 h-4 w-4" />
+              <Download className="mr-0 md:mr-2 h-4 w-4" />
               Istniejąca
             </TabsTrigger>
           </TabsList>
 
-          {/* ===== NEW ===== */}
+          {/* NEW */}
           <TabsContent value="new" className="mt-2 space-y-4">
-            {/* Mecz section */}
             <div className="rounded-xl border border-gray-200 p-4 dark:border-neutral-800">
               <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">Mecz</div>
-              <div className="text-xs text-gray-500 dark:text-neutral-400 mb-3">
+              <div className="mb-3 text-xs text-gray-500 dark:text-neutral-400">
                 Wpisz drużyny — pole „Mecz” składa się automatycznie.
               </div>
 
@@ -1268,27 +1376,14 @@ function QuickObservation({
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <Label>Data meczu</Label>
-                  <Input
-                    type="date"
-                    value={qaDate}
-                    onChange={(e) => setQaDate(e.target.value)}
-                    placeholder="dd.mm.rrrr"
-                    className="mt-1"
-                  />
+                  <Input type="date" value={qaDate} onChange={(e) => setQaDate(e.target.value)} className="mt-1" />
                 </div>
                 <div>
                   <Label>Godzina meczu</Label>
-                  <Input
-                    type="time"
-                    value={qaTime}
-                    onChange={(e) => setQaTime(e.target.value)}
-                    placeholder="--:--"
-                    className="mt-1"
-                  />
+                  <Input type="time" value={qaTime} onChange={(e) => setQaTime(e.target.value)} className="mt-1" />
                 </div>
               </div>
 
-              {/* Summary line */}
               <div className="mt-3 text-xs text-gray-600 dark:text-neutral-300">
                 Mecz: <span className="font-medium">{qaMatch || "—"}</span>
                 <span className="ml-2">
@@ -1297,7 +1392,6 @@ function QuickObservation({
               </div>
             </div>
 
-            {/* Tryb / Status */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-gray-200 p-4 dark:border-neutral-800">
                 <Label>Tryb</Label>
@@ -1312,7 +1406,7 @@ function QuickObservation({
                           : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                       }`}
                     >
-                      {m === "live" ? "Live" : "TV"}
+                      {m === "live" ? <span className="inline-flex items-center gap-1"><Radio className="h-3.5 w-3.5" /> Live</span> : <span className="inline-flex items-center gap-1"><Tv className="h-3.5 w-3.5" /> TV</span>}
                     </button>
                   ))}
                 </div>
@@ -1337,7 +1431,6 @@ function QuickObservation({
               </div>
             </div>
 
-            {/* Sticky action bar */}
             <div className="sticky bottom-0 mt-1 -mx-4 border-t border-gray-200 bg-white/90 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
               <div className="flex items-center justify-end gap-2">
                 <div className="mr-auto hidden text-[11px] text-gray-500 sm:block dark:text-neutral-400">
@@ -1348,11 +1441,7 @@ function QuickObservation({
                 </Button>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      className="bg-gray-900 text-white hover:bg-gray-800"
-                      onClick={handleSave}
-                      disabled={!canSave}
-                    >
+                    <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={handleSave} disabled={!canSave}>
                       Zapisz
                     </Button>
                   </TooltipTrigger>
@@ -1364,7 +1453,7 @@ function QuickObservation({
             </div>
           </TabsContent>
 
-          {/* ===== EXISTING (unchanged core, styling kept) ===== */}
+          {/* EXISTING */}
           <TabsContent value="existing" className="mt-2 space-y-3">
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-gray-500" />
@@ -1447,7 +1536,7 @@ function QuickObservation({
 
             <div className="flex flex-wrap items-center justify-between">
               <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={onBack}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ArrowLeft className="mr-0 md:mr-2 h-4 w-4" />
                 Wróć
               </Button>
               <div className="flex items-center gap-2">

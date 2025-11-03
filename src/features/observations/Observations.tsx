@@ -1,11 +1,14 @@
 // src/features/observations/Observations.tsx
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Crumb, Toolbar, GrayTag } from "@/shared/ui/atoms";
 import type { Observation } from "@/shared/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Download,
   ListFilter,
@@ -21,6 +24,10 @@ import {
   ChevronUp,
   ChevronDown,
   Columns as ColumnsIcon,
+  EllipsisVertical,
+  FileDown,
+  FileSpreadsheet,
+  Users,
 } from "lucide-react";
 import { ObservationEditor } from "./ObservationEditor";
 import type { XO as EditorXO } from "./ObservationEditor";
@@ -32,12 +39,34 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 
+/* -------------------------------- helpers -------------------------------- */
+
+function useIsMobile(maxPx = 640) {
+  const [is, setIs] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width:${maxPx - 1}px)`);
+    const on = (e: MediaQueryListEvent | MediaQueryList) => setIs((e as any).matches ?? mq.matches);
+    setIs(mq.matches);
+    mq.addEventListener?.("change", on as any);
+    return () => mq.removeEventListener?.("change", on as any);
+  }, [maxPx]);
+  return is;
+}
+
+function Portal({ children }: { children: React.ReactNode }) {
+  const [el, setEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setEl(document.getElementById("portal-root"));
+  }, []);
+  return el ? createPortal(children, el) : null;
+}
+
 /* -------------------------------- Types -------------------------------- */
 
 type Bucket = "active" | "trash";
 type Mode = "live" | "tv";
+type TabKey = "active" | "draft" | "final"; // new tabs
 
-// patrz opis w poprzedniej wiadomości
 type PositionKey = string;
 
 type ObsPlayer = {
@@ -62,13 +91,13 @@ type XO = Observation & {
 };
 
 const DEFAULT_COLS = {
-  select: false,
+  select: true,
   match: true,
   date: true,
   time: true,
   mode: true,
   status: true,
-  bucket: true,
+  // bucket: false, // removed from table
   players: true,
   actions: true,
 };
@@ -81,7 +110,7 @@ const COL_PL: Record<ColKey, string> = {
   time: "Godzina",
   mode: "Tryb",
   status: "Status",
-  bucket: "Kosz",
+  // bucket: "Kosz",
   players: "Zawodnicy",
   actions: "Akcje",
 };
@@ -193,12 +222,16 @@ export default function ObservationsFeature({
   data: Observation[];
   onChange: (next: Observation[]) => void;
 }) {
-  const rows: XO[] = (data as XO[]).map((o) => ({
+  const isMobile = useIsMobile();
+
+const rows: XO[] = useMemo(() => {
+  return (data as XO[]).map((o) => ({
     bucket: "active",
     mode: "live",
     players: [],
     ...o,
   }));
+}, [data]);
 
   const [pageMode, setPageMode] = useState<"list" | "editor">("list");
   const [editing, setEditing] = useState<XO | null>(null);
@@ -274,10 +307,14 @@ export default function ObservationsFeature({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [tabScope, setTabScope] = useState<Bucket>("active");
+  // Tabs at top (default: active)
+  const [tab, setTab] = useState<TabKey>("active"); // default Aktywne obserwacje
+
+  const [scope, setScope] = useState<Bucket>("active"); // retained for "Aktywni/Kosz" switch in 3-dots
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [colsOpen, setColsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const [matchFilter, setMatchFilter] = useState("");
   const [modeFilter, setModeFilter] = useState<Mode | "">("");
@@ -291,12 +328,16 @@ export default function ObservationsFeature({
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
+  // -------- MASS SELECTION STATE --------
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(UI_KEY);
       if (!raw) return;
       const u = JSON.parse(raw);
-      if (u.tabScope) setTabScope(u.tabScope);
+      if (u.scope) setScope(u.scope);
+      if (u.tab) setTab(u.tab); // remember active/draft/final tab
       if (u.q) setQ(u.q);
       if (u.matchFilter) setMatchFilter(u.matchFilter);
       if (u.modeFilter) setModeFilter(u.modeFilter);
@@ -312,7 +353,8 @@ export default function ObservationsFeature({
   useEffect(() => {
     try {
       const u = {
-        tabScope,
+        scope,
+        tab,
         q,
         matchFilter,
         modeFilter,
@@ -326,7 +368,8 @@ export default function ObservationsFeature({
       localStorage.setItem(UI_KEY, JSON.stringify(u));
     } catch {}
   }, [
-    tabScope,
+    scope,
+    tab,
     q,
     matchFilter,
     modeFilter,
@@ -338,9 +381,22 @@ export default function ObservationsFeature({
     sortDir,
   ]);
 
+  // close panels on Esc
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setFiltersOpen(false);
+        setColsOpen(false);
+        setMoreOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const filtered = useMemo(() => {
     let base = rows
-      .filter((r) => (r.bucket ?? "active") === tabScope)
+      .filter((r) => (r.bucket ?? "active") === scope)
       .filter((r) =>
         !q
           ? true
@@ -359,6 +415,13 @@ export default function ObservationsFeature({
       .filter((r) => (lifecycleFilter ? r.status === lifecycleFilter : true))
       .filter((r) => (dateFrom ? (r.date ?? "") >= dateFrom : true))
       .filter((r) => (dateTo ? (r.date ?? "") <= dateTo : true));
+
+    // top tabs: active (status: final|draft), draft, final
+    base = base.filter((r) => {
+      if (tab === "draft") return r.status === "draft";
+      if (tab === "final") return r.status === "final";
+      return true; // active = both
+    });
 
     const dir = sortDir === "asc" ? 1 : -1;
     base.sort((a, b) => {
@@ -404,7 +467,8 @@ export default function ObservationsFeature({
     return base;
   }, [
     rows,
-    tabScope,
+    scope,
+    tab,
     q,
     matchFilter,
     modeFilter,
@@ -414,6 +478,30 @@ export default function ObservationsFeature({
     sortKey,
     sortDir,
   ]);
+
+  // Keep selection sane if scope/filters change
+useEffect(() => {
+  setSelected((prev) => {
+    if (prev.size === 0) return prev;
+
+    const visibleIds = new Set(filtered.map((r) => r.id));
+
+    // Build next as intersection
+    const next = new Set<number>();
+    prev.forEach((id) => { if (visibleIds.has(id)) next.add(id); });
+
+    // If nothing actually changed, return the same reference to avoid an update
+    if (next.size === prev.size) {
+      let same = true;
+      for (const id of prev) { if (!next.has(id)) { same = false; break; } }
+      if (same) return prev;
+    }
+    return next;
+  });
+}, [filtered]);
+
+  const allChecked = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+  const someChecked = !allChecked && filtered.some((r) => selected.has(r.id));
 
   function addNew() {
     setEditing({
@@ -455,6 +543,22 @@ export default function ObservationsFeature({
     onChange(next as unknown as Observation[]);
   }
 
+  // Bulk
+  function bulkTrash() {
+    const ids = selected;
+    if (ids.size === 0) return;
+    const next = rows.map((x) => (ids.has(x.id) ? { ...x, bucket: "trash" as Bucket } : x));
+    onChange(next as unknown as Observation[]);
+    setSelected(new Set());
+  }
+  function bulkRestore() {
+    const ids = selected;
+    if (ids.size === 0) return;
+    const next = rows.map((x) => (ids.has(x.id) ? { ...x, bucket: "active" as Bucket } : x));
+    onChange(next as unknown as Observation[]);
+    setSelected(new Set());
+  }
+
   function toggleModeInline(id: number) {
     const next = rows.map((x) =>
       x.id === id ? { ...x, mode: (x.mode ?? "live") === "live" ? "tv" : "live" } : x
@@ -481,10 +585,7 @@ export default function ObservationsFeature({
       r.players?.length ?? 0,
     ]);
     const csv = [
-      headers.join(","),
-      ...rowsCsv.map((r) =>
-        r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")
-      ),
+      headers.join(","), ...rowsCsv.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")),
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -610,38 +711,31 @@ export default function ObservationsFeature({
     );
   }
 
+  /* ===== Counters for tabs ===== */
+  const counts = useMemo(() => {
+    const withinScope = rows.filter((r) => (r.bucket ?? "active") === scope);
+    const all = withinScope.length;
+    const draft = withinScope.filter((r) => r.status === "draft").length;
+    const final = withinScope.filter((r) => r.status === "final").length;
+    return { all, draft, final };
+  }, [rows, scope]);
+
   return (
     <TooltipProvider delayDuration={150}>
       <div className="w-full">
         <Crumb items={[{ label: "Start", href: "/" }, { label: "Obserwacje" }]} />
+
+        {/* TOOLBAR */}
         <Toolbar
           title="Obserwacje"
           right={
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {/* scope toggle */}
-              <div className="inline-flex overflow-hidden rounded-md border border-gray-300 dark:border-neutral-700">
-                {(["active", "trash"] as const).map((s) => (
-                  <button
-                    key={s}
-                    className={`px-2.5 py-2 text-sm sm:px-3 transition focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
-                      tabScope === s
-                        ? "bg-gray-900 text-white"
-                        : "bg-white text-gray-700 dark:bg-neutral-900 dark:text-neutral-200"
-                    }`}
-                    aria-pressed={tabScope === s}
-                    onClick={() => setTabScope(s)}
-                  >
-                    {s === "active" ? "aktywne" : "kosz"}
-                  </button>
-                ))}
-              </div>
-
               {/* search */}
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Szukaj po meczu lub zawodnikach…"
-                className="w-40 sm:w-56 md:w-64"
+                className="w-36 sm:w-56 md:w-64"
               />
 
               {/* filters */}
@@ -650,143 +744,318 @@ export default function ObservationsFeature({
                   size="sm"
                   variant="outline"
                   className="border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                  onClick={() => {
-                    setFiltersOpen((v) => !v);
-                    setColsOpen(false);
-                  }}
+                  onClick={() => { setFiltersOpen((v) => !v); setColsOpen(false); setMoreOpen(false); }}
                   aria-pressed={filtersOpen}
                 >
-                  <ListFilter className="mr-2 h-4 w-4" />
+                  <ListFilter className="mr-0 md:mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">
                     Filtry{filtersCount ? ` (${filtersCount})` : ""}
                   </span>
                 </Button>
-                {filtersOpen && (
-                  <div className="absolute right-0 top-full z-20 mt-2 w-[22rem] max-w-[92vw] rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-                    <div className="mb-3">
-                      <Label className="text-xs">Mecz (kto vs kto)</Label>
-                      <Input
-                        value={matchFilter}
-                        onChange={(e) => setMatchFilter(e.target.value)}
-                        className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Data od</Label>
-                        <Input
-                          type="date"
-                          value={dateFrom}
-                          onChange={(e) => setDateFrom(e.target.value)}
-                          className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Data do</Label>
-                        <Input
-                          type="date"
-                          value={dateTo}
-                          onChange={(e) => setDateTo(e.target.value)}
-                          className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Tryb</Label>
-                        <select
-                          value={modeFilter}
-                          onChange={(e) => setModeFilter(e.target.value as Mode | "")}
-                          className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                        >
-                          <option value="">— dowolny —</option>
-                          <option value="live">Live</option>
-                          <option value="tv">TV</option>
-                        </select>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Status</Label>
-                        <select
-                          value={lifecycleFilter}
-                          onChange={(e) =>
-                            setLifecycleFilter(e.target.value as Observation["status"] | "")
-                          }
-                          className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                        >
-                          <option value="">— dowolny —</option>
-                          <option value="draft">Szkic</option>
-                          <option value="final">Finalna</option>
-                        </select>
-                      </div>
-                    </div>
 
-                    <div className="mt-3 flex flex-wrap items-center justify-between">
-                      <Button
-                        variant="outline"
-                        className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                        onClick={() => {
-                          setMatchFilter("");
-                          setModeFilter("");
-                          setLifecycleFilter("");
-                          setDateFrom("");
-                          setDateTo("");
-                          setQ("");
-                        }}
-                      >
-                        Wyczyść
-                      </Button>
-                      <Button
-                        className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                {/* FILTRY PANEL */}
+                {filtersOpen && (
+                  isMobile ? (
+                    <Portal>
+                      <div
+                        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
                         onClick={() => setFiltersOpen(false)}
+                        aria-hidden
+                      />
+                      <div
+                        className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                        role="dialog"
+                        aria-modal="true"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        Zastosuj
-                      </Button>
+                        <div className="mb-3 flex items-center justify-between">
+                          <div className="text-sm font-semibold">Filtry</div>
+                          <Button variant="outline" size="sm"
+                            className="border-gray-300 dark:border-neutral-700"
+                            onClick={() => setFiltersOpen(false)}
+                          >
+                            Zamknij
+                          </Button>
+                        </div>
+
+                        <div className="mb-3">
+                          <Label className="text-xs">Mecz (kto vs kto)</Label>
+                          <Input
+                            value={matchFilter}
+                            onChange={(e) => setMatchFilter(e.target.value)}
+                            className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Data od</Label>
+                            <Input
+                              type="date"
+                              value={dateFrom}
+                              onChange={(e) => setDateFrom(e.target.value)}
+                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Data do</Label>
+                            <Input
+                              type="date"
+                              value={dateTo}
+                              onChange={(e) => setDateTo(e.target.value)}
+                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark;border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Tryb</Label>
+                            <select
+                              value={modeFilter}
+                              onChange={(e) => setModeFilter(e.target.value as Mode | "")}
+                              className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                            >
+                              <option value="">— dowolny —</option>
+                              <option value="live">Live</option>
+                              <option value="tv">TV</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Status</Label>
+                            <select
+                              value={lifecycleFilter}
+                              onChange={(e) =>
+                                setLifecycleFilter(e.target.value as Observation["status"] | "")
+                              }
+                              className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                            >
+                              <option value="">— dowolny —</option>
+                              <option value="draft">Szkic</option>
+                              <option value="final">Finalna</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center justify-between">
+                          <Button
+                            variant="outline"
+                            className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                            onClick={() => {
+                              setMatchFilter("");
+                              setModeFilter("");
+                              setLifecycleFilter("");
+                              setDateFrom("");
+                              setDateTo("");
+                              setQ("");
+                            }}
+                          >
+                            Wyczyść
+                          </Button>
+                          <Button
+                            className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                            onClick={() => setFiltersOpen(false)}
+                          >
+                            Zastosuj
+                          </Button>
+                        </div>
+                      </div>
+                    </Portal>
+                  ) : (
+                    <div
+                      className="absolute right-0 top-full z-[120] mt-2 w-[22rem] max-w-[92vw] rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+                      onMouseLeave={() => setFiltersOpen(false)}
+                    >
+                      <div className="mb-3">
+                        <Label className="text-xs">Mecz (kto vs kto)</Label>
+                        <Input
+                          value={matchFilter}
+                          onChange={(e) => setMatchFilter(e.target.value)}
+                          className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Data od</Label>
+                          <Input
+                            type="date"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                            className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Data do</Label>
+                          <Input
+                            type="date"
+                            value={dateTo}
+                            onChange={(e) => setDateTo(e.target.value)}
+                            className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Tryb</Label>
+                          <select
+                            value={modeFilter}
+                            onChange={(e) => setModeFilter(e.target.value as Mode | "")}
+                            className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                          >
+                            <option value="">— dowolny —</option>
+                            <option value="live">Live</option>
+                            <option value="tv">TV</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Status</Label>
+                          <select
+                            value={lifecycleFilter}
+                            onChange={(e) =>
+                              setLifecycleFilter(e.target.value as Observation["status"] | "")
+                            }
+                            className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                          >
+                            <option value="">— dowolny —</option>
+                            <option value="draft">Szkic</option>
+                            <option value="final">Finalna</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center justify-between">
+                        <Button
+                          variant="outline"
+                          className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                          onClick={() => {
+                            setMatchFilter("");
+                            setModeFilter("");
+                            setLifecycleFilter("");
+                            setDateFrom("");
+                            setDateTo("");
+                            setQ("");
+                          }}
+                        >
+                          Wyczyść
+                        </Button>
+                        <Button
+                          className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                          onClick={() => setFiltersOpen(false)}
+                        >
+                          Zastosuj
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )
                 )}
               </div>
 
               {/* columns */}
               <ColumnsButton
+                isMobile={isMobile}
                 open={colsOpen}
-                setOpen={(v) => {
-                  setColsOpen(v);
-                  if (v) setFiltersOpen(false);
-                }}
+                setOpen={(v) => { setColsOpen(v); if (v) { setFiltersOpen(false); setMoreOpen(false); } }}
                 visibleCols={visibleCols}
                 setVisibleCols={setVisibleCols}
               />
 
-              {/* exports */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                onClick={exportCSV}
-              >
-                <Download className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">CSV</span>
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                onClick={exportExcel}
-              >
-                <Download className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Excel</span>
-              </Button>
+              {/* add + more (3 dots to the RIGHT after Dodaj) */}
+              <div className="relative flex items-center gap-2">
+                <Button
+                  size="sm"
+                  className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                  onClick={addNew}
+                >
+                  <PlusCircle className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden sm:inline">Dodaj</span>
+                </Button>
 
-              {/* add */}
-              <Button
-                size="sm"
-                className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
-                onClick={addNew}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Dodaj</span>
-              </Button>
+                <Button
+                  variant="outline"
+                  className="h-9 w-9 border-gray-300 p-0 dark:border-neutral-700"
+                  onClick={() => { setMoreOpen((o) => !o); setFiltersOpen(false); setColsOpen(false); }}
+                  aria-label="Więcej"
+                >
+                  <EllipsisVertical className="h-5 w-5" />
+                </Button>
+
+                {moreOpen && (
+                  <div
+                    className="absolute right-0 top-full z-[150] mt-2 w-56 overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+                    onMouseLeave={() => setMoreOpen(false)}
+                  >
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => { setScope("active"); setMoreOpen(false); }}
+                    >
+                      <Users className="h-4 w-4" /> Aktywni
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => { setScope("trash"); setMoreOpen(false); }}
+                    >
+                      <Trash2 className="h-4 w-4" /> Kosz
+                    </button>
+                    <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => { setMoreOpen(false); exportCSV(); }}
+                    >
+                      <FileDown className="h-4 w-4" /> Eksport CSV
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => { setMoreOpen(false); exportExcel(); }}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           }
         />
 
+        {/* Tabs + compact selection bar */}
+        <div className="mt-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+            {([
+              { key: "active", label: "Aktywne obserwacje", count: counts.all },
+              { key: "draft", label: "Szkice", count: counts.draft },
+            ] as { key: TabKey; label: string; count: number }[]).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`px-3 py-2 text-sm rounded-md transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${tab === t.key ? "bg-white shadow dark:bg-neutral-800" : ""}`}
+                data-active={tab === t.key}
+              >
+                <span className="inline-flex items-center gap-2">
+                  {t.label}
+                  <span className="rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    {t.count}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* bulk bar (appears to the right of tabs when any checkbox is selected) */}
+          {selected.size > 0 && (
+            <div className="mt-1 flex flex-wrap items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-900 sm:mt-0">
+              <div className="mr-0 md:mr-2">Zaznaczono: <b>{selected.size}</b></div>
+              <div className="flex items-center gap-2">
+                {scope === "active" ? (
+                  <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={bulkTrash}>
+                    <Trash2 className="mr-0 md:mr-2 h-4 w-4" /> Do kosza
+                  </Button>
+                ) : (
+                  <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={bulkRestore}>
+                    <Undo2 className="mr-0 md:mr-2 h-4 w-4" /> Przywróć
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Active filter chips */}
         {activeChips.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {activeChips.map((c) => (
@@ -812,55 +1081,69 @@ export default function ObservationsFeature({
               className="ml-1 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
               title="Wyczyść wszystkie filtry"
             >
-              <X className="h-3 w-3" /> Wyczyść wszystkie
+              Wyczyść wszystkie
             </button>
           </div>
         )}
 
+        {/* TABLE */}
         <div className="mt-3 w-full overflow-x-auto rounded-lg border border-gray-200 bg-white p-2 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
-                {visibleCols.select && <th className="p-2 sm:p-3 text-left font-medium">#</th>}
+                {visibleCols.select && (
+                  <th className="w-10 p-2 text-left font-medium sm:p-3">
+                    <Checkbox
+                      aria-label="Zaznacz wszystkie"
+                      checked={
+                        filtered.length === 0
+                          ? false
+                          : allChecked
+                          ? true
+                          : (someChecked ? ("indeterminate" as any) : false)
+                      }
+                      onCheckedChange={(v) => {
+                        if (Boolean(v)) setSelected(new Set(filtered.map((r) => r.id)));
+                        else setSelected(new Set());
+                      }}
+                    />
+                  </th>
+                )}
                 {visibleCols.match && (
-                  <th className="p-2 sm:p-3 text-left">
-                    <SortHeader k="match">Obserwowany mecz</SortHeader>
+                  <th className="p-2 text-left sm:p-3">
+                    <SortHeader k="match">Mecz</SortHeader>
                   </th>
                 )}
                 {visibleCols.date && (
-                  <th className="hidden p-2 sm:p-3 text-left sm:table-cell">
+                  <th className="hidden p-2 text-left sm:table-cell sm:p-3">
                     <SortHeader k="date">Data</SortHeader>
                   </th>
                 )}
                 {visibleCols.time && (
-                  <th className="hidden p-2 sm:p-3 text-left sm:table-cell">
+                  <th className="hidden p-2 text-left sm:table-cell sm:p-3">
                     <SortHeader k="time">Godzina</SortHeader>
                   </th>
                 )}
                 {visibleCols.mode && (
-                  <th className="hidden p-2 sm:p-3 text-left sm:table-cell">
+                  <th className="hidden p-2 text-left sm:table-cell sm:p-3">
                     <SortHeader k="mode">Tryb</SortHeader>
                   </th>
                 )}
                 {visibleCols.status && (
-                  <th className="p-2 sm:p-3 text-left">
+                  <th className="p-2 text-left sm:p-3">
                     <SortHeader k="status">Status</SortHeader>
                   </th>
                 )}
-                {visibleCols.bucket && (
-                  <th className="hidden p-2 sm:p-3 text-left font-medium sm:table-cell">Kosz</th>
-                )}
                 {visibleCols.players && (
-                  <th className="hidden p-2 sm:p-3 text-left sm:table-cell">
+                  <th className="hidden p-2 text-left sm:table-cell sm:p-3">
                     <SortHeader k="players">Zawodnicy</SortHeader>
                   </th>
                 )}
-                {visibleCols.actions && <th className="p-2 sm:p-3 text-right font-medium">Akcje</th>}
+                {visibleCols.actions && <th className="p-2 text-right font-medium sm:p-3">Akcje</th>}
               </tr>
             </thead>
             <tbody>
               {filtered.map((r) => {
-                const bucket = r.bucket ?? "active";
                 const status = r.status;
                 const mode = r.mode ?? "live";
                 const pCount = r.players?.length ?? 0;
@@ -868,9 +1151,21 @@ export default function ObservationsFeature({
                 return (
                   <tr
                     key={r.id}
-                    className="group h-12 border-t border-gray-200 dark:border-neutral-800 hover:bg-gray-50/60 dark:hover:bg-neutral-900/60"
+                    className="group h-12 border-t border-gray-200 hover:bg-gray-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60"
                   >
-                    {visibleCols.select && <td className="p-2 sm:p-3">•</td>}
+                    {visibleCols.select && (
+                      <td className="p-2 sm:p-3">
+                        <Checkbox
+                          aria-label={`Zaznacz obserwację #${r.id}`}
+                          checked={selected.has(r.id)}
+                          onCheckedChange={(v) => {
+                            const copy = new Set(selected);
+                            if (Boolean(v)) copy.add(r.id); else copy.delete(r.id);
+                            setSelected(copy);
+                          }}
+                        />
+                      </td>
+                    )}
 
                     {visibleCols.match && (
                       <td className="p-2 sm:p-3">
@@ -893,16 +1188,23 @@ export default function ObservationsFeature({
                             >
                               {mode === "live" ? "Live" : "TV"}
                             </span>
-                            <span
-                              title="Status"
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${
-                                status === "final"
-                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                  : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                              }`}
-                            >
-                              {status === "final" ? "Finalna" : "Szkic"}
-                            </span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  title="Status"
+                                  className={`inline-flex cursor-default items-center rounded-full px-2 py-0.5 font-medium ${
+                                    status === "final"
+                                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                  }`}
+                                >
+                                  {status === "final" ? "Finalna" : "Szkic"}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                Kliknij ikonę w kolumnie „Status”, aby przełączyć.
+                              </TooltipContent>
+                            </Tooltip>
                             {pCount > 0 && (
                               <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-900/30 dark:text-slate-300">
                                 {pCount} zawodn.
@@ -914,14 +1216,14 @@ export default function ObservationsFeature({
                     )}
 
                     {visibleCols.date && (
-                      <td className="hidden p-2 sm:p-3 sm:table-cell">{fmtDate(r.date)}</td>
+                      <td className="hidden p-2 sm:table-cell sm:p-3">{fmtDate(r.date)}</td>
                     )}
                     {visibleCols.time && (
-                      <td className="hidden p-2 sm:p-3 sm:table-cell">{r.time || "—"}</td>
+                      <td className="hidden p-2 sm:table-cell sm:p-3">{r.time || "—"}</td>
                     )}
 
                     {visibleCols.mode && (
-                      <td className="hidden p-2 sm:p-3 sm:table-cell">
+                      <td className="hidden p-2 sm:table-cell sm:p-3">
                         <button
                           onClick={() => toggleModeInline(r.id)}
                           className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
@@ -944,44 +1246,35 @@ export default function ObservationsFeature({
 
                     {visibleCols.status && (
                       <td className="p-2 sm:p-3">
-                        <button
-                          onClick={() => toggleStatusInline(r.id)}
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
-                            status === "final"
-                              ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                              : "bg-amber-600 text-white hover:bg-amber-700"
-                          }`}
-                          title="Przełącz Szkic/Finalna"
-                          aria-pressed={status === "final"}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          {status === "final" ? "Finalna" : "Szkic"}
-                        </button>
-                      </td>
-                    )}
-
-                    {visibleCols.bucket && (
-                      <td className="hidden p-2 sm:p-3 sm:table-cell">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                            bucket === "active"
-                              ? "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300"
-                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
-                          }`}
-                        >
-                          {bucket === "active" ? "Aktywne" : "Kosz"}
-                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => toggleStatusInline(r.id)}
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                status === "final"
+                                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                  : "bg-amber-600 text-white hover:bg-amber-700"
+                              }`}
+                              title="Przełącz Szkic/Finalna"
+                              aria-pressed={status === "final"}
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              {status === "final" ? "Finalna" : "Szkic"}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Przełącz status</TooltipContent>
+                        </Tooltip>
                       </td>
                     )}
 
                     {visibleCols.players && (
-                      <td className="hidden p-2 sm:p-3 sm:table-cell">
+                      <td className="hidden p-2 sm:table-cell sm:p-3">
                         <GrayTag>{pCount}</GrayTag>
                       </td>
                     )}
 
                     {visibleCols.actions && (
-                      <td className="p-2 sm:p-3 text-right">
+                      <td className="p-2 text-right sm:p-3">
                         <div className="inline-flex items-center gap-2">
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1059,11 +1352,13 @@ export default function ObservationsFeature({
 /* ========================= Columns popover ========================= */
 
 function ColumnsButton({
+  isMobile,
   open,
   setOpen,
   visibleCols,
   setVisibleCols,
 }: {
+  isMobile: boolean;
   open: boolean;
   setOpen: (v: boolean) => void;
   visibleCols: Record<keyof typeof DEFAULT_COLS, boolean>;
@@ -1083,32 +1378,81 @@ function ColumnsButton({
         <ColumnsIcon className="h-4 w-4" />
         <span className="ml-2 hidden sm:inline">Kolumny</span>
       </Button>
+
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-[18rem] max-w-[92vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-          <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">
-            Widoczność kolumn
+        isMobile ? (
+          <Portal>
+            <div
+              className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+              onClick={() => setOpen(false)}
+              aria-hidden
+            />
+            <div
+              className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+              role="dialog"
+              aria-modal="true"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-semibold">Kolumny</div>
+                <Button variant="outline" size="sm"
+                  className="border-gray-300 dark:border-neutral-700"
+                  onClick={() => setOpen(false)}
+                >
+                  Zamknij
+                </Button>
+              </div>
+
+              {Object.keys(DEFAULT_COLS).map((k) => {
+                const key = k as keyof typeof DEFAULT_COLS;
+                return (
+                  <label
+                    key={key}
+                    className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  >
+                    <span className="text-gray-800 dark:text-neutral-100">
+                      {COL_PL[key]}
+                    </span>
+                    <Checkbox
+                      checked={visibleCols[key]}
+                      onCheckedChange={(v) =>
+                        setVisibleCols({ ...visibleCols, [key]: Boolean(v) })
+                      }
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </Portal>
+        ) : (
+          <div
+            className="absolute right-0 top-full z-[120] mt-2 w-[18rem] max-w-[92vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+            onMouseLeave={() => setOpen(false)}
+          >
+            <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">
+              Widoczność kolumn
+            </div>
+            {Object.keys(DEFAULT_COLS).map((k) => {
+              const key = k as keyof typeof DEFAULT_COLS;
+              return (
+                <label
+                  key={key}
+                  className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                >
+                  <span className="text-gray-800 dark:text-neutral-100">
+                    {COL_PL[key]}
+                  </span>
+                  <Checkbox
+                    checked={visibleCols[key]}
+                    onCheckedChange={(v) =>
+                      setVisibleCols({ ...visibleCols, [key]: Boolean(v) })
+                    }
+                  />
+                </label>
+              );
+            })}
           </div>
-          {Object.keys(DEFAULT_COLS).map((k) => {
-            const key = k as keyof typeof DEFAULT_COLS;
-            return (
-              <label
-                key={key}
-                className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-              >
-                <span className="text-gray-800 dark:text-neutral-100">
-                  {COL_PL[key]}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={visibleCols[key]}
-                  onChange={(e) =>
-                    setVisibleCols({ ...visibleCols, [key]: e.target.checked })
-                  }
-                />
-              </label>
-            );
-          })}
-        </div>
+        )
       )}
     </div>
   );

@@ -6,9 +6,9 @@ import { ThemeProvider } from "next-themes";
 import AppSidebar from "@/widgets/app-sidebar/AppSidebar";
 import PageTransition from "@/shared/ui/PageTransition";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, LogIn } from "lucide-react";
+import { Menu, LogIn, UserPlus, PlusCircle } from "lucide-react";
 import CommentLayer from "@/features/comments/CommentLayer";
-
+import { Button } from "@/components/ui/button";
 
 /* ===== Keys ===== */
 const AUTH_KEY = "s4s.auth";
@@ -38,11 +38,9 @@ const readAuth = (): AuthState => {
 
 function dispatchRole(role: Role | null) {
   try {
-    // StorageEvent to notify other tabs
     window.dispatchEvent(
-      new StorageEvent("storage", { key: ROLE_KEY, newValue: role ?? null as any })
+      new StorageEvent("storage", { key: ROLE_KEY, newValue: role ?? (null as any) })
     );
-    // CustomEvent to update same-tab instantly
     window.dispatchEvent(new CustomEvent("s4s:role", { detail: role }));
   } catch {}
 }
@@ -52,7 +50,7 @@ function dispatchAuth(auth: AuthState | null) {
     window.dispatchEvent(
       new StorageEvent("storage", {
         key: AUTH_KEY,
-        newValue: auth ? JSON.stringify(auth) : null as any,
+        newValue: auth ? JSON.stringify(auth) : (null as any),
       })
     );
     window.dispatchEvent(new CustomEvent("s4s:auth", { detail: auth }));
@@ -77,10 +75,7 @@ function TshirtDrawLoader() {
         <path
           d="M13.5867 2.30659L10.6667 1.33325C10.6667 2.0405 10.3857 2.71877 9.88565 3.21887C9.38555 3.71897 8.70727 3.99992 8.00003 3.99992C7.29278 3.99992 6.61451 3.71897 6.11441 3.21887C5.61431 2.71877 5.33336 2.0405 5.33336 1.33325L2.41336 2.30659C2.11162 2.40711 1.85575 2.6122 1.69193 2.88481C1.52811 3.15743 1.46715 3.47963 1.52003 3.79325L1.90669 6.10659C1.93208 6.26319 2.01248 6.40562 2.13345 6.50826C2.25443 6.61091 2.40804 6.66704 2.56669 6.66659H4.00003V13.3333C4.00003 14.0666 4.60003 14.6666 5.33336 14.6666H10.6667C11.0203 14.6666 11.3595 14.5261 11.6095 14.2761C11.8596 14.026 12 13.6869 12 13.3333V6.66659H13.4334C13.592 6.66704 13.7456 6.61091 13.8666 6.50826C13.9876 6.40562 14.068 6.26319 14.0934 6.10659L14.48 3.79325C14.5329 3.47963 14.4719 3.15743 14.3081 2.88481C14.1443 2.6122 13.8884 2.40711 13.5867 2.30659Z"
           className="animate-[tshirt-draw_1.6s_ease-in-out_infinite]"
-          style={{
-            strokeDasharray: 60,
-            strokeDashoffset: 60,
-          }}
+          style={{ strokeDasharray: 60, strokeDashoffset: 60 }}
         />
       </svg>
       <div className="text-sm text-gray-700 dark:text-neutral-200">Ładowanie kokpitu…</div>
@@ -102,7 +97,6 @@ function AuthGate({ onLoggedIn }: { onLoggedIn: (auth: AuthState) => void }) {
 
   const loginAs = (role: Role) => {
     setPending(role);
-    // Fake loading to show animation on dashboard later
     setTimeout(() => {
       const auth: AuthState = { ok: true, role, user: role.toUpperCase() + " DEMO" };
       localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
@@ -114,7 +108,7 @@ function AuthGate({ onLoggedIn }: { onLoggedIn: (auth: AuthState) => void }) {
   };
 
   return (
-    <div className="grid  place-items-center p-0">
+    <div className="grid place-items-center p-0">
       <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/70">
         <div className="mb-4 flex items-center justify-center gap-2">
           <div className="rounded-full bg-indigo-600/10 p-2">
@@ -123,7 +117,6 @@ function AuthGate({ onLoggedIn }: { onLoggedIn: (auth: AuthState) => void }) {
           <h1 className="text-lg font-semibold">Logowanie / Rejestracja</h1>
         </div>
 
-        {/* Demo accounts */}
         <div className="space-y-2 text-sm">
           <button
             onClick={() => loginAs("admin")}
@@ -182,24 +175,27 @@ function AuthGate({ onLoggedIn }: { onLoggedIn: (auth: AuthState) => void }) {
 function AppShell({
   children,
   onOpenMobile,
+  onAddPlayer,
+  onAddObservation,
 }: {
   children: React.ReactNode;
   onOpenMobile: () => void;
+  onAddPlayer: () => void;
+  onAddObservation: () => void;
 }) {
   return (
     <>
-      {/* Fixed sidebar (desktop) handled inside <ClientRoot> with AppSidebar */}
       <div className="pl-64 max-lg:pl-0">
         {/* Sticky glass top bar */}
         <header
           className="
             sticky top-0 z-40 border-b border-transparent
-            bg-white/65 backdrop-blur supports-[backdrop-filter]:bg-white/55
+            backdrop-blur supports-[backdrop-filter]:bg-white/55
             dark:bg-neutral-950/55
           "
           role="banner"
         >
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-2 py-3">
             <div className="flex items-center gap-3">
               <button
                 className="rounded-md p-2 lg:hidden hover:bg-gray-100 dark:hover:bg-neutral-900"
@@ -208,28 +204,64 @@ function AppShell({
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <span
-                aria-hidden
-                className="inline-block h-2 w-2 animate-pulse rounded-full bg-indigo-500/80 ring-4 ring-indigo-500/10"
-              />
-              <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">
-                S4S · Workspace
-              </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2">{/* global actions slot */}</div>
+
+            {/* Global actions (responsive) */}
+            <div className="flex items-center gap-2">
+              {/* Mobile: icon-only */}
+              <div className="flex items-center gap-2 md:hidden">
+                <Button
+                  size="icon"
+                  className="h-9 w-9 bg-gray-900 text-white hover:bg-gray-800"
+                  aria-label="Dodaj zawodnika"
+                  onClick={onAddPlayer}
+                  title="Dodaj zawodnika"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-9 w-9 border-gray-300 dark:border-neutral-700"
+                  aria-label="Dodaj obserwacje"
+                  onClick={onAddObservation}
+                  title="Dodaj obserwacje"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Desktop: icon + label */}
+              <div className="hidden items-center gap-2 md:flex">
+                <Button
+                  onClick={onAddPlayer}
+                  className="bg-gray-900 text-white hover:bg-gray-800"
+                  aria-label="Dodaj zawodnika"
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Dodaj zawodnika
+                </Button>
+                <Button
+                  onClick={onAddObservation}
+                  variant="outline"
+                  className="border-gray-300 dark:border-neutral-700"
+                  aria-label="Dodaj obserwacje"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Dodaj obserwacje
+                </Button>
+              </div>
+            </div>
           </div>
         </header>
 
         {/* Content container */}
-<main id="content" className="mx-auto max-w-7xl px-4 py-6"> 
-           <PageTransition>
+        <main id="content" className="mx-auto max-w-7xl px-4 py-6">
+          <PageTransition>
             <div
-              className="
-                rounded-2xl border border-gray-200/70 bg-white/70
-                p-4 shadow-sm backdrop-blur-sm
-                dark:border-neutral-800/70 dark:bg-neutral-950/60
-                md:p-6
-              "
+              className="rounded-lg bg-white/70 shadow-sm backdrop-blur-sm
+                dark:border-neutral-800/70 dark:bg-neutral-950/60 p-0
+                md:p-6"
             >
               {children}
             </div>
@@ -257,17 +289,13 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showBootLoader, setShowBootLoader] = useState(false);
 
-  // Hydrate auth from localStorage
   useEffect(() => {
     setAuth(readAuth());
   }, []);
 
-  // React to cross-tab & same-tab auth changes
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === AUTH_KEY) {
-        setAuth(readAuth());
-      }
+      if (e.key === AUTH_KEY) setAuth(readAuth());
     };
     const onCustom = (e: Event) => {
       const detail = (e as CustomEvent).detail as AuthState | null;
@@ -281,24 +309,19 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // When auth flips to ok => show boot loader briefly then land where user was (or "/")
   useEffect(() => {
     if (auth.ok) {
       setShowBootLoader(true);
       const t = setTimeout(() => setShowBootLoader(false), 900);
-      // If the user sits on /auth/*, route home
       if (pathname?.startsWith("/auth")) router.replace("/");
       return () => clearTimeout(t);
     } else {
-      // unauthenticated: close mobile drawer; if user browses a page, keep gate anyway
       setMobileOpen(false);
     }
   }, [auth.ok]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const content = useMemo(() => {
-    if (!auth.ok) {
-      return <AuthGate onLoggedIn={(a) => setAuth(a)} />;
-    }
+    if (!auth.ok) return <AuthGate onLoggedIn={(a) => setAuth(a)} />;
     if (showBootLoader) {
       return (
         <div className="grid min-h-screen place-items-center">
@@ -309,6 +332,9 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
     return children;
   }, [auth.ok, showBootLoader, children]);
 
+  const handleAddPlayer = () => router.push("/players/new");
+  const handleAddObservation = () => router.push("/observations/new");
+
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       {/* Mobile sidebar (drawer) */}
@@ -318,20 +344,22 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
         <AppSidebar />
       </div>
 
-      <AppShell onOpenMobile={() => setMobileOpen(true)}>{content}</AppShell>
+      <AppShell
+        onOpenMobile={() => setMobileOpen(true)}
+        onAddPlayer={handleAddPlayer}
+        onAddObservation={handleAddObservation}
+      >
+        {content}
+      </AppShell>
 
-<CommentLayer
-  pageKey={pathname}
-  containerSelector="body"
-  currentUser={{
-    id: (auth.ok ? (auth as any).userId : undefined), // if you store a UUID
-    name: auth.ok ? (auth as any).user : "demo",
-  }}
-/>
-
-
+      <CommentLayer
+        pageKey={pathname}
+        containerSelector="body"
+        currentUser={{
+          id: (auth.ok ? (auth as any).userId : undefined),
+          name: auth.ok ? (auth as any).user : "demo",
+        }}
+      />
     </ThemeProvider>
-
-    
   );
 }
