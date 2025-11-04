@@ -2,7 +2,6 @@
 "use client";
 import { useSearchParams, useRouter } from "next/navigation";
 
-
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Crumb, Toolbar, GrayTag } from "@/shared/ui/atoms";
@@ -238,11 +237,11 @@ export default function ObservationsFeature({
 
   const [pageMode, setPageMode] = useState<"list" | "editor">("list");
   const [editing, setEditing] = useState<XO | null>(null);
-    const router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-     if (searchParams?.get("create") === "1") {
+    if (searchParams?.get("create") === "1") {
       addNew();
       const sp = new URLSearchParams(searchParams);
       sp.delete("create");
@@ -825,7 +824,7 @@ export default function ObservationsFeature({
                               type="date"
                               value={dateTo}
                               onChange={(e) => setDateTo(e.target.value)}
-                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark;border-neutral-700 dark:bg-neutral-950"
+                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                             />
                           </div>
                         </div>
@@ -1005,54 +1004,122 @@ export default function ObservationsFeature({
                     setColsOpen(false);
                   }}
                   aria-label="Więcej"
+                  aria-pressed={moreOpen}
                 >
                   <EllipsisVertical className="h-5 w-5" />
                 </Button>
 
-                {moreOpen && (
-                  <div
-                    className="absolute right-0 top-full z-[150] mt-2 w-56 overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
-                    onMouseLeave={() => setMoreOpen(false)}
-                  >
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => {
-                        setScope("active");
-                        setMoreOpen(false);
-                      }}
+                {/* WIĘCEJ: dropdown on desktop, bottom sheet on mobile */}
+                {moreOpen &&
+                  (isMobile ? (
+                    <Portal>
+                      <div
+                        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                        onClick={() => setMoreOpen(false)}
+                        aria-hidden
+                      />
+                      <div
+                        className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                        role="dialog"
+                        aria-modal="true"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="mb-1 flex items-center justify-between px-1">
+                          <div className="text-sm font-semibold">Więcej</div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-gray-300 dark:border-neutral-700"
+                            onClick={() => setMoreOpen(false)}
+                          >
+                            Zamknij
+                          </Button>
+                        </div>
+                        <div className="mt-1 grid gap-1">
+                          <button
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            onClick={() => {
+                              setScope("active");
+                              setMoreOpen(false);
+                            }}
+                          >
+                            <Users className="h-4 w-4" /> Aktywni
+                          </button>
+                          <button
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            onClick={() => {
+                              setScope("trash");
+                              setMoreOpen(false);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" /> Kosz
+                          </button>
+                          <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+                          <button
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            onClick={() => {
+                              setMoreOpen(false);
+                              exportCSV();
+                            }}
+                          >
+                            <FileDown className="h-4 w-4" /> Eksport CSV
+                          </button>
+                          <button
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            onClick={() => {
+                              setMoreOpen(false);
+                              exportExcel();
+                            }}
+                          >
+                            <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                          </button>
+                        </div>
+                      </div>
+                    </Portal>
+                  ) : (
+                    <div
+                      className="absolute right-0 top-full z-[150] mt-2 w-56 overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+                      onMouseLeave={() => setMoreOpen(false)}
                     >
-                      <Users className="h-4 w-4" /> Aktywni
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => {
-                        setScope("trash");
-                        setMoreOpen(false);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" /> Kosz
-                    </button>
-                    <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => {
-                        setMoreOpen(false);
-                        exportCSV();
-                      }}
-                    >
-                      <FileDown className="h-4 w-4" /> Eksport CSV
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => {
-                        setMoreOpen(false);
-                        exportExcel();
-                      }}
-                    >
-                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                    </button>
-                  </div>
-                )}
+                      <button
+                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                        onClick={() => {
+                          setScope("active");
+                          setMoreOpen(false);
+                        }}
+                      >
+                        <Users className="h-4 w-4" /> Aktywni
+                      </button>
+                      <button
+                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                        onClick={() => {
+                          setScope("trash");
+                          setMoreOpen(false);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" /> Kosz
+                      </button>
+                      <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+                      <button
+                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                        onClick={() => {
+                          setMoreOpen(false);
+                          exportCSV();
+                        }}
+                      >
+                        <FileDown className="h-4 w-4" /> Eksport CSV
+                      </button>
+                      <button
+                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                        onClick={() => {
+                          setMoreOpen(false);
+                          exportExcel();
+                        }}
+                      >
+                        <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                      </button>
+                    </div>
+                  ))}
               </div>
             </div>
           }
@@ -1483,7 +1550,7 @@ function ColumnsButton({
           </Portal>
         ) : (
           <div
-            className="absolute right-0 top-full z-[120] mt-2 w-[18rem] max-w-[92vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+            className="absolute right-0 top-full z-[120] mt-2 w-[18rem] max-w=[92vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
             onMouseLeave={() => setOpen(false)}
           >
             <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">

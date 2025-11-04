@@ -438,10 +438,10 @@ export default function AppSidebar({
                     <RefreshCw className="h-3.5 w-3.5" />
                     Odśwież
                   </button>
-                  <div className="inline-flex items-center gap-1 text-[10px] opacity-70 whitespace-normal break-words">
+                  {/* <div className="inline-flex items-center gap-1 text-[10px] opacity-70 whitespace-normal break-words">
                     <Info className="h-3.5 w-3.5" />
                     Skróty: T=motyw, G=global, O=obserwacje
-                  </div>
+                  </div> */}
                 </div>
               </div>
             )}

@@ -406,7 +406,7 @@ export default function MyPlayersFeature({
   const cellPad = "p-3";
   const rowH = "h-12";
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts (+ Esc closes panels)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
@@ -416,19 +416,31 @@ export default function MyPlayersFeature({
       if (e.key === "/") {
         e.preventDefault();
         searchRef.current?.focus();
+        return;
       } else if (e.key.toLowerCase() === "n") {
         e.preventDefault();
         router.push("/players/new");
+        return;
       } else if (e.key.toLowerCase() === "e") {
         e.preventDefault();
         exportCSV();
+        return;
       } else if (e.key.toLowerCase() === "x") {
         e.preventDefault();
         setColsOpen((o) => !o);
+        setFiltersOpen(false);
+        setMoreOpen(false);
+        return;
+      } else if (e.key === "Escape") {
+        setFiltersOpen(false);
+        setColsOpen(false);
+        setMoreOpen(false);
+        return;
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   /* ====== filtersCount for badge ====== */
@@ -629,36 +641,94 @@ export default function MyPlayersFeature({
                 </Button>
 
                 {moreOpen && (
-                  <div
-                    className="absolute right-0 top-full z-[150] mt-2 w-56 overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
-                    onMouseLeave={() => setMoreOpen(false)}
-                  >
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => { setScope("active"); setMoreOpen(false); }}
+                  isMobile ? (
+                    <Portal>
+                      {/* Backdrop */}
+                      <div
+                        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                        onClick={() => setMoreOpen(false)}
+                        aria-hidden
+                      />
+                      {/* Bottom-sheet */}
+                      <div
+                        className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                        role="dialog"
+                        aria-modal="true"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="mb-1 flex items-center justify-between px-1">
+                          <div className="text-sm font-semibold">Więcej</div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-gray-300 dark:border-neutral-700"
+                            onClick={() => setMoreOpen(false)}
+                          >
+                            Zamknij
+                          </Button>
+                        </div>
+
+                        <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
+                          <button
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            onClick={() => { setScope("active"); setMoreOpen(false); }}
+                          >
+                            <Users className="h-4 w-4" /> Aktywni
+                          </button>
+                          <button
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            onClick={() => { setScope("trash"); setMoreOpen(false); }}
+                          >
+                            <Trash2 className="h-4 w-4" /> Kosz
+                          </button>
+                          <button
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            onClick={() => { setMoreOpen(false); exportCSV(); }}
+                          >
+                            <FileDown className="h-4 w-4" /> Eksport CSV
+                          </button>
+                          <button
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            onClick={() => { setMoreOpen(false); exportExcel(); }}
+                          >
+                            <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                          </button>
+                        </div>
+                      </div>
+                    </Portal>
+                  ) : (
+                    // Desktop popover
+                    <div
+                      className="absolute right-0 top-full z-[150] mt-2 w-56 overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+                      onMouseLeave={() => setMoreOpen(false)}
                     >
-                      <Users className="h-4 w-4" /> Aktywni
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => { setScope("trash"); setMoreOpen(false); }}
-                    >
-                      <Trash2 className="h-4 w-4" /> Kosz
-                    </button>
-                    <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => { setMoreOpen(false); exportCSV(); }}
-                    >
-                      <FileDown className="h-4 w-4" /> Eksport CSV
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => { setMoreOpen(false); exportExcel(); }}
-                    >
-                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                    </button>
-                  </div>
+                      <button
+                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                        onClick={() => { setScope("active"); setMoreOpen(false); }}
+                      >
+                        <Users className="h-4 w-4" /> Aktywni
+                      </button>
+                      <button
+                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                        onClick={() => { setScope("trash"); setMoreOpen(false); }}
+                      >
+                        <Trash2 className="h-4 w-4" /> Kosz
+                      </button>
+                      <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+                      <button
+                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                        onClick={() => { setMoreOpen(false); exportCSV(); }}
+                      >
+                        <FileDown className="h-4 w-4" /> Eksport CSV
+                      </button>
+                      <button
+                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                        onClick={() => { setMoreOpen(false); exportExcel(); }}
+                      >
+                        <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                      </button>
+                    </div>
+                  )
                 )}
               </div>
             </div>
