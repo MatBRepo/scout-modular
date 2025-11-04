@@ -4,9 +4,9 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Users, NotebookPen, Home, Sun, Moon, Globe, Shield,
+  Users, NotebookPen, Sun, Moon, Globe,
   Settings, Map, Trophy, RefreshCw, ChevronDown, ChevronUp,
-  Info, TrendingUp, TriangleAlert, LogOut
+  TrendingUp, TriangleAlert, LogOut
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
@@ -39,7 +39,8 @@ function nextRankInfo(rank: Rank, score: number) {
   const remaining = Math.max(0, nextMin - score);
   return { next, pct, remaining };
 }
-const rankLabel = (r: Rank) => (r === "platinum" ? "Platinum" : r === "gold" ? "Gold" : r === "silver" ? "Silver" : "Bronze");
+const rankLabel = (r: Rank) =>
+  r === "platinum" ? "Platinum" : r === "gold" ? "Gold" : r === "silver" ? "Silver" : "Bronze";
 function rankClass(r: Rank) {
   switch (r) {
     case "platinum": return "bg-indigo-100 text-indigo-800 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-800/70";
@@ -48,7 +49,6 @@ function rankClass(r: Rank) {
     default: return "bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-200 dark:ring-orange-800/70";
   }
 }
-// Trophy icon color (stroke/currentColor) by rank
 function rankTrophyColor(r: Rank) {
   switch (r) {
     case "platinum": return "text-indigo-500";
@@ -247,28 +247,13 @@ export default function AppSidebar({
     }
   }
 
-  // ===== Hide the whole sidebar if user is NOT logged in =====
-  if (!mounted || !isAuthed) {
-    if (variant === "mobile") return null;
-    return null;
-  }
+  // Keep hooks stable; decide visibility AFTER hooks run
+  const hidden = !mounted || !isAuthed;
+  if (hidden) return null;
 
   // ===== Role-grouped nav =====
   const InnerNav = () => (
     <nav className="space-y-1 text-sm" onClick={() => onClose?.()}>
-      {/* COMMON */}
-      {/* <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
-        Główne
-      </div> */}
-
-      {/* <NavItem
-        href="/"
-        icon={<Home className="h-4 w-4" />}
-        label="Kokpit"
-        active={pathname === "/" || pathname?.startsWith("/dashboard")}
-      /> */}
-
-      {/* --- ORDER CHANGED: Players FIRST --- */}
       {(role === "scout" || role === "scout-agent" || role === "admin") && (
         <div className="mt-1">
           <div className="pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-neutral-400">
@@ -293,7 +278,6 @@ export default function AppSidebar({
         </div>
       )}
 
-      {/* Observations now AFTER players */}
       <NavItem
         href="/observations"
         icon={<NotebookPen className="h-4 w-4" />}
@@ -303,7 +287,6 @@ export default function AppSidebar({
         badgeTitle="Liczba obserwacji"
       />
 
-      {/* ADMIN */}
       {role === "admin" && (
         <>
           <SectionHeader label="Administracja" />
@@ -374,16 +357,10 @@ export default function AppSidebar({
       <div ref={accountRef} className="relative">
         <button
           onClick={() => setAccountOpen(v => !v)}
-          className="flex w-full items-center justify-between rounded-md  py-2 text-sm text-gray-800 transition hover:bg-gray-50 dark:text-neutral-100 dark:hover:bg-neutral-900"
+          className="flex w-full items-center justify-between rounded-md py-2 text-sm text-gray-800 transition hover:bg-gray-50 dark:text-neutral-100 dark:hover:bg-neutral-900"
           aria-haspopup="menu"
           aria-expanded={accountOpen}
         >
-          {/* Left: ONLY TROPHY (colored by rank) */}
-          {/* <span className="flex min-w-0 items-center gap-2">
-            <Trophy className={`h-4 w-4 shrink-0 ${rankTrophyColor(rank)}`} />
-          </span> */}
-
-          {/* Right: role label + chevron */}
           <span className="flex items-center gap-1 text-xs opacity-70">
             {labelForRole(role)}
             {accountOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -438,10 +415,6 @@ export default function AppSidebar({
                     <RefreshCw className="h-3.5 w-3.5" />
                     Odśwież
                   </button>
-                  {/* <div className="inline-flex items-center gap-1 text-[10px] opacity-70 whitespace-normal break-words">
-                    <Info className="h-3.5 w-3.5" />
-                    Skróty: T=motyw, G=global, O=obserwacje
-                  </div> */}
                 </div>
               </div>
             )}
@@ -479,15 +452,11 @@ export default function AppSidebar({
           </div>
         )}
 
-        {/* === FOOTER under Konto: rank badge + stats chip + theme toggle === */}
-              <div className="mt-2 border-t border-gray-200 dark:border-neutral-800" />
+        <div className="mt-2 border-t border-gray-200 dark:border-neutral-800" />
 
         <div className="mt-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Trophy className={`h-3.5 w-3.5 ${rankTrophyColor(rank)}`} />
-            {/* <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(rank)}`}>
-              {rankLabel(rank)}
-            </span> */}
           </div>
           <div className="flex items-center gap-1.5">
             <div
@@ -512,7 +481,7 @@ export default function AppSidebar({
   );
 
   const asideCore =
-    "h-screen w-64 overflow-y-auto overflow-x-hidden border-r border-gray-200 bg-white/90 p-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80";
+    "h-screen w-64 overflow-y-auto overflow-x-hidden border-r border-gray-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950/80";
 
   if (variant === "mobile") {
     return (

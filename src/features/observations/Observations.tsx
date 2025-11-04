@@ -1,8 +1,8 @@
 // src/features/observations/Observations.tsx
 "use client";
-import { useSearchParams, useRouter } from "next/navigation";
 
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Crumb, Toolbar, GrayTag } from "@/shared/ui/atoms";
 import type { Observation } from "@/shared/types";
@@ -63,11 +63,116 @@ function Portal({ children }: { children: React.ReactNode }) {
   return el ? createPortal(children, el) : null;
 }
 
+/* -------- anchored layer (desktop popovers) -------- */
+
+function useAnchoredRect(
+  anchorRef: React.RefObject<HTMLElement | null>,
+  open: boolean
+) {
+  const [rect, setRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const compute = useCallback(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setRect({ top: r.bottom, left: r.left, width: r.width, height: r.height });
+  }, [anchorRef]);
+
+  useEffect(() => {
+    if (!open) return;
+    compute();
+    const on = () => compute();
+    window.addEventListener("scroll", on, true);
+    window.addEventListener("resize", on);
+    return () => {
+      window.removeEventListener("scroll", on, true);
+      window.removeEventListener("resize", on);
+    };
+  }, [open, compute]);
+
+  return rect;
+}
+
+function AnchoredPopover({
+  anchorRef,
+  open,
+  onClose,
+  children,
+  className,
+  width = 0,
+  gap = 8,
+}: {
+  anchorRef: React.RefObject<HTMLElement | null>;
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  className?: string;
+  width?: number;
+  gap?: number;
+}) {
+  const rect = useAnchoredRect(anchorRef, open);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (panelRef.current?.contains(t)) return;
+      if (anchorRef.current?.contains(t)) return;
+      onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown, true);
+    };
+  }, [open, onClose, anchorRef]);
+
+  if (!open || !rect) return null;
+
+  const left = Math.max(
+    8,
+    Math.min(rect.left, window.innerWidth - 8 - (width || rect.width))
+  );
+  const top = rect.top + gap;
+  const w = width || rect.width;
+
+  return (
+    <Portal>
+      <div className="fixed inset-0 z-[199]" aria-hidden />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        className={className}
+        style={{
+          position: "fixed",
+          top,
+          left,
+          width: w,
+          zIndex: 200,
+        }}
+      >
+        {children}
+      </div>
+    </Portal>
+  );
+}
+
 /* -------------------------------- Types -------------------------------- */
 
 type Bucket = "active" | "trash";
 type Mode = "live" | "tv";
-type TabKey = "active" | "draft" | "final"; // new tabs
+type TabKey = "active" | "draft" | "final"; // tabs at top
 
 type PositionKey = string;
 
@@ -240,6 +345,13 @@ export default function ObservationsFeature({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // anchors for desktop popovers
+  const filtersBtnRef = useRef<HTMLButtonElement | null>(null);
+  const moreBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // search focus ref for "/" shortcut
+  const searchRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     if (searchParams?.get("create") === "1") {
       addNew();
@@ -392,15 +504,39 @@ export default function ObservationsFeature({
     sortDir,
   ]);
 
-  // close panels on Esc
+  // Keyboard shortcuts (match MyPlayersFeature)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      const typing =
+        tag === "input" || tag === "textarea" || (e as any).isComposing;
+      if (!typing) {
+        if (e.key === "/") {
+          e.preventDefault();
+          searchRef.current?.focus();
+          return;
+        } else if (e.key.toLowerCase() === "n") {
+          e.preventDefault();
+          addNew();
+          return;
+        } else if (e.key.toLowerCase() === "e") {
+          e.preventDefault();
+          exportCSV();
+          return;
+        } else if (e.key.toLowerCase() === "x") {
+          e.preventDefault();
+          setColsOpen((o) => !o);
+          setFiltersOpen(false);
+          setMoreOpen(false);
+          return;
+        }
+      }
       if (e.key === "Escape") {
         setFiltersOpen(false);
         setColsOpen(false);
         setMoreOpen(false);
       }
-    };
+    }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -420,7 +556,9 @@ export default function ObservationsFeature({
             ) === true
       )
       .filter((r) =>
-        matchFilter ? (r.match ?? "").toLowerCase().includes(matchFilter.toLowerCase()) : true
+        matchFilter
+          ? (r.match ?? "").toLowerCase().includes(matchFilter.toLowerCase())
+          : true
       )
       .filter((r) => (modeFilter ? (r.mode ?? "live") === modeFilter : true))
       .filter((r) => (lifecycleFilter ? r.status === lifecycleFilter : true))
@@ -497,13 +635,11 @@ export default function ObservationsFeature({
 
       const visibleIds = new Set(filtered.map((r) => r.id));
 
-      // Build next as intersection
       const next = new Set<number>();
       prev.forEach((id) => {
         if (visibleIds.has(id)) next.add(id);
       });
 
-      // If nothing changed, keep same reference
       if (next.size === prev.size) {
         let same = true;
         for (const id of prev) {
@@ -553,11 +689,15 @@ export default function ObservationsFeature({
   }
 
   function moveToTrash(id: number) {
-    const next = rows.map((x) => (x.id === id ? { ...x, bucket: "trash" as Bucket } : x));
+    const next = rows.map((x) =>
+      x.id === id ? { ...x, bucket: "trash" as Bucket } : x
+    );
     onChange(next as unknown as Observation[]);
   }
   function restoreFromTrash(id: number) {
-    const next = rows.map((x) => (x.id === id ? { ...x, bucket: "active" as Bucket } : x));
+    const next = rows.map((x) =>
+      x.id === id ? { ...x, bucket: "active" as Bucket } : x
+    );
     onChange(next as unknown as Observation[]);
   }
 
@@ -565,14 +705,18 @@ export default function ObservationsFeature({
   function bulkTrash() {
     const ids = selected;
     if (ids.size === 0) return;
-    const next = rows.map((x) => (ids.has(x.id) ? { ...x, bucket: "trash" as Bucket } : x));
+    const next = rows.map((x) =>
+      ids.has(x.id) ? { ...x, bucket: "trash" as Bucket } : x
+    );
     onChange(next as unknown as Observation[]);
     setSelected(new Set());
   }
   function bulkRestore() {
     const ids = selected;
     if (ids.size === 0) return;
-    const next = rows.map((x) => (ids.has(x.id) ? { ...x, bucket: "active" as Bucket } : x));
+    const next = rows.map((x) =>
+      ids.has(x.id) ? { ...x, bucket: "active" as Bucket } : x
+    );
     onChange(next as unknown as Observation[]);
     setSelected(new Set());
   }
@@ -651,7 +795,12 @@ export default function ObservationsFeature({
 
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
-    if (q.trim()) chips.push({ key: "q", label: `Szukaj: “${q.trim()}”`, clear: () => setQ("") });
+    if (q.trim())
+      chips.push({
+        key: "q",
+        label: `Szukaj: "${q.trim()}"`,
+        clear: () => setQ(""),
+      });
     if (matchFilter.trim())
       chips.push({
         key: "match",
@@ -671,9 +820,17 @@ export default function ObservationsFeature({
         clear: () => setLifecycleFilter(""),
       });
     if (dateFrom)
-      chips.push({ key: "from", label: `Od: ${fmtDate(dateFrom)}`, clear: () => setDateFrom("") });
+      chips.push({
+        key: "from",
+        label: `Od: ${fmtDate(dateFrom)}`,
+        clear: () => setDateFrom(""),
+      });
     if (dateTo)
-      chips.push({ key: "to", label: `Do: ${fmtDate(dateTo)}`, clear: () => setDateTo("") });
+      chips.push({
+        key: "to",
+        label: `Do: ${fmtDate(dateTo)}`,
+        clear: () => setDateTo(""),
+      });
     return chips;
   }, [q, matchFilter, modeFilter, lifecycleFilter, dateFrom, dateTo]);
 
@@ -746,17 +903,47 @@ export default function ObservationsFeature({
           title="Obserwacje"
           right={
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {/* Tabs inline with title on desktop */}
+              <div className="hidden sm:inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+                {([
+                  { key: "active", label: "Aktywne obserwacje", count: counts.all },
+                  { key: "draft", label: "Szkice", count: counts.draft },
+                ] as { key: TabKey; label: string; count: number }[]).map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => setTab(t.key)}
+                    className={`px-3 py-2 text-sm rounded-md transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${
+                      tab === t.key ? "bg-white shadow dark:bg-neutral-800" : ""
+                    }`}
+                    data-active={tab === t.key}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {t.label}
+                      <span className="rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        {t.count}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+
               {/* search */}
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Szukaj po meczu lub zawodnikach…"
-                className="w-36 sm:w-56 md:w-64"
-              />
+              <div className="relative">
+                <Download className="pointer-events-none absolute left-2.5 top-1/2 hidden h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  ref={searchRef}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Szukaj po meczu lub zawodnikach… (/)"
+                  className="w-36 pl-3 sm:w-56 md:w-64"
+                  aria-label="Szukaj w obserwacjach"
+                />
+              </div>
 
               {/* filters */}
               <div className="relative">
                 <Button
+                  ref={filtersBtnRef}
                   size="sm"
                   variant="outline"
                   className="border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
@@ -777,11 +964,13 @@ export default function ObservationsFeature({
                 {filtersOpen &&
                   (isMobile ? (
                     <Portal>
+                      {/* Backdrop */}
                       <div
                         className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
                         onClick={() => setFiltersOpen(false)}
                         aria-hidden
                       />
+                      {/* Bottom Sheet */}
                       <div
                         className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
                         role="dialog"
@@ -882,9 +1071,12 @@ export default function ObservationsFeature({
                       </div>
                     </Portal>
                   ) : (
-                    <div
-                      className="absolute right-0 top-full z-[120] mt-2 w-[22rem] max-w-[92vw] rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
-                      onMouseLeave={() => setFiltersOpen(false)}
+                    <AnchoredPopover
+                      anchorRef={filtersBtnRef as any}
+                      open={filtersOpen}
+                      onClose={() => setFiltersOpen(false)}
+                      width={352}
+                      className="rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
                     >
                       <div className="mb-3">
                         <Label className="text-xs">Mecz (kto vs kto)</Label>
@@ -965,7 +1157,7 @@ export default function ObservationsFeature({
                           Zastosuj
                         </Button>
                       </div>
-                    </div>
+                    </AnchoredPopover>
                   ))}
               </div>
 
@@ -990,12 +1182,14 @@ export default function ObservationsFeature({
                   size="sm"
                   className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
                   onClick={addNew}
+                  title="Skrót: N"
                 >
                   <PlusCircle className="mr-0 md:mr-2 h-4 w-4" />{" "}
                   <span className="hidden sm:inline">Dodaj</span>
                 </Button>
 
                 <Button
+                  ref={moreBtnRef}
                   variant="outline"
                   className="h-9 w-9 border-gray-300 p-0 dark:border-neutral-700"
                   onClick={() => {
@@ -1009,15 +1203,17 @@ export default function ObservationsFeature({
                   <EllipsisVertical className="h-5 w-5" />
                 </Button>
 
-                {/* WIĘCEJ: dropdown on desktop, bottom sheet on mobile */}
+                {/* WIĘCEJ */}
                 {moreOpen &&
                   (isMobile ? (
                     <Portal>
+                      {/* Backdrop */}
                       <div
                         className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
                         onClick={() => setMoreOpen(false)}
                         aria-hidden
                       />
+                      {/* Bottom-sheet */}
                       <div
                         className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
                         role="dialog"
@@ -1035,9 +1231,10 @@ export default function ObservationsFeature({
                             Zamknij
                           </Button>
                         </div>
-                        <div className="mt-1 grid gap-1">
+
+                        <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
                           <button
-                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
                             onClick={() => {
                               setScope("active");
                               setMoreOpen(false);
@@ -1046,7 +1243,7 @@ export default function ObservationsFeature({
                             <Users className="h-4 w-4" /> Aktywni
                           </button>
                           <button
-                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
                             onClick={() => {
                               setScope("trash");
                               setMoreOpen(false);
@@ -1054,9 +1251,8 @@ export default function ObservationsFeature({
                           >
                             <Trash2 className="h-4 w-4" /> Kosz
                           </button>
-                          <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                           <button
-                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
                             onClick={() => {
                               setMoreOpen(false);
                               exportCSV();
@@ -1065,7 +1261,7 @@ export default function ObservationsFeature({
                             <FileDown className="h-4 w-4" /> Eksport CSV
                           </button>
                           <button
-                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
                             onClick={() => {
                               setMoreOpen(false);
                               exportExcel();
@@ -1077,9 +1273,12 @@ export default function ObservationsFeature({
                       </div>
                     </Portal>
                   ) : (
-                    <div
-                      className="absolute right-0 top-full z-[150] mt-2 w-56 overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
-                      onMouseLeave={() => setMoreOpen(false)}
+                    <AnchoredPopover
+                      anchorRef={moreBtnRef as any}
+                      open={moreOpen}
+                      onClose={() => setMoreOpen(false)}
+                      width={224}
+                      className="overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
                     >
                       <button
                         className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
@@ -1118,16 +1317,16 @@ export default function ObservationsFeature({
                       >
                         <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
                       </button>
-                    </div>
+                    </AnchoredPopover>
                   ))}
               </div>
             </div>
           }
         />
 
-        {/* Tabs + compact selection bar */}
+        {/* Tabs (mobile only here) + compact selection bar */}
         <div className="mt-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+          <div className="inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900 sm:hidden">
             {([
               { key: "active", label: "Aktywne obserwacje", count: counts.all },
               { key: "draft", label: "Szkice", count: counts.draft },
@@ -1158,7 +1357,10 @@ export default function ObservationsFeature({
               </div>
               <div className="flex items-center gap-2">
                 {scope === "active" ? (
-                  <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={bulkTrash}>
+                  <Button
+                    className="bg-gray-900 text-white hover:bg-gray-800"
+                    onClick={bulkTrash}
+                  >
                     <Trash2 className="mr-0 md:mr-2 h-4 w-4" /> Do kosza
                   </Button>
                 ) : (
@@ -1272,7 +1474,7 @@ export default function ObservationsFeature({
                 return (
                   <tr
                     key={r.id}
-                    className="group h-12 border-t border-gray-200 hover:bg-gray-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60"
+                    className="group h-12 border-t border-gray-200 transition-colors duration-150 hover:bg-gray-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60"
                   >
                     {visibleCols.select && (
                       <td className="p-2 sm:p-3">
@@ -1348,7 +1550,7 @@ export default function ObservationsFeature({
                       <td className="hidden p-2 sm:table-cell sm:p-3">
                         <button
                           onClick={() => toggleModeInline(r.id)}
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
                             mode === "live"
                               ? "bg-indigo-600 text-white hover:bg-indigo-700"
                               : "bg-violet-600 text-white hover:bg-violet-700"
@@ -1372,7 +1574,7 @@ export default function ObservationsFeature({
                           <TooltipTrigger asChild>
                             <button
                               onClick={() => toggleStatusInline(r.id)}
-                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
                                 status === "final"
                                   ? "bg-emerald-600 text-white hover:bg-emerald-700"
                                   : "bg-amber-600 text-white hover:bg-amber-700"
@@ -1403,7 +1605,7 @@ export default function ObservationsFeature({
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-8 w-8 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                 onClick={() => {
                                   setEditing(r);
                                   setPageMode("editor");
@@ -1422,7 +1624,7 @@ export default function ObservationsFeature({
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-8 w-8 border-gray-300 text-rose-600 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                   onClick={() => moveToTrash(r.id)}
                                   aria-label="Przenieś do kosza"
                                 >
@@ -1437,7 +1639,7 @@ export default function ObservationsFeature({
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-8 w-8 border-gray-300 text-emerald-600 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                   onClick={() => restoreFromTrash(r.id)}
                                   aria-label="Przywróć z kosza"
                                 >
@@ -1486,9 +1688,11 @@ function ColumnsButton({
   visibleCols: Record<keyof typeof DEFAULT_COLS, boolean>;
   setVisibleCols: (v: Record<keyof typeof DEFAULT_COLS, boolean>) => void;
 }) {
+  const btnRef = useRef<HTMLButtonElement | null>(null);
   return (
     <div className="relative">
       <Button
+        ref={btnRef as any}
         size="sm"
         variant="outline"
         className="border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
@@ -1549,9 +1753,12 @@ function ColumnsButton({
             </div>
           </Portal>
         ) : (
-          <div
-            className="absolute right-0 top-full z-[120] mt-2 w-[18rem] max-w=[92vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
-            onMouseLeave={() => setOpen(false)}
+          <AnchoredPopover
+            anchorRef={btnRef as any}
+            open={open}
+            onClose={() => setOpen(false)}
+            width={288}
+            className="rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
           >
             <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">
               Widoczność kolumn
@@ -1575,7 +1782,7 @@ function ColumnsButton({
                 </label>
               );
             })}
-          </div>
+          </AnchoredPopover>
         ))}
     </div>
   );

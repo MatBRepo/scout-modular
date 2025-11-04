@@ -1,7 +1,7 @@
 // src/features/players/MyPlayersFeature.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,91 @@ function Portal({ children }: { children: React.ReactNode }) {
   const [el, setEl] = useState<HTMLElement | null>(null);
   useEffect(() => setEl(document.getElementById("portal-root")), []);
   return el ? createPortal(children, el) : null;
+}
+
+/* ================= Anchored popover (desktop) ================= */
+type AnchorAlign = "start" | "end";
+function useAnchoredPosition(
+  open: boolean,
+  anchorRef: React.RefObject<HTMLElement>,
+  align: AnchorAlign = "end",
+  gap = 8
+) {
+  const [style, setStyle] = useState<React.CSSProperties | null>(null);
+
+  const compute = () => {
+    const a = anchorRef.current;
+    if (!a) return;
+    const r = a.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const left = align === "end" ? Math.min(vw - 12, r.left + r.width) : r.left;
+    setStyle({
+      position: "fixed",
+      top: r.top + r.height + gap,
+      left: align === "end" ? left : Math.max(12, left),
+      transform: align === "end" ? "translateX(-100%)" : "none",
+      zIndex: 210,
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    compute();
+    const on = () => compute();
+    window.addEventListener("scroll", on, true);
+    window.addEventListener("resize", on);
+    return () => {
+      window.removeEventListener("scroll", on, true);
+      window.removeEventListener("resize", on);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  return style;
+}
+
+function AnchoredPopover({
+  open,
+  onClose,
+  anchorRef,
+  align = "end",
+  maxWidth = 420,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  anchorRef: React.RefObject<HTMLElement>;
+  align?: AnchorAlign;
+  maxWidth?: number;
+  children: React.ReactNode;
+}) {
+  const style = useAnchoredPosition(open, anchorRef, align);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <Portal>
+      {/* backdrop for click-out */}
+      <div
+        className="fixed inset-0 z-[200] bg-transparent"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        className="z-[210] overflow-hidden rounded-lg border border-gray-200 bg-white p-0 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+        style={{ ...style, width: "min(92vw, " + maxWidth + "px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </Portal>
+  );
 }
 
 /* =======================================
@@ -134,6 +219,11 @@ export default function MyPlayersFeature({
 
   // 3-dots menu
   const [moreOpen, setMoreOpen] = useState(false);
+
+  // anchors for desktop popovers
+  const filterBtnRef = useRef<HTMLButtonElement | null>(null);
+  const colsBtnRef = useRef<HTMLButtonElement | null>(null);
+  const moreBtnRef = useRef<HTMLButtonElement | null>(null);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -457,330 +547,155 @@ export default function MyPlayersFeature({
       <div className="w-full">
         <Crumb items={[{ label: "Start", href: "/" }, { label: "Baza zawodników" }]} />
 
-        {/* TOOLBAR */}
+        {/* TOOLBAR (unified layout) */}
         <Toolbar
-          title="Baza zawodników"
-          right={
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {/* search */}
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Input
-                  ref={searchRef}
-                  value={q}
-                  onChange={(e) => { setQ(e.target.value); setPage(1); }}
-                  placeholder="Szukaj po nazwisku/klubie… (/) "
-                  className="w-36 pl-8 sm:w-56 md:w-64"
-                  aria-label="Szukaj w bazie zawodników"
-                />
+          title={
+            <div className="flex items-center gap-3">
+              <span>Baza zawodników</span>
+              {/* Tabs inline with title on desktop for quick context switching */}
+              <div className="hidden md:block">
+                <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
+                  <TabsList className="rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+                    <TabsTrigger value="all" className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                      Wszyscy
+                      <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        {tabCounts.all}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="known" className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                      Znani
+                      <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        {tabCounts.known}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="unknown" className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                      Nieznani
+                      <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        {tabCounts.unknown}
+                      </span>
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="all" />
+                  <TabsContent value="known" />
+                  <TabsContent value="unknown" />
+                </Tabs>
               </div>
+            </div>
+          }
+          right={
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div />
 
-              {/* filters */}
-              <div className="relative">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
+                {/* Search */}
+                <div className="relative order-1 w-full min-w-0 sm:order-none sm:w-64">
+                  <Search
+                    className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                    aria-hidden="true"
+                  />
+                  <Input
+                    ref={searchRef}
+                    value={q}
+                    onChange={(e) => { setQ(e.target.value); setPage(1); }}
+placeholder="Szukaj po nazwisku/klubie… (/)"
+                    className="h-9 w-full pl-8 pr-3 text-sm" aria-label="Szukaj w bazie zawodników"
+                  />
+                </div>
+
+                {/* Filtry */}
                 <Button
+                  ref={filterBtnRef}
+                  type="button"
                   variant="outline"
-                  className="border-gray-300 px-3 py-2 dark:border-neutral-700"
-                  onClick={() => { setFiltersOpen((v) => !v); setColsOpen(false); setMoreOpen(false); }}
+                  className="h-9 border-gray-300 px-3 py-2 dark:border-neutral-700"
                   aria-pressed={filtersOpen}
+                  onClick={() => {
+                    setFiltersOpen((v) => !v);
+                    setColsOpen(false);
+                    setMoreOpen(false);
+                  }}
                 >
-                  <ListFilter className="mr-0 md:mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Filtry{filtersCount ? ` (${filtersCount})` : ""}</span>
+                  <ListFilter className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    Filtry{filtersCount ? ` (${filtersCount})` : ""}
+                  </span>
                 </Button>
 
-                {/* FILTRY panel: bottom-sheet on mobile, popover on desktop */}
-                {filtersOpen && (
-                  isMobile ? (
-                    <Portal>
-                      <div
-                        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                        onClick={() => setFiltersOpen(false)}
-                        aria-hidden
-                      />
-                      <div
-                        className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-                        role="dialog"
-                        aria-modal="true"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="mb-3 flex items-center justify-between">
-                          <div className="text-sm font-semibold">Filtry</div>
-                          <Button variant="outline" size="sm" className="border-gray-300 dark:border-neutral-700" onClick={() => setFiltersOpen(false)}>Zamknij</Button>
-                        </div>
+                {/* Kolumny */}
+                <Button
+                  ref={colsBtnRef}
+                  variant="outline"
+                  className="h-9 border-gray-300 px-3 py-2 dark:border-neutral-700"
+                  onClick={() => {
+                    setColsOpen((v) => !v);
+                    setFiltersOpen(false);
+                    setMoreOpen(false);
+                  }}
+                  aria-pressed={colsOpen}
+                >
+                  <Columns3 className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-2">Kolumny</span>
+                </Button>
 
-                        <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Pozycje</div>
-                        <div className="mb-3 grid grid-cols-2 gap-2">
-                          {POS.map((p) => (
-                            <label key={p} className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800">
-                              <span>{p}</span>
-                              <Checkbox
-                                checked={pos[p]}
-                                onCheckedChange={(v) => { setPos(prev => ({ ...prev, [p]: Boolean(v) })); setPage(1); }}
-                              />
-                            </label>
-                          ))}
-                        </div>
-
-                        <div className="mb-3">
-                          <Label className="text-xs text-gray-600 dark:text-neutral-300">Klub</Label>
-                          <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek min</Label>
-                            <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek max</Label>
-                            <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                          </div>
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap items-center justify-between">
-                          <Button
-                            variant="outline"
-                            className="border-gray-300 dark:border-neutral-700"
-                            onClick={()=>{
-                              setPos({ GK:true, DF:true, MF:true, FW:true });
-                              setClub("");
-                              setAgeMin("");
-                              setAgeMax("");
-                              setQ("");
-                              changeKnownScope("all");
-                              setPage(1);
-                            }}
-                          >
-                            Resetuj wszystko
-                          </Button>
-                          <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => setFiltersOpen(false)}>
-                            Zastosuj
-                          </Button>
-                        </div>
-                      </div>
-                    </Portal>
-                  ) : (
-                    <div
-                      className="absolute right-0 top-full z-[120] mt-2 w-96 max-w-[92vw] rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
-                      onMouseLeave={() => setFiltersOpen(false)}
-                    >
-                      <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Pozycje</div>
-                      <div className="mb-3 grid grid-cols-4 gap-2">
-                        {POS.map((p) => (
-                          <label key={p} className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-gray-50 dark:hover:bg-neutral-800">
-                            <span>{p}</span>
-                            <Checkbox
-                              checked={pos[p]}
-                              onCheckedChange={(v) => { setPos(prev => ({ ...prev, [p]: Boolean(v) })); setPage(1); }}
-                            />
-                          </label>
-                        ))}
-                      </div>
-                      <div className="mb-3">
-                        <Label className="text-xs text-gray-600 dark:text-neutral-300">Klub</Label>
-                        <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek min</Label>
-                          <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek max</Label>
-                          <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap items-center justify-between">
-                        <Button
-                          variant="outline"
-                          className="border-gray-300 dark:border-neutral-700"
-                          onClick={()=>{
-                            setPos({ GK:true, DF:true, MF:true, FW:true });
-                            setClub("");
-                            setAgeMin("");
-                            setAgeMax("");
-                            setQ("");
-                            changeKnownScope("all");
-                            setPage(1);
-                          }}
-                        >
-                          Resetuj wszystko
-                        </Button>
-                        <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => setFiltersOpen(false)}>
-                          Zastosuj
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-
-              {/* columns → mobile bottom-sheet, desktop popover */}
-              <ColumnsButton
-                isMobile={isMobile}
-                open={colsOpen}
-                setOpen={(v) => { setColsOpen(v); if (v) { setFiltersOpen(false); setMoreOpen(false); } }}
-                visibleCols={visibleCols}
-                setVisibleCols={(next) => setVisibleCols(next)}
-              />
-
-              {/* add + more (3 dots to the RIGHT after Dodaj) */}
-              <div className="relative flex items-center gap-2">
-                <Button className="bg-gray-900 px-4 py-2 text-white hover:bg-gray-800" onClick={() => router.push("/players/new")} title="Skrót: N">
-                  <PlusCircle className="mr-0 md:mr-2 h-4 w-4" />
+                {/* Dodaj */}
+                <Button
+                  type="button"
+                  title="Skrót: N"
+                  onClick={() => router.push("/players/new")}
+                  className="h-9 inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2"
+                >
+                  <PlusCircle className="h-4 w-4" />
                   <span className="hidden sm:inline">Dodaj</span>
                 </Button>
 
+                {/* Więcej */}
                 <Button
-                  variant="outline"
-                  className="h-10 w-10 border-gray-300 p-0 dark:border-neutral-700"
-                  onClick={() => { setMoreOpen((o) => !o); setFiltersOpen(false); setColsOpen(false); }}
+                  ref={moreBtnRef}
+                  type="button"
                   aria-label="Więcej"
+                  aria-pressed={moreOpen}
+                  onClick={() => {
+                    setMoreOpen((o) => !o);
+                    setFiltersOpen(false);
+                    setColsOpen(false);
+                  }}
+                  variant="outline"
+                  className="h-9 w-9 border-gray-300 p-0 dark:border-neutral-700"
                 >
                   <EllipsisVertical className="h-5 w-5" />
                 </Button>
-
-                {moreOpen && (
-                  isMobile ? (
-                    <Portal>
-                      {/* Backdrop */}
-                      <div
-                        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                        onClick={() => setMoreOpen(false)}
-                        aria-hidden
-                      />
-                      {/* Bottom-sheet */}
-                      <div
-                        className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-                        role="dialog"
-                        aria-modal="true"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="mb-1 flex items-center justify-between px-1">
-                          <div className="text-sm font-semibold">Więcej</div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-gray-300 dark:border-neutral-700"
-                            onClick={() => setMoreOpen(false)}
-                          >
-                            Zamknij
-                          </Button>
-                        </div>
-
-                        <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
-                          <button
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                            onClick={() => { setScope("active"); setMoreOpen(false); }}
-                          >
-                            <Users className="h-4 w-4" /> Aktywni
-                          </button>
-                          <button
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                            onClick={() => { setScope("trash"); setMoreOpen(false); }}
-                          >
-                            <Trash2 className="h-4 w-4" /> Kosz
-                          </button>
-                          <button
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                            onClick={() => { setMoreOpen(false); exportCSV(); }}
-                          >
-                            <FileDown className="h-4 w-4" /> Eksport CSV
-                          </button>
-                          <button
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                            onClick={() => { setMoreOpen(false); exportExcel(); }}
-                          >
-                            <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                          </button>
-                        </div>
-                      </div>
-                    </Portal>
-                  ) : (
-                    // Desktop popover
-                    <div
-                      className="absolute right-0 top-full z-[150] mt-2 w-56 overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
-                      onMouseLeave={() => setMoreOpen(false)}
-                    >
-                      <button
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                        onClick={() => { setScope("active"); setMoreOpen(false); }}
-                      >
-                        <Users className="h-4 w-4" /> Aktywni
-                      </button>
-                      <button
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                        onClick={() => { setScope("trash"); setMoreOpen(false); }}
-                      >
-                        <Trash2 className="h-4 w-4" /> Kosz
-                      </button>
-                      <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
-                      <button
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                        onClick={() => { setMoreOpen(false); exportCSV(); }}
-                      >
-                        <FileDown className="h-4 w-4" /> Eksport CSV
-                      </button>
-                      <button
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                        onClick={() => { setMoreOpen(false); exportExcel(); }}
-                      >
-                        <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                      </button>
-                    </div>
-                  )
-                )}
               </div>
             </div>
           }
         />
 
-        {/* Tabs + compact selection bar */}
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-              <TabsList className="rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
-                <TabsTrigger value="all" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                  Wszyscy
-                  <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                    {tabCounts.all}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="known" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                  Znani
-                  <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                    {tabCounts.known}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="unknown" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                  Nieznani
-                  <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                    {tabCounts.unknown}
-                  </span>
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="all" />
-              <TabsContent value="known" />
-              <TabsContent value="unknown" />
-            </Tabs>
-          </div>
-
-          {selected.size > 0 && content === "table" && (
-            <div className="flex shrink-0 items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
-              <div>
-                Zaznaczono: <b>{selected.size}</b>
-              </div>
-              {scope === "active" ? (
-                <Button className="h-8 bg-gray-900 px-3 text-white hover:bg-gray-800" onClick={bulkTrash}>
-                  <Trash2 className="mr-1 h-4 w-4" /> Do kosza
-                </Button>
-              ) : (
-                <Button className="h-8 bg-gray-900 px-3 text-white hover:bg-gray-800" onClick={bulkRestore}>
-                  <Undo2 className="mr-1 h-4 w-4" /> Przywróć
-                </Button>
-              )}
-            </div>
-          )}
+        {/* Tabs for mobile (moved under toolbar) */}
+        <div className="mt-2 md:hidden">
+          <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
+            <TabsList className="w-full justify-between rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+              <TabsTrigger value="all" className="flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                Wszyscy
+                <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  {tabCounts.all}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="known" className="flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                Znani
+                <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  {tabCounts.known}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="unknown" className="flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                Nieznani
+                <span className="ml-2 rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  {tabCounts.unknown}
+                </span>
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="all" />
+            <TabsContent value="known" />
+            <TabsContent value="unknown" />
+          </Tabs>
         </div>
 
         {/* Active filter chips */}
@@ -810,6 +725,321 @@ export default function MyPlayersFeature({
           </div>
         )}
 
+        {/* Desktop: anchored popovers */}
+        {!isMobile && (
+          <>
+            {/* Filters popover */}
+            <AnchoredPopover
+              open={filtersOpen}
+              onClose={() => setFiltersOpen(false)}
+              anchorRef={filterBtnRef}
+              align="end"
+              maxWidth={420}
+            >
+              <div className="w-full p-4 text-sm">
+                <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Pozycje</div>
+                <div className="mb-3 grid grid-cols-4 gap-2">
+                  {POS.map((p) => (
+                    <label key={p} className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-gray-50 dark:hover:bg-neutral-800">
+                      <span>{p}</span>
+                      <Checkbox
+                        checked={pos[p]}
+                        onCheckedChange={(v) => { setPos(prev => ({ ...prev, [p]: Boolean(v) })); setPage(1); }}
+                      />
+                    </label>
+                  ))}
+                </div>
+                <div className="mb-3">
+                  <Label className="text-xs text-gray-600 dark:text-neutral-300">Klub</Label>
+                  <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek min</Label>
+                    <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek max</Label>
+                    <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    className="border-gray-300 dark:border-neutral-700"
+                    onClick={()=>{
+                      setPos({ GK:true, DF:true, MF:true, FW:true });
+                      setClub("");
+                      setAgeMin("");
+                      setAgeMax("");
+                      setQ("");
+                      changeKnownScope("all");
+                      setPage(1);
+                    }}
+                  >
+                    Resetuj wszystko
+                  </Button>
+                  <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => setFiltersOpen(false)}>
+                    Zastosuj
+                  </Button>
+                </div>
+              </div>
+            </AnchoredPopover>
+
+            {/* Columns popover */}
+            <AnchoredPopover
+              open={colsOpen}
+              onClose={() => setColsOpen(false)}
+              anchorRef={colsBtnRef}
+              align="end"
+              maxWidth={320}
+            >
+              <div className="w-full p-3">
+                <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Widoczność kolumn</div>
+                {Object.keys(DEFAULT_COLS).map((k) => {
+                  const key = k as ColKey;
+                  return (
+                    <label
+                      key={key}
+                      className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    >
+                      <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
+                      <Checkbox
+                        checked={visibleCols[key]}
+                        onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </AnchoredPopover>
+
+            {/* More popover */}
+            <AnchoredPopover
+              open={moreOpen}
+              onClose={() => setMoreOpen(false)}
+              anchorRef={moreBtnRef}
+              align="end"
+              maxWidth={240}
+            >
+              <div className="w-full p-1">
+                <button
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  onClick={() => { setScope("active"); setMoreOpen(false); }}
+                >
+                  <Users className="h-4 w-4" /> Aktywni
+                </button>
+                <button
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  onClick={() => { setScope("trash"); setMoreOpen(false); }}
+                >
+                  <Trash2 className="h-4 w-4" /> Kosz
+                </button>
+                <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+                <button
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  onClick={() => { setMoreOpen(false); exportCSV(); }}
+                >
+                  <FileDown className="h-4 w-4" /> Eksport CSV
+                </button>
+                <button
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  onClick={() => { setMoreOpen(false); exportExcel(); }}
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                </button>
+              </div>
+            </AnchoredPopover>
+          </>
+        )}
+
+        {/* Mobile: bottom-sheets (unchanged visual, kept consistent with Observations) */}
+        {isMobile && (
+          <>
+            {filtersOpen && (
+              <Portal>
+                <div
+                  className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                  onClick={() => setFiltersOpen(false)}
+                  aria-hidden
+                />
+                <div
+                  className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                  role="dialog"
+                  aria-modal="true"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="text-sm font-semibold">Filtry</div>
+                    <Button variant="outline" size="sm" className="border-gray-300 dark:border-neutral-700" onClick={() => setFiltersOpen(false)}>Zamknij</Button>
+                  </div>
+
+                  <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Pozycje</div>
+                  <div className="mb-3 grid grid-cols-2 gap-2">
+                    {POS.map((p) => (
+                      <label key={p} className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800">
+                        <span>{p}</span>
+                        <Checkbox
+                          checked={pos[p]}
+                          onCheckedChange={(v) => { setPos(prev => ({ ...prev, [p]: Boolean(v) })); setPage(1); }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="mb-3">
+                    <Label className="text-xs text-gray-600 dark:text-neutral-300">Klub</Label>
+                    <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek min</Label>
+                      <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600 dark:text-neutral-300">Wiek max</Label>
+                      <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center justify-between">
+                    <Button
+                      variant="outline"
+                      className="border-gray-300 dark:border-neutral-700"
+                      onClick={()=>{
+                        setPos({ GK:true, DF:true, MF:true, FW:true });
+                        setClub("");
+                        setAgeMin("");
+                        setAgeMax("");
+                        setQ("");
+                        changeKnownScope("all");
+                        setPage(1);
+                      }}
+                    >
+                      Resetuj wszystko
+                    </Button>
+                    <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => setFiltersOpen(false)}>
+                      Zastosuj
+                    </Button>
+                  </div>
+                </div>
+              </Portal>
+            )}
+
+            {colsOpen && (
+              <Portal>
+                <div
+                  className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                  onClick={() => setColsOpen(false)}
+                  aria-hidden
+                />
+                <div
+                  className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                  role="dialog"
+                  aria-modal="true"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-sm font-semibold">Kolumny</div>
+                    <Button variant="outline" size="sm" className="border-gray-300 dark:border-neutral-700" onClick={() => setColsOpen(false)}>
+                      Zamknij
+                    </Button>
+                  </div>
+                  {Object.keys(DEFAULT_COLS).map((k) => {
+                    const key = k as ColKey;
+                    return (
+                      <label
+                        key={key}
+                        className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                      >
+                        <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
+                        <Checkbox
+                          checked={visibleCols[key]}
+                          onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </Portal>
+            )}
+
+            {moreOpen && (
+              <Portal>
+                <div
+                  className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                  onClick={() => setMoreOpen(false)}
+                  aria-hidden
+                />
+                <div
+                  className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                  role="dialog"
+                  aria-modal="true"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mb-1 flex items-center justify-between px-1">
+                    <div className="text-sm font-semibold">Więcej</div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-gray-300 dark:border-neutral-700"
+                      onClick={() => setMoreOpen(false)}
+                    >
+                      Zamknij
+                    </Button>
+                  </div>
+
+                  <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                      onClick={() => { setScope("active"); setMoreOpen(false); }}
+                    >
+                      <Users className="h-4 w-4" /> Aktywni
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                      onClick={() => { setScope("trash"); setMoreOpen(false); }}
+                    >
+                      <Trash2 className="h-4 w-4" /> Kosz
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                      onClick={() => { setMoreOpen(false); exportCSV(); }}
+                    >
+                      <FileDown className="h-4 w-4" /> Eksport CSV
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                      onClick={() => { setMoreOpen(false); exportExcel(); }}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                    </button>
+                  </div>
+                </div>
+              </Portal>
+            )}
+          </>
+        )}
+
+        {/* Selection bar */}
+        {selected.size > 0 && content === "table" && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+            <div>
+              Zaznaczono: <b>{selected.size}</b>
+            </div>
+            {scope === "active" ? (
+              <Button className="h-8 bg-gray-900 px-3 text-white hover:bg-gray-800" onClick={bulkTrash}>
+                <Trash2 className="mr-1 h-4 w-4" /> Do kosza
+              </Button>
+            ) : (
+              <Button className="h-8 bg-gray-900 px-3 text-white hover:bg-gray-800" onClick={bulkRestore}>
+                <Undo2 className="mr-1 h-4 w-4" /> Przywróć
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* CONTENT REGION */}
         <div className="mt-3">
           {content === "table" ? (
@@ -834,7 +1064,7 @@ export default function MyPlayersFeature({
               />
 
               {/* Pagination footer */}
-              <div className="mt-3 flex flex-col items-center justify-between gap-3 rounded-md border border-gray-200 bg-white p-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-950 md:flex-row">
+              <div className="mt-3 flex flex-col items-center justify-between gap-3 rounded-md  bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950 md:flex-row">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-gray-600 dark:text-neutral-300">Wiersze na stronę:</span>
                   <select
@@ -979,7 +1209,7 @@ function PlayersTable({
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
           <tr>
-            {visibleCols.photo && <th className={`${cellPad} text-left font-medium w-16`}>{COL_LABELS.photo}</th>}
+            {visibleCols.photo && <th className={`${cellPad} text-left font-medium w-16`}></th>}
             {visibleCols.select && (
               <th className={`${cellPad} text-left font-medium w-10`}>
                 <Checkbox
@@ -992,15 +1222,16 @@ function PlayersTable({
                       setSelected(set);
                     }
                   }}
+                  aria-label="Zaznacz wszystkie widoczne"
                 />
               </th>
             )}
-            {visibleCols.name && <th className={`${cellPad} text-left`}><SortHeader k="name">{COL_LABELS.name}</SortHeader></th>}
-            {visibleCols.club && <th className={`${cellPad} text-left`}><SortHeader k="club">{COL_LABELS.club}</SortHeader></th>}
-            {visibleCols.pos && <th className={`${cellPad} text-left`}><SortHeader k="pos">{COL_LABELS.pos}</SortHeader></th>}
-            {visibleCols.age && <th className={`${cellPad} text-left`}><SortHeader k="age">{COL_LABELS.age}</SortHeader></th>}
-            {visibleCols.obs && <th className={`${cellPad} text-left`}><SortHeader k="obs">{COL_LABELS.obs}</SortHeader></th>}
-            {visibleCols.actions && <th className={`${cellPad} text-right font-medium`}>{COL_LABELS.actions}</th>}
+            {visibleCols.name && <th className={`${cellPad} text-left`}><SortHeader k="name">Nazwa</SortHeader></th>}
+            {visibleCols.club && <th className={`${cellPad} text-left`}><SortHeader k="club">Klub</SortHeader></th>}
+            {visibleCols.pos && <th className={`${cellPad} text-left`}><SortHeader k="pos">Pozycja</SortHeader></th>}
+            {visibleCols.age && <th className={`${cellPad} text-left`}><SortHeader k="age">Wiek</SortHeader></th>}
+            {visibleCols.obs && <th className={`${cellPad} text-left`}><SortHeader k="obs">Obserwacje</SortHeader></th>}
+            {visibleCols.actions && <th className={`${cellPad} text-right font-medium`}>Akcje</th>}
           </tr>
         </thead>
         <tbody>
@@ -1046,6 +1277,7 @@ function PlayersTable({
                         if (v) copy.add(r.id); else copy.delete(r.id);
                         setSelected(copy);
                       }}
+                      aria-label={`Zaznacz ${r.name}`}
                     />
                   </td>
                 )}
@@ -1146,96 +1378,6 @@ function PlayersTable({
           )}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-/* Columns popover / bottom-sheet */
-function ColumnsButton({
-  isMobile,
-  open, setOpen, visibleCols, setVisibleCols,
-}: {
-  isMobile: boolean;
-  open: boolean;
-  setOpen: (v: boolean) => void;
-  visibleCols: Record<keyof typeof DEFAULT_COLS, boolean>;
-  setVisibleCols: (v: Record<keyof typeof DEFAULT_COLS, boolean>) => void;
-}) {
-  const panel = (
-    <div
-      className="absolute right-0 top-full z-[120] mt-2 w-60 max-w-[92vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
-      onMouseLeave={() => setOpen(false)}
-    >
-      <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Widoczność kolumn</div>
-      {Object.keys(DEFAULT_COLS).map((k) => {
-        const key = k as ColKey;
-        return (
-          <label
-            key={key}
-            className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-          >
-            <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
-            <Checkbox
-              checked={visibleCols[key]}
-              onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
-            />
-          </label>
-        );
-      })}
-    </div>
-  );
-
-  return (
-    <div className="relative">
-      <Button
-        variant="outline"
-        className="border-gray-300 px-3 py-2 dark:border-neutral-700"
-        onClick={() => setOpen(!open)}
-        aria-pressed={open}
-      >
-        <Columns3 className="mr-0 md:mr-2 h-4 w-4" />
-        <span className="hidden sm:inline">Kolumny</span>
-      </Button>
-
-      {open && (
-        isMobile ? (
-          <Portal>
-            <div
-              className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-              onClick={() => setOpen(false)}
-              aria-hidden
-            />
-            <div
-              className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-              role="dialog"
-              aria-modal="true"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-sm font-semibold">Kolumny</div>
-                <Button variant="outline" size="sm" className="border-gray-300 dark:border-neutral-700" onClick={() => setOpen(false)}>
-                  Zamknij
-                </Button>
-              </div>
-              {Object.keys(DEFAULT_COLS).map((k) => {
-                const key = k as ColKey;
-                return (
-                  <label
-                    key={key}
-                    className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                  >
-                    <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
-                    <Checkbox
-                      checked={visibleCols[key]}
-                      onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
-                    />
-                  </label>
-                );
-              })}
-            </div>
-          </Portal>
-        ) : panel
-      )}
     </div>
   );
 }

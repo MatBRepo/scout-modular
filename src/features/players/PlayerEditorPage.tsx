@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, ChevronsUpDown, Check } from "lucide-react";
 import type { Player } from "@/shared/types";
 
 import {
@@ -26,6 +26,198 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+
+/* ------------------------------------------------------------------
+   Detailed positions (same as in AddPlayerPage) + mapping to bucket
+------------------------------------------------------------------- */
+type BucketPos = "GK" | "DF" | "MF" | "FW";
+type DetailedPos =
+  | "GK"
+  | "CB"
+  | "LB"
+  | "RB"
+  | "CDM"
+  | "CM"
+  | "CAM"
+  | "LW"
+  | "RW"
+  | "ST";
+
+const POS_DATA: Array<{
+  value: DetailedPos;
+  code: string;
+  name: string;
+  desc: string;
+}> = [
+  { value: "GK", code: "GK", name: "Bramkarz", desc: "Odbicia, gra na linii, wyjścia i gra nogami." },
+  { value: "CB", code: "CB", name: "Środkowy obrońca", desc: "Gra w powietrzu, ustawienie, wyprowadzenie." },
+  { value: "LB", code: "LB", name: "Lewy obrońca", desc: "Obrona strony, dośrodkowania, wsparcie ataku." },
+  { value: "RB", code: "RB", name: "Prawy obrońca", desc: "Obrona strony, dośrodkowania, wsparcie ataku." },
+  { value: "CDM", code: "CDM", name: "Śr. pomocnik defensywny", desc: "Odbiór, asekuracja, pierwsze podanie." },
+  { value: "CM", code: "CM", name: "Środkowy pomocnik", desc: "Równowaga defensywa/kreacja." },
+  { value: "CAM", code: "CAM", name: "Ofensywny pomocnik", desc: "Ostatnie podanie, kreacja, strzał." },
+  { value: "LW", code: "LW", name: "Lewy pomocnik/skrzydłowy", desc: "1v1, dośrodkowania, zejścia do strzału." },
+  { value: "RW", code: "RW", name: "Prawy pomocnik/skrzydłowy", desc: "1v1, dośrodkowania, zejścia do strzału." },
+  { value: "ST", code: "ST", name: "Napastnik", desc: "Wykończenie, gra tyłem, ruch w polu karnym." },
+];
+
+const toBucket = (p: DetailedPos): BucketPos => {
+  switch (p) {
+    case "GK":
+      return "GK";
+    case "CB":
+    case "LB":
+    case "RB":
+      return "DF";
+    case "CDM":
+    case "CM":
+    case "CAM":
+    case "LW":
+    case "RW":
+      return "MF";
+    case "ST":
+      return "FW";
+  }
+};
+
+// Fallback detailed position from bucket if meta.detailedPos missing
+function detailedFromBucket(pos?: Player["pos"]): DetailedPos {
+  switch (pos) {
+    case "GK":
+      return "GK";
+    case "DF":
+      return "CB";
+    case "MF":
+      return "CM";
+    case "FW":
+      return "ST";
+    default:
+      return "CM";
+  }
+}
+
+/* ----------------------------------------
+   Countries (flags) + combobox (same as AddPlayerPage)
+----------------------------------------- */
+type Country = { code: string; name: string; flag: string };
+const COUNTRIES: Country[] = [
+  { code: "PL", name: "Polska", flag: "🇵🇱" },
+  { code: "DE", name: "Niemcy", flag: "🇩🇪" },
+  { code: "GB", name: "Anglia", flag: "🇬🇧" },
+  { code: "ES", name: "Hiszpania", flag: "🇪🇸" },
+  { code: "IT", name: "Włochy", flag: "🇮🇹" },
+  { code: "FR", name: "Francja", flag: "🇫🇷" },
+  { code: "NL", name: "Holandia", flag: "🇳🇱" },
+  { code: "PT", name: "Portugalia", flag: "🇵🇹" },
+  { code: "SE", name: "Szwecja", flag: "🇸🇪" },
+  { code: "NO", name: "Norwegia", flag: "🇳🇴" },
+  { code: "DK", name: "Dania", flag: "🇩🇰" },
+  { code: "BE", name: "Belgia", flag: "🇧🇪" },
+  { code: "CH", name: "Szwajcaria", flag: "🇨🇭" },
+  { code: "AT", name: "Austria", flag: "🇦🇹" },
+  { code: "CZ", name: "Czechy", flag: "🇨🇿" },
+  { code: "SK", name: "Słowacja", flag: "🇸🇰" },
+  { code: "UA", name: "Ukraina", flag: "🇺🇦" },
+  { code: "LT", name: "Litwa", flag: "🇱🇹" },
+  { code: "LV", name: "Łotwa", flag: "🇱🇻" },
+  { code: "EE", name: "Estonia", flag: "🇪🇪" },
+  { code: "HU", name: "Węgry", flag: "🇭🇺" },
+  { code: "RO", name: "Rumunia", flag: "🇷🇴" },
+  { code: "HR", name: "Chorwacja", flag: "🇭🇷" },
+  { code: "RS", name: "Serbia", flag: "🇷🇸" },
+  { code: "SI", name: "Słowenia", flag: "🇸🇮" },
+  { code: "GR", name: "Grecja", flag: "🇬🇷" },
+  { code: "TR", name: "Turcja", flag: "🇹🇷" },
+  { code: "US", name: "USA", flag: "🇺🇸" },
+  { code: "BR", name: "Brazylia", flag: "🇧🇷" },
+  { code: "AR", name: "Argentyna", flag: "🇦🇷" },
+];
+
+function CountryCombobox({
+  value,
+  onChange,
+  error,
+}: {
+  value: string; // country name
+  onChange: (next: string) => void;
+  error?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = COUNTRIES.find((c) => c.name === value);
+
+  return (
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-expanded={open}
+            className={cn(
+              "flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
+              error ? "border-red-500" : "border-gray-300 dark:border-neutral-700"
+            )}
+          >
+            <span className={cn("flex min-w-0 items-center gap-2", !selected && "text-muted-foreground")}>
+              {selected ? (
+                <>
+                  <span className="text-base leading-none">{selected.flag}</span>
+                  <span className="truncate">{selected.name}</span>
+                </>
+              ) : (
+                "Wybierz kraj"
+              )}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <Command shouldFilter>
+            <CommandInput placeholder="Szukaj kraju…" />
+            <CommandList>
+              <CommandEmpty>Brak wyników.</CommandEmpty>
+              <CommandGroup>
+                {COUNTRIES.map((c) => {
+                  const active = c.name === value;
+                  return (
+                    <CommandItem
+                      key={c.code}
+                      value={`${c.name} ${c.code}`}
+                      onSelect={() => {
+                        onChange(c.name); // (change to c.code if you prefer ISO)
+                        setOpen(false);
+                      }}
+                    >
+                      <span className="mr-2 text-base">{c.flag}</span>
+                      <span className="mr-2">{c.name}</span>
+                      <span className={cn("ml-auto", active ? "opacity-100" : "opacity-0")}>
+                        <Check className="h-4 w-4" />
+                      </span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </>
+  );
+}
+
+/* =========================================
+   Page
+========================================= */
 type Pos = Player["pos"]; // "GK" | "DF" | "MF" | "FW"
 
 export default function PlayerEditorPage({ id }: { id: string }) {
@@ -85,15 +277,31 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     if (!p) return;
     const updated = { ...p, ...next };
     bumpSaving();
-    overwritePlayer(updated);
+    overwritePlayer(updated as Player);
   }
 
-  // Ręczne „Zapisz” (potwierdzenie; autosave i tak zapisuje on-change)
-  function manualSave() {
+  // Zmiana szczegółowej pozycji (aktualizuje też bucket)
+  function updateDetailedPos(sel: DetailedPos) {
     if (!p) return;
+    const next: Player = {
+      ...p,
+      pos: toBucket(sel) as Pos,
+      ...(p as any),
+      // store meta.detailedPos alongside (as in AddPlayerPage)
+      ...(typeof (p as any).meta === "object"
+        ? { meta: { ...(p as any).meta, detailedPos: sel } }
+        : { meta: { detailedPos: sel } }),
+    } as any;
     bumpSaving();
-    overwritePlayer({ ...p });
+    overwritePlayer(next);
   }
+
+  // Odczyt aktualnej szczegółowej pozycji do Selecta
+  const currentDetailedPos: DetailedPos | null = useMemo(() => {
+    if (!p) return null;
+    const metaPos = ((p as any).meta?.detailedPos as DetailedPos | undefined) ?? undefined;
+    return metaPos ?? detailedFromBucket(p.pos);
+  }, [p]);
 
   // „Anuluj” — przywrócenie snapshotu
   function cancelToOriginal() {
@@ -103,6 +311,13 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     overwritePlayer(structuredClone(orig));
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
+  }
+
+  // Ręczne „Zapisz” (potwierdzenie; autosave i tak zapisuje on-change)
+  function manualSave() {
+    if (!p) return;
+    bumpSaving();
+    overwritePlayer({ ...p });
   }
 
   // Drobna plakietka statusu w toolbarze
@@ -248,20 +463,30 @@ export default function PlayerEditorPage({ id }: { id: string }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Pozycja</Label>
+                {/* === Detailed position selector (like AddPlayerPage) === */}
                 <Select
-                  value={p.pos as Pos}
-                  onValueChange={(v) => saveBasic({ pos: v as Pos })}
+                  value={currentDetailedPos ?? undefined}
+                  onValueChange={(v) => updateDetailedPos(v as DetailedPos)}
                 >
-                  <SelectTrigger className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
-                    <SelectValue placeholder="Wybierz" />
+                  <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
+                    <SelectValue placeholder="Wybierz pozycję" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="GK">GK</SelectItem>
-                    <SelectItem value="DF">DF</SelectItem>
-                    <SelectItem value="MF">MF</SelectItem>
-                    <SelectItem value="FW">FW</SelectItem>
+                    {POS_DATA.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <div className="text-left">
+                          <div className="font-medium">
+                            {opt.code}: {opt.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Zapisuje się jako <b>{toBucket((currentDetailedPos ?? "CM") as DetailedPos)}</b> w polu głównym <code>pos</code>.
+                </p>
               </div>
               <div>
                 <Label>Wiek</Label>
@@ -280,9 +505,10 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               </div>
               <div>
                 <Label>Narodowość</Label>
-                <Input
+                {/* === Country combobox (like AddPlayerPage) === */}
+                <CountryCombobox
                   value={p.nationality ?? ""}
-                  onChange={(e) => saveBasic({ nationality: e.target.value })}
+                  onChange={(val) => saveBasic({ nationality: val })}
                 />
               </div>
             </div>
