@@ -1,27 +1,27 @@
 // src/app/ClientRoot.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ThemeProvider } from "next-themes";
 import AppSidebar from "@/widgets/app-sidebar/AppSidebar";
 import PageTransition from "@/shared/ui/PageTransition";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Menu, LogIn, UserPlus, PlusCircle,
-  Mail, Lock, User as UserIcon, Eye, EyeOff, CheckCircle2
+  Menu, PlusCircle, Mail, Lock, User as UserIcon, Eye, EyeOff, CheckCircle2,
+  Loader2
 } from "lucide-react";
-// import CommentLayer from "@/features/comments/CommentLayer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LoaderOverlay from "@/shared/ui/LoaderOverlay";
-import { motion, AnimatePresence, cubicBezier, type Variants } from "framer-motion";
+import { motion, AnimatePresence, cubicBezier, type Variants, useReducedMotion } from "framer-motion";
 
 /* ===== Keys ===== */
 const AUTH_KEY = "s4s.auth";
 const ROLE_KEY = "s4s.role";
 const USERS_KEY = "s4s.users";
+const AUTH_TAB_KEY = "s4s.auth.tab";
 
 /* ===== Types ===== */
 type Role = "admin" | "scout" | "scout-agent";
@@ -96,14 +96,10 @@ function dispatchAuth(auth: AuthState | null) {
   } catch {}
 }
 
-/* ===== Brand: Dark rounded square "S" (hide label when authed) ===== */
+/* ===== Brand: Flat, rounded, no gradient ===== */
 function BrandMark({ showName }: { showName: boolean }) {
   return (
-    <a
-      href="/"
-      className="group flex items-center gap-2"
-      aria-label="entrisoScouting - Start"
-    >
+    <a href="/" className="group flex items-center gap-2" aria-label="entrisoScouting - Start">
       <div className="grid h-8 w-8 place-items-center rounded bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
         <span className="text-[13px] font-bold leading-none">S</span>
       </div>
@@ -129,6 +125,18 @@ const colVariants: Variants = {
   },
 };
 
+/* ===== Password strength (simple): 0-4 ===== */
+function strengthScore(pass: string) {
+  let s = 0;
+  if (pass.length >= 6) s++;
+  if (/[A-Z]/.test(pass)) s++;
+  if (/[0-9]/.test(pass)) s++;
+  if (/[^A-Za-z0-9]/.test(pass)) s++;
+  return s;
+}
+const strengthLabel = (n: number) =>
+  ["Bardzo słabe", "Słabe", "Średnie", "Dobre", "Bardzo dobre"][n];
+
 /* ===== Auth Gate ===== */
 function AuthGate({
   onLoggedIn,
@@ -137,8 +145,12 @@ function AuthGate({
   onLoggedIn: (auth: AuthState) => void;
   onLoading: (v: boolean, text?: string) => void;
 }) {
-  const [pendingRole, setPendingRole] = useState<Role | null>(null);
-  const [tab, setTab] = useState<"login" | "register">("login");
+  const prefersReduced = useReducedMotion();
+
+  const initialTab =
+    (typeof window !== "undefined" && (localStorage.getItem(AUTH_TAB_KEY) as "login" | "register")) ||
+    "login";
+  const [tab, setTab] = useState<"login" | "register">(initialTab);
 
   // Login form
   const [loginEmail, setLoginEmail] = useState("");
@@ -146,6 +158,7 @@ function AuthGate({
   const [showPassLogin, setShowPassLogin] = useState(false);
   const [loginErr, setLoginErr] = useState<string | null>(null);
   const [loginBusy, setLoginBusy] = useState(false);
+  const [loginCaps, setLoginCaps] = useState(false);
 
   // Register form (always "scout")
   const [regName, setRegName] = useState("");
@@ -155,6 +168,13 @@ function AuthGate({
   const [regErr, setRegErr] = useState<string | null>(null);
   const [regOk, setRegOk] = useState<string | null>(null);
   const [regBusy, setRegBusy] = useState(false);
+  const [regCaps, setRegCaps] = useState(false);
+
+  const [pendingRole, setPendingRole] = useState<Role | null>(null);
+
+  useEffect(() => {
+    try { localStorage.setItem(AUTH_TAB_KEY, tab); } catch {}
+  }, [tab]);
 
   const doLogin = (email: string, pass: string) => {
     const users = readUsers();
@@ -178,6 +198,8 @@ function AuthGate({
     onLoggedIn(auth);
   };
 
+  const loginCardRef = useRef<HTMLDivElement>(null);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginErr(null);
@@ -191,6 +213,18 @@ function AuthGate({
       doLogin(loginEmail, loginPass);
     } catch (err: any) {
       setLoginErr(err?.message || "Błąd logowania.");
+      // shake animation
+      if (loginCardRef.current && !prefersReduced) {
+        loginCardRef.current.animate(
+          [
+            { transform: "translateX(0)" },
+            { transform: "translateX(-6px)" },
+            { transform: "translateX(6px)" },
+            { transform: "translateX(0)" },
+          ],
+          { duration: 300, easing: "ease-in-out" }
+        );
+      }
     } finally {
       setLoginBusy(false);
       onLoading(false);
@@ -227,6 +261,7 @@ function AuthGate({
       writeUsers([newUser, ...users]);
       setRegOk("Konto utworzone. Możesz się zalogować.");
       setTab("login");
+      // prefill email
       setLoginEmail(newUser.email);
     } catch (err: any) {
       setRegErr(err?.message || "Błąd rejestracji.");
@@ -252,50 +287,33 @@ function AuthGate({
       dispatchRole(role);
       onLoggedIn(auth);
       onLoading(false);
-    }, 450);
+      setPendingRole(null);
+    }, 550);
   };
+
+  const regStrength = strengthScore(regPass);
 
   return (
     <div className="min-h-[calc(100vh-var(--header-h,0px))] w-full">
       <motion.div
-        className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-8 px-3 py-6 md:gap-10 md:px-6 md:py-10 md:grid-cols-2"
+        className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-8 px-3 py-6 md:grid-cols-2 md:gap-10 md:px-6 md:py-10"
         initial="hidden"
         animate="show"
         transition={{ staggerChildren: 0.08 }}
       >
-        {/* LEFT */}
-        <motion.section
-          variants={colVariants}
-          className="relative hidden min-h-[520px] items-center md:flex"
-        >
-          <div className="pointer-events-none absolute inset-0 -z-10">
-            <div className="absolute inset-0 bg-[radial-gradient(55%_40%_at_50%_-8%,rgba(59,130,246,0.12),transparent_60%)] dark:bg-[radial-gradient(55%_40%_at_50%_-8%,rgba(99,102,241,0.16),transparent_62%)]" />
-            <div
-              className="absolute inset-0 opacity-[0.05] mix-blend-soft-light"
-              aria-hidden
-              style={{
-                backgroundImage:
-                  'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27140%27 height=%27140%27 viewBox=%270 0 140 140%27%3E%3Cfilter id=%27n%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.85%27 numOctaves=%271%27 stitchTiles=%27stitch%27/%3E%3CfeColorMatrix type=%27saturate%27 values=%270%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23n)%27/%3E%3C/svg%3E")',
-              }}
-            />
-          </div>
-
-          <div className="mx-auto w-full max-w-[560px] p-2 md:p-6">
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05, duration: 0.4, ease: easeOutCustom }}
-              className="mb-4 inline-flex items-center gap-2 rounded bg-indigo-600/10 px-3 py-1 text-xs text-indigo-700 ring-1 ring-inset ring-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:ring-indigo-800/50"
-            >
+        {/* LEFT — flat content (no gradients) */}
+        <motion.section variants={colVariants} className="relative hidden min-h-[540px] items-center md:flex">
+          <div className="mx-auto w-full max-w-[620px] p-2 md:p-6">
+            <div className="mb-4 inline-flex items-center gap-2 rounded bg-slate-100 px-3 py-1.5 text-xs text-slate-800 dark:bg-neutral-900 dark:text-neutral-200">
               <CheckCircle2 className="h-3.5 w-3.5" />
               entrisoScouting — panel analityczny
-            </motion.div>
+            </div>
 
             <motion.h1
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12, duration: 0.45, ease: easeOutCustom }}
-              className="text-2xl font-semibold leading-tight"
+              className="text-3xl font-semibold leading-tight tracking-tight"
             >
               Zarządzaj bazą zawodników, obserwacjami i raportami — szybko i przejrzyście.
             </motion.h1>
@@ -304,7 +322,7 @@ function AuthGate({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.18, duration: 0.45, ease: easeOutCustom }}
-              className="mt-2 text-sm text-muted-foreground"
+              className="mt-3 text-[15px] text-muted-foreground"
             >
               Skup się na ocenie talentu. My zajmiemy się filtrowaniem, łączeniem źródeł i wygodnym
               przepływem pracy między skautami a agentami.
@@ -314,7 +332,7 @@ function AuthGate({
               initial="hidden"
               animate="show"
               transition={{ staggerChildren: 0.06, delayChildren: 0.24 }}
-              className="mt-5 space-y-3 text-sm"
+              className="mt-6 space-y-3 text-[15px]"
             >
               {[
                 "Globalna wyszukiwarka (Transfermarkt, Wyscout, SoFIFA + własne źródła)",
@@ -329,7 +347,7 @@ function AuthGate({
                   }}
                   className="flex items-start gap-3"
                 >
-                  <span className="mt-1 inline-block h-2 w-2 rounded bg-indigo-500" />
+                  <span className="mt-2 inline-block h-1.5 w-1.5 rounded bg-indigo-500" />
                   {txt}
                 </motion.li>
               ))}
@@ -337,9 +355,20 @@ function AuthGate({
           </div>
         </motion.section>
 
-        {/* RIGHT */}
+        {/* RIGHT — Auth card (flat, rounded). No glass. */}
         <motion.section variants={colVariants} className="grid place-items-center">
-          <div className="w-full max-w-md rounded-2xl bg-white/30 p-4 backdrop-blur-xl dark:bg-neutral-950/30 md:p-6">
+          <div ref={loginCardRef} className="w-full max-w-md rounded-2xl p-5 md:p-6">
+            {/* Mobile extra description (flat) */}
+            <div className="mb-3 block md:hidden">
+              <div className="rounded bg-slate-100 p-3 text-xs text-slate-700 dark:bg-neutral-900 dark:text-neutral-300">
+                <div className="mb-1 font-medium text-slate-900 dark:text-neutral-100">
+                  Szybka platforma dla scoutów
+                </div>
+                Dodawaj zawodników i obserwacje, przeglądaj globalną bazę i współpracuj z zespołem —
+                wszystko w jednym miejscu.
+              </div>
+            </div>
+
             {/* Header */}
             <motion.div
               initial={{ opacity: 0, y: 6 }}
@@ -353,13 +382,19 @@ function AuthGate({
               <h2 className="text-lg font-semibold">Witaj w entrisoScouting</h2>
             </motion.div>
 
-            {/* Tabs */}
+            {/* Tabs with better margins (flat) */}
             <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")}>
-              <TabsList className="mb-4 w-full justify-between rounded-lg bg-white/30 p-1 backdrop-blur-sm dark:bg-neutral-900/30">
-                <TabsTrigger value="login" className="flex-1 px-3 py-2 data-[state=active]:bg-white/60 data-[state=active]:backdrop-blur-sm dark:data-[state=active]:bg-neutral-800/60">
+              <TabsList className="mb-4 grid w-full grid-cols-2 gap-1 rounded-lg bg-transparent p-0">
+                <TabsTrigger
+                  value="login"
+                  className="rounded px-4 py-2 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-neutral-900"
+                >
                   Logowanie
                 </TabsTrigger>
-                <TabsTrigger value="register" className="flex-1 px-3 py-2 data-[state=active]:bg-white/60 data-[state=active]:backdrop-blur-sm dark:data-[state=active]:bg-neutral-800/60">
+                <TabsTrigger
+                  value="register"
+                  className="rounded px-4 py-2 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-neutral-900"
+                >
                   Rejestracja
                 </TabsTrigger>
               </TabsList>
@@ -386,7 +421,7 @@ function AuthGate({
                                 id="l-email"
                                 type="email"
                                 autoComplete="email"
-                                className="pl-8 bg-white/60 backdrop-blur-sm dark:bg-neutral-900/60"
+                                className="rounded bg-white pl-8 dark:bg-neutral-900"
                                 placeholder="jan.kowalski@example.com"
                                 value={loginEmail}
                                 onChange={(e) => setLoginEmail(e.target.value)}
@@ -401,24 +436,28 @@ function AuthGate({
                                 id="l-pass"
                                 type={showPassLogin ? "text" : "password"}
                                 autoComplete="current-password"
-                                className="pl-8 pr-9 bg-white/60 backdrop-blur-sm dark:bg-neutral-900/60"
+                                className="rounded bg-white pl-8 pr-9 dark:bg-neutral-900"
                                 placeholder="••••••••"
                                 value={loginPass}
                                 onChange={(e) => setLoginPass(e.target.value)}
+                                onKeyUp={(e) => setLoginCaps((e as any).getModifierState?.("CapsLock"))}
                               />
                               <button
                                 type="button"
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:bg-white/60 hover:backdrop-blur-sm dark:hover:bg-neutral-800/60"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:bg-slate-100 dark:hover:bg-neutral-800"
                                 onClick={() => setShowPassLogin((s) => !s)}
                                 aria-label={showPassLogin ? "Ukryj hasło" : "Pokaż hasło"}
                               >
                                 {showPassLogin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                               </button>
                             </div>
+                            {loginCaps && (
+                              <div className="mt-1 text-xs text-amber-600">Włączony Caps Lock</div>
+                            )}
                           </div>
 
                           {loginErr && (
-                            <div className="rounded bg-rose-50/80 px-2 py-1 text-xs text-rose-700 backdrop-blur">
+                            <div className="rounded bg-rose-50 px-2 py-1 text-xs text-rose-700">
                               {loginErr}
                             </div>
                           )}
@@ -426,8 +465,9 @@ function AuthGate({
                           <Button
                             type="submit"
                             disabled={loginBusy}
-                            className="h-9 w-full bg-gray-900/90 text-white hover:bg-gray-900"
+                            className="h-9 w-full rounded bg-gray-900 text-white hover:bg-gray-800"
                           >
+                            {loginBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Zaloguj się
                           </Button>
                         </form>
@@ -450,7 +490,7 @@ function AuthGate({
                               <UserIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                               <Input
                                 id="r-name"
-                                className="pl-8 bg-white/60 backdrop-blur-sm dark:bg-neutral-900/60"
+                                className="rounded bg-white pl-8 dark:bg-neutral-900"
                                 placeholder="Jan Kowalski"
                                 value={regName}
                                 onChange={(e) => setRegName(e.target.value)}
@@ -466,7 +506,7 @@ function AuthGate({
                                 id="r-email"
                                 type="email"
                                 autoComplete="email"
-                                className="pl-8 bg-white/60 backdrop-blur-sm dark:bg-neutral-900/60"
+                                className="rounded bg-white pl-8 dark:bg-neutral-900"
                                 placeholder="jan.kowalski@example.com"
                                 value={regEmail}
                                 onChange={(e) => setRegEmail(e.target.value)}
@@ -482,29 +522,55 @@ function AuthGate({
                                 id="r-pass"
                                 type={showPassReg ? "text" : "password"}
                                 autoComplete="new-password"
-                                className="pl-8 pr-9 bg-white/60 backdrop-blur-sm dark:bg-neutral-900/60"
+                                className="rounded bg-white pl-8 pr-9 dark:bg-neutral-900"
                                 placeholder="min. 6 znaków"
                                 value={regPass}
                                 onChange={(e) => setRegPass(e.target.value)}
+                                onKeyUp={(e) => setRegCaps((e as any).getModifierState?.("CapsLock"))}
                               />
                               <button
                                 type="button"
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:bg-white/60 hover:backdrop-blur-sm dark:hover:bg-neutral-800/60"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:bg-slate-100 dark:hover:bg-neutral-800"
                                 onClick={() => setShowPassReg((s) => !s)}
                                 aria-label={showPassReg ? "Ukryj hasło" : "Pokaż hasło"}
                               >
                                 {showPassReg ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                               </button>
                             </div>
+                            {regCaps && (
+                              <div className="mt-1 text-xs text-amber-600">Włączony Caps Lock</div>
+                            )}
+
+                            {/* Strength meter */}
+                            <div className="mt-2">
+                              <div className="mb-1 flex items-center justify-between text-[11px]">
+                                <span className="opacity-70">Siła hasła</span>
+                                <span className="opacity-70">{strengthLabel(regStrength)}</span>
+                              </div>
+                              <div className="h-2 w-full overflow-hidden rounded bg-slate-200 dark:bg-neutral-800">
+                                <div
+                                  className={`h-2 rounded transition-[width] ${
+                                    regStrength <= 1
+                                      ? "bg-rose-500"
+                                      : regStrength === 2
+                                      ? "bg-amber-500"
+                                      : regStrength === 3
+                                      ? "bg-emerald-500"
+                                      : "bg-green-600"
+                                  }`}
+                                  style={{ width: `${(regStrength / 4) * 100}%` }}
+                                />
+                              </div>
+                            </div>
                           </div>
 
                           {regErr && (
-                            <div className="rounded bg-rose-50/80 px-2 py-1 text-xs text-rose-700 backdrop-blur">
+                            <div className="rounded bg-rose-50 px-2 py-1 text-xs text-rose-700">
                               {regErr}
                             </div>
                           )}
                           {regOk && (
-                            <div className="rounded bg-emerald-50/80 px-2 py-1 text-xs text-emerald-700 backdrop-blur">
+                            <div className="rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
                               {regOk}
                             </div>
                           )}
@@ -512,8 +578,9 @@ function AuthGate({
                           <Button
                             type="submit"
                             disabled={regBusy}
-                            className="h-9 w-full bg-gray-900/90 text-white hover:bg-gray-900"
+                            className="h-9 w-full rounded bg-gray-900 text-white hover:bg-gray-800"
                           >
+                            {regBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Utwórz konto
                           </Button>
                         </form>
@@ -525,9 +592,9 @@ function AuthGate({
             </Tabs>
 
             {/* Divider */}
-            <div className="my-4 h-px bg-white/40 dark:bg-white/10" />
+            <div className="my-4 h-px bg-slate-200 dark:bg-neutral-800" />
 
-            {/* Demo roles — single-row each */}
+            {/* Demo roles — clean, rounded, with spinner while pending */}
             <div className="space-y-2 text-sm">
               <div className="mb-1 text-[11px] font-medium tracking-wide text-dark dark:text-neutral-400">
                 Szybkie logowanie (demo):
@@ -535,43 +602,58 @@ function AuthGate({
 
               <button
                 onClick={() => loginAs("admin")}
-                className="w-full rounded bg-white/40 px-3 py-2 text-left backdrop-blur hover:bg-white/55 dark:bg-neutral-900/40 dark:hover:bg-neutral-900/55"
+                className="w-full rounded bg-white px-3 py-2 text-left hover:bg-slate-50 dark:bg-neutral-950 dark:hover:bg-neutral-900"
                 disabled={!!pendingRole}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">Admin</span>
-                    <span className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">demo</span>
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">
+                      demo
+                    </span>
                   </div>
-                  <span className="text-xs text-dark dark:text-neutral-300">Uprawnienia pełne</span>
+                  <span className="flex items-center gap-2 text-xs text-dark dark:text-neutral-300">
+                    {pendingRole === "admin" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Uprawnienia pełne
+                  </span>
                 </div>
               </button>
 
               <button
                 onClick={() => loginAs("scout-agent")}
-                className="w-full rounded bg-white/40 px-3 py-2 text-left backdrop-blur hover:bg-white/55 dark:bg-neutral-900/40 dark:hover:bg-neutral-900/55"
+                className="w-full rounded bg-white px-3 py-2 text-left hover:bg-slate-50 dark:bg-neutral-950 dark:hover:bg-neutral-900"
                 disabled={!!pendingRole}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">Scout Agent</span>
-                    <span className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">demo</span>
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">
+                      demo
+                    </span>
                   </div>
-                  <span className="text-xs text-dark dark:text-neutral-300">Uprawnienia pośrednie</span>
+                  <span className="flex items-center gap-2 text-xs text-dark dark:text-neutral-300">
+                    {pendingRole === "scout-agent" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Uprawnienia pośrednie
+                  </span>
                 </div>
               </button>
 
               <button
                 onClick={() => loginAs("scout")}
-                className="w-full rounded bg-white/40 px-3 py-2 text-left backdrop-blur hover:bg-white/55 dark:bg-neutral-900/40 dark:hover:bg-neutral-900/55"
+                className="w-full rounded bg-white px-3 py-2 text-left hover:bg-slate-50 dark:bg-neutral-950 dark:hover:bg-neutral-900"
                 disabled={!!pendingRole}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">Scout</span>
-                    <span className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">demo</span>
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">
+                      demo
+                    </span>
                   </div>
-                  <span className="text-xs text-dark dark:text-neutral-300">Uprawnienia ograniczone</span>
+                  <span className="flex items-center gap-2 text-xs text-dark dark:text-neutral-300">
+                    {pendingRole === "scout" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Uprawnienia ograniczone
+                  </span>
                 </div>
               </button>
             </div>
@@ -596,31 +678,27 @@ function AppShell({
   onAddObservation: () => void;
   isAuthed: boolean;
 }) {
+  // small top progress bar on any route change (parent sets state)
   return (
     <>
       <div className="pl-64 max-lg:pl-0">
-        {/* Sticky glass top bar */}
+        {/* Sticky top bar (flat) */}
         <header
-          className="
-            sticky top-0 z-40 border-b border-transparent
-            backdrop-blur supports-[backdrop-filter]:bg-white/55
-            dark:bg-neutral-950/55
-          "
+          className="sticky top-0 z-40 border-b border-transparent bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent dark:bg-transparent"
           role="banner"
         >
           <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-2 py-2 md:px-4 md:py-3">
             <div className="flex items-center gap-2">
-              {/* HIDE hamburger until logged in; add subtle border & rounding */}
+              {/* Hamburger when logged in */}
               {isAuthed && (
                 <button
-                  className="rounded border border-gray-300/70 p-2 backdrop-blur-sm hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60 lg:hidden"
+                  className="rounded border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60 lg:hidden"
                   aria-label="Otwórz menu"
                   onClick={onOpenMobile}
                 >
                   <Menu className="h-5 w-5" />
                 </button>
               )}
-              {/* Hide name when authenticated */}
               <BrandMark showName={!isAuthed} />
             </div>
 
@@ -636,17 +714,17 @@ function AppShell({
                 <div className="flex items-center gap-2 md:hidden">
                   <Button
                     size="icon"
-                    className="h-9 w-9 bg-gray-900 text-white hover:bg-gray-800"
+                    className="h-9 w-9 rounded bg-gray-900 text-white hover:bg-gray-800"
                     aria-label="Dodaj zawodnika"
                     onClick={onAddPlayer}
                     title="Dodaj zawodnika"
                   >
-                    <UserPlus className="h-4 w-4" />
+                    <UserIcon className="h-4 w-4" />
                   </Button>
                   <Button
                     size="icon"
                     variant="outline"
-                    className="h-9 w-9 border-gray-300 dark:border-neutral-700"
+                    className="h-9 w-9 rounded border-gray-300 dark:border-neutral-700"
                     aria-label="Dodaj obserwacje"
                     onClick={onAddObservation}
                     title="Dodaj obserwacje"
@@ -659,16 +737,16 @@ function AppShell({
                 <div className="hidden items-center gap-2 md:flex">
                   <Button
                     onClick={onAddPlayer}
-                    className="bg-gray-900 text-white hover:bg-gray-800"
+                    className="rounded bg-gray-900 text-white hover:bg-gray-800"
                     aria-label="Dodaj zawodnika"
                   >
-                    <UserPlus className="mr-2 h-4 w-4" />
+                    <UserIcon className="mr-2 h-4 w-4" />
                     Dodaj zawodnika
                   </Button>
                   <Button
                     onClick={onAddObservation}
                     variant="outline"
-                    className="border-gray-300 dark:border-neutral-700"
+                    className="rounded border-gray-300 dark:border-neutral-700"
                     aria-label="Dodaj obserwacje"
                   >
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -682,18 +760,14 @@ function AppShell({
           </div>
         </header>
 
-        {/* Content container */}
+        {/* Content container — transparent, no border/background */}
         <main id="content" className="px-2 py-4 md:px-4 md:py-6">
           <PageTransition>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: easeOutCustom }}
-              className="
-                mx-auto w-full max-w-[1400px]
-                rounded-lg bg-white/70 p-0 shadow-none backdrop-blur-sm
-                dark:border-0 dark:bg-neutral-950/60 md:p-6
-              "
+              className="mx-auto w-full max-w-[1400px] rounded-xl bg-transparent p-0 shadow-none md:p-6"
             >
               {children}
             </motion.div>
@@ -716,6 +790,7 @@ function AppShell({
 export default function ClientRoot({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const prefersReduced = useReducedMotion();
 
   const [auth, setAuth] = useState<AuthState>({ ok: false });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -759,12 +834,13 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
     }
   }, [auth.ok]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // subtle route-change overlay
+  // subtle route-change overlay + top progress bar
   useEffect(() => {
+    if (prefersReduced) return;
     setRouteLoading(true);
-    const t = setTimeout(() => setRouteLoading(false), 250);
+    const t = setTimeout(() => setRouteLoading(false), 260);
     return () => clearTimeout(t);
-  }, [pathname]);
+  }, [pathname, prefersReduced]);
 
   const content = useMemo(() => {
     if (!auth.ok)
@@ -779,6 +855,14 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+      {/* Simple top progress bar (no gradient) */}
+      <div
+        className={`fixed inset-x-0 top-0 z-[60] h-0.5 bg-indigo-500 transition-opacity ${
+          routeLoading ? "opacity-100" : "opacity-0"
+        }`}
+        aria-hidden
+      />
+
       {/* Sidebars */}
       <AppSidebar variant="mobile" open={mobileOpen} onClose={() => setMobileOpen(false)} />
       <div className="hidden lg:block">
@@ -794,16 +878,6 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
       >
         {content}
       </AppShell>
-
-      {/* Comments */}
-      {/* <CommentLayer
-        pageKey={pathname}
-        containerSelector="body"
-        currentUser={{
-          id: auth.ok ? (auth as any).userId : undefined,
-          name: auth.ok ? (auth as any).user : "demo",
-        }}
-      /> */}
 
       {/* Global overlay loader */}
       {showOverlay && (
