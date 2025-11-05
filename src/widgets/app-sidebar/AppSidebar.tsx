@@ -8,7 +8,7 @@ import {
   TrendingUp, TriangleAlert, LogOut
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useRef, useState, useId } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 /* ========= Types & keys ========= */
@@ -255,7 +255,7 @@ export default function AppSidebar({
     <nav className="space-y-1 text-sm" onClick={() => onClose?.()}>
       {(role === "scout" || role === "scout-agent" || role === "admin") && (
         <div className="mt-1">
-          <div className="pb-1 text-[11px] font-semibold  tracking-wide text-dark dark:text-neutral-400">
+          <div className="pb-1 text-[11px] font-semibold tracking-wide text-gray-800 dark:text-neutral-400">
             Zawodnicy
           </div>
 
@@ -290,9 +290,16 @@ export default function AppSidebar({
 
       {role === "admin" && (
         <>
-          <SectionHeader label="Administracja" />
+          {/* ===== Better highlighted ADMIN section ===== */}
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-800">
+                <Settings className="h-3.5 w-3.5" />
+                Administracja
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-r from-indigo-300/50 to-transparent dark:from-indigo-700/30" />
+            </div>
 
-          <div className="rounded-lg bg-slate-100 p-2.5 dark:bg-neutral-900/40">
             <div className="space-y-0.5">
               <div>
                 <NavItem
@@ -383,10 +390,14 @@ export default function AppSidebar({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: prefersReduced ? 0 : 0.14, ease: "easeOut" }}
-              className="absolute bottom-12 left-2 right-2 z-40 w-auto max-w-full overflow-x-hidden rounded border border-gray-200 bg-white p-2 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+              className="absolute bottom-12 left-2 right-2 z-40 w-auto max-w-full overflow-x-hidden rounded-xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
             >
+              {/* rank card stays the same */}
+              {/* … (unchanged content from your version) … */}
+              {/* For brevity, the content here matches your original; keep as-is */}
+              {/* START rank quick card */}
               {role === "scout" && (
-                <div className="mx-1 mb-2 rounded bg-gray-50 p-3 text-xs dark:bg-neutral-900">
+                <div className="mx-1 mb-2 rounded-lg bg-gray-50 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
                   <div className="mb-1 flex flex-wrap items-center justify-between">
                     <span className="font-semibold whitespace-normal break-words">Twój poziom</span>
                     <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(rank)}`}>
@@ -409,11 +420,11 @@ export default function AppSidebar({
                   </div>
 
                   <div className="mt-2 grid grid-cols-2 gap-1 text-[11px]">
-                    <div className=" text-darkrounded p-2 dark:border-neutral-800">
+                    <div className="rounded p-2">
                       <div className="opacity-60">Zawodnicy</div>
                       <div className="text-sm font-semibold">{formatNum(playersCount)}</div>
                     </div>
-                    <div className=" text-darkrounded p-2 dark:border-neutral-800">
+                    <div className="rounded p-2">
                       <div className="opacity-60">Obserwacje</div>
                       <div className="text-sm font-semibold">{formatNum(obsCount)}</div>
                     </div>
@@ -431,8 +442,9 @@ export default function AppSidebar({
                   </div>
                 </div>
               )}
+              {/* END rank quick card */}
 
-              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-dark dark:text-neutral-400">
+              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
                 Szybkie akcje
               </div>
               <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings" onClick={onClose}>
@@ -444,7 +456,7 @@ export default function AppSidebar({
 
               <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
 
-              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-dark dark:text-neutral-400">
+              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
                 Rola
               </div>
               <RoleOption current={role} value="admin"       label="Admin"       onChange={setRoleAndClose} />
@@ -494,50 +506,62 @@ export default function AppSidebar({
     </div>
   );
 
-  const asideCore =
-    "h-screen w-64 overflow-y-auto overflow-x-hidden border-r border-gray-200 bg-white/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-white/85 dark:border-neutral-800 dark:bg-neutral-950/70";
+  /* ====== PANEL STYLES (shadcn-ish) ====== */
+  const asideDesktop =
+    "h-screen w-64 overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white p-3 shadow-sm ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
+
+  const asideMobile =
+    "h-screen w-[75vw] max-w-[380px] overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white p-3 shadow-xl ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
 
   if (variant === "mobile") {
     return (
       <>
-        {/* Backdrop with fade (click to close) */}
-        <div
-          className={`fixed inset-0 z-40 bg-black/40 transition-opacity lg:hidden ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
-          onClick={onClose}
-          aria-hidden={!open}
-        />
-        <aside
-          className={`fixed left-0 top-0 z-50 transition-transform lg:hidden ${asideCore} ${open ? "translate-x-0" : "-translate-x-full"}`}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Nawigacja"
-        >
-          {inner}
-        </aside>
+        {/* Backdrop */}
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              key="sb-backdrop"
+              className="fixed inset-0 z-40 bg-black/70 lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: prefersReduced ? 0 : 0.16 }}
+              onClick={onClose}
+              aria-hidden
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Sliding sheet */}
+        <AnimatePresence>
+          {open && (
+            <motion.aside
+              key="sb-sheet"
+              className={`fixed left-0 top-0 z-50 lg:hidden ${asideMobile}`}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Nawigacja"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: prefersReduced ? "tween" : "spring", stiffness: 420, damping: 34, mass: 0.9 }}
+            >
+              {inner}
+            </motion.aside>
+          )}
+        </AnimatePresence>
       </>
     );
   }
 
   return (
-    <aside className={`fixed left-0 top-0 z-40 ${asideCore}`} aria-label="Główna nawigacja">
+    <aside className={`fixed left-0 top-0 z-40 ${asideDesktop}`} aria-label="Główna nawigacja">
       {inner}
     </aside>
   );
 }
 
 /* ========= Small components ========= */
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <div className="mt-4 mb-1 flex items-center gap-2 px-2">
-      <span className="h-1 w-1 rounded bg-slate-300 dark:bg-neutral-700" />
-      <span className="text-[11px] font-semibold tracking-wide text-dark dark:text-neutral-400">
-        {label}
-      </span>
-      <div className="h-px flex-1 bg-slate-200/70 dark:bg-neutral-800/70" />
-    </div>
-  );
-}
-
 function NavItem({
   href, icon, label, active, badge, badgeTitle,
 }: {
@@ -552,24 +576,26 @@ function NavItem({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`group relative flex min-w-0 items-center gap-2 rounded px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-        active ? "bg-gray-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-               : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+      className={`group relative flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+        active
+          ? "bg-slate-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+          : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
       title={badge && badgeTitle ? `${badgeTitle}: ${badge}` : undefined}
     >
       <span
         aria-hidden
         className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-sm transition-all ${
-          active ? "w-1 bg-indigo-500"
-                 : "w-0 bg-transparent group-hover:w-1 group-hover:bg-gray-300 dark:group-hover:bg-neutral-700"
+          active
+            ? "w-1 bg-indigo-500"
+            : "w-0 bg-transparent group-hover:w-1 group-hover:bg-slate-300 dark:group-hover:bg-neutral-700"
         }`}
       />
       <span className="shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
       {badge && (
         <span
-          className="ml-2 inline-flex max-w-[6rem] shrink-0 items-center rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
           title={badgeTitle}
         >
           <span className="truncate">{badge}</span>
@@ -584,12 +610,12 @@ function SubNavItem({ href, label, active }: { href: string; label: string; acti
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-w-0 items-center gap-2 rounded px-3 py-1.5 text-[14px] transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-        active ? "bg-gray-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-               : "text-dark hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+      className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+        active ? "bg-slate-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+               : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
     >
-      <span aria-hidden className={`h-1.5 w-1.5 rounded ${active ? "bg-indigo-500" : "bg-gray-300 dark:bg-neutral-700"}`} />
+      <span aria-hidden className={`h-1.5 w-1.5 rounded ${active ? "bg-indigo-500" : "bg-slate-300 dark:bg-neutral-700"}`} />
       <span className="truncate">{label}</span>
     </Link>
   );
@@ -610,7 +636,7 @@ function RoleOption({
       aria-checked={selected}
       onClick={() => onChange(value)}
       className={`mb-1 flex w-full items-center justify-between rounded px-2 py-2 text-left text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900 ${
-        selected ? "bg-gray-100 dark:bg-neutral-900" : ""
+        selected ? "bg-slate-100 dark:bg-neutral-900" : ""
       }`}
     >
       <span className="whitespace-normal break-words">{label}</span>
@@ -663,10 +689,10 @@ function AccordionNav({
         <Link
           href={href}
           aria-current={active ? "page" : undefined}
-          className={`group relative flex min-w-0 flex-1 items-center gap-2 rounded px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+          className={`group relative flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
             active
-              ? "bg-gray-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-              : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+              ? "bg-slate-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+              : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
           }`}
           title={badge && badgeTitle ? `${badgeTitle}: ${badge}` : undefined}
         >
@@ -675,13 +701,13 @@ function AccordionNav({
             className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-sm transition-all ${
               active
                 ? "w-1 bg-indigo-500"
-                : "w-0 bg-transparent group-hover:w-1 group-hover:bg-gray-300 dark:group-hover:bg-neutral-700"
+                : "w-0 bg-transparent group-hover:w-1 group-hover:bg-slate-300 dark:group-hover:bg-neutral-700"
             }`}
           />
           <span className="shrink-0">{icon}</span>
           <span className="truncate">{label}</span>
           {badge && (
-            <span className="ml-2 inline-flex max-w-[6rem] shrink-0 items-center rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+            <span className="ml-2 inline-flex max-w-[6rem] shrink-0 items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
               <span className="truncate">{badge}</span>
             </span>
           )}
@@ -698,8 +724,8 @@ function AccordionNav({
           onKeyDown={chevronKeyHandler}
           className={`ml-auto inline-flex items-center justify-center rounded px-2 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
             open
-              ? "bg-gray-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-              : "text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+              ? "bg-slate-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+              : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
           }`}
           title={open ? "Zwiń" : "Rozwiń"}
         >
