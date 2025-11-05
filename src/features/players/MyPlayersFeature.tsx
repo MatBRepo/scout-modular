@@ -1159,43 +1159,55 @@ export default function MyPlayersFeature({
                 )}
               </div>
 
-              {/* Pagination footer */}
-              <div className="mt-3 flex flex-col items-center justify-between gap-3 rounded  bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950 md:flex-row">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-dark dark:text-neutral-300">Wiersze na stronę:</span>
-                  <select
-                    className="rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-                    value={pageSize}
-                    onChange={(e)=>{ setPageSize(Number(e.target.value) as any); setPage(1); }}
-                  >
-                    {[10,25,50,100].map(n=><option key={n} value={n}>{n}</option>)}
-                  </select>
-                  <span className="ml-2 text-dark dark:text-neutral-300">
-                    {total === 0 ? "0" : ((currentPage - 1) * pageSize + 1)}–{Math.min(currentPage * pageSize, total)} z {total}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    className="border-gray-300 dark:border-neutral-700"
-                    disabled={currentPage <= 1}
-                    onClick={()=>setPage((p)=>Math.max(1, p-1))}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <div className="min-w-[80px] text-center">
-                    Strona {currentPage} / {totalPages}
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="border-gray-300 dark:border-neutral-700"
-                    disabled={currentPage >= totalPages}
-                    onClick={()=>setPage((p)=>Math.min(totalPages, p+1))}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+          {/* Pagination footer — compact, 1-row on mobile */}
+<div className="mt-3 flex flex-row flex-wrap items-center justify-between gap-2 rounded bg-white p-2 text-sm shadow-sm dark:bg-neutral-950">
+  {/* Left: page size + range */}
+  <div className="flex flex-row flex-wrap items-center gap-2">
+    <span className="text-dark dark:text-neutral-300 leading-none">Wiersze na stronę:</span>
+    <select
+      className="rounded border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
+      value={pageSize}
+      onChange={(e)=>{ setPageSize(Number(e.target.value) as any); setPage(1); }}
+      aria-label="Liczba wierszy na stronę"
+    >
+      {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+    </select>
+
+    <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
+      {total === 0 ? "0" : ((currentPage - 1) * pageSize + 1)}–{Math.min(currentPage * pageSize, total)} z {total}
+    </span>
+  </div>
+
+  {/* Right: pager */}
+  <div className="flex flex-row flex-wrap items-center gap-2">
+    <Button
+      variant="outline"
+      className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
+      disabled={currentPage <= 1}
+      onClick={()=>setPage(p=>Math.max(1, p-1))}
+      aria-label="Poprzednia strona"
+      title="Poprzednia strona"
+    >
+      <ChevronLeft className="h-[1.1em] w-[1.1em]" />
+    </Button>
+
+    <div className="min-w-[80px] text-center leading-none">
+      Strona {currentPage} / {totalPages}
+    </div>
+
+    <Button
+      variant="outline"
+      className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
+      disabled={currentPage >= totalPages}
+      onClick={()=>setPage(p=>Math.min(totalPages, p+1))}
+      aria-label="Następna strona"
+      title="Następna strona"
+    >
+      <ChevronRight className="h-[1.1em] w-[1.1em]" />
+    </Button>
+  </div>
+</div>
+
             </>
           ) : (
             <QuickObservation
@@ -1446,21 +1458,38 @@ function PlayersTable({
                         <TooltipContent>{r._known ? "Edytuj" : "Uzupełnij dane"}</TooltipContent>
                       </Tooltip>
 
-                      {/* Trash/Restore */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            className="h-8 w-8 rounded bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
-                            variant={scope === "active" ? "destructive" : "default"}
-                            onClick={() => (scope === "active" ? onTrash(r.id) : onRestore(r.id))}
-                            aria-label={scope === "active" ? "Przenieś do kosza" : "Przywróć"}
-                          >
-                            {scope === "active" ? <Trash2 className="h-4 w-4" /> : <Undo2 className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{scope === "active" ? "Przenieś do kosza" : "Przywróć"}</TooltipContent>
-                      </Tooltip>
+                      {/* Trash / Restore — outline (match Observations.tsx) */}
+{scope === "active" ? (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button
+        size="icon"
+        variant="outline"
+        className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+        onClick={() => onTrash(r.id)}
+        aria-label="Przenieś do kosza"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>Przenieś do kosza</TooltipContent>
+  </Tooltip>
+) : (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button
+        size="icon"
+        variant="outline"
+        className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+        onClick={() => onRestore(r.id)}
+        aria-label="Przywróć"
+      >
+        <Undo2 className="h-4 w-4" />
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>Przywróć</TooltipContent>
+  </Tooltip>
+)}
                     </div>
                   </td>
                 )}

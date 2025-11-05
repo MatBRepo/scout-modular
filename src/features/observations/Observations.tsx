@@ -1614,54 +1614,61 @@ export default function ObservationsFeature({
           )}
         </div>
 
-        {/* Pagination footer */}
-        <div className="mt-3 flex flex-col items-center justify-between gap-3 rounded bg-white p-2 text-sm dark:bg-neutral-950 md:flex-row">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-dark dark:text-neutral-300">Wiersze na stronę:</span>
-            <select
-              className="rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-              value={pageSize}
-              onChange={(e) => {
-                const n = Number(e.target.value) || 10;
-                setPageSize(n);
-                setPage(1);
-              }}
-              aria-label="Liczba wierszy na stronę"
-            >
-              {[10, 20, 50].map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+{/* Pagination footer — compact, 1-row on mobile */}
+<div className="mt-3 flex flex-row flex-wrap items-center justify-between gap-2 rounded bg-white p-2 text-sm shadow-sm dark:bg-neutral-950">
+  {/* Left: page size + range */}
+  <div className="flex flex-row flex-wrap items-center gap-2">
+    <span className="text-dark dark:text-neutral-300">Wiersze na stronę:</span>
+    <select
+      className="rounded border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
+      value={pageSize}
+      onChange={(e) => {
+        const n = Number(e.target.value) || 10;
+        setPageSize(n);
+        setPage(1);
+      }}
+      aria-label="Liczba wierszy na stronę"
+    >
+      {[10, 20, 50].map((n) => (
+        <option key={n} value={n}>{n}</option>
+      ))}
+    </select>
 
-            <span className="ml-2 text-dark dark:text-neutral-300">
-              {totalItems === 0 ? "0" : `${startIdx + 1}–${endIdx} z ${totalItems}`}
-            </span>
-          </div>
+    <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
+      {totalItems === 0 ? "0" : `${startIdx + 1}–${endIdx} z ${totalItems}`}
+    </span>
+  </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              className="border-gray-300 dark:border-neutral-700"
-              disabled={page <= 1}
-              onClick={gotoPrev}
-              aria-label="Poprzednia strona"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="min-w-[80px] text-center">
-              Strona {page} / {totalPages}
-            </div>
-            <Button
-              variant="outline"
-              className="border-gray-300 dark:border-neutral-700"
-              disabled={page >= totalPages}
-              onClick={gotoNext}
-              aria-label="Następna strona"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+  {/* Right: pager (compact buttons, icon sized to font) */}
+  <div className="flex flex-row flex-wrap items-center gap-2">
+    <Button
+      variant="outline"
+      className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
+      disabled={page <= 1}
+      onClick={gotoPrev}
+      aria-label="Poprzednia strona"
+      title="Poprzednia strona"
+    >
+      <ChevronLeft className="h-[1.1em] w-[1.1em]" />
+    </Button>
+
+    <div className="min-w-[80px] text-center leading-none">
+      Strona {page} / {totalPages}
+    </div>
+
+    <Button
+      variant="outline"
+      className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
+      disabled={page >= totalPages}
+      onClick={gotoNext}
+      aria-label="Następna strona"
+      title="Następna strona"
+    >
+      <ChevronRight className="h-[1.1em] w-[1.1em]" />
+    </Button>
+  </div>
+</div>
+
       </div>
 
       {/* Floating selection pill (center-bottom) */}
