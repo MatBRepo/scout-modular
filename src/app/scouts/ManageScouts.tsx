@@ -95,7 +95,7 @@ function rankLabel(r: Rank) {
 }
 function rankPillCls(r: Rank) {
   const base =
-    "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1";
+    "inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold ring-1";
   if (r === "platinum")
     return `${base} bg-indigo-100 text-indigo-800 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-800/70`;
   if (r === "gold")
@@ -164,7 +164,7 @@ function PositionPill({ pos, delta }: { pos: number; delta: number }) {
   const deltaTxt = delta === 0 ? "→" : delta > 0 ? `↑${delta}` : `↓${Math.abs(delta)}`;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold dark:bg-neutral-800">
+      <div className="inline-flex h-8 w-8 items-center justify-center rounded bg-gray-100 text-sm font-semibold dark:bg-neutral-800">
         {pos}
       </div>
       <div className={`inline-flex items-center text-xs ${deltaColor}`}>{deltaTxt}</div>
@@ -184,10 +184,10 @@ function TinyBar({
   return (
     <div
       title={title}
-      className="mt-0.5 h-1.5 w-20 rounded-full bg-gray-100 dark:bg-neutral-800"
+      className="mt-0.5 h-1.5 w-20 rounded bg-gray-100 dark:bg-neutral-800"
     >
       <div
-        className={`h-1.5 rounded-full ${className}`}
+        className={`h-1.5 rounded ${className}`}
         style={{ width: `${Math.max(0, Math.min(100, Math.round(value)))}%` }}
       />
     </div>
@@ -208,7 +208,7 @@ function KpiCell({
   return (
     <div>
       <div className="text-base font-semibold leading-none">{kpi}</div>
-      <div className="mt-1 grid grid-cols-3 gap-2 text-[10px] text-gray-500">
+      <div className="mt-1 grid grid-cols-3 gap-2 text-[10px] text-dark">
         <div>
           <div className="flex flex-wrap items-center justify-between">
             <span>Comp</span>
@@ -481,7 +481,7 @@ export default function ScoutsAdminPage() {
         right={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Search className="h-4 w-4 text-gray-500" />
+              <Search className="h-4 w-4 text-dark" />
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -514,7 +514,7 @@ export default function ScoutsAdminPage() {
             </Button>
 
             {lastRefresh && (
-              <span className="text-xs text-gray-500 dark:text-neutral-400">
+              <span className="text-xs text-dark dark:text-neutral-400">
                 Ostatnie odświeżenie: {fmtDate(lastRefresh)}
               </span>
             )}
@@ -579,7 +579,7 @@ export default function ScoutsAdminPage() {
         {filtered.map((s) => (
           <div
             key={s.id}
-            className="rounded-md border border-gray-200 p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60"
+            className="rounded border border-gray-200 p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60"
             onClick={() => setDetail(s)}
             role="button"
           >
@@ -593,7 +593,7 @@ export default function ScoutsAdminPage() {
             <div className="mt-2 font-medium text-gray-900 dark:text-neutral-100">
               {s.name}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-gray-600 dark:text-neutral-400">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-dark dark:text-neutral-400">
               {s.email && <span className="truncate">{s.email}</span>}
               {s.phone && <span>• {s.phone}</span>}
               {s.region && <span>• {s.region}</span>}
@@ -615,7 +615,7 @@ export default function ScoutsAdminPage() {
               <div className="flex items-center gap-1">
                 <NotebookPen className="h-3.5 w-3.5" /> {s.observationsCount}
               </div>
-              <div className="text-right text-gray-500">{fmtDate(s.lastActive)}</div>
+              <div className="text-right text-dark">{fmtDate(s.lastActive)}</div>
             </div>
 
             <div className="mt-3 flex justify-end gap-2">
@@ -644,16 +644,16 @@ export default function ScoutsAdminPage() {
           </div>
         ))}
         {filtered.length === 0 && (
-          <div className="rounded-md border border-gray-200 p-4 text-center text-sm text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
+          <div className="rounded border border-gray-200 p-4 text-center text-sm text-dark dark:border-neutral-800 dark:text-neutral-400">
             Brak wyników dla bieżących filtrów.
           </div>
         )}
       </div>
 
       {/* Desktop: table */}
-      <div className="hidden w-full overflow-x-auto rounded-md border border-gray-200 dark:border-neutral-800 md:block">
+      <div className="hidden w-full overflow-x-auto rounded border border-gray-200 dark:border-neutral-800 md:block">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+          <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
             <tr>
               {[
                 { key: "position", label: "Pozycja" },
@@ -714,7 +714,7 @@ export default function ScoutsAdminPage() {
                   <div className="font-medium text-gray-900 dark:text-neutral-100">
                     {s.name}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-gray-600 dark:text-neutral-400">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-dark dark:text-neutral-400">
                     {s.email && (
                       <span className="inline-flex items-center gap-1">
                         <Mail className="h-3.5 w-3.5" /> {s.email}
@@ -790,7 +790,7 @@ export default function ScoutsAdminPage() {
               <tr>
                 <td
                   colSpan={8}
-                  className="p-5 text-center text-sm text-gray-500 dark:text-neutral-400"
+                  className="p-5 text-center text-sm text-dark dark:text-neutral-400"
                 >
                   Brak wyników dla bieżących filtrów.
                 </td>
@@ -842,8 +842,8 @@ export default function ScoutsAdminPage() {
                   icon={<NotebookPen className="h-4 w-4" />}
                 />
               </div>
-              <div className="rounded-md border border-gray-200 p-3 dark:border-neutral-800">
-                <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-neutral-400">
+              <div className="rounded border border-gray-200 p-3 dark:border-neutral-800">
+                <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-dark dark:text-neutral-400">
                   KPI
                 </div>
                 <KpiCell
@@ -892,8 +892,8 @@ function Info({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-gray-200 p-2 dark:border-neutral-800">
-      <div className="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-neutral-400">
+    <div className=" text-darkrounded p-2 dark:border-neutral-800">
+      <div className="mb-1 flex items-center gap-1 text-[11px] font-medium tracking-wide text-dark dark:text-neutral-400">
         {icon} {label}
       </div>
       <div className="text-sm text-gray-800 dark:text-neutral-100">{value}</div>

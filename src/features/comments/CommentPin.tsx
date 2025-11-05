@@ -15,7 +15,7 @@ export default function CommentPin({
       type="button"
       onClick={onClick}
       className={
-        "flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ring-2 ring-white shadow " +
+        "flex h-6 w-6 items-center justify-center rounded text-[11px] font-bold ring-2 ring-white shadow " +
         (resolved ? "bg-emerald-500 text-white" : "bg-indigo-600 text-white")
       }
       title={resolved ? "Rozwiązany" : "Komentarz"}

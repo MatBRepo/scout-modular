@@ -320,7 +320,7 @@ export default function ManagePage() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Zarządzanie użytkownikami</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-neutral-300">
+          <p className="mt-1 text-sm text-dark dark:text-neutral-300">
             Rejestr scoutów • Zmieniaj role, aktywuj/deaktywuj, zapraszaj nowych i przeglądaj szczegóły kont.
           </p>
         </div>
@@ -356,9 +356,9 @@ export default function ManagePage() {
           </div>
           <div className="grid w-full grid-cols-2 gap-2 md:w-auto md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Rola</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Rola</label>
               <select
-                className="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                className="w-full rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                 value={roleFilter}
                 onChange={(e) => setRoleFilter((e.target.value || "") as Role | "")}
               >
@@ -367,9 +367,9 @@ export default function ManagePage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Status</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Status</label>
               <select
-                className="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                className="w-full rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter((e.target.value || "") as any)}
               >
@@ -388,11 +388,11 @@ export default function ManagePage() {
           <CardTitle className="text-base font-semibold">
             Oczekujące zaproszenia ({pendingInvites.length})
           </CardTitle>
-          <div className="text-xs text-gray-500 dark:text-neutral-400">Udostępnij link lub wyślij przez e-mail/komunikator.</div>
+          <div className="text-xs text-dark dark:text-neutral-400">Udostępnij link lub wyślij przez e-mail/komunikator.</div>
         </CardHeader>
         <CardContent className="w-full overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+            <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
                 <th className="p-3 text-left font-medium">Osoba</th>
                 <th className="p-3 text-left font-medium">Rola</th>
@@ -407,16 +407,16 @@ export default function ManagePage() {
                 <tr key={inv.id} className="border-t border-gray-200 align-middle dark:border-neutral-700">
                   <td className="p-3">
                     <div className="font-medium">{inv.name || "—"}</div>
-                    <div className="text-xs text-gray-500 dark:text-neutral-400">{inv.email || "brak e-maila"}</div>
+                    <div className="text-xs text-dark dark:text-neutral-400">{inv.email || "brak e-maila"}</div>
                   </td>
                   <td className="p-3 text-xs">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                    <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
                       <Shield className="h-3.5 w-3.5" /> {labelForRole(inv.role)}
                     </span>
                   </td>
                   <td className="p-3 text-xs capitalize">{channelLabel(inv.channel)}</td>
-                  <td className="p-3 text-xs text-gray-600 dark:text-neutral-400">{fmtDate(inv.createdAt)}</td>
-                  <td className="p-3 text-xs text-gray-600 dark:text-neutral-400">{inv.expiresAt ? fmtDate(inv.expiresAt) : "—"}</td>
+                  <td className="p-3 text-xs text-dark dark:text-neutral-400">{fmtDate(inv.createdAt)}</td>
+                  <td className="p-3 text-xs text-dark dark:text-neutral-400">{inv.expiresAt ? fmtDate(inv.expiresAt) : "—"}</td>
                   <td className="p-3">
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" className="h-8 border-gray-300 dark:border-neutral-700" onClick={() => { copy(inv.url); }} title="Kopiuj link">
@@ -434,7 +434,7 @@ export default function ManagePage() {
               ))}
               {pendingInvites.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-sm text-gray-500 dark:text-neutral-400">
+                  <td colSpan={6} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
                     Brak aktywnych zaproszeń — użyj „Zaproś scouta”.
                   </td>
                 </tr>
@@ -453,13 +453,13 @@ export default function ManagePage() {
               Użytkownicy ({filtered.length})
             </div>
           </CardTitle>
-          <div className="text-xs text-gray-500 dark:text-neutral-400">
+          <div className="text-xs text-dark dark:text-neutral-400">
             Kliknij nazwę aby zobaczyć szczegóły
           </div>
         </CardHeader>
         <CardContent className="w-full overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+            <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
                 <th className="p-3 text-left font-medium">Użytkownik</th>
                 <th className="p-3 text-left font-medium">Kontakt</th>
@@ -476,7 +476,7 @@ export default function ManagePage() {
                     <button className="text-left font-medium hover:underline" onClick={() => onOpenDetail(a)} title="Szczegóły">
                       {a.name}
                     </button>
-                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-500 dark:text-neutral-400">
+                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-dark dark:text-neutral-400">
                       <Shield className="h-3.5 w-3.5" />
                       {labelForRole(a.role)}
                     </div>
@@ -486,14 +486,14 @@ export default function ManagePage() {
                       <Mail className="h-3.5 w-3.5" /> {a.email}
                     </div>
                     {a.phone && (
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-neutral-400">
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
                         <Phone className="h-3.5 w-3.5" /> {a.phone}
                       </div>
                     )}
                   </td>
                   <td className="p-3">
                     <select
-                      className="rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                      className="rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                       value={a.role}
                       onChange={(e) => onChangeRole(a.id, e.target.value as Role)}
                     >
@@ -502,16 +502,16 @@ export default function ManagePage() {
                   </td>
                   <td className="p-3">
                     {a.active ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
+                      <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
                         <CheckCircle className="h-3.5 w-3.5" /> Aktywne
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                         <Ban className="h-3.5 w-3.5" /> Nieaktywne
                       </span>
                     )}
                   </td>
-                  <td className="p-3 text-xs text-gray-500 dark:text-neutral-400">
+                  <td className="p-3 text-xs text-dark dark:text-neutral-400">
                     {fmtDate(a.createdAt)}
                     <div className="opacity-70">{a.lastActive ? `Ost. aktywność: ${fmtDate(a.lastActive)}` : "—"}</div>
                   </td>
@@ -543,7 +543,7 @@ export default function ManagePage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-sm text-gray-500 dark:text-neutral-400">
+                  <td colSpan={6} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
                     Brak wyników — zmień filtry lub dodaj nowego użytkownika.
                   </td>
                 </tr>
@@ -557,7 +557,7 @@ export default function ManagePage() {
       <Card className="border-gray-200 dark:border-neutral-800">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base font-semibold">Konfiguracja metryk (1–6)</CardTitle>
-          <div className="text-xs text-gray-500 dark:text-neutral-400">
+          <div className="text-xs text-dark dark:text-neutral-400">
             Edytuj etykiety, klucze, widoczność i kolejność. Zapis automatyczny.
           </div>
         </CardHeader>
@@ -573,7 +573,7 @@ export default function ManagePage() {
                   {openGroups[g] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   {GROUP_LABEL[g]}
                 </span>
-                <span className="text-xs text-gray-500 dark:text-neutral-400">{mCfg[g].length} metryk</span>
+                <span className="text-xs text-dark dark:text-neutral-400">{mCfg[g].length} metryk</span>
               </button>
 
               {openGroups[g] && (
@@ -583,14 +583,14 @@ export default function ManagePage() {
                       <Plus className="mr-2 h-4 w-4" />
                       Dodaj metrykę
                     </Button>
-                    <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+                    <div className="text-[11px] text-dark dark:text-neutral-400">
                       <b>id</b> – stałe • <b>key</b> – krótki klucz do zapisu ocen • <b>label</b> – widoczna nazwa.
                     </div>
                   </div>
 
                   <div className="w-full overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+                      <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                         <tr>
                           <th className="w-12 p-2 text-left font-medium">#</th>
                           <th className="min-w-[220px] p-2 text-left font-medium">Etykieta</th>
@@ -603,7 +603,7 @@ export default function ManagePage() {
                       <tbody>
                         {mCfg[g].map((m, i) => (
                           <tr key={m.id} className="border-t border-gray-200 align-middle hover:bg-gray-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
-                            <td className="p-2 text-xs text-gray-500">{i + 1}</td>
+                            <td className="p-2 text-xs text-dark">{i + 1}</td>
 
                             <td className="p-2">
                               <InlineCell value={m.label} onChange={(val) => updateLabel(g, m.id, val)} placeholder="Etykieta metryki…" />
@@ -615,7 +615,7 @@ export default function ManagePage() {
                             <td className="p-2">
                               <button
                                 onClick={() => toggleMetric(g, m.id)}
-                                className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs transition hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs transition hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                 title={m.enabled ? "Wyłącz metrykę" : "Włącz metrykę"}
                               >
                                 {m.enabled ? <ToggleRight className="h-4 w-4 text-emerald-600" /> : <ToggleLeft className="h-4 w-4 text-gray-400" />}
@@ -660,7 +660,7 @@ export default function ManagePage() {
 
                         {mCfg[g].length === 0 && (
                           <tr>
-                            <td colSpan={6} className="p-6 text-center text-sm text-gray-500 dark:text-neutral-400">
+                            <td colSpan={6} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
                               Brak metryk w tej grupie — dodaj pierwszą metrykę.
                             </td>
                           </tr>
@@ -680,17 +680,17 @@ export default function ManagePage() {
         <Modal onClose={() => setInviteOpen(false)} title="Zaproś nowego scouta">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Imię i nazwisko (opcjonalnie)</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Imię i nazwisko (opcjonalnie)</label>
               <Input value={iName} onChange={(e) => setIName(e.target.value)} placeholder="np. Jan Kowalski" />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">E-mail (wymagany dla kanału e-mail)</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">E-mail (wymagany dla kanału e-mail)</label>
               <Input type="email" value={iEmail} onChange={(e) => setIEmail(e.target.value)} placeholder="np. jan@example.com" />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Rola</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Rola</label>
               <select
-                className="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                className="w-full rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                 value={iRole}
                 onChange={(e) => setIRole(e.target.value as Role)}
               >
@@ -698,9 +698,9 @@ export default function ManagePage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Kanał</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Kanał</label>
               <select
-                className="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                className="w-full rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                 value={iChannel}
                 onChange={(e) => setIChannel(e.target.value as InviteChannel)}
               >
@@ -712,7 +712,7 @@ export default function ManagePage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Wygasa (dni)</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Wygasa (dni)</label>
               <Input
                 type="number"
                 min={0}
@@ -720,7 +720,7 @@ export default function ManagePage() {
                 onChange={(e) => setIExpiresDays(Number(e.target.value || 0))}
                 placeholder="np. 14"
               />
-              <div className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">0 = bez wygaśnięcia</div>
+              <div className="mt-1 text-[11px] text-dark dark:text-neutral-400">0 = bez wygaśnięcia</div>
             </div>
           </div>
 
@@ -752,11 +752,11 @@ export default function ManagePage() {
               label="Status"
               value={
                 detail.active ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
+                  <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
                     <CheckCircle className="h-3.5 w-3.5" /> Aktywne
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                     <Ban className="h-3.5 w-3.5" /> Nieaktywne
                   </span>
                 )
@@ -878,7 +878,7 @@ function isoDaysFromNow(days: number) {
 function Row({ label, value, icon }: { label: string; value: React.ReactNode; icon?: React.ReactNode }) {
   return (
     <div className="grid grid-cols-3 gap-2">
-      <div className="col-span-1 text-xs font-medium text-gray-500 dark:text-neutral-400">{label}</div>
+      <div className="col-span-1 text-xs font-medium text-dark dark:text-neutral-400">{label}</div>
       <div className="col-span-2">
         <div className="inline-flex flex-wrap items-center gap-2">{icon}{value}</div>
       </div>
@@ -901,7 +901,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
             <h2 className="text-base font-semibold">{title}</h2>
           </div>
           <button
-            className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+            className="rounded p-1 text-dark hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
             onClick={onClose}
             aria-label="Zamknij"
           >

@@ -190,7 +190,7 @@ export default function Page() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Zarządzanie</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-neutral-300">
+          <p className="mt-1 text-sm text-dark dark:text-neutral-300">
             Przegląd danych, szybkie akcje oraz ostatnie aktywności.
           </p>
         </div>
@@ -226,21 +226,21 @@ export default function Page() {
         <Card className="border-gray-200 dark:border-neutral-800">
           <CardContent className="mt-4 grid gap-3 sm:grid-cols-5">
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Mecz (kto vs kto)</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Mecz (kto vs kto)</label>
               <Input placeholder="np. Lech U19 vs Legia U19" value={qMatch} onChange={(e) => setQMatch(e.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Data</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Data</label>
               <Input type="date" value={qDate} onChange={(e) => setQDate(e.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Godzina</label>
+              <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Godzina</label>
               <Input type="time" value={qTime} onChange={(e) => setQTime(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Tryb</label>
-                <div className="inline-flex overflow-hidden rounded-md border dark:border-neutral-700">
+                <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Tryb</label>
+                <div className="inline-flex overflow-hidden rounded border dark:border-neutral-700">
                   {(["live", "tv"] as const).map((m) => (
                     <button
                       key={m}
@@ -255,8 +255,8 @@ export default function Page() {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-gray-500 dark:text-neutral-400">Status</label>
-                <div className="inline-flex overflow-hidden rounded-md border dark:border-neutral-700">
+                <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Status</label>
+                <div className="inline-flex overflow-hidden rounded border dark:border-neutral-700">
                   {(["draft", "final"] as const).map((s) => (
                     <button
                       key={s}
@@ -322,14 +322,14 @@ export default function Page() {
       {/* Active filter summary */}
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2 w-full">
-          <span className="text-xs text-gray-500 dark:text-neutral-400">Aktywne filtry:</span>
+          <span className="text-xs text-dark dark:text-neutral-400">Aktywne filtry:</span>
           {query && <ActiveFilterChip label={`Szukaj: “${query}”`} onClear={() => setQuery("")} />}
           {obsModeFilter && <ActiveFilterChip label={`Tryb: ${obsModeFilter === "live" ? "Live" : "TV"}`} onClear={() => setObsModeFilter("")} />}
           {obsStatusFilter && (
             <ActiveFilterChip label={`Status: ${obsStatusFilter === "final" ? "Finalne" : "Szkice"}`} onClear={() => setObsStatusFilter("")} />
           )}
           <button
-            className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+            className="rounded bg-gray-100 px-3 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
             onClick={() => {
               setQuery("");
               setObsModeFilter("");
@@ -349,11 +349,11 @@ export default function Page() {
         <KpiCard title="Trend aktywności" value={Math.min(100, 30 + kpis.obsTotal * 7) + "%"} icon={<TrendingUp className="h-4 w-4" />} hint="Szacowany wzrost aktywności" />
         <Card className="border-gray-200 transition-all hover:shadow-sm dark:border-neutral-800">
           <CardHeader className="space-y-0 pb-1">
-            <CardTitle className="text-xs font-medium text-gray-500 dark:text-neutral-400">Aktywność 8 tyg.</CardTitle>
+            <CardTitle className="text-xs font-medium text-dark dark:text-neutral-400">Aktywność 8 tyg.</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <Sparkline values={spark.buckets} max={spark.max} />
-            <p className="mt-2 text-[11px] text-gray-500 dark:text-neutral-400">Obserwacje na tydzień</p>
+            <p className="mt-2 text-[11px] text-dark dark:text-neutral-400">Obserwacje na tydzień</p>
           </CardContent>
         </Card>
       </div>
@@ -364,7 +364,7 @@ export default function Page() {
         <Card className="border-gray-200 dark:border-neutral-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base font-semibold">Ostatnio dodani zawodnicy</CardTitle>
-            <Link href="/players" className="text-sm text-gray-600 hover:underline dark:text-neutral-300">
+            <Link href="/players" className="text-sm text-dark hover:underline dark:text-neutral-300">
               Zobacz wszystkich
             </Link>
           </CardHeader>
@@ -384,7 +384,7 @@ export default function Page() {
                     return (
                       <li key={p.id} className="flex items-center gap-3 py-2">
                         {/* Avatar / image placeholder */}
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-50 text-xs font-medium dark:border-neutral-800 dark:bg-neutral-900">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-gray-200 bg-gray-50 text-xs font-medium dark:border-neutral-800 dark:bg-neutral-900">
                           {initials(p.name)}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -394,7 +394,7 @@ export default function Page() {
                             </Link>
                             <span
                               className={
-                                "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium " +
+                                "inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium " +
                                 (known
                                   ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200"
                                   : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200")
@@ -403,7 +403,7 @@ export default function Page() {
                               {known ? "znany" : "nieznany"}
                             </span>
                           </div>
-                          <div className="truncate text-xs text-gray-500 dark:text-neutral-400">
+                          <div className="truncate text-xs text-dark dark:text-neutral-400">
                             {p.club || "—"} • {p.pos} • {p.age || "—"}
                           </div>
                         </div>
@@ -424,7 +424,7 @@ export default function Page() {
         <Card className="border-gray-200 dark:border-neutral-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base font-semibold">Ostatnie obserwacje</CardTitle>
-            <Link href="/observations" className="text-sm text-gray-600 hover:underline dark:text-neutral-300">
+            <Link href="/observations" className="text-sm text-dark hover:underline dark:text-neutral-300">
               Przejdź do listy
             </Link>
           </CardHeader>
@@ -437,7 +437,7 @@ export default function Page() {
                   const mode = (o as any).mode ?? "live";
                   return (
                     <li key={o.id} className="flex items-center gap-3 py-2">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                         <Star className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -445,7 +445,7 @@ export default function Page() {
                           <span className="truncate font-medium">{o.match || "—"}</span>
                           {/* status */}
                           <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                            className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ${
                               o.status === "final"
                                 ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200"
                                 : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
@@ -455,7 +455,7 @@ export default function Page() {
                           </span>
                           {/* mode */}
                           <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                            className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ${
                               mode === "live"
                                 ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
                                 : "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200"
@@ -464,12 +464,12 @@ export default function Page() {
                             {mode === "live" ? "Live" : "TV"}
                           </span>
                         </div>
-                        <div className="truncate text-xs text-gray-500 dark:text-neutral-400">
+                        <div className="truncate text-xs text-dark dark:text-neutral-400">
                           {o.player ? `Obserwowany: ${o.player} • ` : ""}
                           {o.time ? `${formatDate(o.date)} ${o.time}` : formatDate(o.date)}
                         </div>
                       </div>
-                      <div className="hidden text-xs text-gray-500 sm:block dark:text-neutral-400">
+                      <div className="hidden text-xs text-dark sm:block dark:text-neutral-400">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5" />
                           <span>{formatDate(o.date)}</span>
@@ -496,7 +496,7 @@ export default function Page() {
           <CardTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
             <Activity className="h-4 w-4" /> Ostatnie aktywności
           </CardTitle>
-          <Link href="/players/global/search" className="text-sm text-gray-600 hover:underline dark:text-neutral-300">
+          <Link href="/players/global/search" className="text-sm text-dark hover:underline dark:text-neutral-300">
             Odkrywaj <Compass className="ml-1 inline h-4 w-4" />
           </Link>
         </CardHeader>
@@ -504,20 +504,20 @@ export default function Page() {
           <ul className="space-y-3 text-sm">
             {buildActivityTimeline(players, obs).map((item) => (
               <li key={item.id} className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                   {item.type === "player" ? <Users className="h-4 w-4" /> : <NotebookPen className="h-4 w-4" />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate">
                     <span className="font-medium">{item.title}</span>
                   </div>
-                  <div className="truncate text-xs text-gray-500 dark:text-neutral-400">{item.subtitle}</div>
+                  <div className="truncate text-xs text-dark dark:text-neutral-400">{item.subtitle}</div>
                 </div>
-                <div className="shrink-0 text-[11px] text-gray-500 dark:text-neutral-400">{item.when}</div>
+                <div className="shrink-0 text-[11px] text-dark dark:text-neutral-400">{item.when}</div>
               </li>
             ))}
             {buildActivityTimeline(players, obs).length === 0 && (
-              <div className="flex flex-wrap items-center justify-between rounded-md border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
+              <div className="flex flex-wrap items-center justify-between rounded border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
                 <span className="text-gray-500 dark:text-neutral-400">Brak aktywności — dodaj zawodnika lub obserwację.</span>
                 <Link href="/players/new">
                   <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
@@ -581,12 +581,12 @@ function KpiCard({
   return (
     <Card className="border-gray-200 transition-all hover:shadow-sm dark:border-neutral-800">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-xs font-medium text-gray-500 dark:text-neutral-400">{title}</CardTitle>
+        <CardTitle className="text-xs font-medium text-dark dark:text-neutral-400">{title}</CardTitle>
         <div className="text-gray-500 dark:text-neutral-400">{icon}</div>
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-semibold leading-tight">{value}</div>
-        {hint && <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">{hint}</p>}
+        {hint && <p className="mt-1 text-xs text-dark dark:text-neutral-400">{hint}</p>}
       </CardContent>
     </Card>
   );
@@ -594,7 +594,7 @@ function KpiCard({
 
 function EmptyRow({ text, actionHref, actionText }: { text: string; actionHref: string; actionText: string }) {
   return (
-    <div className="flex flex-wrap items-center justify-between rounded-md border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
+    <div className="flex flex-wrap items-center justify-between rounded border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
       <span className="text-gray-500 dark:text-neutral-400">{text}</span>
       <Link href={actionHref}>
         <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
@@ -635,7 +635,7 @@ function ChipToggle({
   color?: "amber" | "green";
   icon?: React.ReactNode;
 }) {
-  const base = "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition";
+  const base = "inline-flex items-center gap-1 rounded px-3 py-1 text-xs font-medium transition";
   const off = "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700";
   theOnColor: {
   }
@@ -654,9 +654,9 @@ function ChipToggle({
 
 function ActiveFilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="inline-flex flex-wrap items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700 dark:bg-neutral-800 dark:text-neutral-300">
+    <span className="inline-flex flex-wrap items-center gap-2 rounded bg-gray-100 px-3 py-1 text-xs text-gray-700 dark:bg-neutral-800 dark:text-neutral-300">
       {label}
-      <button onClick={onClear} aria-label="Usuń filtr" className="rounded-full p-0.5 hover:bg-gray-200 dark:hover:bg-neutral-700">
+      <button onClick={onClear} aria-label="Usuń filtr" className="rounded p-0.5 hover:bg-gray-200 dark:hover:bg-neutral-700">
         <X className="h-3.5 w-3.5" />
       </button>
     </span>

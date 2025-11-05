@@ -93,7 +93,7 @@ function parseTeams(match?: string): { a: string; b: string } {
 }
 function chip(txt: string) {
   return (
-    <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+    <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
       {txt}
     </span>
   );
@@ -119,7 +119,7 @@ function Section({
             {title}
           </div>
           {description ? (
-            <div className="text-xs text-gray-500 dark:text-neutral-400">
+            <div className="text-xs text-dark dark:text-neutral-400">
               {description}
             </div>
           ) : null}
@@ -132,7 +132,7 @@ function Section({
 }
 function Helper({ children }: { children: React.ReactNode }) {
   return (
-    <div className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800/50 dark:text-slate-200 dark:ring-slate-700">
+    <div className="inline-flex items-center gap-1 rounded bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800/50 dark:text-slate-200 dark:ring-slate-700">
       <Info className="h-3.5 w-3.5" />
       {children}
     </div>
@@ -397,14 +397,14 @@ export function ObservationEditor({
         title={
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">Mecz: {o.match || "—"}</span>
-            <span className="text-xs text-gray-500">{headerMeta}</span>
+            <span className="text-xs text-dark">{headerMeta}</span>
           </div>
         }
         right={
           <div className="flex flex-wrap items-center gap-2">
             {saveState !== "idle" && (
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${
+                className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ring-1 ${
                   saveState === "saving"
                     ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/50"
                     : "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-800/50"
@@ -433,7 +433,7 @@ export function ObservationEditor({
       <Card className="mt-4 border-gray-300 dark:border-neutral-700">
         <CardHeader className="border-b border-gray-200 pb-0 dark:border-neutral-800">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-lg sm:text-xl">Formularz obserwacji</CardTitle>
+            <CardTitle className="text-lg sm:text-sm">Formularz obserwacji</CardTitle>
             <Helper>Podstawowe dane + zawodnicy + notatki</Helper>
           </div>
 
@@ -452,7 +452,7 @@ export function ObservationEditor({
                 >
                   Zawodnicy
                   {o.players?.length ? (
-                    <span className="ml-2 inline-flex items-center rounded-full bg-indigo-100 px-1.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
+                    <span className="ml-2 inline-flex items-center rounded bg-indigo-100 px-1.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
                       {o.players.length}
                     </span>
                   ) : null}
@@ -496,7 +496,7 @@ export function ObservationEditor({
                           onChange={(e) =>
                             set("opponent", e.target.value as OpponentLevel)
                           }
-                          className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                          className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                         >
                           <option value="">— wybierz —</option>
                           {["niski", "średni", "wysoki"].map((x) => (
@@ -513,7 +513,7 @@ export function ObservationEditor({
                           onChange={(e) =>
                             set("conditions", e.target.value as Mode)
                           }
-                          className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                          className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                         >
                           {(["live", "wideo", "mix"] as const).map((x) => (
                             <option key={x} value={x}>
@@ -549,7 +549,7 @@ export function ObservationEditor({
                           placeholder="np. Lech U19"
                         />
                       </div>
-                      <div className="hidden select-none items-end justify-center pb-2 text-sm text-gray-500 sm:flex">
+                      <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">
                         vs
                       </div>
                       <div>
@@ -562,7 +562,7 @@ export function ObservationEditor({
                           placeholder="np. Legia U19"
                         />
                       </div>
-                      <div className="sm:hidden text-center text-sm text-gray-500">
+                      <div className="sm:hidden text-center text-sm text-dark">
                         vs
                       </div>
                     </div>
@@ -584,7 +584,7 @@ export function ObservationEditor({
                         />
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-neutral-400">
+                    <div className="text-xs text-dark dark:text-neutral-400">
                       Mecz: <span className="font-medium">{o.match || "—"}</span>
                       <span className="ml-2">{chip(o.conditions ?? "live")}</span>
                       {o.opponent ? (
@@ -600,7 +600,7 @@ export function ObservationEditor({
                     title="Zawodnicy"
                     description="Szybkie dodawanie i zwięzła edycja."
                     right={
-                      <span className="hidden items-center gap-1 rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 md:inline-flex dark:bg-indigo-900/30 dark:text-indigo-200">
+                      <span className="hidden items-center gap-1 rounded bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 md:inline-flex dark:bg-indigo-900/30 dark:text-indigo-200">
                         <Users className="h-3.5 w-3.5" /> {o.players?.length ?? 0} zapisanych
                       </span>
                     }
@@ -657,7 +657,7 @@ export function ObservationEditor({
                               if (p.name) addKnownPlayer(p.name);
                               setQuickInput("");
                             }}
-                            className="rounded-full bg-slate-50 px-2.5 py-1 text-xs text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+                            className="rounded bg-slate-50 px-2.5 py-1 text-xs text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
                           >
                             {p.name} {p.club ? `• ${p.club}` : ""}
                           </button>
@@ -668,7 +668,7 @@ export function ObservationEditor({
 
                   <div className="w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+                      <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                         <tr className="text-xs sm:text-sm">
                           <th className="p-2 text-left font-medium sm:p-3">Zawodnik</th>
                           <th className="p-2 text-left font-medium sm:p-3">Pozycja</th>
@@ -694,7 +694,7 @@ export function ObservationEditor({
                                         ? p.name ?? "—"
                                         : p.name ?? `#${p.shirtNo ?? ""}`}
                                     </div>
-                                    <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+                                    <div className="text-[11px] text-dark dark:text-neutral-400">
                                       {p.type === "known" ? "znany" : "nieznany"}
                                     </div>
                                   </div>
@@ -716,7 +716,7 @@ export function ObservationEditor({
                                         | undefined,
                                     })
                                   }
-                                  className="w-[11rem] rounded-md border border-gray-300 bg-white p-2 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                                  className="w-[11rem] rounded border border-gray-300 bg-white p-2 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
                                   title={
                                     p.position
                                       ? `${p.position} — ${POS_INFO[p.position]}`
@@ -801,7 +801,7 @@ export function ObservationEditor({
                           <tr>
                             <td
                               colSpan={5}
-                              className="p-6 text-center text-sm text-gray-500 dark:text-neutral-400"
+                              className="p-6 text-center text-sm text-dark dark:text-neutral-400"
                             >
                               Brak zawodników — dodaj kogoś powyżej.
                             </td>
@@ -828,7 +828,7 @@ export function ObservationEditor({
                         children: React.ReactNode;
                       }) => (
                         <div className="mt-3">
-                          <div className="sticky left-0 top-0 z-[1] mb-2 rounded-md bg-slate-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-300 dark:ring-neutral-800">
+                          <div className="sticky left-0 top-0 z-[1] mb-2 rounded bg-slate-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-300 dark:ring-neutral-800">
                             {title}
                           </div>
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
@@ -922,7 +922,7 @@ export function ObservationEditor({
 
                           {/* Note */}
                           <div className="mt-4">
-                            <div className="mb-1 text-xs text-gray-500 dark:text-neutral-400">
+                            <div className="mb-1 text-xs text-dark dark:text-neutral-400">
                               Notatka do zawodnika
                             </div>
                             <Textarea
@@ -954,7 +954,7 @@ export function ObservationEditor({
                         placeholder="Krótka notatka…"
                         className="min-h-[140px]"
                       />
-                      <div className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-neutral-400">
+                      <div className="inline-flex items-center gap-1 text-xs text-dark dark:text-neutral-400">
                         <FileEdit className="h-3.5 w-3.5" /> Notatka dot. całej
                         obserwacji.
                       </div>

@@ -479,14 +479,14 @@ export default function CommentLayer({
             >
               <div className="w-72 max-w-[86vw] rounded-lg border border-gray-300 bg-white p-2 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
                 <div className="mb-1 flex items-center justify-between">
-                  <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+                  <div className="text-[11px] text-dark dark:text-neutral-400">
                     {(displayName || currentUser?.name)
                       ? `Komentujesz jako: ${displayName || currentUser?.name}`
                       : "Komentujesz jako: —"}
                   </div>
                   <button
                     onClick={() => setAskName(true)}
-                    className="rounded-md text-[11px] text-gray-600 underline-offset-2 hover:underline dark:text-neutral-300"
+                    className="rounded text-[11px] text-dark underline-offset-2 hover:underline dark:text-neutral-300"
                     type="button"
                   >
                     Ustaw nazwę
@@ -501,11 +501,11 @@ export default function CommentLayer({
                   className="w-full resize-none rounded border border-gray-300 p-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-950"
                 />
                 <div className="mt-2 flex justify-end gap-2">
-                  <button className="rounded-md border px-3 py-1 text-sm dark:border-neutral-700" onClick={cancelCreate}>
+                  <button className="rounded border px-3 py-1 text-sm dark:border-neutral-700" onClick={cancelCreate}>
                     Anuluj
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm text-white ${
+                    className={`rounded px-3 py-1 text-sm text-white ${
                       draft.trim() ? "bg-gray-900 hover:bg-gray-800" : "bg-gray-400 opacity-70"
                     }`}
                     disabled={!draft.trim()}
@@ -555,7 +555,7 @@ export default function CommentLayer({
               <ChatBubblePin className="drop-shadow-sm transition-transform group-active:scale-95 text-indigo-600 dark:text-indigo-400" />
               {/* Count */}
               <span
-                className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-neutral-950"
+                className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded bg-indigo-600 px-1 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-neutral-950"
                 style={{ pointerEvents: "none" }}
               >
                 {count}
@@ -563,7 +563,7 @@ export default function CommentLayer({
               {/* Fresh ping */}
               {fresh && (
                 <span
-                  className="absolute -left-1 -bottom-1 inline-block h-2 w-2 animate-ping rounded-full bg-emerald-500"
+                  className="absolute -left-1 -bottom-1 inline-block h-2 w-2 animate-ping rounded bg-emerald-500"
                   style={{ pointerEvents: "none" }}
                   aria-hidden
                 />
@@ -676,10 +676,10 @@ function HoverPreview({
   return (
     <div
       style={{ position: "fixed", left, top, zIndex: 60, pointerEvents: "none" }}
-      className="max-w-[280px] rounded-md border border-gray-200 bg-white p-2 text-xs shadow-md dark:border-neutral-700 dark:bg-neutral-900"
+      className="max-w-[280px] rounded border border-gray-200 bg-white p-2 text-xs shadow-md dark:border-neutral-700 dark:bg-neutral-900"
     >
       <div className="mb-1 line-clamp-3 text-gray-800 dark:text-neutral-100">{short || "—"}</div>
-      <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+      <div className="text-[11px] text-dark dark:text-neutral-400">
         {author} · {new Date(createdAt).toLocaleString()}
       </div>
     </div>
@@ -772,11 +772,11 @@ function ThreadCard({
     >
       {/* Header / root */}
       <div className="mb-2 flex items-start gap-2">
-        <div className="mt-[2px] inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-semibold text-white">
+        <div className="mt-[2px] inline-flex h-5 w-5 items-center justify-center rounded bg-indigo-600 text-[10px] font-semibold text-white">
           C
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+          <div className="text-[11px] text-dark dark:text-neutral-400">
             {root.author_name || "Gość"} · {new Date(root.created_at).toLocaleString()}
           </div>
           <div className="text-sm">{root.body}</div>
@@ -785,7 +785,7 @@ function ThreadCard({
           {!confirmDel ? (
             <button
               onClick={() => setConfirmDel(true)}
-              className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+              className="rounded px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
               title="Usuń wątek"
             >
               Usuń
@@ -796,14 +796,14 @@ function ThreadCard({
                 onClick={async () => {
                   await onDelete();
                 }}
-                className="rounded-md px-2 py-1 text-xs text-white bg-rose-600 hover:bg-rose-700"
+                className="rounded px-2 py-1 text-xs text-white bg-rose-600 hover:bg-rose-700"
                 title="Tak, usuń"
               >
                 Tak
               </button>
               <button
                 onClick={() => setConfirmDel(false)}
-                className="rounded-md px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                className="rounded px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
                 title="Nie"
               >
                 Nie
@@ -812,7 +812,7 @@ function ThreadCard({
           )}
           <button
             onClick={onClose}
-            className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="rounded px-2 py-1 text-xs text-dark hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
             title="Zamknij"
           >
             ×
@@ -821,7 +821,7 @@ function ThreadCard({
       </div>
 
       {/* Compact one-line preset/orientation/note */}
-      <div className="mb-2 rounded-md border border-gray-200 p-2 text-xs dark:border-neutral-800">
+      <div className="mb-2 rounded border border-gray-200 p-2 text-xs dark:border-neutral-800">
         <div className="flex flex-wrap items-center gap-2">
           {/* View */}
           <select
@@ -871,7 +871,7 @@ function ThreadCard({
           />
 
           {saving !== "idle" && (
-            <span className="text-[11px] text-gray-500 dark:text-neutral-400">
+            <span className="text-[11px] text-dark dark:text-neutral-400">
               {saving === "saving" ? "Zapisywanie…" : "Zapisano"}
             </span>
           )}
@@ -883,7 +883,7 @@ function ThreadCard({
         <div className="mb-2 space-y-2 border-l-2 border-gray-200 pl-2 text-sm dark:border-neutral-800">
           {replies.map((r) => (
             <div key={r.id}>
-              <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+              <div className="text-[11px] text-dark dark:text-neutral-400">
                 {r.author_name || "Gość"} · {new Date(r.created_at).toLocaleString()}
               </div>
               <div>{r.body}</div>
@@ -917,7 +917,7 @@ function ReplyBox({ onReply }: { onReply: (text: string) => Promise<void> }) {
           await onReply(text);
           setText("");
         }}
-        className={`self-end rounded-md px-3 py-1 text-sm text-white ${
+        className={`self-end rounded px-3 py-1 text-sm text-white ${
           canSend ? "bg-gray-900 hover:bg-gray-800" : "bg-gray-400 opacity-70"
         }`}
       >
@@ -969,14 +969,14 @@ function HelperPanel({
       <div className="mb-2 flex items-center justify-between">
         <div className="font-semibold">
           Komentarze{" "}
-          <span className="ml-2 text-xs text-gray-600 dark:text-neutral-300">
+          <span className="ml-2 text-xs text-dark dark:text-neutral-300">
             D:{counts.desktop} · T:{counts.tablet} · M:{counts.mobile}
           </span>
         </div>
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
-          className="rounded-md px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+          className="rounded px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
           aria-expanded={!collapsed}
           title={collapsed ? "Pokaż instrukcje" : "Zwiń panel"}
         >
@@ -1006,7 +1006,7 @@ function HelperPanel({
         </ol>
       )}
 
-      <div className="mb-2 text-xs text-gray-600 dark:text-neutral-300">
+      <div className="mb-2 text-xs text-dark dark:text-neutral-300">
         Jako: {displayName || "—"}{" "}
         <button onClick={onAskName} className="ml-2 rounded px-1 text-[11px] underline-offset-2 hover:underline" title="Ustaw nazwę komentującego">
           Zmień
@@ -1014,7 +1014,7 @@ function HelperPanel({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex overflow-hidden rounded-md border border-gray-300 dark:border-neutral-700">
+        <div className="inline-flex overflow-hidden rounded border border-gray-300 dark:border-neutral-700">
           {(["desktop", "tablet", "mobile"] as ViewKind[]).map((v) => (
             <button
               key={v}
@@ -1032,7 +1032,7 @@ function HelperPanel({
 
         <button
           onClick={() => setAddMode(!addMode)}
-          className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+          className={`rounded px-3 py-1.5 text-xs font-medium ${
             addMode ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-800 dark:bg-neutral-800 dark:text-neutral-100"
           }`}
           title="Tryb dodawania pinezek (Mobile/Tablet)"
@@ -1068,13 +1068,13 @@ function NameModal({
           className="w-full rounded border border-gray-300 p-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-950"
         />
         <div className="mt-3 flex justify-end gap-2">
-          <button className="rounded-md border px-3 py-1 text-sm dark:border-neutral-700" onClick={onCancel}>
+          <button className="rounded border px-3 py-1 text-sm dark:border-neutral-700" onClick={onCancel}>
             Anuluj
           </button>
           <button
             disabled={!can}
             onClick={() => can && onSave(name)}
-            className={`rounded-md px-3 py-1 text-sm text-white ${
+            className={`rounded px-3 py-1 text-sm text-white ${
               can ? "bg-gray-900 hover:bg-gray-800" : "bg-gray-400 opacity-70"
             }`}
           >

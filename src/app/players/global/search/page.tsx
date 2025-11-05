@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Search, Globe, RefreshCw, Users, Upload, CheckCircle2, XCircle, Filter, Shield, Zap, CopyCheck
+  Search, Globe, RefreshCw, Users, Upload, CheckCircle2, XCircle, CopyCheck
 } from "lucide-react";
 
 /* ======================= Types & constants ======================= */
@@ -204,28 +205,41 @@ export default function GlobalSearchPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Szukaj np. nazwisko, klub…"
-              className="w-72"
+              className="h-9 w-72"
             />
-            <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={run} disabled={running || !q.trim()}>
+            <Button className="h-9 bg-gray-900 text-white hover:bg-gray-800" onClick={run} disabled={running || !q.trim()}>
               <Search className="mr-2 h-4 w-4" /> Szukaj
             </Button>
-            <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={stop} disabled={!running}>
+            <Button variant="outline" className="h-9 border-gray-300 dark:border-neutral-700" onClick={stop} disabled={!running}>
               <XCircle className="mr-2 h-4 w-4" /> Stop
             </Button>
-            <div className="ml-2 inline-flex flex-wrap items-center gap-2 rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700">
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={onlyNew} onChange={(e) => setOnlyNew(e.target.checked)} />
-                Tylko nowe
-              </label>
-              <button
-                className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-0.5 hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+
+            {/* === Unified-height chip with shadcn Checkbox === */}
+            <div className="ml-2 inline-flex h-9 items-center gap-2 rounded border border-gray-300 bg-white px-2 text-xs dark:border-neutral-700 dark:bg-neutral-950">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="only-new"
+                  checked={onlyNew}
+                  onCheckedChange={(v) => setOnlyNew(Boolean(v))}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="only-new" className="cursor-pointer text-[12px] leading-none">
+                  Tylko nowe
+                </Label>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-7 border-gray-300 px-2 text-xs dark:border-neutral-700"
                 onClick={() => setResults([])}
                 title="Wyczyść wyniki"
               >
-                <RefreshCw className="h-3.5 w-3.5" /> Wyczyść
-              </button>
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span className="ml-1">Wyczyść</span>
+              </Button>
             </div>
-            <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={importCSV}>
+
+            <Button variant="outline" className="h-9 border-gray-300 dark:border-neutral-700" onClick={importCSV}>
               <Upload className="mr-2 h-4 w-4" /> Import CSV
             </Button>
           </div>
@@ -242,7 +256,7 @@ export default function GlobalSearchPage() {
             <button
               key={s.id}
               onClick={() => setEnabled((prev) => ({ ...prev, [s.id]: !prev[s.id] }))}
-              className={`inline-flex flex-wrap items-center gap-2 rounded-md border px-2 py-1 text-xs transition ${
+              className={`inline-flex flex-wrap items-center gap-2 rounded border px-2 py-1 text-xs transition ${
                 enabled[s.id]
                   ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200"
                   : "border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
@@ -258,14 +272,14 @@ export default function GlobalSearchPage() {
 
       {/* Status */}
       {statusMsg && (
-        <div className="mb-3 inline-flex items-center rounded-md bg-slate-50 px-2.5 py-1 text-xs text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
+        <div className="mb-3 inline-flex items-center rounded bg-slate-50 px-2.5 py-1 text-xs text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
           {statusMsg}
         </div>
       )}
 
       {/* Results & merge view */}
       <Tabs defaultValue="merged" className="space-y-3">
-        <TabsList className="rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900 mt-4">
+        <TabsList className="mt-4 rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
           <TabsTrigger value="merged" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
             Scalona lista ({flatFiltered.length})
           </TabsTrigger>
@@ -329,7 +343,7 @@ function ResultsTable({
             </span>
           </CardTitle>
           {typeof tookMs === "number" && (
-            <div className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">Czas: {tookMs} ms</div>
+            <div className="mt-1 text-[11px] text-dark dark:text-neutral-400">Czas: {tookMs} ms</div>
           )}
           {error && (
             <div className="mt-1 text-[11px] text-rose-600 dark:text-rose-300">Błąd źródła: {error}</div>
@@ -346,7 +360,7 @@ function ResultsTable({
       <CardContent className="p-0">
         <div className="w-full overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+            <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
                 <th className="p-3 text-left font-medium">Zawodnik</th>
                 <th className="p-3 text-left font-medium">Klub</th>
@@ -363,12 +377,12 @@ function ResultsTable({
                   <tr key={`${r.id}-${r.source}-${r.extId || ""}`} className="border-t border-gray-200 dark:border-neutral-800">
                     <td className="p-3">
                       <div className="font-medium text-gray-900 dark:text-neutral-100">{r.name || "—"}</div>
-                      {r.nationality && <div className="text-xs text-gray-500 dark:text-neutral-400">{r.nationality}</div>}
+                      {r.nationality && <div className="text-xs text-dark dark:text-neutral-400">{r.nationality}</div>}
                     </td>
                     <td className="p-3">{r.club || "—"}</td>
                     <td className="p-3">
                       {r.pos ? (
-                        <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                        <span className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
                           {r.pos}
                         </span>
                       ) : "—"}
@@ -400,7 +414,7 @@ function ResultsTable({
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-5 text-center text-sm text-gray-500 dark:text-neutral-400">
+                  <td colSpan={6} className="p-5 text-center text-sm text-dark dark:text-neutral-400">
                     Brak wyników do wyświetlenia.
                   </td>
                 </tr>

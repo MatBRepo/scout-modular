@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Download,
   ListFilter,
   Pencil,
   PlusCircle,
@@ -29,6 +28,9 @@ import {
   FileDown,
   FileSpreadsheet,
   Users,
+  ChevronLeft,
+  ChevronRight,
+  MoveHorizontal,
 } from "lucide-react";
 import { ObservationEditor } from "./ObservationEditor";
 import type { XO as EditorXO } from "./ObservationEditor";
@@ -172,7 +174,7 @@ function AnchoredPopover({
 
 type Bucket = "active" | "trash";
 type Mode = "live" | "tv";
-type TabKey = "active" | "draft" | "final"; // tabs at top
+type TabKey = "active" | "draft" | "final";
 
 type PositionKey = string;
 
@@ -204,7 +206,6 @@ const DEFAULT_COLS = {
   time: true,
   mode: true,
   status: true,
-  // bucket: false,
   players: true,
   actions: true,
 };
@@ -217,7 +218,6 @@ const COL_PL: Record<ColKey, string> = {
   time: "Godzina",
   mode: "Tryb",
   status: "Status",
-  // bucket: "Kosz",
   players: "Zawodnicy",
   actions: "Akcje",
 };
@@ -227,6 +227,7 @@ type SortDir = "asc" | "desc";
 
 const UI_KEY = "s4s.observations.ui";
 const SEED_FLAG = "s4s.observations.demoSeeded";
+const HINT_DISMISS_KEY = "s4s.observations.scrollHintDismissed";
 
 /* ----------------------------- Small helpers ---------------------------- */
 
@@ -351,6 +352,28 @@ export default function ObservationsFeature({
 
   // search focus ref for "/" shortcut
   const searchRef = useRef<HTMLInputElement | null>(null);
+
+  // table wrapper ref for horizontal scroll hint
+  const tableWrapRef = useRef<HTMLDivElement | null>(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem(HINT_DISMISS_KEY) === "1";
+    const el = tableWrapRef.current;
+    const hasOverflow =
+      el ? el.scrollWidth > el.clientWidth + 8 : false;
+    setShowScrollHint(isMobile && !dismissed && hasOverflow);
+
+    if (!el) return;
+    const onScroll = () => {
+      if (el.scrollLeft > 0 && !dismissed) {
+        setShowScrollHint(false);
+        localStorage.setItem(HINT_DISMISS_KEY, "1");
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true } as any);
+    return () => el.removeEventListener("scroll", onScroll as any);
+  }, [isMobile]);
 
   useEffect(() => {
     if (searchParams?.get("create") === "1") {
@@ -504,7 +527,7 @@ export default function ObservationsFeature({
     sortDir,
   ]);
 
-  // Keyboard shortcuts (match MyPlayersFeature)
+  // Keyboard shortcuts
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
@@ -565,45 +588,29 @@ export default function ObservationsFeature({
       .filter((r) => (dateFrom ? (r.date ?? "") >= dateFrom : true))
       .filter((r) => (dateTo ? (r.date ?? "") <= dateTo : true));
 
-    // top tabs: active (status: final|draft), draft, final
-    base = base.filter((r) => {
-      if (tab === "draft") return r.status === "draft";
-      if (tab === "final") return r.status === "final";
-      return true;
-    });
+    if (tab === "draft") base = base.filter((r) => r.status === "draft");
+    if (tab === "final") base = base.filter((r) => r.status === "final");
 
     const dir = sortDir === "asc" ? 1 : -1;
     base.sort((a, b) => {
       const av = (() => {
         switch (sortKey) {
-          case "match":
-            return (a.match ?? "").toLowerCase();
-          case "date":
-            return a.date ?? "";
-          case "time":
-            return a.time ?? "";
-          case "mode":
-            return a.mode ?? "live";
-          case "status":
-            return a.status;
-          case "players":
-            return a.players?.length ?? 0;
+          case "match": return (a.match ?? "").toLowerCase();
+          case "date": return a.date ?? "";
+          case "time": return a.time ?? "";
+          case "mode": return a.mode ?? "live";
+          case "status": return a.status;
+          case "players": return a.players?.length ?? 0;
         }
       })();
       const bv = (() => {
         switch (sortKey) {
-          case "match":
-            return (b.match ?? "").toLowerCase();
-          case "date":
-            return b.date ?? "";
-          case "time":
-            return b.time ?? "";
-          case "mode":
-            return b.mode ?? "live";
-          case "status":
-            return b.status;
-          case "players":
-            return b.players?.length ?? 0;
+          case "match": return (b.match ?? "").toLowerCase();
+          case "date": return b.date ?? "";
+          case "time": return b.time ?? "";
+          case "mode": return b.mode ?? "live";
+          case "status": return b.status;
+          case "players": return b.players?.length ?? 0;
         }
       })();
 
@@ -628,26 +635,16 @@ export default function ObservationsFeature({
     sortDir,
   ]);
 
-  // Keep selection sane if scope/filters change
+  // Keep selection sane on filter change
   useEffect(() => {
     setSelected((prev) => {
       if (prev.size === 0) return prev;
-
       const visibleIds = new Set(filtered.map((r) => r.id));
-
       const next = new Set<number>();
-      prev.forEach((id) => {
-        if (visibleIds.has(id)) next.add(id);
-      });
-
+      prev.forEach((id) => { if (visibleIds.has(id)) next.add(id); });
       if (next.size === prev.size) {
         let same = true;
-        for (const id of prev) {
-          if (!next.has(id)) {
-            same = false;
-            break;
-          }
-        }
+        for (const id of prev) { if (!next.has(id)) { same = false; break; } }
         if (same) return prev;
       }
       return next;
@@ -659,17 +656,9 @@ export default function ObservationsFeature({
 
   function addNew() {
     setEditing({
-      id: 0,
-      player: "",
-      match: "",
-      date: "",
-      time: "",
-      status: "draft",
-      bucket: "active",
-      mode: "live",
-      note: "",
-      voiceUrl: null,
-      players: [],
+      id: 0, player: "", match: "", date: "", time: "",
+      status: "draft", bucket: "active", mode: "live",
+      note: "", voiceUrl: null, players: [],
     });
     setPageMode("editor");
   }
@@ -677,9 +666,8 @@ export default function ObservationsFeature({
   function save(obs: XO) {
     const exists = rows.some((x) => x.id === obs.id);
     let next: XO[];
-    if (exists) {
-      next = rows.map((x) => (x.id === obs.id ? obs : x));
-    } else {
+    if (exists) next = rows.map((x) => (x.id === obs.id ? obs : x));
+    else {
       const nextId = Math.max(0, ...rows.map((x) => x.id)) + 1;
       next = [{ ...obs, id: nextId }, ...rows];
     }
@@ -701,7 +689,7 @@ export default function ObservationsFeature({
     onChange(next as unknown as Observation[]);
   }
 
-  // Bulk
+  // Bulk actions
   function bulkTrash() {
     const ids = selected;
     if (ids.size === 0) return;
@@ -737,14 +725,8 @@ export default function ObservationsFeature({
   function exportCSV() {
     const headers = ["id", "match", "date", "time", "mode", "status", "bucket", "players"];
     const rowsCsv = filtered.map((r) => [
-      r.id,
-      r.match ?? "",
-      r.date ?? "",
-      r.time ?? "",
-      r.mode ?? "live",
-      r.status,
-      r.bucket ?? "active",
-      r.players?.length ?? 0,
+      r.id, r.match ?? "", r.date ?? "", r.time ?? "",
+      r.mode ?? "live", r.status, r.bucket ?? "active", r.players?.length ?? 0,
     ]);
     const csv = [
       headers.join(","),
@@ -762,23 +744,12 @@ export default function ObservationsFeature({
   function exportExcel() {
     const headers = ["ID", "Mecz", "Data", "Godzina", "Tryb", "Status", "Kosz", "Zawodnicy"];
     const rowsX = filtered.map((r) => [
-      r.id,
-      r.match ?? "",
-      r.date ?? "",
-      r.time ?? "",
-      r.mode ?? "live",
-      r.status,
-      r.bucket ?? "active",
-      r.players?.length ?? 0,
+      r.id, r.match ?? "", r.date ?? "", r.time ?? "",
+      r.mode ?? "live", r.status, r.bucket ?? "active", r.players?.length ?? 0,
     ]);
     const tableHtml =
       `<table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>` +
-      rowsX
-        .map(
-          (r) =>
-            `<tr>${r.map((c) => `<td>${escapeHtml(String(c ?? ""))}</td>`).join("")}</tr>`
-        )
-        .join("") +
+      rowsX.map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(String(c ?? ""))}</td>`).join("")}</tr>`).join("") +
       `</tbody></table>`;
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${tableHtml}</body></html>`;
     const blob = new Blob([html], { type: "application/vnd.ms-excel" });
@@ -795,42 +766,12 @@ export default function ObservationsFeature({
 
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
-    if (q.trim())
-      chips.push({
-        key: "q",
-        label: `Szukaj: "${q.trim()}"`,
-        clear: () => setQ(""),
-      });
-    if (matchFilter.trim())
-      chips.push({
-        key: "match",
-        label: `Mecz: ${matchFilter.trim()}`,
-        clear: () => setMatchFilter(""),
-      });
-    if (modeFilter)
-      chips.push({
-        key: "mode",
-        label: `Tryb: ${modeFilter === "live" ? "Live" : "TV"}`,
-        clear: () => setModeFilter(""),
-      });
-    if (lifecycleFilter)
-      chips.push({
-        key: "status",
-        label: lifecycleFilter === "final" ? "Finalne" : "Szkice",
-        clear: () => setLifecycleFilter(""),
-      });
-    if (dateFrom)
-      chips.push({
-        key: "from",
-        label: `Od: ${fmtDate(dateFrom)}`,
-        clear: () => setDateFrom(""),
-      });
-    if (dateTo)
-      chips.push({
-        key: "to",
-        label: `Do: ${fmtDate(dateTo)}`,
-        clear: () => setDateTo(""),
-      });
+    if (q.trim()) chips.push({ key: "q", label: `Szukaj: "${q.trim()}"`, clear: () => setQ("") });
+    if (matchFilter.trim()) chips.push({ key: "match", label: `Mecz: ${matchFilter.trim()}`, clear: () => setMatchFilter("") });
+    if (modeFilter) chips.push({ key: "mode", label: `Tryb: ${modeFilter === "live" ? "Live" : "TV"}`, clear: () => setModeFilter("") });
+    if (lifecycleFilter) chips.push({ key: "status", label: lifecycleFilter === "final" ? "Finalne" : "Szkice", clear: () => setLifecycleFilter("") });
+    if (dateFrom) chips.push({ key: "from", label: `Od: ${fmtDate(dateFrom)}`, clear: () => setDateFrom("") });
+    if (dateTo) chips.push({ key: "to", label: `Do: ${fmtDate(dateTo)}`, clear: () => setDateTo("") });
     return chips;
   }, [q, matchFilter, modeFilter, lifecycleFilter, dateFrom, dateTo]);
 
@@ -856,13 +797,7 @@ export default function ObservationsFeature({
         }}
       >
         {children}
-        {active ? (
-          sortDir === "asc" ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )
-        ) : null}
+        {active ? (sortDir === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />) : null}
       </button>
     );
   }
@@ -872,11 +807,27 @@ export default function ObservationsFeature({
     const withinScope = rows.filter((r) => (r.bucket ?? "active") === scope);
     const all = withinScope.length;
     const draft = withinScope.filter((r) => r.status === "draft").length;
-    const final = withinScope.filter((r) => r.status === "final").length;
-    return { all, draft, final };
+    return { all, draft, final: 0 };
   }, [rows, scope]);
 
-  // ✅ Early return AFTER all hooks are declared above
+  /* -------- Pagination -------- */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10); // 10/20/50
+
+  useEffect(() => {
+    setPage(1);
+  }, [scope, tab, q, matchFilter, modeFilter, lifecycleFilter, dateFrom, dateTo, sortKey, sortDir]);
+
+  const totalItems = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const startIdx = (page - 1) * pageSize;
+  const endIdx = Math.min(startIdx + pageSize, totalItems);
+  const pageRows = filtered.slice(startIdx, endIdx);
+
+  function gotoPrev() { setPage((p) => Math.max(1, p - 1)); }
+  function gotoNext() { setPage((p) => Math.min(totalPages, p + 1)); }
+
+  // Early return for editor
   if (pageMode === "editor" && editing) {
     return (
       <ObservationEditor
@@ -902,93 +853,170 @@ export default function ObservationsFeature({
         <Toolbar
           title="Obserwacje"
           right={
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {/* Tabs inline with title on desktop */}
-              <div className="hidden sm:inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
-                {([
-                  { key: "active", label: "Aktywne obserwacje", count: counts.all },
-                  { key: "draft", label: "Szkice", count: counts.draft },
-                ] as { key: TabKey; label: string; count: number }[]).map((t) => (
-                  <button
-                    key={t.key}
-                    onClick={() => setTab(t.key)}
-                    className={`px-3 py-2 text-sm rounded-md transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${
-                      tab === t.key ? "bg-white shadow dark:bg-neutral-800" : ""
-                    }`}
-                    data-active={tab === t.key}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      {t.label}
-                      <span className="rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        {t.count}
+            // Mobile-first: buttons first row, search below; on ≥sm inline again.
+            <div className="flex w-full flex-wrap items-center gap-2 sm:gap-3">
+              {/* LEFT CLUSTER (filters + columns) */}
+              <div className="order-1 flex min-w-0 items-center gap-2 sm:gap-3">
+                {/* Tabs inline with title on desktop; hidden on mobile */}
+                <div className="hidden shrink-0 sm:inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+                  {[
+                    { key: "active", label: "Aktywne obserwacje", count: counts.all },
+                    { key: "draft", label: "Szkice", count: counts.draft },
+                  ].map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => setTab(t.key as TabKey)}
+                      className={`px-3 py-2 text-sm rounded transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${
+                        tab === (t.key as TabKey) ? "bg-white shadow dark:bg-neutral-800" : ""
+                      }`}
+                      data-active={tab === (t.key as TabKey)}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        {t.label}
+                        <span className="rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          {t.count}
+                        </span>
                       </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Filters button */}
+                <div className="relative shrink-0">
+                  <Button
+                    ref={filtersBtnRef}
+                    size="sm"
+                    variant="outline"
+                    className="h-10 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                    onClick={() => {
+                      setFiltersOpen((v) => !v);
+                      setColsOpen(false);
+                      setMoreOpen(false);
+                    }}
+                    aria-pressed={filtersOpen}
+                  >
+                    <ListFilter className="mr-0 md:mr-2 h-4 w-4" />
+                    <span className="hidden sm:inline">
+                      Filtry{filtersCount ? ` (${filtersCount})` : ""}
                     </span>
-                  </button>
-                ))}
-              </div>
+                  </Button>
 
-              {/* search */}
-              <div className="relative">
-                <Download className="pointer-events-none absolute left-2.5 top-1/2 hidden h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Input
-                  ref={searchRef}
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Szukaj po meczu lub zawodnikach… (/)"
-                  className="w-36 pl-3 sm:w-56 md:w-64"
-                  aria-label="Szukaj w obserwacjach"
-                />
-              </div>
+                  {/* FILTRY PANEL */}
+                  {filtersOpen &&
+                    (isMobile ? (
+                      <Portal>
+                        <div
+                          className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                          onClick={() => setFiltersOpen(false)}
+                          aria-hidden
+                        />
+                        <div
+                          className="fixed inset-x-0 bottom-0 z-[210] max-h[80vh] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                          role="dialog"
+                          aria-modal="true"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="mb-3 flex items-center justify-between">
+                            <div className="text-sm font-semibold">Filtry</div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-gray-300 dark:border-neutral-700"
+                              onClick={() => setFiltersOpen(false)}
+                            >
+                              Zamknij
+                            </Button>
+                          </div>
 
-              {/* filters */}
-              <div className="relative">
-                <Button
-                  ref={filtersBtnRef}
-                  size="sm"
-                  variant="outline"
-                  className="border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                  onClick={() => {
-                    setFiltersOpen((v) => !v);
-                    setColsOpen(false);
-                    setMoreOpen(false);
-                  }}
-                  aria-pressed={filtersOpen}
-                >
-                  <ListFilter className="mr-0 md:mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    Filtry{filtersCount ? ` (${filtersCount})` : ""}
-                  </span>
-                </Button>
+                          <div className="mb-3">
+                            <Label className="text-xs">Mecz (kto vs kto)</Label>
+                            <Input
+                              value={matchFilter}
+                              onChange={(e) => setMatchFilter(e.target.value)}
+                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Data od</Label>
+                              <Input
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Data do</Label>
+                              <Input
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Tryb</Label>
+                              <select
+                                value={modeFilter}
+                                onChange={(e) => setModeFilter(e.target.value as Mode | "")}
+                                className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                              >
+                                <option value="">— dowolny —</option>
+                                <option value="live">Live</option>
+                                <option value="tv">TV</option>
+                              </select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Status</Label>
+                              <select
+                                value={lifecycleFilter}
+                                onChange={(e) =>
+                                  setLifecycleFilter(e.target.value as Observation["status"] | "")
+                                }
+                                className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                              >
+                                <option value="">— dowolny —</option>
+                                <option value="draft">Szkic</option>
+                                <option value="final">Finalna</option>
+                              </select>
+                            </div>
+                          </div>
 
-                {/* FILTRY PANEL */}
-                {filtersOpen &&
-                  (isMobile ? (
-                    <Portal>
-                      {/* Backdrop */}
-                      <div
-                        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                        onClick={() => setFiltersOpen(false)}
-                        aria-hidden
-                      />
-                      {/* Bottom Sheet */}
-                      <div
-                        className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-                        role="dialog"
-                        aria-modal="true"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="mb-3 flex items-center justify-between">
-                          <div className="text-sm font-semibold">Filtry</div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-gray-300 dark:border-neutral-700"
-                            onClick={() => setFiltersOpen(false)}
-                          >
-                            Zamknij
-                          </Button>
+                          <div className="mt-4 flex flex-wrap items-center justify-between">
+                            <Button
+                              variant="outline"
+                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                              onClick={() => {
+                                setMatchFilter("");
+                                setModeFilter("");
+                                setLifecycleFilter("");
+                                setDateFrom("");
+                                setDateTo("");
+                                setQ("");
+                              }}
+                            >
+                              Wyczyść
+                            </Button>
+                            <Button
+                              className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                              onClick={() => setFiltersOpen(false)}
+                            >
+                              Zastosuj
+                            </Button>
+                          </div>
                         </div>
-
+                      </Portal>
+                    ) : (
+                      <AnchoredPopover
+                        anchorRef={filtersBtnRef as any}
+                        open={filtersOpen}
+                        onClose={() => setFiltersOpen(false)}
+                        width={352}
+                        className="rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+                      >
                         <div className="mb-3">
                           <Label className="text-xs">Mecz (kto vs kto)</Label>
                           <Input
@@ -1046,7 +1074,7 @@ export default function ObservationsFeature({
                           </div>
                         </div>
 
-                        <div className="mt-4 flex flex-wrap items-center justify-between">
+                        <div className="mt-3 flex flex-wrap items-center justify-between">
                           <Button
                             variant="outline"
                             className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
@@ -1068,119 +1096,31 @@ export default function ObservationsFeature({
                             Zastosuj
                           </Button>
                         </div>
-                      </div>
-                    </Portal>
-                  ) : (
-                    <AnchoredPopover
-                      anchorRef={filtersBtnRef as any}
-                      open={filtersOpen}
-                      onClose={() => setFiltersOpen(false)}
-                      width={352}
-                      className="rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
-                    >
-                      <div className="mb-3">
-                        <Label className="text-xs">Mecz (kto vs kto)</Label>
-                        <Input
-                          value={matchFilter}
-                          onChange={(e) => setMatchFilter(e.target.value)}
-                          className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs">Data od</Label>
-                          <Input
-                            type="date"
-                            value={dateFrom}
-                            onChange={(e) => setDateFrom(e.target.value)}
-                            className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Data do</Label>
-                          <Input
-                            type="date"
-                            value={dateTo}
-                            onChange={(e) => setDateTo(e.target.value)}
-                            className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs">Tryb</Label>
-                          <select
-                            value={modeFilter}
-                            onChange={(e) => setModeFilter(e.target.value as Mode | "")}
-                            className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                          >
-                            <option value="">— dowolny —</option>
-                            <option value="live">Live</option>
-                            <option value="tv">TV</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">Status</Label>
-                          <select
-                            value={lifecycleFilter}
-                            onChange={(e) =>
-                              setLifecycleFilter(e.target.value as Observation["status"] | "")
-                            }
-                            className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                          >
-                            <option value="">— dowolny —</option>
-                            <option value="draft">Szkic</option>
-                            <option value="final">Finalna</option>
-                          </select>
-                        </div>
-                      </div>
+                      </AnchoredPopover>
+                    ))}
+                </div>
 
-                      <div className="mt-3 flex flex-wrap items-center justify-between">
-                        <Button
-                          variant="outline"
-                          className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                          onClick={() => {
-                            setMatchFilter("");
-                            setModeFilter("");
-                            setLifecycleFilter("");
-                            setDateFrom("");
-                            setDateTo("");
-                            setQ("");
-                          }}
-                        >
-                          Wyczyść
-                        </Button>
-                        <Button
-                          className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
-                          onClick={() => setFiltersOpen(false)}
-                        >
-                          Zastosuj
-                        </Button>
-                      </div>
-                    </AnchoredPopover>
-                  ))}
+                {/* columns (fixed) */}
+                <ColumnsButton
+                  isMobile={isMobile}
+                  open={colsOpen}
+                  setOpen={(v) => {
+                    setColsOpen(v);
+                    if (v) {
+                      setFiltersOpen(false);
+                      setMoreOpen(false);
+                    }
+                  }}
+                  visibleCols={visibleCols}
+                  setVisibleCols={setVisibleCols}
+                />
               </div>
 
-              {/* columns */}
-              <ColumnsButton
-                isMobile={isMobile}
-                open={colsOpen}
-                setOpen={(v) => {
-                  setColsOpen(v);
-                  if (v) {
-                    setFiltersOpen(false);
-                    setMoreOpen(false);
-                  }
-                }}
-                visibleCols={visibleCols}
-                setVisibleCols={setVisibleCols}
-              />
-
-              {/* add + more */}
-              <div className="relative flex items-center gap-2">
+              {/* RIGHT ACTIONS (Add + More) */}
+              <div className="order-1 ml-auto flex shrink-0 items-center gap-2">
                 <Button
                   size="sm"
-                  className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                  className="h-10 bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
                   onClick={addNew}
                   title="Skrót: N"
                 >
@@ -1191,9 +1131,9 @@ export default function ObservationsFeature({
                 <Button
                   ref={moreBtnRef}
                   variant="outline"
-                  className="h-9 w-9 border-gray-300 p-0 dark:border-neutral-700"
+                  className="h-10 w-10 border-gray-300 p-0 dark:border-neutral-700"
                   onClick={() => {
-                    setMoreOpen((o) => !o);
+                    setMoreOpen((o) => (o ? false : true));
                     setFiltersOpen(false);
                     setColsOpen(false);
                   }}
@@ -1202,178 +1142,164 @@ export default function ObservationsFeature({
                 >
                   <EllipsisVertical className="h-5 w-5" />
                 </Button>
-
-                {/* WIĘCEJ */}
-                {moreOpen &&
-                  (isMobile ? (
-                    <Portal>
-                      {/* Backdrop */}
-                      <div
-                        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                        onClick={() => setMoreOpen(false)}
-                        aria-hidden
-                      />
-                      {/* Bottom-sheet */}
-                      <div
-                        className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-                        role="dialog"
-                        aria-modal="true"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="mb-1 flex items-center justify-between px-1">
-                          <div className="text-sm font-semibold">Więcej</div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-gray-300 dark:border-neutral-700"
-                            onClick={() => setMoreOpen(false)}
-                          >
-                            Zamknij
-                          </Button>
-                        </div>
-
-                        <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
-                          <button
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                            onClick={() => {
-                              setScope("active");
-                              setMoreOpen(false);
-                            }}
-                          >
-                            <Users className="h-4 w-4" /> Aktywni
-                          </button>
-                          <button
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                            onClick={() => {
-                              setScope("trash");
-                              setMoreOpen(false);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" /> Kosz
-                          </button>
-                          <button
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                            onClick={() => {
-                              setMoreOpen(false);
-                              exportCSV();
-                            }}
-                          >
-                            <FileDown className="h-4 w-4" /> Eksport CSV
-                          </button>
-                          <button
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                            onClick={() => {
-                              setMoreOpen(false);
-                              exportExcel();
-                            }}
-                          >
-                            <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                          </button>
-                        </div>
-                      </div>
-                    </Portal>
-                  ) : (
-                    <AnchoredPopover
-                      anchorRef={moreBtnRef as any}
-                      open={moreOpen}
-                      onClose={() => setMoreOpen(false)}
-                      width={224}
-                      className="overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
-                    >
-                      <button
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                        onClick={() => {
-                          setScope("active");
-                          setMoreOpen(false);
-                        }}
-                      >
-                        <Users className="h-4 w-4" /> Aktywni
-                      </button>
-                      <button
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                        onClick={() => {
-                          setScope("trash");
-                          setMoreOpen(false);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" /> Kosz
-                      </button>
-                      <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
-                      <button
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                        onClick={() => {
-                          setMoreOpen(false);
-                          exportCSV();
-                        }}
-                      >
-                        <FileDown className="h-4 w-4" /> Eksport CSV
-                      </button>
-                      <button
-                        className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                        onClick={() => {
-                          setMoreOpen(false);
-                          exportExcel();
-                        }}
-                      >
-                        <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                      </button>
-                    </AnchoredPopover>
-                  ))}
               </div>
+
+              {/* SEARCH — full-width on mobile, inline on ≥sm */}
+              <div className="order-2 w-full sm:order-none sm:w-auto sm:flex-none">
+                <div className="relative w-full sm:w-56 md:w-64">
+                  <Input
+                    ref={searchRef}
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Szukaj po meczu lub zawodnikach… (/)"
+                    className="w-full"
+                    aria-label="Szukaj w obserwacjach"
+                  />
+                </div>
+              </div>
+
+              {/* MORE MENU PANELS */}
+              {moreOpen &&
+                (isMobile ? (
+                  <Portal>
+                    <div
+                      className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                      onClick={() => setMoreOpen(false)}
+                      aria-hidden
+                    />
+                    <div
+                      className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                      role="dialog"
+                      aria-modal="true"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="mb-1 flex items-center justify-between px-1">
+                        <div className="text-sm font-semibold">Więcej</div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-gray-300 dark:border-neutral-700"
+                          onClick={() => setMoreOpen(false)}
+                        >
+                          Zamknij
+                        </Button>
+                      </div>
+
+                      <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
+                        <button
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                          onClick={() => {
+                            setScope("active");
+                            setMoreOpen(false);
+                          }}
+                        >
+                          <Users className="h-4 w-4" /> Aktywni
+                        </button>
+                        <button
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                          onClick={() => {
+                            setScope("trash");
+                            setMoreOpen(false);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" /> Kosz
+                        </button>
+                        <button
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                          onClick={() => {
+                            setMoreOpen(false);
+                            exportCSV();
+                          }}
+                        >
+                          <FileDown className="h-4 w-4" /> Eksport CSV
+                        </button>
+                        <button
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                          onClick={() => {
+                            setMoreOpen(false);
+                            exportExcel();
+                          }}
+                        >
+                          <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                        </button>
+                      </div>
+                    </div>
+                  </Portal>
+                ) : (
+                  <AnchoredPopover
+                    anchorRef={moreBtnRef as any}
+                    open={moreOpen}
+                    onClose={() => setMoreOpen(false)}
+                    width={224}
+                    className="overflow-hidden rounded border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+                  >
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => {
+                        setScope("active");
+                        setMoreOpen(false);
+                      }}
+                    >
+                      <Users className="h-4 w-4" /> Aktywni
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => {
+                        setScope("trash");
+                        setMoreOpen(false);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" /> Kosz
+                    </button>
+                    <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        exportCSV();
+                      }}
+                    >
+                      <FileDown className="h-4 w-4" /> Eksport CSV
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        exportExcel();
+                      }}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                    </button>
+                  </AnchoredPopover>
+                ))}
             </div>
           }
         />
 
-        {/* Tabs (mobile only here) + compact selection bar */}
-        <div className="mt-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900 sm:hidden">
-            {([
+        {/* Tabs (mobile only) */}
+        <div className="mt-3 flex flex-col items-stretch gap-2 sm:hidden">
+          <div className="inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+            {[
               { key: "active", label: "Aktywne obserwacje", count: counts.all },
               { key: "draft", label: "Szkice", count: counts.draft },
-            ] as { key: TabKey; label: string; count: number }[]).map((t) => (
+            ].map((t) => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`px-3 py-2 text-sm rounded-md transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${
-                  tab === t.key ? "bg-white shadow dark:bg-neutral-800" : ""
+                onClick={() => setTab(t.key as TabKey)}
+                className={`px-3 py-2 text-sm rounded transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${
+                  tab === (t.key as TabKey) ? "bg-white shadow dark:bg-neutral-800" : ""
                 }`}
-                data-active={tab === t.key}
+                data-active={tab === (t.key as TabKey)}
               >
                 <span className="inline-flex items-center gap-2">
                   {t.label}
-                  <span className="rounded-full bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <span className="rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                     {t.count}
                   </span>
                 </span>
               </button>
             ))}
           </div>
-
-          {/* bulk bar */}
-          {selected.size > 0 && (
-            <div className="mt-1 flex flex-wrap items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-900 sm:mt-0">
-              <div className="mr-0 md:mr-2">
-                Zaznaczono: <b>{selected.size}</b>
-              </div>
-              <div className="flex items-center gap-2">
-                {scope === "active" ? (
-                  <Button
-                    className="bg-gray-900 text-white hover:bg-gray-800"
-                    onClick={bulkTrash}
-                  >
-                    <Trash2 className="mr-0 md:mr-2 h-4 w-4" /> Do kosza
-                  </Button>
-                ) : (
-                  <Button
-                    className="bg-gray-900 text-white hover:bg-gray-800"
-                    onClick={bulkRestore}
-                  >
-                    <Undo2 className="mr-0 md:mr-2 h-4 w-4" /> Przywróć
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Active filter chips */}
@@ -1383,7 +1309,7 @@ export default function ObservationsFeature({
               <button
                 key={c.key}
                 onClick={c.clear}
-                className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-900"
+                className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-900"
                 title="Wyczyść filtr"
               >
                 <X className="h-3 w-3" />
@@ -1399,7 +1325,7 @@ export default function ObservationsFeature({
                 setDateTo("");
                 setQ("");
               }}
-              className="ml-1 inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+              className="ml-1 inline-flex items-center gap-1 rounded bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
               title="Wyczyść wszystkie filtry"
             >
               Wyczyść wszystkie
@@ -1407,10 +1333,16 @@ export default function ObservationsFeature({
           </div>
         )}
 
-        {/* TABLE */}
-        <div className="mt-3 w-full overflow-x-auto rounded-lg border border-gray-200 bg-white p-2 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
+        {/* TABLE CARD */}
+        <div
+          ref={tableWrapRef}
+          className="
+            mt-3 w-full overflow-x-auto rounded border border-gray-200 bg-white p-0 shadow-sm
+            dark:border-neutral-700 dark:bg-neutral-950
+          "
+        >
           <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10 bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+            <thead className="sticky top-0 z-10 bg-gray-50 text-gray-600 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
                 {visibleCols.select && (
                   <th className="w-10 p-2 text-left font-medium sm:p-3">
@@ -1466,7 +1398,7 @@ export default function ObservationsFeature({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => {
+              {pageRows.map((r, idx) => {
                 const status = r.status;
                 const mode = r.mode ?? "live";
                 const pCount = r.players?.length ?? 0;
@@ -1474,7 +1406,9 @@ export default function ObservationsFeature({
                 return (
                   <tr
                     key={r.id}
-                    className="group h-12 border-t border-gray-200 transition-colors duration-150 hover:bg-gray-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60"
+                    className={`group h-12 border-t transition-colors duration-150
+                                ${idx % 2 === 1 ? "bg-gray-50/40 dark:bg-neutral-900/30" : "bg-transparent"}
+                                border-gray-200 hover:bg-gray-50/70 dark:border-neutral-800 dark:hover:bg-neutral-900/60`}
                   >
                     {visibleCols.select && (
                       <td className="p-2 sm:p-3">
@@ -1492,7 +1426,7 @@ export default function ObservationsFeature({
                     )}
 
                     {visibleCols.match && (
-                      <td className="p-2 sm:p-3">
+                      <td className="p-2 sm:p-3 align-top">
                         <div className="min-w-0">
                           <div className="truncate font-medium text-gray-900 dark:text-neutral-100">
                             {r.match || "—"}
@@ -1504,7 +1438,7 @@ export default function ObservationsFeature({
                             </span>
                             <span
                               title="Tryb"
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${
+                              className={`inline-flex items-center rounded px-2 py-0.5 font-medium ${
                                 mode === "live"
                                   ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
                                   : "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
@@ -1516,7 +1450,7 @@ export default function ObservationsFeature({
                               <TooltipTrigger asChild>
                                 <span
                                   title="Status"
-                                  className={`inline-flex cursor-default items-center rounded-full px-2 py-0.5 font-medium ${
+                                  className={`inline-flex cursor-default items-center rounded px-2 py-0.5 font-medium ${
                                     status === "final"
                                       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                                       : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
@@ -1530,7 +1464,7 @@ export default function ObservationsFeature({
                               </TooltipContent>
                             </Tooltip>
                             {pCount > 0 && (
-                              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-900/30 dark:text-slate-300">
+                              <span className="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-900/30 dark:text-slate-300">
                                 {pCount} zawodn.
                               </span>
                             )}
@@ -1540,17 +1474,17 @@ export default function ObservationsFeature({
                     )}
 
                     {visibleCols.date && (
-                      <td className="hidden p-2 sm:table-cell sm:p-3">{fmtDate(r.date)}</td>
+                      <td className="hidden p-2 sm:table-cell sm:p-3 align-top">{fmtDate(r.date)}</td>
                     )}
                     {visibleCols.time && (
-                      <td className="hidden p-2 sm:table-cell sm:p-3">{r.time || "—"}</td>
+                      <td className="hidden p-2 sm:table-cell sm:p-3 align-top">{r.time || "—"}</td>
                     )}
 
                     {visibleCols.mode && (
-                      <td className="hidden p-2 sm:table-cell sm:p-3">
+                      <td className="hidden p-2 sm:table-cell sm:p-3 align-top">
                         <button
                           onClick={() => toggleModeInline(r.id)}
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                          className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
                             mode === "live"
                               ? "bg-indigo-600 text-white hover:bg-indigo-700"
                               : "bg-violet-600 text-white hover:bg-violet-700"
@@ -1569,12 +1503,12 @@ export default function ObservationsFeature({
                     )}
 
                     {visibleCols.status && (
-                      <td className="p-2 sm:p-3">
+                      <td className="p-2 sm:p-3 align-top">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
                               onClick={() => toggleStatusInline(r.id)}
-                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                              className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
                                 status === "final"
                                   ? "bg-emerald-600 text-white hover:bg-emerald-700"
                                   : "bg-amber-600 text-white hover:bg-amber-700"
@@ -1592,20 +1526,20 @@ export default function ObservationsFeature({
                     )}
 
                     {visibleCols.players && (
-                      <td className="hidden p-2 sm:table-cell sm:p-3">
+                      <td className="hidden p-2 sm:table-cell sm:p-3 align-top">
                         <GrayTag>{pCount}</GrayTag>
                       </td>
                     )}
 
                     {visibleCols.actions && (
-                      <td className="p-2 text-right sm:p-3">
+                      <td className="p-2 text-right sm:p-3 align-top">
                         <div className="inline-flex items-center gap-2">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                className="h-9 w-9 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                 onClick={() => {
                                   setEditing(r);
                                   setPageMode("editor");
@@ -1624,7 +1558,7 @@ export default function ObservationsFeature({
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  className="h-9 w-9 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                   onClick={() => moveToTrash(r.id)}
                                   aria-label="Przenieś do kosza"
                                 >
@@ -1639,7 +1573,7 @@ export default function ObservationsFeature({
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  className="h-9 w-9 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                   onClick={() => restoreFromTrash(r.id)}
                                   aria-label="Przywróć z kosza"
                                 >
@@ -1659,7 +1593,7 @@ export default function ObservationsFeature({
                 <tr>
                   <td
                     colSpan={Object.values(visibleCols).filter(Boolean).length || 1}
-                    className="p-3 text-center text-sm text-gray-500 dark:text-neutral-400"
+                    className="p-3 text-center text-sm text-dark dark:text-neutral-400"
                   >
                     Brak wyników dla bieżących filtrów.
                   </td>
@@ -1667,8 +1601,120 @@ export default function ObservationsFeature({
               )}
             </tbody>
           </table>
+
+          {/* Mobile scroll hint overlay */}
+          {showScrollHint && (
+            <div className="pointer-events-none sm:hidden">
+              <div className="absolute bottom-2 right-2 z-20 inline-flex items-center gap-2 rounded bg-gray-900/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur">
+                <span>Przeciągnij w bok</span>
+                <MoveHorizontal className="h-4 w-4" />
+              </div>
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white dark:from-neutral-950" />
+            </div>
+          )}
+        </div>
+
+        {/* Pagination footer */}
+        <div className="mt-3 flex flex-col items-center justify-between gap-3 rounded bg-white p-2 text-sm dark:bg-neutral-950 md:flex-row">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-dark dark:text-neutral-300">Wiersze na stronę:</span>
+            <select
+              className="rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+              value={pageSize}
+              onChange={(e) => {
+                const n = Number(e.target.value) || 10;
+                setPageSize(n);
+                setPage(1);
+              }}
+              aria-label="Liczba wierszy na stronę"
+            >
+              {[10, 20, 50].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+
+            <span className="ml-2 text-dark dark:text-neutral-300">
+              {totalItems === 0 ? "0" : `${startIdx + 1}–${endIdx} z ${totalItems}`}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              className="border-gray-300 dark:border-neutral-700"
+              disabled={page <= 1}
+              onClick={gotoPrev}
+              aria-label="Poprzednia strona"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="min-w-[80px] text-center">
+              Strona {page} / {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              className="border-gray-300 dark:border-neutral-700"
+              disabled={page >= totalPages}
+              onClick={gotoNext}
+              aria-label="Następna strona"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Floating selection pill (center-bottom) */}
+      {selected.size > 0 && (
+        <Portal>
+          <div className="fixed left-1/2 bottom-4 z-[240] -translate-x-1/2">
+            <div className="inline-flex items-center gap-2 rounded border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
+              {/* Clear selection */}
+              <button
+                className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
+                onClick={() => setSelected(new Set())}
+                aria-label="Wyczyść zaznaczenie"
+                title="Wyczyść zaznaczenie"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              {/* Count badge */}
+              <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded bg-gray-900 px-2 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+                {selected.size}
+              </span>
+
+              <span className="hidden sm:inline text-sm text-gray-800 dark:text-neutral-100">
+                zaznaczone
+              </span>
+
+              {/* Divider */}
+              <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-neutral-800" />
+
+              {/* Scope-aware action */}
+              {rows.some(r => selected.has(r.id) && (r.bucket ?? "active") === "active") && scope === "active" ? (
+                <Button
+                  className="h-8 w-8 rounded bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                  onClick={bulkTrash}
+                  aria-label="Przenieś do kosza"
+                  title="Przenieś do kosza"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  className="h-8 w-8 rounded bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+                  onClick={bulkRestore}
+                  aria-label="Przywróć"
+                  title="Przywróć"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </Portal>
+      )}
     </TooltipProvider>
   );
 }
@@ -1690,12 +1736,12 @@ function ColumnsButton({
 }) {
   const btnRef = useRef<HTMLButtonElement | null>(null);
   return (
-    <div className="relative">
+    <div className="relative shrink-0">
       <Button
         ref={btnRef as any}
         size="sm"
         variant="outline"
-        className="border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+        className="h-10 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
         onClick={() => setOpen(!open)}
         title="Widoczność kolumn"
         aria-label="Widoczność kolumn"
@@ -1736,7 +1782,7 @@ function ColumnsButton({
                 return (
                   <label
                     key={key}
-                    className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    className="flex cursor-pointer items-center justify-between rounded px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
                   >
                     <span className="text-gray-800 dark:text-neutral-100">
                       {COL_PL[key]}
@@ -1760,7 +1806,7 @@ function ColumnsButton({
             width={288}
             className="rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
           >
-            <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">
+            <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">
               Widoczność kolumn
             </div>
             {Object.keys(DEFAULT_COLS).map((k) => {
@@ -1768,7 +1814,7 @@ function ColumnsButton({
               return (
                 <label
                   key={key}
-                  className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  className="flex cursor-pointer items-center justify-between rounded px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
                 >
                   <span className="text-gray-800 dark:text-neutral-100">
                     {COL_PL[key]}

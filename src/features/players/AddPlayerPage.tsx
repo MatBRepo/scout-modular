@@ -326,7 +326,7 @@ export default function AddPlayerPage() {
               <User2 className="h-4 w-4" />
               Znam zawodnika
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-dark">
               Uzupełnij imię i nazwisko – resztę możesz dodać później w profilu.
             </div>
           </button>
@@ -347,7 +347,7 @@ export default function AddPlayerPage() {
               <Shirt className="h-4 w-4" />
               Nie znam zawodnika
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-dark">
               Zanotuj numer na koszulce, klub i kraj klubu + krótką notatkę. Dodasz szczegóły później.
             </div>
           </button>
@@ -551,7 +551,7 @@ export default function AddPlayerPage() {
               </div>
 
               <div className="mt-2 rounded-lg border border-dashed border-gray-300 p-4 dark:border-neutral-800">
-                <div className="mb-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Podgląd koszulki</div>
+                <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">Podgląd koszulki</div>
                 <div className="flex items-center justify-center">
                   <JerseyPreview number={unknown.jerseyNumber} />
                 </div>
@@ -644,7 +644,7 @@ function RatingsCard({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <span>{title}</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+          <span className="inline-flex items-center gap-1 rounded bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
             <Info className="h-3.5 w-3.5" />
             Skala: 1–6 • Etykiety edytujesz w „Zarządzanie → Metryki”
           </span>
@@ -831,7 +831,7 @@ function TButton({ onClick, icon, title }: { onClick: () => void; icon: React.Re
       type="button"
       title={title}
       onClick={onClick}
-      className="inline-flex h-8 items-center justify-center rounded-md px-2 text-xs text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:active:bg-neutral-700"
+      className="inline-flex h-8 items-center justify-center rounded px-2 text-xs text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:active:bg-neutral-700"
     >
       {icon}
     </button>
@@ -861,7 +861,7 @@ function CountryCombobox({
             type="button"
             aria-expanded={open}
             className={cn(
-              "flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
+              "flex w-full items-center justify-between rounded border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
               error ? "border-red-500" : "border-gray-300 dark:border-neutral-700"
             )}
           >

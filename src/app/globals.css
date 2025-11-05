@@ -1,22 +1,214 @@
+/* =========================================
+   globals.css — shadcn-admin look & feel
+========================================= */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Root radius used by shadcn components */
 :root { --radius: 0.75rem; }
 html, body { height: 100%; }
 
+/* ===== Design tokens (HSL) =====
+   Matches shadcn-admin palette & component theming
+*/
 @layer base {
-  :root { --background: 0 0% 100%; --foreground: 0 0% 3.9%; --card: 0 0% 100%; --card-foreground: 0 0% 3.9%; --popover: 0 0% 100%; --popover-foreground: 0 0% 3.9%; --primary: 0 0% 9%; --primary-foreground: 0 0% 98%; --secondary: 0 0% 96.1%; --secondary-foreground: 0 0% 9%; --muted: 0 0% 96.1%; --muted-foreground: 0 0% 45.1%; --accent: 0 0% 96.1%; --accent-foreground: 0 0% 9%; --destructive: 0 84.2% 60.2%; --destructive-foreground: 0 0% 98%; --border: 0 0% 89.8%; --input: 0 0% 89.8%; --ring: 0 0% 3.9%; --chart-1: 12 76% 61%; --chart-2: 173 58% 39%; --chart-3: 197 37% 24%; --chart-4: 43 74% 66%; --chart-5: 27 87% 67%; --radius: 0.5rem; }
-  .dark { --background: 0 0% 3.9%; --foreground: 0 0% 98%; --card: 0 0% 3.9%; --card-foreground: 0 0% 98%; --popover: 0 0% 3.9%; --popover-foreground: 0 0% 98%; --primary: 0 0% 98%; --primary-foreground: 0 0% 9%; --secondary: 0 0% 14.9%; --secondary-foreground: 0 0% 98%; --muted: 0 0% 14.9%; --muted-foreground: 0 0% 63.9%; --accent: 0 0% 14.9%; --accent-foreground: 0 0% 98%; --destructive: 0 62.8% 30.6%; --destructive-foreground: 0 0% 98%; --border: 0 0% 14.9%; --input: 0 0% 14.9%; --ring: 0 0% 83.1%; --chart-1: 220 70% 50%; --chart-2: 160 60% 45%; --chart-3: 30 80% 55%; --chart-4: 280 65% 60%; --chart-5: 340 75% 55%; } }
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    /* charts (unused by core, useful for dashboards) */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 5.5%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 5.5%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 215 20.2% 65.1%;
+
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
 
 @layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; }
+}
+
+/* ===== Page chrome density & scrollbars (like shadcn-admin) ===== */
+@layer base {
+  :root {
+    --page-pad: 1.25rem;   /* container padding */
+    --card-pad: 1rem;      /* card inner padding */
+    --grid-gap: 1rem;      /* gaps */
+  }
+  @media (min-width: 1024px) {
+    :root {
+      --page-pad: 1.5rem;
+      --card-pad: 1.25rem;
+      --grid-gap: 1.25rem;
+    }
+  }
+
+  /* thin scrollbars */
   * {
-    @apply border-border; }
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / .4) hsl(var(--muted));
+  }
+  *::-webkit-scrollbar        { height: 8px; width: 8px; }
+  *::-webkit-scrollbar-track  { background: hsl(var(--muted)); }
+  *::-webkit-scrollbar-thumb  { background: hsl(var(--muted-foreground) / .45); border-radius: 999px; }
+  *::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / .65); }
+
+ html {
+    font-feature-settings: "cv11","ss01","zero","lnum","tnum";
+    /* If you prefer the simpler form: */
+    /* font-variant-numeric: tabular-nums lining-nums; */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
   body {
-    @apply bg-background text-foreground; } }
+    @apply font-sans; /* <- Inter via --font-sans from next/font */
+  }
 
+}
 
-    @keyframes aurora-blob {
+/* ===== Component layer: cards / tables / forms / badges / breadcrumbs ===== */
+@layer components {
+  /* Card */
+  .card {
+    @apply bg-card text-card-foreground rounded-lg border shadow-sm;
+  }
+  .card-header { @apply p-[var(--card-pad)] pb-3; }
+  .card-title  { @apply text-sm font-semibold; }
+  .card-content{ @apply p-[var(--card-pad)] pt-0; }
+
+  /* Data table look (dense, subtle grid, sticky header on scrollable containers) */
+  .data-table {
+    @apply w-full border rounded-lg overflow-hidden;
+  }
+  .data-table table { @apply w-full border-collapse; }
+  .data-table thead th {
+    @apply text-xs font-medium text-muted-foreground bg-muted/50 uppercase tracking-wide text-left
+           border-b sticky top-0 z-10;
+  }
+  .data-table thead th,
+  .data-table tbody td {
+    @apply px-3 py-2 align-middle;
+  }
+  .data-table tbody tr { @apply border-b; }
+  .data-table tbody tr:hover { @apply bg-muted/40; }
+  .data-table .cell-secondary { @apply text-xs text-muted-foreground; }
+  .data-table .cell-badge { @apply text-[10px] px-1.5 py-0.5 rounded ring-1; }
+
+  /* Inputs / Selects / Textareas match shadcn sizing */
+  .input, .select, .textarea {
+    @apply h-9 rounded border bg-background px-3 py-2 text-sm
+           ring-offset-background placeholder:text-muted-foreground
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .textarea { @apply h-auto min-h-[112px]; }
+
+  /* Buttons (primary/secondary/ghost/destructive) */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-sm font-medium
+           transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+           focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50
+           h-9 px-3;
+  }
+  .btn-primary     { @apply bg-primary text-primary-foreground hover:bg-primary/90; }
+  .btn-secondary   { @apply bg-secondary text-secondary-foreground hover:bg-secondary/80; }
+  .btn-ghost       { @apply hover:bg-accent hover:text-accent-foreground; }
+  .btn-destructive { @apply bg-destructive text-destructive-foreground hover:bg-destructive/90; }
+  .btn-outline     { @apply border bg-transparent hover:bg-accent hover:text-accent-foreground; }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium
+           ring-1 ring-inset;
+  }
+  .badge-muted { @apply bg-muted text-muted-foreground border-transparent; }
+  .badge-ok    { @apply bg-green-100 text-green-800 ring-green-200 dark:bg-green-900/30 dark:text-green-200 dark:ring-green-800/60; }
+  .badge-warn  { @apply bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/60; }
+  .badge-danger{ @apply bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-800/60; }
+
+  /* Breadcrumbs */
+  .crumb { @apply text-sm text-muted-foreground; }
+  .crumb a { @apply hover:text-foreground transition-colors; }
+  .crumb .sep { @apply mx-2 opacity-60; }
+
+  /* Toolbar / Page header spacing */
+  .page-wrap { @apply p-[var(--page-pad)]; }
+  .page-toolbar { @apply mb-3 flex items-center justify-between gap-2; }
+
+  /* Simple avatar */
+  .avatar {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded bg-muted text-xs font-semibold;
+  }
+}
+
+/* ===== Optional: your existing background effects (kept) ===== */
+@keyframes aurora-blob {
   0%, 100% { transform: translate3d(0,0,0) scale(1); filter: saturate(1); }
   35%      { transform: translate3d(14px,-10px,0) scale(1.05); filter: saturate(1.05); }
   70%      { transform: translate3d(-12px,16px,0) scale(0.97); filter: saturate(0.98); }
@@ -26,7 +218,6 @@ html, body { height: 100%; }
   50%     { opacity: .92; }
 }
 
-/* Tailwind helpers */
 @layer utilities {
   .animate-aurora-blob { animation: aurora-blob 18s ease-in-out infinite; }
   .animate-vignette    { animation: vignette 10s ease-in-out infinite; }

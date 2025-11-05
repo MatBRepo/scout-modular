@@ -170,24 +170,24 @@ export default function ScoutProfilePage() {
                 <Info label="Obserwacje (sum.)" value={String(scout.observationsCount)} icon={<NotebookPen className="h-4 w-4" />} />
               </div>
 
-              <div className="mt-5 rounded-md border border-gray-200 p-3 dark:border-neutral-800">
+              <div className="mt-5 rounded border border-gray-200 p-3 dark:border-neutral-800">
                 <div className="mb-2 text-sm font-semibold">Wypełnienie profili zawodników</div>
-                <div className="mb-2 text-xs text-gray-600 dark:text-neutral-400">
+                <div className="mb-2 text-xs text-dark dark:text-neutral-400">
                   {Array.isArray(scout.playerIds) && scout.playerIds.length
                     ? "Średnie wypełnienie przypisanych zawodników."
                     : "Brak przypisanych zawodników – pokazano metryki globalne (aktywni)."}
                 </div>
                 <Progress percent={avgCompletion} />
-                <div className="mt-1 text-xs text-gray-600 dark:text-neutral-400">
+                <div className="mt-1 text-xs text-dark dark:text-neutral-400">
                   Średnio <b>{avgCompletion}%</b> pól wypełnionych na zawodnika.
                 </div>
               </div>
             </TabsContent>
 
             <TabsContent value="players">
-              <div className="w-full overflow-x-auto rounded-md border border-gray-200 dark:border-neutral-800">
+              <div className="w-full overflow-x-auto rounded border border-gray-200 dark:border-neutral-800">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+                  <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                     <tr>
                       <th className="p-3 text-left font-medium">Zawodnik</th>
                       <th className="p-3 text-left font-medium">Klub</th>
@@ -216,7 +216,7 @@ export default function ScoutProfilePage() {
                     })}
                     {assignedPlayers.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-5 text-center text-sm text-gray-500 dark:text-neutral-400">
+                        <td colSpan={5} className="p-5 text-center text-sm text-dark dark:text-neutral-400">
                           Brak zawodników do wyświetlenia.
                         </td>
                       </tr>
@@ -227,9 +227,9 @@ export default function ScoutProfilePage() {
             </TabsContent>
 
             <TabsContent value="obs">
-              <div className="w-full overflow-x-auto rounded-md border border-gray-200 dark:border-neutral-800">
+              <div className="w-full overflow-x-auto rounded border border-gray-200 dark:border-neutral-800">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+                  <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                     <tr>
                       <th className="p-3 text-left font-medium">Mecz</th>
                       <th className="p-3 text-left font-medium">Zawodnik</th>
@@ -250,7 +250,7 @@ export default function ScoutProfilePage() {
                     ))}
                     {assignedObs.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-5 text-center text-sm text-gray-500 dark:text-neutral-400">
+                        <td colSpan={5} className="p-5 text-center text-sm text-dark dark:text-neutral-400">
                           Brak obserwacji powiązanych z tym scoutem.
                         </td>
                       </tr>
@@ -268,8 +268,8 @@ export default function ScoutProfilePage() {
 
 function Info({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-gray-200 p-2 dark:border-neutral-800">
-      <div className="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-neutral-400">
+    <div className=" text-darkrounded p-2 dark:border-neutral-800">
+      <div className="mb-1 flex items-center gap-1 text-[11px] font-medium tracking-wide text-dark dark:text-neutral-400">
         {icon} {label}
       </div>
       <div className="text-gray-800 dark:text-neutral-100">{value}</div>
@@ -280,9 +280,9 @@ function Info({ label, value, icon }: { label: string; value: string; icon?: Rea
 function Progress({ percent, compact = false }: { percent: number; compact?: boolean }) {
   const p = Math.max(0, Math.min(100, percent));
   return (
-    <div className={`relative ${compact ? "h-2 w-40" : "h-3 w-64"} rounded-full bg-gray-200 dark:bg-neutral-800`}>
+    <div className={`relative ${compact ? "h-2 w-40" : "h-3 w-64"} rounded bg-gray-200 dark:bg-neutral-800`}>
       <div
-        className="absolute left-0 top-0 h-full rounded-full bg-indigo-600 transition-[width]"
+        className="absolute left-0 top-0 h-full rounded bg-indigo-600 transition-[width]"
         style={{ width: `${p}%` }}
       />
     </div>

@@ -11,7 +11,7 @@ type ToolbarProps = {
 
 export function Crumb({ items }: { items: Array<{ label: string; href?: string }> }) {
   return (
-    <nav className="mb-4 text-sm text-gray-500 dark:text-neutral-400">
+    <nav className="mb-4 text-sm text-dark dark:text-neutral-400">
       <ol className="flex flex-wrap items-center gap-1">
         {items.map((it, i) => (
           <li key={i} className="flex items-center gap-1">
@@ -45,5 +45,5 @@ export function Toolbar({ title, subtitle, right }: ToolbarProps) {
 }
 
 export function GrayTag({ children }: { children: React.ReactNode }) {
-  return <span className="inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">{children}</span>;
+  return <span className="inline-flex items-center rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">{children}</span>;
 }

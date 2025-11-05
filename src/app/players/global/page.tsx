@@ -147,7 +147,7 @@ export default function GlobalDatabasePage() {
             right={
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Search className="h-4 w-4 text-gray-500" />
+                  <Search className="h-4 w-4 text-dark" />
                   <Input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
@@ -180,7 +180,7 @@ export default function GlobalDatabasePage() {
             <CardContent className="p-0">
               <div className="w-full overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
+                  <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                     <tr>
                       <th className="p-3 text-left font-medium">Zawodnik</th>
                       <th className="p-3 text-left font-medium">Klub</th>
@@ -201,13 +201,13 @@ export default function GlobalDatabasePage() {
                           <td className="p-3">
                             <div className="font-medium text-gray-900 dark:text-neutral-100">{r.name || "—"}</div>
                             {r.extId && (
-                              <div className="text-[11px] text-gray-500 dark:text-neutral-400">{r.extId}</div>
+                              <div className="text-[11px] text-dark dark:text-neutral-400">{r.extId}</div>
                             )}
                           </td>
                           <td className="p-3">{r.club || "—"}</td>
                           <td className="p-3">
                             {r.pos ? (
-                              <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                              <span className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
                                 {r.pos}
                               </span>
                             ) : "—"}
@@ -228,7 +228,7 @@ export default function GlobalDatabasePage() {
                               r.adminNote ? (
                                 <div className="max-w-xs truncate text-gray-800 dark:text-neutral-100">{r.adminNote}</div>
                               ) : (
-                                <span className="text-xs text-gray-500 dark:text-neutral-400">Brak</span>
+                                <span className="text-xs text-dark dark:text-neutral-400">Brak</span>
                               )
                             ) : (
                               <div className="max-w-md space-y-2">
@@ -236,7 +236,7 @@ export default function GlobalDatabasePage() {
                                 <textarea
                                   value={noteDraft}
                                   onChange={(e) => setNoteDraft(e.target.value)}
-                                  className="h-24 w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                                  className="h-24 w-full rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                                   placeholder="Twoja prywatna notatka (widoczna tylko dla Admina w tym widoku)…"
                                 />
                                 <div className="flex flex-wrap items-center gap-2">
@@ -290,7 +290,7 @@ export default function GlobalDatabasePage() {
                     })}
                     {filtered.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="p-5 text-center text-sm text-gray-500 dark:text-neutral-400">
+                        <td colSpan={9} className="p-5 text-center text-sm text-dark dark:text-neutral-400">
                           Brak rekordów do wyświetlenia.
                         </td>
                       </tr>
