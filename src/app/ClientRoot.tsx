@@ -2,14 +2,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { ThemeProvider } from "next-themes";
 import AppSidebar from "@/widgets/app-sidebar/AppSidebar";
 import PageTransition from "@/shared/ui/PageTransition";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Menu, PlusCircle, Mail, Lock, User as UserIcon, Eye, EyeOff, CheckCircle2,
-  Loader2
+  Loader2, ChevronRight
 } from "lucide-react";
+import { HomeIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +36,7 @@ type StoredUser = {
   name: string;
   email: string;
   password: string;
-  role: Role; // "scout" for user-registered accounts
+  role: Role;
 };
 
 /* ===== Helpers ===== */
@@ -96,22 +98,6 @@ function dispatchAuth(auth: AuthState | null) {
   } catch {}
 }
 
-/* ===== Brand: Flat, rounded, no gradient ===== */
-function BrandMark({ showName }: { showName: boolean }) {
-  return (
-    <a href="/" className="group flex items-center gap-2" aria-label="entrisoScouting - Start">
-      <div className="grid h-8 w-8 place-items-center rounded bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
-        <span className="text-[13px] font-bold leading-none">S</span>
-      </div>
-      {showName && (
-        <span className="hidden text-sm font-semibold tracking-tight sm:block">
-          entrisoScouting
-        </span>
-      )}
-    </a>
-  );
-}
-
 /* ===== Easing & Variants ===== */
 const easeOutCustom = cubicBezier(0.2, 0.7, 0.2, 1);
 
@@ -160,7 +146,7 @@ function AuthGate({
   const [loginBusy, setLoginBusy] = useState(false);
   const [loginCaps, setLoginCaps] = useState(false);
 
-  // Register form (always "scout")
+  // Register form
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPass, setRegPass] = useState("");
@@ -213,7 +199,6 @@ function AuthGate({
       doLogin(loginEmail, loginPass);
     } catch (err: any) {
       setLoginErr(err?.message || "Błąd logowania.");
-      // shake animation
       if (loginCardRef.current && !prefersReduced) {
         loginCardRef.current.animate(
           [
@@ -261,7 +246,6 @@ function AuthGate({
       writeUsers([newUser, ...users]);
       setRegOk("Konto utworzone. Możesz się zalogować.");
       setTab("login");
-      // prefill email
       setLoginEmail(newUser.email);
     } catch (err: any) {
       setRegErr(err?.message || "Błąd rejestracji.");
@@ -301,7 +285,7 @@ function AuthGate({
         animate="show"
         transition={{ staggerChildren: 0.08 }}
       >
-        {/* LEFT — flat content (no gradients) */}
+        {/* LEFT */}
         <motion.section variants={colVariants} className="relative hidden min-h-[540px] items-center md:flex">
           <div className="mx-auto w-full max-w-[620px] p-2 md:p-6">
             <div className="mb-4 inline-flex items-center gap-2 rounded bg-slate-100 px-3 py-1.5 text-xs text-slate-800 dark:bg-neutral-900 dark:text-neutral-200">
@@ -355,10 +339,10 @@ function AuthGate({
           </div>
         </motion.section>
 
-        {/* RIGHT — Auth card (flat, rounded). No glass. */}
+        {/* RIGHT — Auth card */}
         <motion.section variants={colVariants} className="grid place-items-center">
           <div ref={loginCardRef} className="w-full max-w-md rounded-2xl p-5 md:p-6">
-            {/* Mobile extra description (flat) */}
+            {/* Mobile short description */}
             <div className="mb-3 block md:hidden">
               <div className="rounded bg-slate-100 p-3 text-xs text-slate-700 dark:bg-neutral-900 dark:text-neutral-300">
                 <div className="mb-1 font-medium text-slate-900 dark:text-neutral-100">
@@ -382,7 +366,7 @@ function AuthGate({
               <h2 className="text-lg font-semibold">Witaj w entrisoScouting</h2>
             </motion.div>
 
-            {/* Tabs with better margins (flat) */}
+            {/* Tabs */}
             <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")}>
               <TabsList className="mb-4 grid w-full grid-cols-2 gap-1 rounded-lg bg-transparent p-0">
                 <TabsTrigger
@@ -594,7 +578,7 @@ function AuthGate({
             {/* Divider */}
             <div className="my-4 h-px bg-slate-200 dark:bg-neutral-800" />
 
-            {/* Demo roles — clean, rounded, with spinner while pending */}
+            {/* Demo roles */}
             <div className="space-y-2 text-sm">
               <div className="mb-1 text-[11px] font-medium tracking-wide text-dark dark:text-neutral-400">
                 Szybkie logowanie (demo):
@@ -664,6 +648,21 @@ function AuthGate({
   );
 }
 
+/* ===== Simple breadcrumb builder ===== */
+function buildBreadcrumb(pathname: string) {
+  const parts = pathname.split("?")[0].split("#")[0].split("/").filter(Boolean);
+  const items = [{ label: "Home", href: "/" }];
+  let acc = "";
+  for (const p of parts) {
+    acc += "/" + p;
+    items.push({
+      label: decodeURIComponent(p).replace(/-/g, " "),
+      href: acc,
+    });
+  }
+  return items;
+}
+
 /* ===== Shell with Sidebar & Topbar ===== */
 function AppShell({
   children,
@@ -671,103 +670,151 @@ function AppShell({
   onAddPlayer,
   onAddObservation,
   isAuthed,
+  pathname,
 }: {
   children: React.ReactNode;
   onOpenMobile: () => void;
   onAddPlayer: () => void;
   onAddObservation: () => void;
   isAuthed: boolean;
+  pathname: string;
 }) {
-  // small top progress bar on any route change (parent sets state)
+  const crumbs = buildBreadcrumb(pathname);
+
+  const hideHeaderActions = /^\/players\/new(?:\/|$)/.test(pathname);
+
+
   return (
     <>
       <div className="pl-64 max-lg:pl-0">
-        {/* Sticky top bar (flat) */}
+        {/* Sticky top bar */}
         <header
           className="sticky top-0 z-40 border-b border-transparent bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent dark:bg-transparent"
           role="banner"
         >
-          <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-2 py-2 md:px-4 md:py-3">
-            <div className="flex items-center gap-2">
-              {/* Hamburger when logged in */}
-              {isAuthed && (
-                <button
-                  className="rounded border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60 lg:hidden"
-                  aria-label="Otwórz menu"
-                  onClick={onOpenMobile}
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              )}
-              <BrandMark showName={!isAuthed} />
-            </div>
-
-            {/* Global actions — only when authed */}
-            {isAuthed ? (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, ease: easeOutCustom }}
-                className="flex items-center gap-2"
+          <div className="relative mx-auto w-full">
+            {/* Hamburger */}
+            {isAuthed && (
+              <button
+                className="lg:hidden absolute left-2 top-1/2 -translate-y-1/2 rounded border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60"
+                aria-label="Otwórz menu"
+                onClick={onOpenMobile}
               >
-                {/* Mobile: icon-only */}
-                <div className="flex items-center gap-2 md:hidden">
-                  <Button
-                    size="icon"
-                    className="h-9 w-9 rounded bg-gray-900 text-white hover:bg-gray-800"
-                    aria-label="Dodaj zawodnika"
-                    onClick={onAddPlayer}
-                    title="Dodaj zawodnika"
-                  >
-                    <UserIcon className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-9 w-9 rounded border-gray-300 dark:border-neutral-700"
-                    aria-label="Dodaj obserwacje"
-                    onClick={onAddObservation}
-                    title="Dodaj obserwacje"
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Desktop: icon + label */}
-                <div className="hidden items-center gap-2 md:flex">
-                  <Button
-                    onClick={onAddPlayer}
-                    className="rounded bg-gray-900 text-white hover:bg-gray-800"
-                    aria-label="Dodaj zawodnika"
-                  >
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    Dodaj zawodnika
-                  </Button>
-                  <Button
-                    onClick={onAddObservation}
-                    variant="outline"
-                    className="rounded border-gray-300 dark:border-neutral-700"
-                    aria-label="Dodaj obserwacje"
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Dodaj obserwacje
-                  </Button>
-                </div>
-              </motion.div>
-            ) : (
-              <div />
+                <Menu className="h-5 w-5" />
+              </button>
             )}
+
+            {/* ABSOLUTE breadcrumb on the left, aligned to app bar */}
+            <nav
+              aria-label="Breadcrumb"
+              className="absolute left-[44px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
+            >
+              <ol className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300">
+                {crumbs.map((c, i) => {
+                  const last = i === crumbs.length - 1;
+                  return (
+                    <li key={c.href} className="flex min-w-0 items-center">
+                      {!last ? (
+                        <>
+                          <Link
+                            href={c.href}
+                            className="truncate hover:underline"
+                            title={c.label}
+                          >
+                            {i === 0 ? (
+                              <HomeIcon className="h-4 w-4" aria-hidden="true" />
+                            ) : (
+                              c.label
+                            )}
+                          </Link>
+                          <ChevronRight className="mx-1 h-4 w-4 opacity-60" aria-hidden="true" />
+                        </>
+                      ) : (
+                        <span
+                          className="truncate font-medium text-slate-900 dark:text-neutral-100"
+                          title={c.label}
+                        >
+                          {c.label || "Home"}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
+
+            {/* Actions row — same horizontal padding as content (md:px-6) */}
+{/* Actions row — same horizontal padding as content (md:px-6) */}
+<div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px]">
+  {isAuthed ? (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: easeOutCustom }}
+      // 👇 keep space when hidden
+      className={`ml-2 flex shrink-0 items-center gap-2 min-h-[36px] ${hideHeaderActions ? "invisible pointer-events-none" : ""}`}
+    >
+      {/* Mobile: icons */}
+      <div className="flex items-center gap-2 md:hidden">
+        <Button
+          size="icon"
+          className="h-9 w-9 rounded bg-gray-900 text-white hover:bg-gray-800"
+          aria-label="Dodaj zawodnika"
+          onClick={onAddPlayer}
+          title="Dodaj zawodnika"
+        >
+          <UserIcon className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="outline"
+          className="h-9 w-9 rounded border-gray-300 dark:border-neutral-700"
+          aria-label="Dodaj obserwacje"
+          onClick={onAddObservation}
+          title="Dodaj obserwacje"
+        >
+          <PlusCircle className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Desktop: full buttons */}
+      <div className="hidden items-center gap-2 md:flex">
+        <Button
+          onClick={onAddPlayer}
+          className="h-9 rounded bg-gray-900 text-white hover:bg-gray-800"
+          aria-label="Dodaj zawodnika"
+        >
+          <UserIcon className="mr-2 h-4 w-4" />
+          Dodaj zawodnika
+        </Button>
+        <Button
+          onClick={onAddObservation}
+          variant="outline"
+          className="h-9 rounded border-gray-300 dark:border-neutral-700"
+          aria-label="Dodaj obserwacje"
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Dodaj obserwacje
+        </Button>
+      </div>
+    </motion.div>
+  ) : (
+    // keep row height even when not authed
+    <div className="min-h-[36px]" />
+  )}
+</div>
+
           </div>
         </header>
 
-        {/* Content container — transparent, no border/background */}
-        <main id="content" className="px-2 py-4 md:px-4 md:py-6">
+        {/* Content */}
+        <main id="content" className="px-3 py-4 md:px-6 md:py-6">
           <PageTransition>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: easeOutCustom }}
-              className="mx-auto w-full max-w-[1400px] rounded-xl bg-transparent p-0 shadow-none md:p-6"
+              className="mx-auto w-full max-w-[1400px] rounded-xl bg-transparent p-0 shadow-none"
             >
               {children}
             </motion.div>
@@ -775,7 +822,7 @@ function AppShell({
         </main>
 
         <footer
-          className="mx-auto w-full max-w-[1400px] px-2 pb-6 pt-2 text-xs text-dark dark:text-neutral-400 md:px-4 md:pb-8"
+          className="mx-auto w-full max-w-[1400px] px-3 pb-6 pt-2 text-xs text-dark dark:text-neutral-400 md:px-6 md:pb-8"
           role="contentinfo"
         >
           © {new Date().getFullYear()} entrisoScouting • v1.0
@@ -785,6 +832,7 @@ function AppShell({
     </>
   );
 }
+
 
 /* ===== ClientRoot ===== */
 export default function ClientRoot({ children }: { children: React.ReactNode }) {
@@ -800,12 +848,10 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
 
   const setOverlayOn = (on: boolean, text?: string) => setOverlay({ on, text });
 
-  // initial auth
   useEffect(() => {
     setAuth(readAuth());
   }, []);
 
-  // listen to auth changes
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === AUTH_KEY) setAuth(readAuth());
@@ -822,7 +868,6 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
     };
   }, []);
 
-  // boot effect after login
   useEffect(() => {
     if (auth.ok) {
       setShowBootLoader(true);
@@ -834,7 +879,6 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
     }
   }, [auth.ok]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // subtle route-change overlay + top progress bar
   useEffect(() => {
     if (prefersReduced) return;
     setRouteLoading(true);
@@ -855,7 +899,7 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      {/* Simple top progress bar (no gradient) */}
+      {/* Top progress bar */}
       <div
         className={`fixed inset-x-0 top-0 z-[60] h-0.5 bg-indigo-500 transition-opacity ${
           routeLoading ? "opacity-100" : "opacity-0"
@@ -875,6 +919,7 @@ export default function ClientRoot({ children }: { children: React.ReactNode }) 
         onAddPlayer={handleAddPlayer}
         onAddObservation={handleAddObservation}
         isAuthed={!!auth.ok}
+        pathname={pathname || "/"}
       >
         {content}
       </AppShell>

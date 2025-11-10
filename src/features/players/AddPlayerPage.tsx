@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Crumb, Toolbar } from "@/shared/ui/atoms";
+// REMOVED: Crumb
+import { Toolbar } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,8 +22,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Player } from "@/shared/types";
 import {
-  User2,
-  Shirt,
+  UserCheck,
+  Search,
   Info,
   Bold,
   Italic,
@@ -107,17 +108,6 @@ const toBucket = (p: DetailedPos): BucketPos => {
 
 const posByValue = (v?: DetailedPos) => POS_DATA.find((p) => p.value === v);
 
-/* Mini ikona pozycji (trigger + opcje) */
-function PositionIcon({ code, className }: { code: DetailedPos; className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={cn("h-4 w-4", className)} aria-hidden="true">
-      <circle cx="12" cy="6" r="3" fill="currentColor" />
-      <rect x="8" y="10" width="8" height="9" rx="2" fill="currentColor" />
-      <path d="M5 12h3M16 12h3M9 19l-3 3M15 19l3 3" stroke="currentColor" strokeWidth="1.5" fill="none" />
-    </svg>
-  );
-}
-
 /* ----------------------------------------
    Countries (flags)
 ----------------------------------------- */
@@ -164,6 +154,15 @@ export default function AddPlayerPage() {
   const [choice, setChoice] = useState<"known" | "unknown" | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Refs for autofocus / error scroll
+  const knownFirstRef = useRef<HTMLInputElement | null>(null);
+  const knownLastRef  = useRef<HTMLInputElement | null>(null);
+  const unknownNumRef = useRef<HTMLInputElement | null>(null);
+  const unknownClubRef = useRef<HTMLInputElement | null>(null);
+
+  // ratings accordion open groups
+  const [openAccordions, setOpenAccordions] = useState<string[]>(["base"]);
+
   // known
   const [known, setKnown] = useState({
     firstName: "",
@@ -196,6 +195,22 @@ export default function AddPlayerPage() {
   const [mMID, setMMID] = useState<Record<string, number>>({});
   const [mATT, setMATT] = useState<Record<string, number>>({});
 
+  // restore tile choice
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("s4s.addPlayer.choice");
+      if (saved === "known" || saved === "unknown") setChoice(saved);
+    } catch {}
+  }, []);
+
+  // persist choice
+  useEffect(() => {
+    if (choice) {
+      try { localStorage.setItem("s4s.addPlayer.choice", choice); } catch {}
+    }
+  }, [choice]);
+
+  // listen for metrics changes from other tabs
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === "s4s.obs.metrics") setMCfg(loadMetrics());
@@ -203,6 +218,50 @@ export default function AddPlayerPage() {
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  // auto-open rating groups for chosen detailed position
+  useEffect(() => {
+    const bucket = choice === "known" ? toBucket(known.pos) : choice === "unknown" ? toBucket(unknown.pos) : null;
+    const groups = new Set<string>(["base"]);
+    if (bucket === "GK") groups.add("gk");
+    if (bucket === "DF") groups.add("def");
+    if (bucket === "MF") groups.add("mid");
+    if (bucket === "FW") groups.add("att");
+    setOpenAccordions(Array.from(groups));
+  }, [choice, known.pos, unknown.pos]);
+
+  // autofocus when entering step 2
+  useEffect(() => {
+    if (step !== 2) return;
+    const t = setTimeout(() => {
+      if (choice === "known") knownFirstRef.current?.focus();
+      if (choice === "unknown") unknownNumRef.current?.focus();
+    }, 10);
+    return () => clearTimeout(t);
+  }, [step, choice]);
+
+  // keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (step === 1) {
+        if (e.key === "Enter" && choice) {
+          e.preventDefault();
+          if (validateStep1()) setStep(2);
+        }
+      } else if (step === 2) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "enter") {
+          e.preventDefault();
+          if (validateStep2()) save();
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setStep(1);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [step, choice, known, unknown]);
 
   /* validation */
   function validateStep1() {
@@ -225,10 +284,22 @@ export default function AddPlayerPage() {
       if (!unknown.clubCountry.trim()) next["unknown.clubCountry"] = "Wybierz kraj aktualnego klubu.";
     }
     setErrors(next);
-    return Object.keys(next).length === 0;
+
+    // scroll to first error
+    const keys = Object.keys(next);
+    if (keys.length) {
+      const k = keys[0];
+      if (k === "known.firstName") knownFirstRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (k === "known.lastName")  knownLastRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (k === "unknown.jerseyNumber") unknownNumRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (k === "unknown.club") unknownClubRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    return keys.length === 0;
   }
 
   /* save */
+  const routerRef = useRef(router);
   function save() {
     const id = Date.now();
     let newPlayer: Player;
@@ -281,7 +352,7 @@ export default function AddPlayerPage() {
       localStorage.setItem("s4s.players", JSON.stringify([newPlayer, ...arr]));
     } catch {}
 
-    router.push(`/players/${id}`);
+    routerRef.current.push(`/players/${id}`);
   }
 
   function packRatings() {
@@ -298,67 +369,85 @@ export default function AddPlayerPage() {
   /* UI */
   return (
     <div className="w-full">
-      <Crumb
-        items={[
-          { label: "Start", href: "/" },
-          { label: "Baza zawodników", href: "/players" },
-          { label: "Dodaj zawodnika" },
-        ]}
-      />
+      {/* REMOVED Crumb */}
       <Toolbar title="Dodaj zawodnika" />
 
-      {/* STEP 1 */}
+      {/* STEP 1 — clean tiles with very subtle gradients; colors only on borders & icons */}
       {step === 1 && (
-        <div className="max-w space-y-3">
-          <button
-            onClick={() => {
-              setChoice("known");
-              setErrors({});
-            }}
-            className={
-              "w-full rounded-lg border p-4 text-left transition hover:bg-gray-50 dark:hover:bg-neutral-900 " +
-              (choice === "known"
-                ? "border-gray-900 bg-gray-900/5 dark:border-neutral-300"
-                : "border-gray-300 dark:border-neutral-700")
-            }
-          >
-            <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-medium">
-              <User2 className="h-4 w-4" />
-              Znam zawodnika
-            </div>
-            <div className="text-xs text-dark">
-              Uzupełnij imię i nazwisko – resztę możesz dodać później w profilu.
-            </div>
-          </button>
+        <div className="max-w space-y-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Known */}
+            <button
+              onClick={() => {
+                setChoice("known");
+                setErrors({});
+              }}
+              className={cn(
+                "group w-full rounded p-6 sm:p-7 text-left shadow-sm transition bg-white dark:bg-neutral-950",
+                "ring-1",
+                choice === "known"
+                  ? "ring-blue-500"
+                  : "ring-gray-200 hover:ring-blue-400 dark:ring-neutral-800 dark:hover:ring-blue-500/60",
+                // ultra-subtle radial gradient accent (top-left) without filling the tile with color
+                "bg-[radial-gradient(30rem_30rem_at_0%_0%,theme(colors.blue.500)/6%,transparent_60%)]"
+              )}
+            >
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded bg-transparent">
+                  <UserCheck className={cn("h-12 w-12", choice === "known" ? "text-blue-600" : "text-blue-500")} />
+                </span>
+                <div className="min-w-0">
+                  <div className="mb-1 text-base font-semibold">Znam zawodnika</div>
+                  <div className="text-sm text-muted-foreground">
+                    Podaj imię i nazwisko – resztę uzupełnisz później w profilu.
+                  </div>
+                </div>
+              </div>
+            </button>
 
-          <button
-            onClick={() => {
-              setChoice("unknown");
-              setErrors({});
-            }}
-            className={
-              "w-full rounded-lg border p-4 text-left transition hover:bg-gray-50 dark:hover:bg-neutral-900 " +
-              (choice === "unknown"
-                ? "border-gray-900 bg-gray-900/5 dark:border-neutral-300"
-                : "border-gray-300 dark:border-neutral-700")
-            }
-          >
-            <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-medium">
-              <Shirt className="h-4 w-4" />
-              Nie znam zawodnika
-            </div>
-            <div className="text-xs text-dark">
-              Zanotuj numer na koszulce, klub i kraj klubu + krótką notatkę. Dodasz szczegóły później.
-            </div>
-          </button>
+            {/* Unknown */}
+            <button
+              onClick={() => {
+                setChoice("unknown");
+                setErrors({});
+              }}
+              className={cn(
+                "group w-full rounded p-6 sm:p-7 text-left shadow-sm transition bg-white dark:bg-neutral-950",
+                "ring-1",
+                choice === "unknown"
+                  ? "ring-emerald-500"
+                  : "ring-gray-200 hover:ring-emerald-400 dark:ring-neutral-800 dark:hover:ring-emerald-500/60",
+                "bg-[radial-gradient(30rem_30rem_at_100%_0%,theme(colors.emerald.500)/6%,transparent_60%)]"
+              )}
+            >
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded bg-transparent">
+                  <Search className={cn("h-12 w-12", choice === "unknown" ? "text-emerald-600" : "text-emerald-500")} />
+                </span>
+                <div className="min-w-0">
+                  <div className="mb-1 text-base font-semibold">Nie znam zawodnika</div>
+                  <div className="text-sm text-muted-foreground">
+                    Zapisz numer na koszulce, klub i kraj klubu + krótką notatkę.
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
 
           {errors["choice"] && <p className="text-xs text-red-600">{errors["choice"]}</p>}
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={() => history.back()} className="border-gray-300 dark:border-neutral-700">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => history.back()}
+              className="border-gray-300 dark:border-neutral-700"
+            >
               Anuluj
             </Button>
-            <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => (validateStep1() ? setStep(2) : null)}>
+            <Button
+              className="ml-auto bg-gray-900 text-white hover:bg-gray-800"
+              onClick={() => (validateStep1() ? setStep(2) : null)}
+            >
               Dalej
             </Button>
           </div>
@@ -367,18 +456,19 @@ export default function AddPlayerPage() {
 
       {/* STEP 2 — KNOWN */}
       {step === 2 && choice === "known" && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Podstawowe dane</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>
                     Imię <span className="text-red-600">*</span>
                   </Label>
                   <Input
+                    ref={knownFirstRef}
                     value={known.firstName}
                     onChange={(e) => setKnown((d) => ({ ...d, firstName: e.target.value }))}
                     aria-invalid={!!errors["known.firstName"]}
@@ -391,6 +481,7 @@ export default function AddPlayerPage() {
                     Nazwisko <span className="text-red-600">*</span>
                   </Label>
                   <Input
+                    ref={knownLastRef}
                     value={known.lastName}
                     onChange={(e) => setKnown((d) => ({ ...d, lastName: e.target.value }))}
                     aria-invalid={!!errors["known.lastName"]}
@@ -400,28 +491,27 @@ export default function AddPlayerPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-<div className="col-span-2 lg:col-span-1">
-  <Label>Kategoria pozycji</Label>
-  <Select value={known.pos} onValueChange={(v) => setKnown((d) => ({ ...d, pos: v as DetailedPos }))}>
-    {/* margin-left tylko dla strzałki (svg) */}
-<SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
-      <SelectValue placeholder="Wybierz pozycję" />
-    </SelectTrigger>
-    <SelectContent>
-      {POS_DATA.map((opt) => (
-        <SelectItem key={opt.value} value={opt.value}>
-          <div className="text-left">
-            <div className="font-medium">
-              {opt.code}: {opt.name}
-            </div>
-            <div className="text-xs text-muted-foreground">{opt.desc}</div>
-          </div>
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 lg:col-span-1">
+                  <Label>Kategoria pozycji</Label>
+                  <Select value={known.pos} onValueChange={(v) => setKnown((d) => ({ ...d, pos: v as DetailedPos }))}>
+                    <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
+                      <SelectValue placeholder="Wybierz pozycję" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {POS_DATA.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          <div className="text-left">
+                            <div className="font-medium">
+                              {opt.code}: {opt.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div>
                   <Label>Wiek (opcjonalnie)</Label>
@@ -434,7 +524,7 @@ export default function AddPlayerPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Klub</Label>
                   <Input value={known.club} onChange={(e) => setKnown((d) => ({ ...d, club: e.target.value }))} className="border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
@@ -449,7 +539,7 @@ export default function AddPlayerPage() {
                 <Button variant="outline" onClick={() => setStep(1)} className="border-gray-300 dark:border-neutral-700">
                   Wstecz
                 </Button>
-                <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => (validateStep2() ? save() : null)}>
+                <Button className="ml-auto bg-gray-900 text-white hover:bg-gray-800" onClick={() => (validateStep2() ? save() : null)}>
                   Zapisz
                 </Button>
               </div>
@@ -462,24 +552,27 @@ export default function AddPlayerPage() {
             config={mCfg}
             ratings={{ BASE: mBase, GK: mGK, DEF: mDEF, MID: mMID, ATT: mATT }}
             setByGroup={{ setBASE: setMBase, setGK: setMGK, setDEF: setMDEF, setMID: setMMID, setATT: setMATT }}
+            open={openAccordions}
+            onOpenChange={setOpenAccordions}
           />
         </div>
       )}
 
       {/* STEP 2 — UNKNOWN */}
       {step === 2 && choice === "unknown" && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Szkic zawodnika (nie znany)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>
                     Numer na koszulce <span className="text-red-600">*</span>
                   </Label>
                   <Input
+                    ref={unknownNumRef}
                     value={unknown.jerseyNumber}
                     onChange={(e) => setUnknown((d) => ({ ...d, jerseyNumber: e.target.value }))}
                     aria-invalid={!!errors["unknown.jerseyNumber"]}
@@ -489,37 +582,35 @@ export default function AddPlayerPage() {
                   {errors["unknown.jerseyNumber"] && <p className="text-xs text-red-600">{errors["unknown.jerseyNumber"]}</p>}
                 </div>
 
-<div>
-  <Label>Kategoria pozycji</Label>
-  <Select value={unknown.pos} onValueChange={(v) => setUnknown((d) => ({ ...d, pos: v as DetailedPos }))}>
-    {/* margin-left tylko dla strzałki (svg) */}
-<SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
-      <SelectValue placeholder="Wybierz pozycję" />
-    </SelectTrigger>
-    <SelectContent>
-      {POS_DATA.map((opt) => (
-        <SelectItem key={opt.value} value={opt.value}>
-          <div className="text-left">
-            <div className="font-medium">
-              {opt.code}: {opt.name}
-            </div>
-            <div className="text-xs text-muted-foreground">{opt.desc}</div>
-          </div>
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
-
-          
+                <div>
+                  <Label>Kategoria pozycji</Label>
+                  <Select value={unknown.pos} onValueChange={(v) => setUnknown((d) => ({ ...d, pos: v as DetailedPos }))}>
+                    <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
+                      <SelectValue placeholder="Wybierz pozycję" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {POS_DATA.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          <div className="text-left">
+                            <div className="font-medium">
+                              {opt.code}: {opt.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>
                     Aktualny klub <span className="text-red-600">*</span>
                   </Label>
                   <Input
+                    ref={unknownClubRef}
                     value={unknown.club}
                     onChange={(e) => setUnknown((d) => ({ ...d, club: e.target.value }))}
                     aria-invalid={!!errors["unknown.club"]}
@@ -550,7 +641,7 @@ export default function AddPlayerPage() {
                 />
               </div>
 
-              <div className="mt-2 rounded-lg border border-dashed border-gray-300 p-4 dark:border-neutral-800">
+              <div className="mt-2 rounded border border-dashed border-gray-300 p-4 dark:border-neutral-800">
                 <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">Podgląd koszulki</div>
                 <div className="flex items-center justify-center">
                   <JerseyPreview number={unknown.jerseyNumber} />
@@ -561,7 +652,7 @@ export default function AddPlayerPage() {
                 <Button variant="outline" onClick={() => setStep(1)} className="border-gray-300 dark:border-neutral-700">
                   Wstecz
                 </Button>
-                <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => (validateStep2() ? save() : null)}>
+                <Button className="ml-auto bg-gray-900 text-white hover:bg-gray-800" onClick={() => (validateStep2() ? save() : null)}>
                   Zapisz
                 </Button>
               </div>
@@ -575,6 +666,8 @@ export default function AddPlayerPage() {
               config={mCfg}
               ratings={{ BASE: mBase, GK: mGK, DEF: mDEF, MID: mMID, ATT: mATT }}
               setByGroup={{ setBASE: setMBase, setGK: setMGK, setDEF: setMDEF, setMID: setMMID, setATT: setMATT }}
+              open={openAccordions}
+              onOpenChange={setOpenAccordions}
             />
             <Card>
               <CardHeader>
@@ -592,7 +685,7 @@ export default function AddPlayerPage() {
                 </div>
                 <div>
                   <Label>Podsumowanie z własnym opisem</Label>
-                <RichTextEditor value={recSummary} onChange={setRecSummary} placeholder="Krótka rekomendacja / opis…" />
+                  <RichTextEditor value={recSummary} onChange={setRecSummary} placeholder="Krótka rekomendacja / opis…" />
                 </div>
               </CardContent>
             </Card>
@@ -612,6 +705,8 @@ function RatingsCard({
   config,
   ratings,
   setByGroup,
+  open,
+  onOpenChange,
 }: {
   title: string;
   pos: BucketPos;
@@ -630,6 +725,8 @@ function RatingsCard({
     setMID: React.Dispatch<React.SetStateAction<Record<string, number>>>;
     setATT: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   };
+  open: string[];
+  onOpenChange: (v: string[]) => void;
 }) {
   const { BASE, GK, DEF, MID, ATT } = ratings;
   const { setBASE, setGK, setDEF, setMID, setATT } = setByGroup;
@@ -651,7 +748,12 @@ function RatingsCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        <Accordion type="multiple" className="w-full">
+        <Accordion
+          type="multiple"
+          className="w-full"
+          value={open}
+          onValueChange={(v) => onOpenChange(v as string[])}
+        >
           <AccordionItem value="base">
             <AccordionTrigger>Kategorie bazowe</AccordionTrigger>
             <AccordionContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -723,7 +825,7 @@ function RatingRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-neutral-800">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-gray-200 px-3 py-2 dark:border-neutral-800">
       <div className="min-w-0 text-sm">{label}</div>
       <StarRating value={value} onChange={onChange} max={6} />
     </div>
@@ -788,7 +890,7 @@ function RichTextEditor({
   }
 
   return (
-    <div className="rounded-lg border border-gray-300 dark:border-neutral-700">
+    <div className="rounded border border-gray-300 dark:border-neutral-700">
       <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 p-1 dark:border-neutral-800">
         <TButton title="Pogrubienie" onClick={() => exec("bold")} icon={<Bold className="h-4 w-4" />} />
         <TButton title="Kursywa" onClick={() => exec("italic")} icon={<Italic className="h-4 w-4" />} />
@@ -805,7 +907,7 @@ function RichTextEditor({
 
       <div
         ref={ref}
-        className="min-h-[120px] w-full bg-white p-3 text-sm outline-none dark:bg-neutral-950"
+        className="min-h[120px] w-full bg-white p-3 text-sm outline-none dark:bg-neutral-950"
         contentEditable
         onInput={onInput}
         data-placeholder={placeholder || ""}

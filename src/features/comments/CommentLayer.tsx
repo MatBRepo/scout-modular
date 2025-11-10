@@ -477,7 +477,7 @@ export default function CommentLayer({
                 pointerEvents: "auto",
               }}
             >
-              <div className="w-72 max-w-[86vw] rounded-lg border border-gray-300 bg-white p-2 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+              <div className="w-72 max-w-[86vw] rounded border border-gray-300 bg-white p-2 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
                 <div className="mb-1 flex items-center justify-between">
                   <div className="text-[11px] text-dark dark:text-neutral-400">
                     {(displayName || currentUser?.name)
@@ -766,7 +766,7 @@ function ThreadCard({
   return (
     <div
       style={{ position: "fixed", left, top, zIndex: 70, pointerEvents: "auto" }}
-      className="w-[320px] max-w-[86vw] rounded-lg border border-gray-300 bg-white p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
+      className="w-[320px] max-w-[86vw] rounded border border-gray-300 bg-white p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
       role="dialog"
       aria-label="Komentarz"
     >
@@ -964,7 +964,7 @@ function HelperPanel({
   return (
     <div
       style={{ position: "fixed", right: 16, bottom: 16, zIndex: 90 }}
-      className="pointer-events-auto w-[320px] max-w-[92vw] rounded-xl border border-gray-200 bg-white/90 p-3 text-sm shadow-xl backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/85"
+      className="pointer-events-auto w-[320px] max-w-[92vw] rounded border border-gray-200 bg-white/90 p-3 text-sm shadow-xl backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/85"
     >
       <div className="mb-2 flex items-center justify-between">
         <div className="font-semibold">
@@ -1058,7 +1058,7 @@ function NameModal({
   const can = name.trim().length > 0;
   return (
     <div className="fixed inset-0 z-[200] grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true">
-      <div className="w-[360px] max-w-[92vw] rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
+      <div className="w-[360px] max-w-[92vw] rounded border border-gray-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
         <div className="mb-2 text-sm font-semibold">Twoje imię (widoczne przy komentarzach)</div>
         <input
           autoFocus

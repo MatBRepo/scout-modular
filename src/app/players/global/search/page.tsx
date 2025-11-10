@@ -279,7 +279,7 @@ export default function GlobalSearchPage() {
 
       {/* Results & merge view */}
       <Tabs defaultValue="merged" className="space-y-3">
-        <TabsList className="mt-4 rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+        <TabsList className="mt-4 rounded bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
           <TabsTrigger value="merged" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
             Scalona lista ({flatFiltered.length})
           </TabsTrigger>

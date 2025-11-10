@@ -458,7 +458,7 @@ export default function DuplicatesPage() {
                 return (
                   <div
                     key={g.key}
-                    className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
+                    className="overflow-hidden rounded border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-3 py-2 dark:border-neutral-800">
                       <div className="min-w-0">
@@ -633,7 +633,7 @@ export default function DuplicatesPage() {
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-2xl overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950">
+          <div className="w-full max-w-2xl overflow-hidden rounded border border-gray-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950">
             <div className="flex flex-wrap items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-neutral-800">
               <div className="text-sm font-semibold">Szczegóły zawodnika skauta</div>
               <button

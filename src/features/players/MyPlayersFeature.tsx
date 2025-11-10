@@ -7,12 +7,13 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Crumb, Toolbar } from "@/shared/ui/atoms";
+// REMOVED: Crumb
+import { Toolbar } from "@/shared/ui/atoms";
 import type { Player, Observation } from "@/shared/types";
 import {
   PlusCircle, Pencil, Undo2, Trash2, ListFilter, ChevronUp, ChevronDown,
   Download, PlusSquare, Search, ArrowLeft, X, ChevronLeft, ChevronRight,
-  Columns3, EllipsisVertical, Users, FileDown, FileSpreadsheet, FileEdit, Tv, Radio
+  Columns3, EllipsisVertical, Users, FileDown, FileSpreadsheet, FileEdit, Tv, Radio, Eraser
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -121,11 +122,10 @@ function AnchoredPopover({
 
   return (
     <Portal>
-      {/* invisible backdrop to catch scroll/esc handled above */}
       <div className="fixed inset-0 z-[200] bg-transparent" aria-hidden />
       <div
         data-popover-panel="true"
-        className="z-[210] overflow-hidden rounded-lg border border-gray-200 bg-white p-0 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+        className="z-[210] overflow-hidden rounded border border-gray-200 bg-white p-0 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
         style={{ ...style, width: "min(92vw, " + maxWidth + "px)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -220,7 +220,7 @@ export default function MyPlayersFeature({
   const [ageMax, setAgeMax] = useState<number | "">("");
   const [colsOpen, setColsOpen] = useState(false);
   const [visibleCols, setVisibleCols] = useState({ ...DEFAULT_COLS });
-  const [knownScope, setKnownScope] = useState<KnownScope>("all"); // default = Wszyscy
+  const [knownScope, setKnownScope] = useState<KnownScope>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -230,8 +230,12 @@ export default function MyPlayersFeature({
 
   // anchors for desktop popovers
   const filterBtnRef = useRef<HTMLButtonElement | null>(null);
-  const colsBtnRef = useRef<HTMLButtonElement | null>(null);
   const moreBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // Chips “more” popover
+  const chipsMoreBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [chipsOpen, setChipsOpen] = useState(false);
+  const chipsHoverTimer = useRef<number | null>(null);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -483,28 +487,58 @@ export default function MyPlayersFeature({
     closeQuick();
   }
 
+  /* ===== active chips (always show positions chip) ===== */
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
-    if (q.trim()) chips.push({ key: "q", label: `Szukaj: “${q.trim()}”`, clear: () => { setQ(""); setPage(1); } });
+
+    if (q.trim()) chips.push({
+      key: "q",
+      label: `Szukaj: “${q.trim()}”`,
+      clear: () => { setQ(""); setPage(1); }
+    });
+
     const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
-    if (visiblePositions.length < POS.length) {
-      chips.push({
-        key: "pos",
-        label: `Pozycje: ${visiblePositions.join(", ")}`,
-        clear: () => { setPos({ GK:true, DF:true, MF:true, FW:true }); setPage(1); },
-      });
-    }
-    if (club.trim()) chips.push({ key: "club", label: `Klub: ${club.trim()}`, clear: () => { setClub(""); setPage(1); } });
-    if (ageMin !== "") chips.push({ key: "ageMin", label: `Wiek ≥ ${ageMin}`, clear: () => { setAgeMin(""); setPage(1); } });
-    if (ageMax !== "") chips.push({ key: "ageMax", label: `Wiek ≤ ${ageMax}`, clear: () => { setAgeMax(""); setPage(1); } });
+    const posLabel = visiblePositions.length === POS.length
+      ? "Poz.: Wszystkie"
+      : `Poz.: ${visiblePositions.join(", ")}`;
+    chips.push({
+      key: "pos",
+      label: posLabel,
+      clear: () => { setPos({ GK:true, DF:true, MF:true, FW:true }); setPage(1); },
+    });
+
+    if (club.trim()) chips.push({
+      key: "club",
+      label: `Klub: ${club.trim()}`,
+      clear: () => { setClub(""); setPage(1); }
+    });
+
+    if (ageMin !== "") chips.push({
+      key: "ageMin",
+      label: `Wiek ≥ ${ageMin}`,
+      clear: () => { setAgeMin(""); setPage(1); }
+    });
+    if (ageMax !== "") chips.push({
+      key: "ageMax",
+      label: `Wiek ≤ ${ageMax}`,
+      clear: () => { setAgeMax(""); setPage(1); }
+    });
+
     if (knownScope !== "all") chips.push({
       key: "known",
       label: knownScope === "known" ? "Znani" : "Nieznani",
       clear: () => changeKnownScope("all"),
     });
+
     return chips;
   }, [q, pos, club, ageMin, ageMax, knownScope]);
 
+  const MAX_INLINE_CHIPS = 2;
+  const inlineChips = activeChips.slice(0, MAX_INLINE_CHIPS);
+  const overflowChips = activeChips.slice(MAX_INLINE_CHIPS);
+
+  // CONSISTENT HEIGHTS
+  const controlH = "h-10";
   const cellPad = "p-3";
   const rowH = "h-12";
 
@@ -537,6 +571,7 @@ export default function MyPlayersFeature({
         setFiltersOpen(false);
         setColsOpen(false);
         setMoreOpen(false);
+        setChipsOpen(false);
         return;
       }
     }
@@ -580,35 +615,55 @@ export default function MyPlayersFeature({
     // re-run when content/columns change affect width
   }, [isMobile, paginated.length, JSON.stringify(visibleCols)]);
 
+  // Helpers for chips (desktop height = h-10)
+  const Chip = ({
+    label,
+    onClear,
+  }: { label: string; onClear: () => void }) => (
+    <span className="inline-flex h-10 items-center rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
+      <span className="max-w-[200px] truncate">{label}</span>
+      <button
+        className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
+        onClick={onClear}
+        aria-label="Wyczyść filtr"
+        title="Wyczyść filtr"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </span>
+  );
+
   return (
     <TooltipProvider delayDuration={150}>
       <div className="w-full">
-        <Crumb items={[{ label: "Start", href: "/" }, { label: "Baza zawodników" }]} />
-
         {/* TOOLBAR (unified layout) */}
         <Toolbar
           title={
-            <div className="flex items-center gap-3">
-              <span>Baza zawodników</span>
-              {/* Tabs inline with title on desktop for quick context switching */}
-              <div className="hidden md:block">
+            <div className="flex items-center gap-3 w-full min-h-10">
+              {/* Left: Title */}
+              <span className="font-semibold text-xl md:text-2xl shrink-0 leading-none h-10 flex items-center">
+                Baza zawodników
+              </span>
+
+              {/* Right: tabs block (fixed height) */}
+              <div className="hidden md:block shrink-0 h-10">
                 <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-                  <TabsList className="rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
-                    <TabsTrigger value="all" className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                  <TabsList className="h-10 rounded inline-flex items-center justify-center text-muted-foreground bg-stone-200 p-1 shadow-sm dark:bg-stone-900">
+                    <TabsTrigger value="all" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                       Wszyscy
-                      <span className="ml-2 rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                         {tabCounts.all}
                       </span>
                     </TabsTrigger>
-                    <TabsTrigger value="known" className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                    <TabsTrigger value="known" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                       Znani
-                      <span className="ml-2 rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                         {tabCounts.known}
                       </span>
                     </TabsTrigger>
-                    <TabsTrigger value="unknown" className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+                    <TabsTrigger value="unknown" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                       Nieznani
-                      <span className="ml-2 rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                         {tabCounts.unknown}
                       </span>
                     </TabsTrigger>
@@ -618,15 +673,77 @@ export default function MyPlayersFeature({
                   <TabsContent value="unknown" />
                 </Tabs>
               </div>
+
+              {/* Center: Active filter chips (desktop) — fixed height */}
+              <div className="hidden md:flex flex-1 items-center justify-center h-10">
+                <div className="flex items-center gap-1 h-10">
+                  {inlineChips.map(c => (
+                    <Chip key={c.key} label={c.label} onClear={c.clear} />
+                  ))}
+
+                  {overflowChips.length > 0 && (
+                    <>
+                      <button
+                        ref={chipsMoreBtnRef}
+                        type="button"
+                        className="inline-flex h-10 items-center gap-1 rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
+                        onClick={() => setChipsOpen((v) => !v)}
+                        onMouseEnter={() => {
+                          if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                          setChipsOpen(true);
+                        }}
+                        onMouseLeave={() => {
+                          if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                          // delay to allow moving into popover without layout shift
+                          chipsHoverTimer.current = window.setTimeout(() => setChipsOpen(false), 160) as unknown as number;
+                        }}
+                        aria-expanded={chipsOpen}
+                        title="Pokaż więcej filtrów"
+                      >
+                        +{overflowChips.length}
+                      </button>
+
+                      <AnchoredPopover
+                        open={chipsOpen}
+                        onClose={() => setChipsOpen(false)}
+                        anchorRef={chipsMoreBtnRef}
+                        align="end"
+                        maxWidth={360}
+                      >
+                        <div
+                          className="w-full p-2"
+                          onMouseEnter={() => {
+                            if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                            setChipsOpen(true);
+                          }}
+                          onMouseLeave={() => {
+                            if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                            chipsHoverTimer.current = window.setTimeout(() => setChipsOpen(false), 140) as unknown as number;
+                          }}
+                        >
+                          <div className="mb-1 px-1 text-[11px] font-semibold text-gray-700 dark:text-neutral-200">
+                            Aktywne filtry
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {overflowChips.map(c => (
+                              <Chip key={c.key} label={c.label} onClear={c.clear} />
+                            ))}
+                          </div>
+                        </div>
+                      </AnchoredPopover>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           }
           right={
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between min-h-10">
               <div />
 
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
-                {/* Search */}
-                <div className="relative order-1 w-full min-w-0 sm:order-none sm:w-64">
+                {/* Search (h-10) */}
+                <div className="relative order-1 w-full min-w-0 sm:order-none sm:w-64 h-10">
                   <Search
                     className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
                     aria-hidden="true"
@@ -636,23 +753,24 @@ export default function MyPlayersFeature({
                     value={q}
                     onChange={(e) => { setQ(e.target.value); setPage(1); }}
                     placeholder="Szukaj po nazwisku/klubie… (/)"
-                    className="h-9 w-full pl-8 pr-3 text-sm"
+                    className={`${controlH} w-full pl-8 pr-3 text-sm`}
                     aria-label="Szukaj w bazie zawodników"
                   />
                 </div>
 
-                {/* Filtry */}
+                {/* Filtry (h-10) */}
                 <Button
                   ref={filterBtnRef}
                   type="button"
                   variant="outline"
-                  className="h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                  className={`${controlH} border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
                   aria-pressed={filtersOpen}
                   onClick={() => {
                     setFiltersOpen((v) => !v);
                     setColsOpen(false);
                     setMoreOpen(false);
                   }}
+                  title="Filtry"
                 >
                   <ListFilter className="h-4 w-4" />
                   <span className="hidden sm:inline">
@@ -660,34 +778,18 @@ export default function MyPlayersFeature({
                   </span>
                 </Button>
 
-                {/* Kolumny */}
-                <Button
-                  ref={colsBtnRef}
-                  variant="outline"
-                  className="h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                  onClick={() => {
-                    setColsOpen((v) => !v);
-                    setFiltersOpen(false);
-                    setMoreOpen(false);
-                  }}
-                  aria-pressed={colsOpen}
-                >
-                  <Columns3 className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-2">Kolumny</span>
-                </Button>
-
-                {/* Dodaj */}
+                {/* Dodaj (h-10) */}
                 <Button
                   type="button"
                   title="Skrót: N"
                   onClick={() => router.push("/players/new")}
-                  className="h-9 inline-flex items-center justify-center gap-2 rounded bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+                  className={`${controlH} inline-flex items-center justify-center gap-2 rounded bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
                 >
                   <PlusCircle className="h-4 w-4" />
                   <span className="hidden sm:inline">Dodaj</span>
                 </Button>
 
-                {/* Więcej */}
+                {/* Więcej (h-10, w-10) */}
                 <Button
                   ref={moreBtnRef}
                   type="button"
@@ -696,10 +798,9 @@ export default function MyPlayersFeature({
                   onClick={() => {
                     setMoreOpen((o) => !o);
                     setFiltersOpen(false);
-                    setColsOpen(false);
                   }}
                   variant="outline"
-                  className="h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 ml-auto sm:ml-0"
+                  className={`${controlH} w-10 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 ml-auto sm:ml-0`}
                 >
                   <EllipsisVertical className="h-5 w-5" />
                 </Button>
@@ -708,25 +809,25 @@ export default function MyPlayersFeature({
           }
         />
 
-        {/* Tabs for mobile (moved under toolbar) */}
+        {/* Tabs for mobile (unchanged counters), keeps default bg */}
         <div className="mt-2 md:hidden">
           <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-            <TabsList className="w-full justify-between rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
-              <TabsTrigger value="all" className="flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+            <TabsList className="w-full justify-between rounded bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+              <TabsTrigger value="all" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                 Wszyscy
-                <span className="ml-2 rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                   {tabCounts.all}
                 </span>
               </TabsTrigger>
-              <TabsTrigger value="known" className="flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+              <TabsTrigger value="known" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                 Znani
-                <span className="ml-2 rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                   {tabCounts.known}
                 </span>
               </TabsTrigger>
-              <TabsTrigger value="unknown" className="flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
+              <TabsTrigger value="unknown" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                 Nieznani
-                <span className="ml-2 rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                   {tabCounts.unknown}
                 </span>
               </TabsTrigger>
@@ -735,49 +836,61 @@ export default function MyPlayersFeature({
             <TabsContent value="known" />
             <TabsContent value="unknown" />
           </Tabs>
-        </div>
 
-        {/* Active filter chips */}
-        {activeChips.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {activeChips.map((c) => (
-              <button
-                key={c.key}
-                onClick={c.clear}
-                className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-900"
-                title="Wyczyść filtr"
-              >
-                <X className="h-3 w-3" />
-                {c.label}
-              </button>
-            ))}
-            <button
-              onClick={()=>{
-                setPos({ GK:true, DF:true, MF:true, FW:true });
-                setClub(""); setAgeMin(""); setAgeMax(""); setQ(""); changeKnownScope("all"); setPage(1);
-              }}
-              className="ml-1 inline-flex items-center gap-1 rounded bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
-              title="Wyczyść wszystkie filtry"
-            >
-              Wyczyść wszystkie
-            </button>
-          </div>
-        )}
+          {/* Mobile: compact chips under tabs */}
+          {activeChips.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              {activeChips.map(c => (
+                <span key={c.key} className="inline-flex items-center rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900">
+                  <span className="max-w-[120px] truncate">{c.label}</span>
+                  <button className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-neutral-800" onClick={c.clear}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Desktop: anchored popovers */}
         {!isMobile && (
           <>
-            {/* Filters popover */}
+            {/* Filters popover — improved UX + clean icon */}
             <AnchoredPopover
               open={filtersOpen}
               onClose={() => setFiltersOpen(false)}
               anchorRef={filterBtnRef}
               align="end"
-              maxWidth={420}
+              maxWidth={440}
             >
-              <div className="w-full p-4 text-sm">
-                <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">Pozycje</div>
-                <div className="mb-3 grid grid-cols-4 gap-2">
+              <div className="w-full p-3 text-sm">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs font-semibold text-dark dark:text-neutral-300">Filtry</div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900"
+                        onClick={() => {
+                          setPos({ GK:true, DF:true, MF:true, FW:true });
+                          setClub("");
+                          setAgeMin("");
+                          setAgeMax("");
+                          setQ("");
+                          changeKnownScope("all");
+                          setPage(1);
+                        }}
+                        title="Wyczyść wszystko"
+                        aria-label="Wyczyść wszystko"
+                      >
+                        <Eraser className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Wyczyść</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Wyczyść filtry</TooltipContent>
+                  </Tooltip>
+                </div>
+
+                <div className="mb-2 grid grid-cols-4 gap-2">
                   {POS.map((p) => (
                     <label key={p} className="flex items-center justify-between rounded px-2 py-1 hover:bg-gray-50 dark:hover:bg-neutral-800">
                       <span>{p}</span>
@@ -788,10 +901,12 @@ export default function MyPlayersFeature({
                     </label>
                   ))}
                 </div>
-                <div className="mb-3">
+
+                <div className="mb-2">
                   <Label className="text-xs text-dark dark:text-neutral-300">Klub</Label>
                   <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950" />
                 </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs text-dark dark:text-neutral-300">Wiek min</Label>
@@ -802,22 +917,18 @@ export default function MyPlayersFeature({
                     <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950" />
                   </div>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                    onClick={()=>{
-                      setPos({ GK:true, DF:true, MF:true, FW:true });
-                      setClub("");
-                      setAgeMin("");
-                      setAgeMax("");
-                      setQ("");
-                      changeKnownScope("all");
-                      setPage(1);
-                    }}
-                  >
-                    Resetuj wszystko
-                  </Button>
+
+                {/* Live preview of active filters inside popover */}
+                {activeChips.length > 0 && (
+                  <div className="mt-3 border-t border-gray-200 pt-2 dark:border-neutral-800">
+                    <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">Aktywne</div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {activeChips.map(c => <Chip key={c.key} label={c.label} onClear={c.clear} />)}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 flex items-center justify-end gap-2">
                   <Button className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60" onClick={() => setFiltersOpen(false)}>
                     Zastosuj
                   </Button>
@@ -825,11 +936,11 @@ export default function MyPlayersFeature({
               </div>
             </AnchoredPopover>
 
-            {/* Columns popover */}
+            {/* Columns popover — anchored to "more" button */}
             <AnchoredPopover
               open={colsOpen}
               onClose={() => setColsOpen(false)}
-              anchorRef={colsBtnRef}
+              anchorRef={moreBtnRef}
               align="end"
               maxWidth={320}
             >
@@ -859,9 +970,16 @@ export default function MyPlayersFeature({
               onClose={() => setMoreOpen(false)}
               anchorRef={moreBtnRef}
               align="end"
-              maxWidth={240}
+              maxWidth={260}
             >
               <div className="w-full p-1">
+                <button
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  onClick={() => { setColsOpen(true); setMoreOpen(false); }}
+                >
+                  <Columns3 className="h-4 w-4" /> Kolumny
+                </button>
+                <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                 <button
                   className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
                   onClick={() => { setScope("active"); setMoreOpen(false); }}
@@ -892,176 +1010,7 @@ export default function MyPlayersFeature({
           </>
         )}
 
-        {/* Mobile: bottom-sheets */}
-        {isMobile && (
-          <>
-            {filtersOpen && (
-              <Portal>
-                <div
-                  className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                  onClick={() => setFiltersOpen(false)}
-                  aria-hidden
-                />
-                <div
-                  className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-                  role="dialog"
-                  aria-modal="true"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="text-sm font-semibold">Filtry</div>
-                    <Button variant="outline" size="sm" className="border-gray-300 dark:border-neutral-700" onClick={() => setFiltersOpen(false)}>Zamknij</Button>
-                  </div>
-
-                  <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">Pozycje</div>
-                  <div className="mb-3 grid grid-cols-2 gap-2">
-                    {POS.map((p) => (
-                      <label key={p} className="flex items-center justify-between rounded px-2 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800">
-                        <span>{p}</span>
-                        <Checkbox
-                          checked={pos[p]}
-                          onCheckedChange={(v) => { setPos(prev => ({ ...prev, [p]: Boolean(v) })); setPage(1); }}
-                        />
-                      </label>
-                    ))}
-                  </div>
-
-                  <div className="mb-3">
-                    <Label className="text-xs text-dark dark:text-neutral-300">Klub</Label>
-                    <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-dark dark:text-neutral-300">Wiek min</Label>
-                      <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-dark dark:text-neutral-300">Wiek max</Label>
-                      <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 dark:border-neutral-700 dark:bg-neutral-950" />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center justify-between">
-                    <Button
-                      variant="outline"
-                      className="border-gray-300 dark:border-neutral-700"
-                      onClick={()=>{
-                        setPos({ GK:true, DF:true, MF:true, FW:true });
-                        setClub("");
-                        setAgeMin("");
-                        setAgeMax("");
-                        setQ("");
-                        changeKnownScope("all");
-                        setPage(1);
-                      }}
-                    >
-                      Resetuj wszystko
-                    </Button>
-                    <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={() => setFiltersOpen(false)}>
-                      Zastosuj
-                    </Button>
-                  </div>
-                </div>
-              </Portal>
-            )}
-
-            {colsOpen && (
-              <Portal>
-                <div
-                  className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                  onClick={() => setColsOpen(false)}
-                  aria-hidden
-                />
-                <div
-                  className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-                  role="dialog"
-                  aria-modal="true"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="text-sm font-semibold">Kolumny</div>
-                    <Button variant="outline" size="sm" className="border-gray-300 dark:border-neutral-700" onClick={() => setColsOpen(false)}>
-                      Zamknij
-                    </Button>
-                  </div>
-                  {Object.keys(DEFAULT_COLS).map((k) => {
-                    const key = k as ColKey;
-                    return (
-                      <label
-                        key={key}
-                        className="flex cursor-pointer items-center justify-between rounded px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                      >
-                        <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
-                        <Checkbox
-                          checked={visibleCols[key]}
-                          onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
-              </Portal>
-            )}
-
-            {moreOpen && (
-              <Portal>
-                <div
-                  className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                  onClick={() => setMoreOpen(false)}
-                  aria-hidden
-                />
-                <div
-                  className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-                  role="dialog"
-                  aria-modal="true"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="mb-1 flex items-center justify-between px-1">
-                    <div className="text-sm font-semibold">Więcej</div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-gray-300 dark:border-neutral-700"
-                      onClick={() => setMoreOpen(false)}
-                    >
-                      Zamknij
-                    </Button>
-                  </div>
-
-                  <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
-                    <button
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                      onClick={() => { setScope("active"); setMoreOpen(false); }}
-                    >
-                      <Users className="h-4 w-4" /> Aktywni
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                      onClick={() => { setScope("trash"); setMoreOpen(false); }}
-                    >
-                      <Trash2 className="h-4 w-4" /> Kosz
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                      onClick={() => { setMoreOpen(false); exportCSV(); }}
-                    >
-                      <FileDown className="h-4 w-4" /> Eksport CSV
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                      onClick={() => { setMoreOpen(false); exportExcel(); }}
-                    >
-                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                    </button>
-                  </div>
-                </div>
-              </Portal>
-            )}
-          </>
-        )}
-
-        {/* Floating selection pill (center-top) */}
+        {/* Floating selection pill (center-bottom) */}
         {content === "table" && selected.size > 0 && (
           <Portal>
             <div className="fixed left-1/2 bottom-4 z-[240] -translate-x-1/2">
@@ -1090,12 +1039,12 @@ export default function MyPlayersFeature({
 
                 {/* Scope-aware action */}
                 {anyActiveSelected && scope === "active" ? (
-                  <Button
-                    className="h-9 w-9 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                    onClick={bulkTrash}
-                    aria-label="Przenieś do kosza"
-                    title="Przenieś do kosza"
-                  >
+                <Button
+                  className="h-8 w-8 rounded bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                  onClick={bulkTrash}
+                  aria-label="Przenieś do kosza"
+                  title="Przenieś do kosza"
+                >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 ) : (
@@ -1123,7 +1072,7 @@ export default function MyPlayersFeature({
                   className="pointer-events-none absolute inset-y-0 right-0 hidden w-8 bg-gradient-to-l from-white to-transparent dark:from-neutral-950 sm:block"
                   aria-hidden
                 />
-                {/* subtle left fade placeholder; could be toggled on scroll if needed */}
+                {/* subtle left fade placeholder */}
                 <div
                   className="pointer-events-none absolute inset-y-0 left-0 hidden w-8 bg-gradient-to-r from-white to-transparent dark:from-neutral-950 sm:block"
                   style={{ opacity: 0 }}
@@ -1159,54 +1108,54 @@ export default function MyPlayersFeature({
                 )}
               </div>
 
-          {/* Pagination footer — compact, 1-row on mobile */}
-<div className="mt-3 flex flex-row flex-wrap items-center justify-between gap-2 rounded bg-white p-2 text-sm shadow-sm dark:bg-neutral-950">
-  {/* Left: page size + range */}
-  <div className="flex flex-row flex-wrap items-center gap-2">
-    <span className="text-dark dark:text-neutral-300 leading-none">Wiersze na stronę:</span>
-    <select
-      className="rounded border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
-      value={pageSize}
-      onChange={(e)=>{ setPageSize(Number(e.target.value) as any); setPage(1); }}
-      aria-label="Liczba wierszy na stronę"
-    >
-      {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
-    </select>
+              {/* Pagination footer */}
+              <div className="mt-3 flex flex-row flex-wrap items-center justify-between gap-2 rounded bg-white p-2 text-sm shadow-sm dark:bg-neutral-950">
+                {/* Left: page size + range */}
+                <div className="flex flex-row flex-wrap items-center gap-2">
+                  <span className="text-dark dark:text-neutral-300 leading-none">Wiersze na stronę:</span>
+                  <select
+                    className="rounded border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
+                    value={pageSize}
+                    onChange={(e)=>{ setPageSize(Number(e.target.value) as any); setPage(1); }}
+                    aria-label="Liczba wierszy na stronę"
+                  >
+                    {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
 
-    <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
-      {total === 0 ? "0" : ((currentPage - 1) * pageSize + 1)}–{Math.min(currentPage * pageSize, total)} z {total}
-    </span>
-  </div>
+                  <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
+                    {total === 0 ? "0" : ((currentPage - 1) * pageSize + 1)}–{Math.min(currentPage * pageSize, total)} z {total}
+                  </span>
+                </div>
 
-  {/* Right: pager */}
-  <div className="flex flex-row flex-wrap items-center gap-2">
-    <Button
-      variant="outline"
-      className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
-      disabled={currentPage <= 1}
-      onClick={()=>setPage(p=>Math.max(1, p-1))}
-      aria-label="Poprzednia strona"
-      title="Poprzednia strona"
-    >
-      <ChevronLeft className="h-[1.1em] w-[1.1em]" />
-    </Button>
+                {/* Right: pager */}
+                <div className="flex flex-row flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
+                    disabled={currentPage <= 1}
+                    onClick={()=>setPage(p=>Math.max(1, p-1))}
+                    aria-label="Poprzednia strona"
+                    title="Poprzednia strona"
+                  >
+                    <ChevronLeft className="h-[1.1em] w-[1.1em]" />
+                  </Button>
 
-    <div className="min-w-[80px] text-center leading-none">
-      Strona {currentPage} / {totalPages}
-    </div>
+                  <div className="min-w-[80px] text-center leading-none">
+                    Strona {currentPage} / {totalPages}
+                  </div>
 
-    <Button
-      variant="outline"
-      className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
-      disabled={currentPage >= totalPages}
-      onClick={()=>setPage(p=>Math.min(totalPages, p+1))}
-      aria-label="Następna strona"
-      title="Następna strona"
-    >
-      <ChevronRight className="h-[1.1em] w-[1.1em]" />
-    </Button>
-  </div>
-</div>
+                  <Button
+                    variant="outline"
+                    className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
+                    disabled={currentPage >= totalPages}
+                    onClick={()=>setPage(p=>Math.min(totalPages, p+1))}
+                    aria-label="Następna strona"
+                    title="Następna strona"
+                  >
+                    <ChevronRight className="h-[1.1em] w-[1.1em]" />
+                  </Button>
+                </div>
+              </div>
 
             </>
           ) : (
@@ -1246,7 +1195,7 @@ export default function MyPlayersFeature({
 ======================================= */
 function PlayersTable({
   rows,
-  observations,
+  observations, // eslint-disable-line @typescript-eslint/no-unused-vars
   visibleCols,
   selected,
   setSelected,
@@ -1257,7 +1206,7 @@ function PlayersTable({
   onSortChange,
   sortKey,
   sortDir,
-  onQuick,
+  onQuick, // eslint-disable-line @typescript-eslint/no-unused-vars
   cellPad,
   rowH,
   pageSliceCount,
@@ -1317,7 +1266,7 @@ function PlayersTable({
   return (
     <div
       ref={wrapRef as any}
-      className="w-full overflow-x-auto rounded border border-gray-200 bg-white p-2 shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
+      className="w-full overflow-x-auto rounded border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
     >
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
@@ -1426,22 +1375,6 @@ function PlayersTable({
                 {visibleCols.actions && (
                   <td className={`${cellPad} text-right`}>
                     <div className="flex justify-end gap-1.5">
-                      {/* Obs (icon-only) */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                            onClick={() => onQuick(r)}
-                            aria-label="Szybka obserwacja / Wybierz istniejącą"
-                          >
-                            <PlusSquare className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Obserwacje</TooltipContent>
-                      </Tooltip>
-
                       {/* Edit */}
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -1458,38 +1391,38 @@ function PlayersTable({
                         <TooltipContent>{r._known ? "Edytuj" : "Uzupełnij dane"}</TooltipContent>
                       </Tooltip>
 
-                      {/* Trash / Restore — outline (match Observations.tsx) */}
-{scope === "active" ? (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button
-        size="icon"
-        variant="outline"
-        className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-        onClick={() => onTrash(r.id)}
-        aria-label="Przenieś do kosza"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
-    </TooltipTrigger>
-    <TooltipContent>Przenieś do kosza</TooltipContent>
-  </Tooltip>
-) : (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button
-        size="icon"
-        variant="outline"
-        className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-        onClick={() => onRestore(r.id)}
-        aria-label="Przywróć"
-      >
-        <Undo2 className="h-4 w-4" />
-      </Button>
-    </TooltipTrigger>
-    <TooltipContent>Przywróć</TooltipContent>
-  </Tooltip>
-)}
+                      {/* Trash / Restore — outline */}
+                      {scope === "active" ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                              onClick={() => onTrash(r.id)}
+                              aria-label="Przenieś do kosza"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Przenieś do kosza</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                              onClick={() => onRestore(r.id)}
+                              aria-label="Przywróć"
+                            >
+                              <Undo2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Przywróć</TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
                   </td>
                 )}
@@ -1667,17 +1600,17 @@ function QuickObservation({
       {/* Tabs */}
       <div className="px-4 pt-3">
         <Tabs value={quickTab} onValueChange={(v)=>setQuickTab(v as "new"|"existing")}>
-          <TabsList className="mb-2 inline-flex h-10 items-center rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+          <TabsList className="mb-2 inline-flex h-10 items-center rounded bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
             <TabsTrigger
               value="new"
-              className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+              className="h-10 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
               <PlusSquare className="mr-0 md:mr-2 h-4 w-4" />
               Nowa
             </TabsTrigger>
             <TabsTrigger
               value="existing"
-              className="px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+              className="h-10 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
               <Download className="mr-0 md:mr-2 h-4 w-4" />
               Istniejąca
@@ -1715,7 +1648,7 @@ function QuickObservation({
                 <div className="sm:hidden text-center text-sm text-dark">vs</div>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
                   <Label>Data meczu</Label>
                   <Input type="date" value={qaDate} onChange={(e) => setQaDate(e.target.value)} className="mt-1" />

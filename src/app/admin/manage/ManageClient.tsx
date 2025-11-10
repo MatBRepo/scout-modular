@@ -563,7 +563,7 @@ export default function ManagePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {(Object.keys(GROUP_LABEL) as MetricGroupKey[]).map((g) => (
-            <div key={g} className="rounded-lg border border-gray-200 dark:border-neutral-800">
+            <div key={g} className="rounded border border-gray-200 dark:border-neutral-800">
               <button
                 onClick={() => toggleGroup(g)}
                 className="flex w-full items-center justify-between gap-2 rounded-t-lg bg-gray-50 px-3 py-2 text-left text-sm font-semibold dark:bg-neutral-900"

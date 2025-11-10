@@ -151,7 +151,7 @@ function MetricItem({
 }) {
   return (
     <div
-      className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm transition hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+      className="group flex items-center justify-between gap-3 rounded border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm transition hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
       title={label}
     >
       <div className="break-words pr-2 text-[12px] text-gray-700 dark:text-neutral-300">
@@ -442,13 +442,13 @@ export function ObservationEditor({
               <TabsList className="flex w-full justify-start gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1 dark:bg-neutral-900">
                 <TabsTrigger
                   value="basic"
-                  className="rounded-lg px-3 py-1.5 text-sm text-gray-700 transition data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-950 dark:data-[state=active]:text-neutral-100"
+                  className="rounded px-3 py-1.5 text-sm text-gray-700 transition data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-950 dark:data-[state=active]:text-neutral-100"
                 >
                   Podstawowe
                 </TabsTrigger>
                 <TabsTrigger
                   value="players"
-                  className="rounded-lg px-3 py-1.5 text-sm text-gray-700 transition data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-950 dark:data-[state=active]:text-neutral-100"
+                  className="rounded px-3 py-1.5 text-sm text-gray-700 transition data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-950 dark:data-[state=active]:text-neutral-100"
                 >
                   Zawodnicy
                   {o.players?.length ? (
@@ -459,7 +459,7 @@ export function ObservationEditor({
                 </TabsTrigger>
                 <TabsTrigger
                   value="notes"
-                  className="rounded-lg px-3 py-1.5 text-sm text-gray-700 transition data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-950 dark:data-[state=active]:text-neutral-100"
+                  className="rounded px-3 py-1.5 text-sm text-gray-700 transition data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-950 dark:data-[state=active]:text-neutral-100"
                 >
                   Notatki
                 </TabsTrigger>

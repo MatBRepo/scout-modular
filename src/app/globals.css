@@ -136,7 +136,7 @@ html, body { height: 100%; }
 @layer components {
   /* Card */
   .card {
-    @apply bg-card text-card-foreground rounded-lg border shadow-sm;
+    @apply bg-card text-card-foreground rounded border shadow-sm;
   }
   .card-header { @apply p-[var(--card-pad)] pb-3; }
   .card-title  { @apply text-sm font-semibold; }
@@ -144,7 +144,7 @@ html, body { height: 100%; }
 
   /* Data table look (dense, subtle grid, sticky header on scrollable containers) */
   .data-table {
-    @apply w-full border rounded-lg overflow-hidden;
+    @apply w-full border rounded overflow-hidden;
   }
   .data-table table { @apply w-full border-collapse; }
   .data-table thead th {

@@ -19,10 +19,6 @@ type SidebarVariant = "desktop" | "mobile";
 const AUTH_KEY = "s4s.auth";
 const ROLE_KEY = "s4s.role";
 
-const UI_KEYS = {
-  playersOpen: "s4s.ui.playersOpen",
-} as const;
-
 /* ========= Rank helpers ========= */
 const RANK_THRESHOLDS: Record<Rank, number> = { bronze: 0, silver: 20, gold: 50, platinum: 100 };
 const calcScore = (players: number, observations: number) => players * 2 + observations;
@@ -203,22 +199,10 @@ export default function AppSidebar({
   /* ===== Active flags ===== */
   const isGlobalSection = pathname?.startsWith("/players/global");
   const isPlayersSection = pathname?.startsWith("/players") && !isGlobalSection;
-  const tab = searchParams?.get("tab") ?? null;
-  const knownActive = isPlayersSection && (tab === "known" || tab === null);
-  const unknownActive = isPlayersSection && tab === "unknown";
   const globalBaseActive = isGlobalSection && (pathname === "/players/global" || pathname === "/players/global/");
   const globalSearchActive = isGlobalSection && pathname?.startsWith("/players/global/search");
   const playersBadge = mounted && isAuthed && playersCount > 0 ? String(playersCount) : undefined;
   const obsBadge = mounted && isAuthed && obsCount > 0 ? String(obsCount) : undefined;
-
-  /* ===== Accordion state (persisted) ===== */
-  const [playersOpen, setPlayersOpen] = useState<boolean>(() => {
-    try { return localStorage.getItem(UI_KEYS.playersOpen) === "1"; } catch { return Boolean(isPlayersSection); }
-  });
-  useEffect(() => {
-    try { localStorage.setItem(UI_KEYS.playersOpen, playersOpen ? "1" : "0"); } catch {}
-  }, [playersOpen]);
-  useEffect(() => { if (isPlayersSection) setPlayersOpen(true); }, [isPlayersSection]);
 
   /* ===== Logout ===== */
   function handleLogout() {
@@ -259,23 +243,15 @@ export default function AppSidebar({
             Zawodnicy
           </div>
 
-          <AccordionNav
-            id="nav-players"
+          {/* Simplified: plain link, no dropdown, no chevron */}
+          <NavItem
             href="/players"
             icon={<Users className="h-4 w-4" />}
             label="Moi zawodnicy"
             active={isPlayersSection}
-            open={playersOpen}
-            onToggle={() => setPlayersOpen(o => !o)}
             badge={playersBadge}
             badgeTitle="Aktywni zawodnicy"
-            prefersReduced={prefersReduced}
-          >
-            <div className="mt-1 space-y-1 pl-9">
-              <SubNavItem href="/players?tab=known"   label="Znani zawodnicy"    active={knownActive} />
-              <SubNavItem href="/players?tab=unknown" label="Nieznani zawodnicy" active={unknownActive} />
-            </div>
-          </AccordionNav>
+          />
         </div>
       )}
 
@@ -341,17 +317,33 @@ export default function AppSidebar({
     </nav>
   );
 
+  /* ===== Brand: Flat, rounded, no gradient ===== */
+function BrandMark({ showName }: { showName: boolean }) {
+  return (
+    <a href="/" className="group flex items-center gap-2" aria-label="entrisoScouting - Start">
+      <div className="grid h-8 w-8 place-items-center rounded bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
+        <span className="text-[13px] font-bold leading-none">S</span>
+      </div>
+      {showName && (
+        <span className="hidden text-sm font-semibold tracking-tight sm:block">
+          entrisoScouting
+        </span>
+      )}
+    </a>
+  );
+}
+
   const inner = (
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between">
         <Link
           href="/"
-          className="rounded font-semibold tracking-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex gap-2 rounded font-semibold tracking-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 place-items-center"
           title="Wróć na kokpit"
           onClick={onClose}
         >
-          S4S
+           <BrandMark showName={!isAuthed} /> S4S
         </Link>
       </div>
 
@@ -392,12 +384,9 @@ export default function AppSidebar({
               transition={{ duration: prefersReduced ? 0 : 0.14, ease: "easeOut" }}
               className="absolute bottom-12 left-2 right-2 z-40 w-auto max-w-full overflow-x-hidden rounded-xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
             >
-              {/* rank card stays the same */}
-              {/* … (unchanged content from your version) … */}
-              {/* For brevity, the content here matches your original; keep as-is */}
               {/* START rank quick card */}
               {role === "scout" && (
-                <div className="mx-1 mb-2 rounded-lg bg-gray-50 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
+                <div className="mx-1 mb-2 rounded bg-gray-50 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
                   <div className="mb-1 flex flex-wrap items-center justify-between">
                     <span className="font-semibold whitespace-normal break-words">Twój poziom</span>
                     <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(rank)}`}>
@@ -576,7 +565,7 @@ function NavItem({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`group relative flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+      className={`group relative flex min-w-0 items-center gap-2 rounded px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
         active
           ? "bg-slate-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
           : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
@@ -595,7 +584,7 @@ function NavItem({
       <span className="truncate">{label}</span>
       {badge && (
         <span
-          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
           title={badgeTitle}
         >
           <span className="truncate">{badge}</span>
@@ -649,114 +638,4 @@ function labelForRole(r: Role) {
   if (r === "admin") return "Admin";
   if (r === "scout-agent") return "Scout Agent";
   return "Scout";
-}
-
-function AccordionNav({
-  id,
-  href,
-  icon,
-  label,
-  active,
-  open,
-  onToggle,
-  badge,
-  badgeTitle,
-  children,
-  prefersReduced,
-}: {
-  id: string;
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  open: boolean;
-  onToggle: () => void;
-  badge?: string;
-  badgeTitle?: string;
-  children: React.ReactNode;
-  prefersReduced: boolean;
-}) {
-  const panelId = `${id}-panel`;
-  const chevronBtnId = `${id}-toggle`;
-  const chevronKeyHandler = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === " " || e.key === "Enter") { e.preventDefault(); onToggle(); }
-  };
-
-  return (
-    <div className="space-y-1">
-      <div className="flex items-stretch gap-1">
-        {/* main link navigates */}
-        <Link
-          href={href}
-          aria-current={active ? "page" : undefined}
-          className={`group relative flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            active
-              ? "bg-slate-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-              : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
-          }`}
-          title={badge && badgeTitle ? `${badgeTitle}: ${badge}` : undefined}
-        >
-          <span
-            aria-hidden
-            className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-sm transition-all ${
-              active
-                ? "w-1 bg-indigo-500"
-                : "w-0 bg-transparent group-hover:w-1 group-hover:bg-slate-300 dark:group-hover:bg-neutral-700"
-            }`}
-          />
-          <span className="shrink-0">{icon}</span>
-          <span className="truncate">{label}</span>
-          {badge && (
-            <span className="ml-2 inline-flex max-w-[6rem] shrink-0 items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-              <span className="truncate">{badge}</span>
-            </span>
-          )}
-        </Link>
-
-        {/* chevron toggler as LAST element */}
-        <button
-          id={chevronBtnId}
-          type="button"
-          aria-controls={panelId}
-          aria-expanded={open}
-          aria-label={open ? "Zwiń sekcję Moi zawodnicy" : "Rozwiń sekcję Moi zawodnicy"}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-          onKeyDown={chevronKeyHandler}
-          className={`ml-auto inline-flex items-center justify-center rounded px-2 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            open
-              ? "bg-slate-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-              : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
-          }`}
-          title={open ? "Zwiń" : "Rozwiń"}
-        >
-          <motion.span
-            aria-hidden
-            animate={{ rotate: open ? 180 : 0 }}
-            transition={{ duration: prefersReduced ? 0 : 0.16, ease: [0.2, 0.7, 0.2, 1] }}
-            className="inline-flex"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </motion.span>
-        </button>
-      </div>
-
-      {/* animated panel */}
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            id={panelId}
-            role="region"
-            aria-labelledby={chevronBtnId}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: prefersReduced ? 0 : 0.18, ease: [0.2, 0.7, 0.2, 1] }}
-            className="overflow-hidden"
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
 }

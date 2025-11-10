@@ -31,6 +31,7 @@ import {
   ChevronLeft,
   ChevronRight,
   MoveHorizontal,
+  ChevronRight as ChevronRightIcon, Search
 } from "lucide-react";
 import { ObservationEditor } from "./ObservationEditor";
 import type { XO as EditorXO } from "./ObservationEditor";
@@ -174,7 +175,7 @@ function AnchoredPopover({
 
 type Bucket = "active" | "trash";
 type Mode = "live" | "tv";
-type TabKey = "active" | "draft" | "final";
+type TabKey = "active" | "draft";
 
 type PositionKey = string;
 
@@ -346,22 +347,26 @@ export default function ObservationsFeature({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // anchors for desktop popovers
+  // anchors
   const filtersBtnRef = useRef<HTMLButtonElement | null>(null);
   const moreBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // search focus ref for "/" shortcut
+  // CHIPS overflow
+  const chipsMoreBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [chipsOpen, setChipsOpen] = useState(false);
+  const chipsHoverTimer = useRef<number | null>(null);
+
+  // search ref
   const searchRef = useRef<HTMLInputElement | null>(null);
 
-  // table wrapper ref for horizontal scroll hint
+  // table scroll hint
   const tableWrapRef = useRef<HTMLDivElement | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
 
   useEffect(() => {
     const dismissed = localStorage.getItem(HINT_DISMISS_KEY) === "1";
     const el = tableWrapRef.current;
-    const hasOverflow =
-      el ? el.scrollWidth > el.clientWidth + 8 : false;
+    const hasOverflow = el ? el.scrollWidth > el.clientWidth + 8 : false;
     setShowScrollHint(isMobile && !dismissed && hasOverflow);
 
     if (!el) return;
@@ -453,13 +458,12 @@ export default function ObservationsFeature({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Tabs at top (default: active)
+  // Tabs + filters + state
   const [tab, setTab] = useState<TabKey>("active");
-
   const [scope, setScope] = useState<Bucket>("active");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [colsOpen, setColsOpen] = useState(false);
+  const [colsOpen, setColsOpen] = useState(false); // now opened from 3-dots
   const [moreOpen, setMoreOpen] = useState(false);
 
   const [matchFilter, setMatchFilter] = useState("");
@@ -474,7 +478,7 @@ export default function ObservationsFeature({
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  // -------- MASS SELECTION STATE --------
+  // MASS SELECTION
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -527,7 +531,7 @@ export default function ObservationsFeature({
     sortDir,
   ]);
 
-  // Keyboard shortcuts
+  // Shortcuts
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
@@ -546,18 +550,13 @@ export default function ObservationsFeature({
           e.preventDefault();
           exportCSV();
           return;
-        } else if (e.key.toLowerCase() === "x") {
-          e.preventDefault();
-          setColsOpen((o) => !o);
-          setFiltersOpen(false);
-          setMoreOpen(false);
-          return;
         }
       }
       if (e.key === "Escape") {
         setFiltersOpen(false);
         setColsOpen(false);
         setMoreOpen(false);
+        setChipsOpen(false);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -589,7 +588,6 @@ export default function ObservationsFeature({
       .filter((r) => (dateTo ? (r.date ?? "") <= dateTo : true));
 
     if (tab === "draft") base = base.filter((r) => r.status === "draft");
-    if (tab === "final") base = base.filter((r) => r.status === "final");
 
     const dir = sortDir === "asc" ? 1 : -1;
     base.sort((a, b) => {
@@ -635,7 +633,7 @@ export default function ObservationsFeature({
     sortDir,
   ]);
 
-  // Keep selection sane on filter change
+  // Keep selection sane after filters
   useEffect(() => {
     setSelected((prev) => {
       if (prev.size === 0) return prev;
@@ -766,7 +764,7 @@ export default function ObservationsFeature({
 
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
-    if (q.trim()) chips.push({ key: "q", label: `Szukaj: "${q.trim()}"`, clear: () => setQ("") });
+    if (q.trim()) chips.push({ key: "q", label: `Szukaj: “${q.trim()}”`, clear: () => setQ("") });
     if (matchFilter.trim()) chips.push({ key: "match", label: `Mecz: ${matchFilter.trim()}`, clear: () => setMatchFilter("") });
     if (modeFilter) chips.push({ key: "mode", label: `Tryb: ${modeFilter === "live" ? "Live" : "TV"}`, clear: () => setModeFilter("") });
     if (lifecycleFilter) chips.push({ key: "status", label: lifecycleFilter === "final" ? "Finalne" : "Szkice", clear: () => setLifecycleFilter("") });
@@ -774,6 +772,10 @@ export default function ObservationsFeature({
     if (dateTo) chips.push({ key: "to", label: `Do: ${fmtDate(dateTo)}`, clear: () => setDateTo("") });
     return chips;
   }, [q, matchFilter, modeFilter, lifecycleFilter, dateFrom, dateTo]);
+
+  const MAX_INLINE_CHIPS = 2;
+  const inlineChips = activeChips.slice(0, MAX_INLINE_CHIPS);
+  const overflowChips = activeChips.slice(MAX_INLINE_CHIPS);
 
   const filtersCount =
     (matchFilter ? 1 : 0) +
@@ -807,7 +809,7 @@ export default function ObservationsFeature({
     const withinScope = rows.filter((r) => (r.bucket ?? "active") === scope);
     const all = withinScope.length;
     const draft = withinScope.filter((r) => r.status === "draft").length;
-    return { all, draft, final: 0 };
+    return { all, draft };
   }, [rows, scope]);
 
   /* -------- Pagination -------- */
@@ -826,6 +828,21 @@ export default function ObservationsFeature({
 
   function gotoPrev() { setPage((p) => Math.max(1, p - 1)); }
   function gotoNext() { setPage((p) => Math.min(totalPages, p + 1)); }
+
+  // ===== CHIP atom (desktop height = h-10) =====
+  const Chip = ({ label, onClear }: { label: string; onClear: () => void }) => (
+    <span className="inline-flex h-10 items-center rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
+      <span className="max-w-[200px] truncate">{label}</span>
+      <button
+        className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
+        onClick={onClear}
+        aria-label="Wyczyść filtr"
+        title="Wyczyść filtr"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </span>
+  );
 
   // Early return for editor
   if (pageMode === "editor" && editing) {
@@ -847,470 +864,227 @@ export default function ObservationsFeature({
   return (
     <TooltipProvider delayDuration={150}>
       <div className="w-full">
-        <Crumb items={[{ label: "Start", href: "/" }, { label: "Obserwacje" }]} />
 
         {/* TOOLBAR */}
         <Toolbar
-          title="Obserwacje"
-          right={
-            // Mobile-first: buttons first row, search below; on ≥sm inline again.
-            <div className="flex w-full flex-wrap items-center gap-2 sm:gap-3">
-              {/* LEFT CLUSTER (filters + columns) */}
-              <div className="order-1 flex min-w-0 items-center gap-2 sm:gap-3">
-                {/* Tabs inline with title on desktop; hidden on mobile */}
-                <div className="hidden shrink-0 sm:inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
-                  {[
-                    { key: "active", label: "Aktywne obserwacje", count: counts.all },
-                    { key: "draft", label: "Szkice", count: counts.draft },
-                  ].map((t) => (
+          title={
+            <div className="flex items-center gap-3 w-full">
+              {/* Title */}
+              <span className="font-semibold text-xl md:text-2xl shrink-0">Obserwacje</span>
+
+              {/* Stone-styled tabs (desktop) */}
+              <div className="hidden md:block shrink-0 h-10">
+                <div dir="ltr" data-orientation="horizontal">
+                  <div
+                    role="tablist"
+                    aria-orientation="horizontal"
+                    className="h-10 rounded inline-flex items-center justify-center text-muted-foreground bg-stone-200 p-1 shadow-sm dark:bg-stone-900"
+                    tabIndex={0}
+                    data-orientation="horizontal"
+                    style={{ outline: "none" }}
+                  >
                     <button
-                      key={t.key}
-                      onClick={() => setTab(t.key as TabKey)}
-                      className={`px-3 py-2 text-sm rounded transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${
-                        tab === (t.key as TabKey) ? "bg-white shadow dark:bg-neutral-800" : ""
-                      }`}
-                      data-active={tab === (t.key as TabKey)}
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === "active"}
+                      data-state={tab === "active" ? "active" : "inactive"}
+                      className="justify-center whitespace-nowrap rounded text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+                      onClick={() => setTab("active")}
                     >
-                      <span className="inline-flex items-center gap-2">
-                        {t.label}
-                        <span className="rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                          {t.count}
-                        </span>
+                      Aktywne
+                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                        {counts.all}
                       </span>
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === "draft"}
+                      data-state={tab === "draft" ? "active" : "inactive"}
+                      className="justify-center whitespace-nowrap rounded text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+                      onClick={() => setTab("draft")}
+                    >
+                      Szkice
+                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                        {counts.draft}
+                      </span>
+                    </button>
+                  </div>
                 </div>
+              </div>
 
-                {/* Filters button */}
-                <div className="relative shrink-0">
-                  <Button
-                    ref={filtersBtnRef}
-                    size="sm"
-                    variant="outline"
-                    className="h-10 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                    onClick={() => {
-                      setFiltersOpen((v) => !v);
-                      setColsOpen(false);
-                      setMoreOpen(false);
-                    }}
-                    aria-pressed={filtersOpen}
-                  >
-                    <ListFilter className="mr-0 md:mr-2 h-4 w-4" />
-                    <span className="hidden sm:inline">
-                      Filtry{filtersCount ? ` (${filtersCount})` : ""}
-                    </span>
-                  </Button>
-
-                  {/* FILTRY PANEL */}
-                  {filtersOpen &&
-                    (isMobile ? (
-                      <Portal>
-                        <div
-                          className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                          onClick={() => setFiltersOpen(false)}
-                          aria-hidden
-                        />
-                        <div
-                          className="fixed inset-x-0 bottom-0 z-[210] max-h[80vh] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-                          role="dialog"
-                          aria-modal="true"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="mb-3 flex items-center justify-between">
-                            <div className="text-sm font-semibold">Filtry</div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-gray-300 dark:border-neutral-700"
-                              onClick={() => setFiltersOpen(false)}
-                            >
-                              Zamknij
-                            </Button>
-                          </div>
-
-                          <div className="mb-3">
-                            <Label className="text-xs">Mecz (kto vs kto)</Label>
-                            <Input
-                              value={matchFilter}
-                              onChange={(e) => setMatchFilter(e.target.value)}
-                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label className="text-xs">Data od</Label>
-                              <Input
-                                type="date"
-                                value={dateFrom}
-                                onChange={(e) => setDateFrom(e.target.value)}
-                                className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Data do</Label>
-                              <Input
-                                type="date"
-                                value={dateTo}
-                                onChange={(e) => setDateTo(e.target.value)}
-                                className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                              />
-                            </div>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-3">
-                            <div>
-                              <Label className="text-xs">Tryb</Label>
-                              <select
-                                value={modeFilter}
-                                onChange={(e) => setModeFilter(e.target.value as Mode | "")}
-                                className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                              >
-                                <option value="">— dowolny —</option>
-                                <option value="live">Live</option>
-                                <option value="tv">TV</option>
-                              </select>
-                            </div>
-                            <div>
-                              <Label className="text-xs">Status</Label>
-                              <select
-                                value={lifecycleFilter}
-                                onChange={(e) =>
-                                  setLifecycleFilter(e.target.value as Observation["status"] | "")
-                                }
-                                className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                              >
-                                <option value="">— dowolny —</option>
-                                <option value="draft">Szkic</option>
-                                <option value="final">Finalna</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex flex-wrap items-center justify-between">
-                            <Button
-                              variant="outline"
-                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                              onClick={() => {
-                                setMatchFilter("");
-                                setModeFilter("");
-                                setLifecycleFilter("");
-                                setDateFrom("");
-                                setDateTo("");
-                                setQ("");
-                              }}
-                            >
-                              Wyczyść
-                            </Button>
-                            <Button
-                              className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
-                              onClick={() => setFiltersOpen(false)}
-                            >
-                              Zastosuj
-                            </Button>
-                          </div>
-                        </div>
-                      </Portal>
-                    ) : (
-                      <AnchoredPopover
-                        anchorRef={filtersBtnRef as any}
-                        open={filtersOpen}
-                        onClose={() => setFiltersOpen(false)}
-                        width={352}
-                        className="rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+              {/* Center chips (desktop) */}
+              <div className="hidden md:flex flex-1 items-center justify-center">
+                <div className="flex items-center gap-1">
+                  {inlineChips.map(c => (
+                    <Chip key={c.key} label={c.label} onClear={c.clear} />
+                  ))}
+                  {overflowChips.length > 0 && (
+                    <>
+                      <button
+                        ref={chipsMoreBtnRef}
+                        type="button"
+                        className="inline-flex h-10 items-center gap-1 rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
+                        onClick={() => setChipsOpen((v) => !v)}
+                        onMouseEnter={() => {
+                          if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                          setChipsOpen(true);
+                        }}
+                        onMouseLeave={() => {
+                          if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                          chipsHoverTimer.current = window.setTimeout(() => setChipsOpen(false), 180) as unknown as number;
+                        }}
+                        aria-expanded={chipsOpen}
+                        title="Pokaż więcej filtrów"
                       >
-                        <div className="mb-3">
-                          <Label className="text-xs">Mecz (kto vs kto)</Label>
-                          <Input
-                            value={matchFilter}
-                            onChange={(e) => setMatchFilter(e.target.value)}
-                            className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Data od</Label>
-                            <Input
-                              type="date"
-                              value={dateFrom}
-                              onChange={(e) => setDateFrom(e.target.value)}
-                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Data do</Label>
-                            <Input
-                              type="date"
-                              value={dateTo}
-                              onChange={(e) => setDateTo(e.target.value)}
-                              className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                            />
-                          </div>
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Tryb</Label>
-                            <select
-                              value={modeFilter}
-                              onChange={(e) => setModeFilter(e.target.value as Mode | "")}
-                              className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                            >
-                              <option value="">— dowolny —</option>
-                              <option value="live">Live</option>
-                              <option value="tv">TV</option>
-                            </select>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Status</Label>
-                            <select
-                              value={lifecycleFilter}
-                              onChange={(e) =>
-                                setLifecycleFilter(e.target.value as Observation["status"] | "")
-                              }
-                              className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
-                            >
-                              <option value="">— dowolny —</option>
-                              <option value="draft">Szkic</option>
-                              <option value="final">Finalna</option>
-                            </select>
-                          </div>
-                        </div>
+                        <ChevronRightIcon className="h-4 w-4" />
+                        +{overflowChips.length}
+                      </button>
 
-                        <div className="mt-3 flex flex-wrap items-center justify-between">
-                          <Button
-                            variant="outline"
-                            className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                            onClick={() => {
-                              setMatchFilter("");
-                              setModeFilter("");
-                              setLifecycleFilter("");
-                              setDateFrom("");
-                              setDateTo("");
-                              setQ("");
-                            }}
-                          >
-                            Wyczyść
-                          </Button>
-                          <Button
-                            className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
-                            onClick={() => setFiltersOpen(false)}
-                          >
-                            Zastosuj
-                          </Button>
+                      <AnchoredPopover
+                        anchorRef={chipsMoreBtnRef as any}
+                        open={chipsOpen}
+                        onClose={() => setChipsOpen(false)}
+                        width={360}
+                        className="z-[210] overflow-hidden rounded border border-gray-200 bg-white p-2 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+                      >
+                        <div
+                          className="w-full p-1"
+                          onMouseEnter={() => {
+                            if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                            setChipsOpen(true);
+                          }}
+                          onMouseLeave={() => {
+                            if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                            chipsHoverTimer.current = window.setTimeout(() => setChipsOpen(false), 150) as unknown as number;
+                          }}
+                        >
+                          <div className="mb-1 px-1 text-[11px] font-semibold text-gray-700 dark:text-neutral-200">
+                            Aktywne filtry
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {overflowChips.map(c => (
+                              <Chip key={c.key} label={c.label} onClear={c.clear} />
+                            ))}
+                          </div>
                         </div>
                       </AnchoredPopover>
-                    ))}
+                    </>
+                  )}
                 </div>
-
-                {/* columns (fixed) */}
-                <ColumnsButton
-                  isMobile={isMobile}
-                  open={colsOpen}
-                  setOpen={(v) => {
-                    setColsOpen(v);
-                    if (v) {
-                      setFiltersOpen(false);
-                      setMoreOpen(false);
-                    }
-                  }}
-                  visibleCols={visibleCols}
-                  setVisibleCols={setVisibleCols}
-                />
               </div>
-
-              {/* RIGHT ACTIONS (Add + More) */}
-              <div className="order-1 ml-auto flex shrink-0 items-center gap-2">
-                <Button
-                  size="sm"
-                  className="h-10 bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
-                  onClick={addNew}
-                  title="Skrót: N"
-                >
-                  <PlusCircle className="mr-0 md:mr-2 h-4 w-4" />{" "}
-                  <span className="hidden sm:inline">Dodaj</span>
-                </Button>
-
-                <Button
-                  ref={moreBtnRef}
-                  variant="outline"
-                  className="h-10 w-10 border-gray-300 p-0 dark:border-neutral-700"
-                  onClick={() => {
-                    setMoreOpen((o) => (o ? false : true));
-                    setFiltersOpen(false);
-                    setColsOpen(false);
-                  }}
-                  aria-label="Więcej"
-                  aria-pressed={moreOpen}
-                >
-                  <EllipsisVertical className="h-5 w-5" />
-                </Button>
-              </div>
-
-              {/* SEARCH — full-width on mobile, inline on ≥sm */}
-              <div className="order-2 w-full sm:order-none sm:w-auto sm:flex-none">
-                <div className="relative w-full sm:w-56 md:w-64">
+            </div>
+          }
+          right={
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div />
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
+                {/* Search */}
+                 <div className="relative order-1 w-full min-w-0 sm:order-none sm:w-64 h-10">
+                  <Search
+                    className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                    aria-hidden="true"
+                  />
                   <Input
                     ref={searchRef}
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="Szukaj po meczu lub zawodnikach… (/)"
-                    className="w-full"
+                    className="h-10 w-full pl-8 pr-3 text-sm"
                     aria-label="Szukaj w obserwacjach"
                   />
                 </div>
+
+                {/* Filtry */}
+                <Button
+                  ref={filtersBtnRef}
+                  size="sm"
+                  variant="outline"
+                  className="h-10 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                  onClick={() => {
+                    setFiltersOpen((v) => !v);
+                    setColsOpen(false);
+                    setMoreOpen(false);
+                  }}
+                  aria-pressed={filtersOpen}
+                  type="button"
+                >
+                  <ListFilter className="mr-0 md:mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    Filtry{filtersCount ? ` (${filtersCount})` : ""}
+                  </span>
+                </Button>
+
+                {/* Dodaj */}
+                <Button
+                  size="sm"
+                  className="h-10 bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                  onClick={addNew}
+                  title="Skrót: N"
+                  type="button"
+                >
+                  <PlusCircle className="mr-0 md:mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Dodaj</span>
+                </Button>
+
+                {/* Więcej (zawiera Kolumny) */}
+                <Button
+                  ref={moreBtnRef}
+                  variant="outline"
+                  className="h-10 w-10 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                  onClick={() => {
+                    setMoreOpen((o) => !o);
+                    setFiltersOpen(false);
+                    // do not toggle cols here; it’s opened from the menu item
+                  }}
+                  aria-label="Więcej"
+                  aria-pressed={moreOpen}
+                  type="button"
+                >
+                  <EllipsisVertical className="h-5 w-5" />
+                </Button>
               </div>
-
-              {/* MORE MENU PANELS */}
-              {moreOpen &&
-                (isMobile ? (
-                  <Portal>
-                    <div
-                      className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-                      onClick={() => setMoreOpen(false)}
-                      aria-hidden
-                    />
-                    <div
-                      className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-                      role="dialog"
-                      aria-modal="true"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="mb-1 flex items-center justify-between px-1">
-                        <div className="text-sm font-semibold">Więcej</div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-gray-300 dark:border-neutral-700"
-                          onClick={() => setMoreOpen(false)}
-                        >
-                          Zamknij
-                        </Button>
-                      </div>
-
-                      <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
-                        <button
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                          onClick={() => {
-                            setScope("active");
-                            setMoreOpen(false);
-                          }}
-                        >
-                          <Users className="h-4 w-4" /> Aktywni
-                        </button>
-                        <button
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                          onClick={() => {
-                            setScope("trash");
-                            setMoreOpen(false);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" /> Kosz
-                        </button>
-                        <button
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                          onClick={() => {
-                            setMoreOpen(false);
-                            exportCSV();
-                          }}
-                        >
-                          <FileDown className="h-4 w-4" /> Eksport CSV
-                        </button>
-                        <button
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                          onClick={() => {
-                            setMoreOpen(false);
-                            exportExcel();
-                          }}
-                        >
-                          <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                        </button>
-                      </div>
-                    </div>
-                  </Portal>
-                ) : (
-                  <AnchoredPopover
-                    anchorRef={moreBtnRef as any}
-                    open={moreOpen}
-                    onClose={() => setMoreOpen(false)}
-                    width={224}
-                    className="overflow-hidden rounded border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
-                  >
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => {
-                        setScope("active");
-                        setMoreOpen(false);
-                      }}
-                    >
-                      <Users className="h-4 w-4" /> Aktywni
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => {
-                        setScope("trash");
-                        setMoreOpen(false);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" /> Kosz
-                    </button>
-                    <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => {
-                        setMoreOpen(false);
-                        exportCSV();
-                      }}
-                    >
-                      <FileDown className="h-4 w-4" /> Eksport CSV
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
-                      onClick={() => {
-                        setMoreOpen(false);
-                        exportExcel();
-                      }}
-                    >
-                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                    </button>
-                  </AnchoredPopover>
-                ))}
             </div>
           }
         />
 
-        {/* Tabs (mobile only) */}
+        {/* Mobile tabs */}
         <div className="mt-3 flex flex-col items-stretch gap-2 sm:hidden">
-          <div className="inline-flex rounded-lg bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+          <div className="inline-flex h-10 items-center rounded bg-stone-200 p-1 shadow-sm dark:bg-stone-900">
             {[
-              { key: "active", label: "Aktywne obserwacje", count: counts.all },
+              { key: "active", label: "Aktywne", count: counts.all },
               { key: "draft", label: "Szkice", count: counts.draft },
-            ].map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key as TabKey)}
-                className={`px-3 py-2 text-sm rounded transition data-[active=true]:bg-white data-[active=true]:shadow dark:data-[active=true]:bg-neutral-800 ${
-                  tab === (t.key as TabKey) ? "bg-white shadow dark:bg-neutral-800" : ""
-                }`}
-                data-active={tab === (t.key as TabKey)}
-              >
-                <span className="inline-flex items-center gap-2">
+            ].map((t) => {
+              const active = tab === (t.key as TabKey);
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key as TabKey)}
+                  className={`justify-center whitespace-nowrap rounded text-sm font-medium h-9 inline-flex items-center px-2 py-2 ${
+                    active ? "bg-white shadow dark:bg-neutral-800" : ""
+                  }`}
+                  type="button"
+                >
                   {t.label}
-                  <span className="rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                     {t.count}
                   </span>
-                </span>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Active filter chips */}
+        {/* Active filter chips (mobile only, desktop handled in title) */}
         {activeChips.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2 md:hidden">
             {activeChips.map((c) => (
               <button
                 key={c.key}
                 onClick={c.clear}
                 className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-900"
                 title="Wyczyść filtr"
+                type="button"
               >
                 <X className="h-3 w-3" />
                 {c.label}
@@ -1327,11 +1101,440 @@ export default function ObservationsFeature({
               }}
               className="ml-1 inline-flex items-center gap-1 rounded bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
               title="Wyczyść wszystkie filtry"
+              type="button"
             >
               Wyczyść wszystkie
             </button>
           </div>
         )}
+
+        {/* FILTERS PANEL(s) */}
+        {filtersOpen &&
+          (isMobile ? (
+            <Portal>
+              <div
+                className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                onClick={() => setFiltersOpen(false)}
+                aria-hidden
+              />
+              <div
+                className="fixed inset-x-0 bottom-0 z-[210] max-h[80vh] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                role="dialog"
+                aria-modal="true"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-sm font-semibold">Filtry</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-300 dark:border-neutral-700"
+                    onClick={() => setFiltersOpen(false)}
+                  >
+                    Zamknij
+                  </Button>
+                </div>
+
+                <div className="mb-3">
+                  <Label className="text-xs">Mecz (kto vs kto)</Label>
+                  <Input
+                    value={matchFilter}
+                    onChange={(e) => setMatchFilter(e.target.value)}
+                    className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Data od</Label>
+                    <Input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Data do</Label>
+                    <Input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Tryb</Label>
+                    <select
+                      value={modeFilter}
+                      onChange={(e) => setModeFilter(e.target.value as Mode | "")}
+                      className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                    >
+                      <option value="">— dowolny —</option>
+                      <option value="live">Live</option>
+                      <option value="tv">TV</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Status</Label>
+                    <select
+                      value={lifecycleFilter}
+                      onChange={(e) =>
+                        setLifecycleFilter(e.target.value as Observation["status"] | "")
+                      }
+                      className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                    >
+                      <option value="">— dowolny —</option>
+                      <option value="draft">Szkic</option>
+                      <option value="final">Finalna</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between">
+                  <Button
+                    variant="outline"
+                    className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                    onClick={() => {
+                      setMatchFilter("");
+                      setModeFilter("");
+                      setLifecycleFilter("");
+                      setDateFrom("");
+                      setDateTo("");
+                      setQ("");
+                    }}
+                  >
+                    Wyczyść
+                  </Button>
+                  <Button
+                    className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                    onClick={() => setFiltersOpen(false)}
+                  >
+                    Zastosuj
+                  </Button>
+                </div>
+              </div>
+            </Portal>
+          ) : (
+            <AnchoredPopover
+              anchorRef={filtersBtnRef as any}
+              open={true}
+              onClose={() => setFiltersOpen(false)}
+              width={352}
+              className="rounded border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              <div className="mb-3">
+                <Label className="text-xs">Mecz (kto vs kto)</Label>
+                <Input
+                  value={matchFilter}
+                  onChange={(e) => setMatchFilter(e.target.value)}
+                  className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Data od</Label>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Data do</Label>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                  />
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Tryb</Label>
+                  <select
+                    value={modeFilter}
+                    onChange={(e) => setModeFilter(e.target.value as Mode | "")}
+                    className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                  >
+                    <option value="">— dowolny —</option>
+                    <option value="live">Live</option>
+                    <option value="tv">TV</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs">Status</Label>
+                  <select
+                    value={lifecycleFilter}
+                    onChange={(e) =>
+                      setLifecycleFilter(e.target.value as Observation["status"] | "")
+                    }
+                    className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                  >
+                    <option value="">— dowolny —</option>
+                    <option value="draft">Szkic</option>
+                    <option value="final">Finalna</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center justify-between">
+                <Button
+                  variant="outline"
+                  className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                  onClick={() => {
+                    setMatchFilter("");
+                    setModeFilter("");
+                    setLifecycleFilter("");
+                    setDateFrom("");
+                    setDateTo("");
+                    setQ("");
+                  }}
+                >
+                  Wyczyść
+                </Button>
+                <Button
+                  className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                  onClick={() => setFiltersOpen(false)}
+                >
+                  Zastosuj
+                </Button>
+              </div>
+            </AnchoredPopover>
+          ))}
+
+        {/* MORE MENU (includes Kolumny) */}
+        {moreOpen &&
+          (isMobile ? (
+            <Portal>
+              <div
+                className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                onClick={() => setMoreOpen(false)}
+                aria-hidden
+              />
+              <div
+                className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                role="dialog"
+                aria-modal="true"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-1 flex items-center justify-between px-1">
+                  <div className="text-sm font-semibold">Więcej</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-300 dark:border-neutral-700"
+                    onClick={() => setMoreOpen(false)}
+                  >
+                    Zamknij
+                  </Button>
+                </div>
+
+
+                                  {/* Kolumny (mobile -> own sheet) */}
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      setColsOpen(true);
+                    }}
+                  >
+                    <ColumnsIcon className="h-4 w-4" /> Kolumny
+                  </button>
+
+                <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    onClick={() => {
+                      setScope("active");
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <Users className="h-4 w-4" /> Aktywni
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    onClick={() => {
+                      setScope("trash");
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" /> Kosz
+                  </button>
+
+
+
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      exportCSV();
+                    }}
+                  >
+                    <FileDown className="h-4 w-4" /> Eksport CSV
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      exportExcel();
+                    }}
+                  >
+                    <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                  </button>
+                </div>
+              </div>
+            </Portal>
+          ) : (
+            <AnchoredPopover
+              anchorRef={moreBtnRef as any}
+              open={true}
+              onClose={() => setMoreOpen(false)}
+              width={224}
+              className="overflow-hidden rounded border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+            >
+
+
+              {/* Kolumny opens a separate popover anchored to the dots */}
+              <button
+                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                onClick={() => {
+                  setMoreOpen(false);
+                  setColsOpen(true);
+                }}
+              >
+                <ColumnsIcon className="h-4 w-4" /> Kolumny
+              </button>
+
+              <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+
+              <button
+                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                onClick={() => {
+                  setScope("active");
+                  setMoreOpen(false);
+                }}
+              >
+                <Users className="h-4 w-4" /> Aktywni
+              </button>
+              <button
+                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                onClick={() => {
+                  setScope("trash");
+                  setMoreOpen(false);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Kosz
+              </button>
+
+              <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+
+
+
+              <button
+                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                onClick={() => {
+                  setMoreOpen(false);
+                  exportCSV();
+                }}
+              >
+                <FileDown className="h-4 w-4" /> Eksport CSV
+              </button>
+              <button
+                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                onClick={() => {
+                  setMoreOpen(false);
+                  exportExcel();
+                }}
+              >
+                <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+              </button>
+            </AnchoredPopover>
+          ))}
+
+        {/* COLUMNS UI (opened from 3-dots) */}
+        {colsOpen &&
+          (isMobile ? (
+            <Portal>
+              <div
+                className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+                onClick={() => setColsOpen(false)}
+                aria-hidden
+              />
+              <div
+                className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                role="dialog"
+                aria-modal="true"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-sm font-semibold">Kolumny</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-300 dark:border-neutral-700"
+                    onClick={() => setColsOpen(false)}
+                  >
+                    Zamknij
+                  </Button>
+                </div>
+
+                {Object.keys(DEFAULT_COLS).map((k) => {
+                  const key = k as keyof typeof DEFAULT_COLS;
+                  return (
+                    <label
+                      key={key}
+                      className="flex cursor-pointer items-center justify-between rounded px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    >
+                      <span className="text-gray-800 dark:text-neutral-100">
+                        {COL_PL[key]}
+                      </span>
+                      <Checkbox
+                        checked={visibleCols[key]}
+                        onCheckedChange={(v) =>
+                          setVisibleCols({ ...visibleCols, [key]: Boolean(v) })
+                        }
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </Portal>
+          ) : (
+            <AnchoredPopover
+              anchorRef={moreBtnRef as any}
+              open={true}
+              onClose={() => setColsOpen(false)}
+              width={288}
+              className="rounded border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">
+                Widoczność kolumn
+              </div>
+              {Object.keys(DEFAULT_COLS).map((k) => {
+                const key = k as keyof typeof DEFAULT_COLS;
+                return (
+                  <label
+                    key={key}
+                    className="flex cursor-pointer items-center justify-between rounded px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  >
+                    <span className="text-gray-800 dark:text-neutral-100">
+                      {COL_PL[key]}
+                    </span>
+                    <Checkbox
+                      checked={visibleCols[key]}
+                      onCheckedChange={(v) =>
+                        setVisibleCols({ ...visibleCols, [key]: Boolean(v) })
+                      }
+                    />
+                  </label>
+                );
+              })}
+            </AnchoredPopover>
+          ))}
 
         {/* TABLE CARD */}
         <div
@@ -1602,7 +1805,7 @@ export default function ObservationsFeature({
             </tbody>
           </table>
 
-          {/* Mobile scroll hint overlay */}
+          {/* Mobile scroll hint */}
           {showScrollHint && (
             <div className="pointer-events-none sm:hidden">
               <div className="absolute bottom-2 right-2 z-20 inline-flex items-center gap-2 rounded bg-gray-900/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur">
@@ -1614,69 +1817,66 @@ export default function ObservationsFeature({
           )}
         </div>
 
-{/* Pagination footer — compact, 1-row on mobile */}
-<div className="mt-3 flex flex-row flex-wrap items-center justify-between gap-2 rounded bg-white p-2 text-sm shadow-sm dark:bg-neutral-950">
-  {/* Left: page size + range */}
-  <div className="flex flex-row flex-wrap items-center gap-2">
-    <span className="text-dark dark:text-neutral-300">Wiersze na stronę:</span>
-    <select
-      className="rounded border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
-      value={pageSize}
-      onChange={(e) => {
-        const n = Number(e.target.value) || 10;
-        setPageSize(n);
-        setPage(1);
-      }}
-      aria-label="Liczba wierszy na stronę"
-    >
-      {[10, 20, 50].map((n) => (
-        <option key={n} value={n}>{n}</option>
-      ))}
-    </select>
+        {/* Pagination footer */}
+        <div className="mt-3 flex flex-row flex-wrap items-center justify-between gap-2 rounded bg-white p-2 text-sm shadow-sm dark:bg-neutral-950">
+          <div className="flex flex-row flex-wrap items-center gap-2">
+            <span className="text-dark dark:text-neutral-300">Wiersze na stronę:</span>
+            <select
+              className="rounded border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
+              value={pageSize}
+              onChange={(e) => {
+                const n = Number(e.target.value) || 10;
+                setPageSize(n);
+                setPage(1);
+              }}
+              aria-label="Liczba wierszy na stronę"
+            >
+              {[10, 20, 50].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
 
-    <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
-      {totalItems === 0 ? "0" : `${startIdx + 1}–${endIdx} z ${totalItems}`}
-    </span>
-  </div>
+            <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
+              {totalItems === 0 ? "0" : `${startIdx + 1}–${endIdx} z ${totalItems}`}
+            </span>
+          </div>
 
-  {/* Right: pager (compact buttons, icon sized to font) */}
-  <div className="flex flex-row flex-wrap items-center gap-2">
-    <Button
-      variant="outline"
-      className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
-      disabled={page <= 1}
-      onClick={gotoPrev}
-      aria-label="Poprzednia strona"
-      title="Poprzednia strona"
-    >
-      <ChevronLeft className="h-[1.1em] w-[1.1em]" />
-    </Button>
+          <div className="flex flex-row flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
+              disabled={page <= 1}
+              onClick={gotoPrev}
+              aria-label="Poprzednia strona"
+              title="Poprzednia strona"
+            >
+              <ChevronLeft className="h-[1.1em] w-[1.1em]" />
+            </Button>
 
-    <div className="min-w-[80px] text-center leading-none">
-      Strona {page} / {totalPages}
-    </div>
+            <div className="min-w-[80px] text-center leading-none">
+              Strona {page} / {totalPages}
+            </div>
 
-    <Button
-      variant="outline"
-      className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
-      disabled={page >= totalPages}
-      onClick={gotoNext}
-      aria-label="Następna strona"
-      title="Następna strona"
-    >
-      <ChevronRight className="h-[1.1em] w-[1.1em]" />
-    </Button>
-  </div>
-</div>
+            <Button
+              variant="outline"
+              className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
+              disabled={page >= totalPages}
+              onClick={gotoNext}
+              aria-label="Następna strona"
+              title="Następna strona"
+            >
+              <ChevronRight className="h-[1.1em] w-[1.1em]" />
+            </Button>
+          </div>
+        </div>
 
       </div>
 
-      {/* Floating selection pill (center-bottom) */}
+      {/* Floating selection pill */}
       {selected.size > 0 && (
         <Portal>
           <div className="fixed left-1/2 bottom-4 z-[240] -translate-x-1/2">
             <div className="inline-flex items-center gap-2 rounded border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
-              {/* Clear selection */}
               <button
                 className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
                 onClick={() => setSelected(new Set())}
@@ -1686,7 +1886,6 @@ export default function ObservationsFeature({
                 <X className="h-4 w-4" />
               </button>
 
-              {/* Count badge */}
               <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded bg-gray-900 px-2 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
                 {selected.size}
               </span>
@@ -1695,10 +1894,8 @@ export default function ObservationsFeature({
                 zaznaczone
               </span>
 
-              {/* Divider */}
               <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-neutral-800" />
 
-              {/* Scope-aware action */}
               {rows.some(r => selected.has(r.id) && (r.bucket ?? "active") === "active") && scope === "active" ? (
                 <Button
                   className="h-8 w-8 rounded bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
@@ -1723,120 +1920,5 @@ export default function ObservationsFeature({
         </Portal>
       )}
     </TooltipProvider>
-  );
-}
-
-/* ========================= Columns popover ========================= */
-
-function ColumnsButton({
-  isMobile,
-  open,
-  setOpen,
-  visibleCols,
-  setVisibleCols,
-}: {
-  isMobile: boolean;
-  open: boolean;
-  setOpen: (v: boolean) => void;
-  visibleCols: Record<keyof typeof DEFAULT_COLS, boolean>;
-  setVisibleCols: (v: Record<keyof typeof DEFAULT_COLS, boolean>) => void;
-}) {
-  const btnRef = useRef<HTMLButtonElement | null>(null);
-  return (
-    <div className="relative shrink-0">
-      <Button
-        ref={btnRef as any}
-        size="sm"
-        variant="outline"
-        className="h-10 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-        onClick={() => setOpen(!open)}
-        title="Widoczność kolumn"
-        aria-label="Widoczność kolumn"
-        aria-pressed={open}
-      >
-        <ColumnsIcon className="h-4 w-4" />
-        <span className="ml-2 hidden sm:inline">Kolumny</span>
-      </Button>
-
-      {open &&
-        (isMobile ? (
-          <Portal>
-            <div
-              className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
-              onClick={() => setOpen(false)}
-              aria-hidden
-            />
-            <div
-              className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
-              role="dialog"
-              aria-modal="true"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-sm font-semibold">Kolumny</div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-gray-300 dark:border-neutral-700"
-                  onClick={() => setOpen(false)}
-                >
-                  Zamknij
-                </Button>
-              </div>
-
-              {Object.keys(DEFAULT_COLS).map((k) => {
-                const key = k as keyof typeof DEFAULT_COLS;
-                return (
-                  <label
-                    key={key}
-                    className="flex cursor-pointer items-center justify-between rounded px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                  >
-                    <span className="text-gray-800 dark:text-neutral-100">
-                      {COL_PL[key]}
-                    </span>
-                    <Checkbox
-                      checked={visibleCols[key]}
-                      onCheckedChange={(v) =>
-                        setVisibleCols({ ...visibleCols, [key]: Boolean(v) })
-                      }
-                    />
-                  </label>
-                );
-              })}
-            </div>
-          </Portal>
-        ) : (
-          <AnchoredPopover
-            anchorRef={btnRef as any}
-            open={open}
-            onClose={() => setOpen(false)}
-            width={288}
-            className="rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
-          >
-            <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">
-              Widoczność kolumn
-            </div>
-            {Object.keys(DEFAULT_COLS).map((k) => {
-              const key = k as keyof typeof DEFAULT_COLS;
-              return (
-                <label
-                  key={key}
-                  className="flex cursor-pointer items-center justify-between rounded px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
-                >
-                  <span className="text-gray-800 dark:text-neutral-100">
-                    {COL_PL[key]}
-                  </span>
-                  <Checkbox
-                    checked={visibleCols[key]}
-                    onCheckedChange={(v) =>
-                      setVisibleCols({ ...visibleCols, [key]: Boolean(v) })
-                    }
-                  />
-                </label>
-              );
-            })}
-          </AnchoredPopover>
-        ))}
-    </div>
   );
 }
