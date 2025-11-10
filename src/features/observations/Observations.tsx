@@ -1031,7 +1031,7 @@ export default function ObservationsFeature({
                 <Button
                   ref={moreBtnRef}
                   variant="outline"
-                  className="h-10 w-10 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                  className="h-10 w-10 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 ml-auto"
                   onClick={() => {
                     setMoreOpen((o) => !o);
                     setFiltersOpen(false);
@@ -1050,7 +1050,7 @@ export default function ObservationsFeature({
 
         {/* Mobile tabs */}
         <div className="mt-3 flex flex-col items-stretch gap-2 sm:hidden">
-          <div className="inline-flex h-10 items-center rounded bg-stone-200 p-1 shadow-sm dark:bg-stone-900">
+          <div className="inline-flex h-10 items-center rounded bg-stone-100 p-1 shadow-sm dark:bg-stone-900">
             {[
               { key: "active", label: "Aktywne", count: counts.all },
               { key: "draft", label: "Szkice", count: counts.draft },
@@ -1334,6 +1334,11 @@ export default function ObservationsFeature({
                 </div>
 
 
+
+
+                <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
+
+
                                   {/* Kolumny (mobile -> own sheet) */}
                   <button
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
@@ -1345,7 +1350,6 @@ export default function ObservationsFeature({
                     <ColumnsIcon className="h-4 w-4" /> Kolumny
                   </button>
 
-                <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
                   <button
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
                     onClick={() => {
@@ -1818,7 +1822,7 @@ export default function ObservationsFeature({
         </div>
 
         {/* Pagination footer */}
-        <div className="mt-3 flex flex-row flex-wrap items-center justify-between gap-2 rounded bg-white p-2 text-sm shadow-sm dark:bg-neutral-950">
+        <div className="mt-3 flex flex-row flex-wrap items-center justify-between gap-2 rounded  p-2 text-sm shadow-sm dark:bg-neutral-950">
           <div className="flex flex-row flex-wrap items-center gap-2">
             <span className="text-dark dark:text-neutral-300">Wiersze na stronę:</span>
             <select

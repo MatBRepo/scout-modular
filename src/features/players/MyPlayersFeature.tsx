@@ -7,7 +7,6 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-// REMOVED: Crumb
 import { Toolbar } from "@/shared/ui/atoms";
 import type { Player, Observation } from "@/shared/types";
 import {
@@ -41,6 +40,49 @@ function Portal({ children }: { children: React.ReactNode }) {
   const [el, setEl] = useState<HTMLElement | null>(null);
   useEffect(() => setEl(document.getElementById("portal-root")), []);
   return el ? createPortal(children, el) : null;
+}
+function MobileSheet({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <Portal>
+      {/* overlay */}
+      <div
+        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-hidden
+      />
+      {/* panel */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="fixed inset-x-0 bottom-0 z-[210] max-h[80vh] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-sm font-semibold">{title}</div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-gray-300 dark:border-neutral-700"
+            onClick={onClose}
+          >
+            Zamknij
+          </Button>
+        </div>
+        {children}
+      </div>
+    </Portal>
+  );
 }
 
 /* ================= Anchored popover (desktop) ================= */
@@ -225,8 +267,12 @@ export default function MyPlayersFeature({
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  // 3-dots menu
+  // 3-dots menu (desktop)
   const [moreOpen, setMoreOpen] = useState(false);
+
+  // Mobile sheets (to mirror Observations UX)
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [colsSheetOpen, setColsSheetOpen] = useState(false);
 
   // anchors for desktop popovers
   const filterBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -563,22 +609,27 @@ export default function MyPlayersFeature({
         return;
       } else if (e.key.toLowerCase() === "x") {
         e.preventDefault();
-        setColsOpen((o) => !o);
+        // toggle columns UI depending on viewport
+        if (isMobile) setColsSheetOpen((o) => !o);
+        else setColsOpen((o) => !o);
         setFiltersOpen(false);
         setMoreOpen(false);
+        setMoreSheetOpen(false);
         return;
       } else if (e.key === "Escape") {
         setFiltersOpen(false);
         setColsOpen(false);
         setMoreOpen(false);
         setChipsOpen(false);
+        setMoreSheetOpen(false);
+        setColsSheetOpen(false);
         return;
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, [router, isMobile]);
 
   /* ====== filtersCount for badge ====== */
   const filtersCount =
@@ -648,7 +699,7 @@ export default function MyPlayersFeature({
               {/* Right: tabs block (fixed height) */}
               <div className="hidden md:block shrink-0 h-10">
                 <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-                  <TabsList className="h-10 rounded inline-flex items-center justify-center text-muted-foreground bg-stone-200 p-1 shadow-sm dark:bg-stone-900">
+                  <TabsList className="h-10 rounded inline-flex items-center justify-center text-muted-foreground bg-stone-100 p-1 shadow-sm dark:bg-stone-900">
                     <TabsTrigger value="all" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                       Wszyscy
                       <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
@@ -694,7 +745,6 @@ export default function MyPlayersFeature({
                         }}
                         onMouseLeave={() => {
                           if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
-                          // delay to allow moving into popover without layout shift
                           chipsHoverTimer.current = window.setTimeout(() => setChipsOpen(false), 160) as unknown as number;
                         }}
                         aria-expanded={chipsOpen}
@@ -769,6 +819,7 @@ export default function MyPlayersFeature({
                     setFiltersOpen((v) => !v);
                     setColsOpen(false);
                     setMoreOpen(false);
+                    setMoreSheetOpen(false);
                   }}
                   title="Filtry"
                 >
@@ -796,8 +847,14 @@ export default function MyPlayersFeature({
                   aria-label="Więcej"
                   aria-pressed={moreOpen}
                   onClick={() => {
-                    setMoreOpen((o) => !o);
-                    setFiltersOpen(false);
+                    if (isMobile) {
+                      setMoreSheetOpen(true);
+                      setFiltersOpen(false);
+                      setColsSheetOpen(false);
+                    } else {
+                      setMoreOpen((o) => !o);
+                      setFiltersOpen(false);
+                    }
                   }}
                   variant="outline"
                   className={`${controlH} w-10 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 ml-auto sm:ml-0`}
@@ -812,7 +869,7 @@ export default function MyPlayersFeature({
         {/* Tabs for mobile (unchanged counters), keeps default bg */}
         <div className="mt-2 md:hidden">
           <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-            <TabsList className="w-full justify-between rounded bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+            <TabsList className="w-full justify-between rounded  bg-stone-100 p-1 shadow-sm dark:bg-neutral-900">
               <TabsTrigger value="all" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                 Wszyscy
                 <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
@@ -1007,6 +1064,192 @@ export default function MyPlayersFeature({
                 </button>
               </div>
             </AnchoredPopover>
+          </>
+        )}
+
+        {/* ===== MOBILE SHEETS (Filtry / Więcej / Kolumny) ===== */}
+        {isMobile && (
+          <>
+            {/* Filtry — mobile sheet */}
+            <MobileSheet
+              open={filtersOpen}
+              onClose={() => setFiltersOpen(false)}
+              title="Filtry"
+            >
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                {POS.map((p) => (
+                  <label
+                    key={p}
+                    className="flex items-center justify-between rounded px-2 py-2 ring-1 ring-gray-200 dark:ring-neutral-700"
+                  >
+                    <span>{p}</span>
+                    <Checkbox
+                      checked={pos[p]}
+                      onCheckedChange={(v) => {
+                        setPos(prev => ({ ...prev, [p]: Boolean(v) }));
+                        setPage(1);
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <div className="mb-3">
+                <Label className="text-xs">Klub</Label>
+                <Input
+                  value={club}
+                  onChange={(e) => { setClub(e.target.value); setPage(1); }}
+                  className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Wiek min</Label>
+                  <Input
+                    type="number"
+                    value={ageMin}
+                    onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }}
+                    className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Wiek max</Label>
+                  <Input
+                    type="number"
+                    value={ageMax}
+                    onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }}
+                    className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                  />
+                </div>
+              </div>
+
+              {activeChips.length > 0 && (
+                <div className="mt-3 border-t border-gray-200 pt-2 dark:border-neutral-800">
+                  <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">Aktywne</div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {activeChips.map(c => (
+                      <span key={c.key} className="inline-flex items-center rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900">
+                        <span className="max-w-[160px] truncate">{c.label}</span>
+                        <button
+                          className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
+                          onClick={c.clear}
+                          aria-label="Wyczyść filtr"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 flex flex-wrap items-center justify-between">
+                <Button
+                  variant="outline"
+                  className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                  onClick={() => {
+                    setPos({ GK:true, DF:true, MF:true, FW:true });
+                    setClub("");
+                    setAgeMin("");
+                    setAgeMax("");
+                    setQ("");
+                    changeKnownScope("all");
+                    setPage(1);
+                  }}
+                >
+                  Wyczyść
+                </Button>
+                <Button
+                  className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                  onClick={() => setFiltersOpen(false)}
+                >
+                  Zastosuj
+                </Button>
+              </div>
+            </MobileSheet>
+
+            {/* Więcej — mobile sheet */}
+            <MobileSheet
+              open={moreSheetOpen}
+              onClose={() => setMoreSheetOpen(false)}
+              title="Więcej"
+            >
+              <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  onClick={() => {
+                    setMoreSheetOpen(false);
+                    setColsSheetOpen(true);
+                  }}
+                >
+                  <Columns3 className="h-4 w-4" /> Kolumny
+                </button>
+
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  onClick={() => {
+                    setScope("active");
+                    setMoreSheetOpen(false);
+                  }}
+                >
+                  <Users className="h-4 w-4" /> Aktywni
+                </button>
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  onClick={() => {
+                    setScope("trash");
+                    setMoreSheetOpen(false);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" /> Kosz
+                </button>
+
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  onClick={() => {
+                    setMoreSheetOpen(false);
+                    exportCSV();
+                  }}
+                >
+                  <FileDown className="h-4 w-4" /> Eksport CSV
+                </button>
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  onClick={() => {
+                    setMoreSheetOpen(false);
+                    exportExcel();
+                  }}
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                </button>
+              </div>
+            </MobileSheet>
+
+            {/* Kolumny — mobile sheet */}
+            <MobileSheet
+              open={colsSheetOpen}
+              onClose={() => setColsSheetOpen(false)}
+              title="Kolumny"
+            >
+              <div className="rounded border border-gray-200 dark:border-neutral-800">
+                {Object.keys(DEFAULT_COLS).map((k) => {
+                  const key = k as ColKey;
+                  return (
+                    <label
+                      key={key}
+                      className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                    >
+                      <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
+                      <Checkbox
+                        checked={visibleCols[key]}
+                        onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </MobileSheet>
           </>
         )}
 

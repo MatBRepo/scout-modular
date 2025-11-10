@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ThemeProvider } from "next-themes";
 import AppSidebar from "@/widgets/app-sidebar/AppSidebar";
 import PageTransition from "@/shared/ui/PageTransition";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Menu, PlusCircle, Mail, Lock, User as UserIcon, Eye, EyeOff, CheckCircle2,
   Loader2, ChevronRight
@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LoaderOverlay from "@/shared/ui/LoaderOverlay";
 import { motion, AnimatePresence, cubicBezier, type Variants, useReducedMotion } from "framer-motion";
+
+
 
 /* ===== Keys ===== */
 const AUTH_KEY = "s4s.auth";
@@ -681,7 +683,20 @@ function AppShell({
 }) {
   const crumbs = buildBreadcrumb(pathname);
 
-  const hideHeaderActions = /^\/players\/new(?:\/|$)/.test(pathname);
+
+const search = useSearchParams();
+
+const isObsCreateQuery =
+  pathname.startsWith("/observations") && search.get("create") === "1";
+
+const hideHeaderActions =
+  /^\/players\/new(?:\/|$)/.test(pathname) ||       // add player
+  /^\/players\/\d+(?:\/|$)/.test(pathname) ||       // player details (e.g. /players/8)
+  /^\/observations\/new(?:\/|$)/.test(pathname) ||  // add observation
+  /^\/observations\/\d+(?:\/|$)/.test(pathname) ||  // observation details
+  isObsCreateQuery;       
+
+
 
 
   return (
@@ -705,10 +720,10 @@ function AppShell({
             )}
 
             {/* ABSOLUTE breadcrumb on the left, aligned to app bar */}
-            <nav
-              aria-label="Breadcrumb"
-              className="absolute left-[44px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
-            >
+<nav
+  aria-label="Breadcrumb"
+  className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
+>
               <ol className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300">
                 {crumbs.map((c, i) => {
                   const last = i === crumbs.length - 1;
@@ -743,9 +758,8 @@ function AppShell({
               </ol>
             </nav>
 
-            {/* Actions row — same horizontal padding as content (md:px-6) */}
 {/* Actions row — same horizontal padding as content (md:px-6) */}
-<div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px]">
+<div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] px-3">
   {isAuthed ? (
     <motion.div
       initial={{ opacity: 0, y: -4 }}
@@ -822,7 +836,7 @@ function AppShell({
         </main>
 
         <footer
-          className="mx-auto w-full max-w-[1400px] px-3 pb-6 pt-2 text-xs text-dark dark:text-neutral-400 md:px-6 md:pb-8"
+          className="mx-auto w-full max-w-[1400px]  pb-6 pt-2 text-xs text-dark dark:text-neutral-400  md:pb-8 p-2"
           role="contentinfo"
         >
           © {new Date().getFullYear()} entrisoScouting • v1.0
