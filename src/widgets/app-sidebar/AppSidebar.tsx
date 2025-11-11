@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Users, NotebookPen, Sun, Moon, Globe,
   Settings, Map, Trophy, RefreshCw, ChevronDown,
-  TrendingUp, TriangleAlert, LogOut
+  TrendingUp, TriangleAlert, LogOut, X
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
@@ -248,7 +248,7 @@ export default function AppSidebar({
           {/* Simplified: plain link, no dropdown, no chevron */}
           <NavItem
             href="/players"
-            icon={<MyPlayersIconDefault/>}
+            icon={<MyPlayersIconDefault />}
             label="Moi zawodnicy"
             active={isPlayersSection}
             badge={playersBadge}
@@ -320,20 +320,20 @@ export default function AppSidebar({
   );
 
   /* ===== Brand: Flat, rounded, no gradient ===== */
-function BrandMark({ showName }: { showName: boolean }) {
-  return (
-    <a href="/" className="group flex items-center gap-2" aria-label="entrisoScouting - Start">
-      <div className="grid h-8 w-8 place-items-center rounded bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
-        <span className="text-[13px] font-bold leading-none">S</span>
-      </div>
-      {showName && (
-        <span className="hidden text-sm font-semibold tracking-tight sm:block">
-          entrisoScouting
-        </span>
-      )}
-    </a>
-  );
-}
+  function BrandMark({ showName }: { showName: boolean }) {
+    return (
+      <a href="/" className="group flex items-center gap-2" aria-label="entrisoScouting - Start">
+        <div className="grid h-8 w-8 place-items-center rounded bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
+          <span className="text-[13px] font-bold leading-none">S</span>
+        </div>
+        {showName && (
+          <span className="hidden text-sm font-semibold tracking-tight sm:block">
+            entrisoScouting
+          </span>
+        )}
+      </a>
+    );
+  }
 
   const inner = (
     <div className="flex h-full flex-col">
@@ -345,152 +345,149 @@ function BrandMark({ showName }: { showName: boolean }) {
           title="Wróć na kokpit"
           onClick={onClose}
         >
-           <BrandMark showName={!isAuthed} /> S4S
+          <BrandMark showName={!isAuthed} /> S4S
         </Link>
       </div>
 
       {/* Nav (role-grouped) */}
       <InnerNav />
 
-      <div className="mt-6 border-t border-gray-200 dark:border-neutral-800" />
-      <div className="mt-auto" />
-
-      {/* Account */}
-      <div ref={accountRef} className="relative">
-        <button
-          onClick={() => setAccountOpen(v => !v)}
-          className="flex w-full items-center justify-between rounded py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900"
-          aria-haspopup="menu"
-          aria-expanded={accountOpen}
-        >
-          <span className="flex items-center gap-1 text-xs opacity-70">
-            {labelForRole(role)}
-          </span>
-          <motion.span
-            aria-hidden
-            animate={{ rotate: accountOpen ? 180 : 0 }}
-            transition={{ duration: prefersReduced ? 0 : 0.16, ease: [0.2, 0.7, 0.2, 1] }}
-            className="inline-flex"
+      {/* Sticky bottom (account + theme + rank) */}
+      <div className="sticky bottom-0 -mx-3 mt-6 border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/90">
+        <div ref={accountRef} className="relative">
+          <button
+            onClick={() => setAccountOpen(v => !v)}
+            className="flex w-full items-center justify-between rounded py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900"
+            aria-haspopup="menu"
+            aria-expanded={accountOpen}
           >
-            <ChevronDown className="h-4 w-4" />
-          </motion.span>
-        </button>
-
-        <AnimatePresence initial={false}>
-          {accountOpen && (
-            <motion.div
-              role="menu"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: prefersReduced ? 0 : 0.14, ease: "easeOut" }}
-              className="absolute bottom-12 left-2 right-2 z-40 w-auto max-w-full overflow-x-hidden rounded border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
+            <span className="flex items-center gap-1 text-xs opacity-70">
+              {labelForRole(role)}
+            </span>
+            <motion.span
+              aria-hidden
+              animate={{ rotate: accountOpen ? 180 : 0 }}
+              transition={{ duration: prefersReduced ? 0 : 0.16, ease: [0.2, 0.7, 0.2, 1] }}
+              className="inline-flex"
             >
-              {/* START rank quick card */}
-              {role === "scout" && (
-                <div className="mx-1 mb-2 rounded bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
-                  <div className="mb-1 flex flex-wrap items-center justify-between">
-                    <span className="font-semibold whitespace-normal break-words">Twój poziom</span>
-                    <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(rank)}`}>
-                      <Trophy className="h-3.5 w-3.5" />
-                      {rankLabel(rank)}
-                    </span>
-                  </div>
+              <ChevronDown className="h-4 w-4" />
+            </motion.span>
+          </button>
 
-                  <div className="mt-1">
-                    <div className="mb-1 flex flex-wrap items-center justify-between whitespace-normal break-words">
-                      <span className="opacity-70">Postęp do {rankLabel(next as Rank)}</span>
-                      <span className="opacity-70">{pct}%</span>
-                    </div>
-                    <div className="h-2 w-full rounded bg-gray-200 dark:bg-neutral-800">
-                      <div className="h-2 rounded bg-indigo-500 transition-[width]" style={{ width: `${pct}%` }} />
-                    </div>
-                    <div className="mt-1 text-[10px] opacity-70 whitespace-normal break-words">
-                      Brakuje {remaining} pkt (np. {Math.ceil(remaining / 2)} aktywnych zawodników lub {remaining} obserwacji).
-                    </div>
-                  </div>
-
-                  <div className="mt-2 grid grid-cols-2 gap-1 text-[11px]">
-                    <div className="rounded p-2">
-                      <div className="opacity-60">Zawodnicy</div>
-                      <div className="text-sm font-semibold">{formatNum(playersCount)}</div>
-                    </div>
-                    <div className="rounded p-2">
-                      <div className="opacity-60">Obserwacje</div>
-                      <div className="text-sm font-semibold">{formatNum(obsCount)}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <button
-                      className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                      onClick={readCounts}
-                      title="Odśwież liczniki (LocalStorage)"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Odśwież
-                    </button>
-                  </div>
-                </div>
-              )}
-              {/* END rank quick card */}
-
-              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
-                Szybkie akcje
-              </div>
-              <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings" onClick={onClose}>
-                <Settings className="h-4 w-4" /> Ustawienia
-              </Link>
-              <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings/navigation" onClick={onClose}>
-                <Map className="h-4 w-4" /> Nawigacja
-              </Link>
-
-              <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
-
-              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
-                Rola
-              </div>
-              <RoleOption current={role} value="admin"       label="Admin"       onChange={setRoleAndClose} />
-              <RoleOption current={role} value="scout-agent" label="Scout Agent" onChange={setRoleAndClose} />
-              <RoleOption current={role} value="scout"       label="Scout"       onChange={setRoleAndClose} />
-
-              <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
-
-              <button
-                role="menuitem"
-                onClick={handleLogout}
-                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
-                title="Wyloguj się"
+          <AnimatePresence initial={false}>
+            {accountOpen && (
+              <motion.div
+                role="menu"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: prefersReduced ? 0 : 0.14, ease: "easeOut" }}
+                className="absolute bottom-12 left-0 right-0 z-40 w-auto max-w-full overflow-x-hidden rounded border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
               >
-                <LogOut className="h-4 w-4" />
-                Wyloguj
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                {/* START rank quick card */}
+                {role === "scout" && (
+                  <div className="mx-1 mb-2 rounded bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
+                    <div className="mb-1 flex flex-wrap items-center justify-between">
+                      <span className="font-semibold whitespace-normal break-words">Twój poziom</span>
+                      <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(rank)}`}>
+                        <Trophy className="h-3.5 w-3.5" />
+                        {rankLabel(rank)}
+                      </span>
+                    </div>
 
-        <div className="mt-2 border-t border-gray-200 dark:border-neutral-800" />
+                    <div className="mt-1">
+                      <div className="mb-1 flex flex-wrap items-center justify-between whitespace-normal break-words">
+                        <span className="opacity-70">Postęp do {rankLabel(next as Rank)}</span>
+                        <span className="opacity-70">{pct}%</span>
+                      </div>
+                      <div className="h-2 w-full rounded bg-gray-200 dark:bg-neutral-800">
+                        <div className="h-2 rounded bg-indigo-500 transition-[width]" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="mt-1 text-[10px] opacity-70 whitespace-normal break-words">
+                        Brakuje {remaining} pkt (np. {Math.ceil(remaining / 2)} aktywnych zawodników lub {remaining} obserwacji).
+                      </div>
+                    </div>
 
-        <div className="mt-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Trophy className={`h-3.5 w-3.5 ${rankTrophyColor(rank)}`} />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div
-              className="hidden min-w-0 shrink items-center gap-1 rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 sm:flex dark:border-neutral-800 dark:text-neutral-300"
-              title={`Aktywni: ${playersCount} • Obserwacje: ${obsCount} • Score: ${score}`}
-            >
-              <TrendingUp className="h-3.5 w-3.5 shrink-0 opacity-70" />
-              <span className="truncate">{formatNum(playersCount)} / {formatNum(obsCount)}</span>
+                    <div className="mt-2 grid grid-cols-2 gap-1 text-[11px]">
+                      <div className="rounded p-2">
+                        <div className="opacity-60">Zawodnicy</div>
+                        <div className="text-sm font-semibold">{formatNum(playersCount)}</div>
+                      </div>
+                      <div className="rounded p-2">
+                        <div className="opacity-60">Obserwacje</div>
+                        <div className="text-sm font-semibold">{formatNum(obsCount)}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                        onClick={readCounts}
+                        title="Odśwież liczniki (LocalStorage)"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Odśwież
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {/* END rank quick card */}
+
+                <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
+                  Szybkie akcje
+                </div>
+                <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings" onClick={onClose}>
+                  <Settings className="h-4 w-4" /> Ustawienia
+                </Link>
+                <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings/navigation" onClick={onClose}>
+                  <Map className="h-4 w-4" /> Nawigacja
+                </Link>
+
+                <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
+
+                <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
+                  Rola
+                </div>
+                <RoleOption current={role} value="admin"       label="Admin"       onChange={setRoleAndClose} />
+                <RoleOption current={role} value="scout-agent" label="Scout Agent" onChange={setRoleAndClose} />
+                <RoleOption current={role} value="scout"       label="Scout"       onChange={setRoleAndClose} />
+
+                <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
+
+                <button
+                  role="menuitem"
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
+                  title="Wyloguj się"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Wyloguj
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Trophy className={`h-3.5 w-3.5 ${rankTrophyColor(rank)}`} />
             </div>
-            <button
-              className="rounded border border-gray-300 p-1.5 text-xs transition hover:bg-stone-100 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              aria-label="Przełącz motyw (T)"
-              title="Przełącz motyw (T)"
-            >
-              {theme === "dark" ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <div
+                className="hidden min-w-0 shrink items-center gap-1 rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 sm:flex dark:border-neutral-800 dark:text-neutral-300"
+                title={`Aktywni: ${playersCount} • Obserwacje: ${obsCount} • Score: ${score}`}
+              >
+                <TrendingUp className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                <span className="truncate">{formatNum(playersCount)} / {formatNum(obsCount)}</span>
+              </div>
+              <button
+                className="rounded border border-gray-300 p-1.5 text-xs transition hover:bg-stone-100 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                aria-label="Przełącz motyw (T)"
+                title="Przełącz motyw (T)"
+              >
+                {theme === "dark" ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -537,6 +534,15 @@ function BrandMark({ showName }: { showName: boolean }) {
               exit={{ x: "-100%" }}
               transition={{ type: prefersReduced ? "tween" : "spring", stiffness: 420, damping: 34, mass: 0.9 }}
             >
+              {/* Close ("X") */}
+              <button
+                onClick={onClose}
+                aria-label="Zamknij panel"
+                className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
               {inner}
             </motion.aside>
           )}

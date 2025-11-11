@@ -836,7 +836,7 @@ function AppShell({
         </main>
 
         <footer
-          className="mx-auto w-full max-w-[1400px]  pb-6 pt-2 text-xs text-dark dark:text-neutral-400  md:pb-8 p-2"
+          className="mx-auto w-full max-w-[1400px]  pb-6 pt-2 text-xs text-dark dark:text-neutral-400  md:pb-8 p-3"
           role="contentinfo"
         >
           © {new Date().getFullYear()} entrisoScouting • v1.0
