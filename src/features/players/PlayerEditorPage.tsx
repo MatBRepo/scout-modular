@@ -1,5 +1,6 @@
 // src/app/(players)/players/[id]/PlayerEditorPage.tsx
 "use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toolbar } from "@/shared/ui/atoms";
@@ -88,36 +89,21 @@ function detailedFromBucket(pos?: Player["pos"]): DetailedPos {
 /* ------------------------------ Country combobox ------------------------------ */
 type Country = { code: string; name: string; flag: string };
 const COUNTRIES: Country[] = [
-  { code: "PL", name: "Polska", flag: "🇵🇱" },
-  { code: "DE", name: "Niemcy", flag: "🇩🇪" },
-  { code: "GB", name: "Anglia", flag: "🇬🇧" },
-  { code: "ES", name: "Hiszpania", flag: "🇪🇸" },
-  { code: "IT", name: "Włochy", flag: "🇮🇹" },
-  { code: "FR", name: "Francja", flag: "🇫🇷" },
-  { code: "NL", name: "Holandia", flag: "🇳🇱" },
-  { code: "PT", name: "Portugalia", flag: "🇵🇹" },
-  { code: "SE", name: "Szwecja", flag: "🇸🇪" },
-  { code: "NO", name: "Norwegia", flag: "🇳🇴" },
-  { code: "DK", name: "Dania", flag: "🇩🇰" },
-  { code: "BE", name: "Belgia", flag: "🇧🇪" },
-  { code: "CH", name: "Szwajcaria", flag: "🇨🇭" },
-  { code: "AT", name: "Austria", flag: "🇦🇹" },
-  { code: "CZ", name: "Czechy", flag: "🇨🇿" },
-  { code: "SK", name: "Słowacja", flag: "🇸🇰" },
-  { code: "UA", name: "Ukraina", flag: "🇺🇦" },
-  { code: "LT", name: "Litwa", flag: "🇱🇹" },
-  { code: "LV", name: "Łotwa", flag: "🇱🇻" },
-  { code: "EE", name: "Estonia", flag: "🇪🇪" },
-  { code: "HU", name: "Węgry", flag: "🇭🇺" },
-  { code: "RO", name: "Rumunia", flag: "🇷🇴" },
-  { code: "HR", name: "Chorwacja", flag: "🇭🇷" },
-  { code: "RS", name: "Serbia", flag: "🇷🇸" },
-  { code: "SI", name: "Słowenia", flag: "🇸🇮" },
-  { code: "GR", name: "Grecja", flag: "🇬🇷" },
-  { code: "TR", name: "Turcja", flag: "🇹🇷" },
-  { code: "US", name: "USA", flag: "🇺🇸" },
-  { code: "BR", name: "Brazylia", flag: "🇧🇷" },
-  { code: "AR", name: "Argentyna", flag: "🇦🇷" },
+  { code: "PL", name: "Polska", flag: "🇵🇱" }, { code: "DE", name: "Niemcy", flag: "🇩🇪" },
+  { code: "GB", name: "Anglia", flag: "🇬🇧" }, { code: "ES", name: "Hiszpania", flag: "🇪🇸" },
+  { code: "IT", name: "Włochy", flag: "🇮🇹" }, { code: "FR", name: "Francja", flag: "🇫🇷" },
+  { code: "NL", name: "Holandia", flag: "🇳🇱" }, { code: "PT", name: "Portugalia", flag: "🇵🇹" },
+  { code: "SE", name: "Szwecja", flag: "🇸🇪" }, { code: "NO", name: "Norwegia", flag: "🇳🇴" },
+  { code: "DK", name: "Dania", flag: "🇩🇰" }, { code: "BE", name: "Belgia", flag: "🇧🇪" },
+  { code: "CH", name: "Szwajcaria", flag: "🇨🇭" }, { code: "AT", name: "Austria", flag: "🇦🇹" },
+  { code: "CZ", name: "Czechy", flag: "🇨🇿" }, { code: "SK", name: "Słowacja", flag: "🇸🇰" },
+  { code: "UA", name: "Ukraina", flag: "🇺🇦" }, { code: "LT", name: "Litwa", flag: "🇱🇹" },
+  { code: "LV", name: "Łotwa", flag: "🇱🇻" }, { code: "EE", name: "Estonia", flag: "🇪🇪" },
+  { code: "HU", name: "Węgry", flag: "🇭🇺" }, { code: "RO", name: "Rumunia", flag: "🇷🇴" },
+  { code: "HR", name: "Chorwacja", flag: "🇭🇷" }, { code: "RS", name: "Serbia", flag: "🇷🇸" },
+  { code: "SI", name: "Słowenia", flag: "🇸🇮" }, { code: "GR", name: "Grecja", flag: "🇬🇷" },
+  { code: "TR", name: "Turcja", flag: "🇹🇷" }, { code: "US", name: "USA", flag: "🇺🇸" },
+  { code: "BR", name: "Brazylia", flag: "🇧🇷" }, { code: "AR", name: "Argentyna", flag: "🇦🇷" },
 ];
 
 function CountryCombobox({
@@ -180,7 +166,7 @@ function CountryCombobox({
   );
 }
 
-/* ------------------------------ Save pill ------------------------------ */
+/* ------------------------------ Small UI ------------------------------ */
 function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
   const base = "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
   const map = {
@@ -196,11 +182,18 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
   );
 }
 
+function Chip({ text }: { text: string }) {
+  return (
+    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-stone-100 px-2 py-0.5 text-[10px] opacity-80 dark:border-neutral-700 dark:bg-neutral-800">
+      {text}
+    </span>
+  );
+}
+
 /* ========================================= Page ========================================= */
 type Pos = Player["pos"];
 type ObsRec = Omit<Observation, "player"> & {
   player?: string;
-  /** Nowe, wieloosobowe powiązanie */
   players?: string[];
   mode?: "live" | "tv";
 };
@@ -218,7 +211,11 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const [basicOpen, setBasicOpen] = useState(true);
   const [extOpen, setExtOpen] = useState(false);
   const [gradeOpen, setGradeOpen] = useState(false);
-  const [obsOpen, setObsOpen] = useState(true);
+  const [obsOpen, setObsOpen] = useState(false);
+
+  // Extended tabs (controlled; mobile <select> + desktop tabs)
+  type ExtKey = "club" | "physical" | "contact" | "contract" | "stats";
+  const [extView, setExtView] = useState<ExtKey>("club");
 
   // Local extended fields
   const [ext, setExt] = useState({
@@ -230,7 +227,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     matches: "", goals: "", assists: "",
   });
 
-  // Grade tabs
+  // Grade tabs/values
   const RATING_KEYS = [
     "Motoryka – szybkość, wytrzymałość",
     "Siła, pojedynki, zwinność",
@@ -261,14 +258,13 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const [qaMode, setQaMode] = useState<"live" | "tv">("live");
   const [qaStatus, setQaStatus] = useState<ObsRec["status"]>("draft");
 
-  // --- Save pill helper (used also by Obserwacje autosave) ---
+  /* ------------------------------ Helpers ------------------------------ */
   function bumpSaving() {
     setSaveStatus("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
   }
 
-  // normalize players[] + legacy player
   const normalize = (arr: ObsRec[]) =>
     arr.map((o) => {
       const playersArray =
@@ -286,7 +282,6 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     } catch { setObservations([]); }
   }, []);
 
-  // --- AUTOSAVE for Obserwacje (any change that calls this persists + SavePill) ---
   const persistObservations = (next: ObsRec[]) => {
     bumpSaving();
     const norm = normalize(next);
@@ -317,21 +312,21 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     );
   }, [observations, obsQuery]);
 
-function addObservationForPlayer() {
-  if (!p) return;
-  const next: ObsRec = {
-    id: Date.now(),
-    match: qaMatch.trim() || "—",
-    date: qaDate || "",
-    time: qaTime || "",
-    status: qaStatus,
-    mode: qaMode,
-    players: [p.name],
-    player: p.name, // <-- DODANE: zgodność z typem Observation
-  };
-  persistObservations([next, ...observations]);
-  setQaMatch(""); setQaDate(""); setQaTime(""); setQaMode("live"); setQaStatus("draft");
-}
+  function addObservationForPlayer() {
+    if (!p) return;
+    const next: ObsRec = {
+      id: Date.now(),
+      match: qaMatch.trim() || "—",
+      date: qaDate || "",
+      time: qaTime || "",
+      status: qaStatus,
+      mode: qaMode,
+      players: [p.name],
+      player: p.name,
+    };
+    persistObservations([next, ...observations]);
+    setQaMatch(""); setQaDate(""); setQaTime(""); setQaMode("live"); setQaStatus("draft");
+  }
 
   function ensurePlayerLinked(o: ObsRec, name: string): ObsRec {
     const list = Array.isArray(o.players) ? o.players.slice() : [];
@@ -488,34 +483,221 @@ function addObservationForPlayer() {
   const totalGrade= cntNotes + cntAspects + cntFinal;
   const totalGradeMax = 1 + 10 + 1;
 
+  /* ------------------------------ ExtContent (shared) ------------------------------ */
+  function ExtContent({ view }: { view: ExtKey }) {
+    switch (view) {
+      case "club":
+        return (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <Label className="text-sm">Klub</Label>
+              <Input value={p.club} onChange={(e) => saveBasic({ club: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-sm">Drużyna/Rocznik</Label>
+              <Input
+                placeholder="U19 / Rezerwy…"
+                value={ext.teamLevel}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, teamLevel: v }));
+                  saveExtPatch({ teamLevel: v });
+                }}
+              />
+            </div>
+          </div>
+        );
+      case "physical":
+        return (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <Label className="text-sm">Wzrost (cm)</Label>
+              <Input
+                type="number"
+                value={ext.height}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, height: v }));
+                  saveExtPatch({ height: v });
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Waga (kg)</Label>
+              <Input
+                type="number"
+                value={ext.weight}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, weight: v }));
+                  saveExtPatch({ weight: v });
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Budowa</Label>
+              <Input
+                value={ext.body}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, body: v }));
+                  saveExtPatch({ body: v });
+                }}
+              />
+            </div>
+          </div>
+        );
+      case "contact":
+        return (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <Label className="text-sm">E-mail</Label>
+              <Input
+                type="email"
+                value={ext.email}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, email: v }));
+                  saveExtPatch({ email: v });
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Telefon</Label>
+              <Input
+                value={ext.phone}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, phone: v }));
+                  saveExtPatch({ phone: v });
+                }}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-sm">Agent</Label>
+              <Input
+                value={ext.agent}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, agent: v }));
+                  saveExtPatch({ agent: v });
+                }}
+              />
+            </div>
+          </div>
+        );
+      case "contract":
+        return (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <Label className="text-sm">Do kiedy</Label>
+              <Input
+                type="date"
+                value={ext.contractUntil}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, contractUntil: v }));
+                  saveExtPatch({ contractUntil: v });
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Kara/klauzula</Label>
+              <Input
+                value={ext.clause}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, clause: v }));
+                  saveExtPatch({ clause: v });
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Status</Label>
+              <Input
+                value={ext.status}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, status: v }));
+                  saveExtPatch({ status: v });
+                }}
+              />
+            </div>
+          </div>
+        );
+      case "stats":
+        return (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <Label className="text-sm">Mecze</Label>
+              <Input
+                type="number"
+                value={ext.matches}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, matches: v }));
+                  saveExtPatch({ matches: v });
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Gole</Label>
+              <Input
+                type="number"
+                value={ext.goals}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, goals: v }));
+                  saveExtPatch({ goals: v });
+                }}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Asysty</Label>
+              <Input
+                type="number"
+                value={ext.assists}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExt((s) => ({ ...s, assists: v }));
+                  saveExtPatch({ assists: v });
+                }}
+              />
+            </div>
+          </div>
+        );
+    }
+  }
+
   /* ========================================= Render ========================================= */
   return (
     <div className="w-full">
       <Toolbar
         title={`Profil: ${p.name}`}
         right={
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-4 flex w-full items-center gap-2 sm:gap-3 md:flex-nowrap justify-end">
             <SavePill state={saveStatus} />
-            <Button className="h-10 bg-gray-900 text-white hover:bg-gray-800" onClick={() => router.push("/players")}>
-              Wróć do listy
-            </Button>
+            <div className="ml-auto md:ml-0">
+              <Button className="h-10 bg-gray-900 text-white hover:bg-gray-800" onClick={() => router.push("/players")}>
+                Wróć do listy
+              </Button>
+            </div>
           </div>
         }
       />
 
       {isUnknown && (
-        <div className="mb-3 flex items-start justify-between gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
-          <div className="flex items-start gap-3">
+        <div className="mb-3 flex flex-col sm:flex-row sm:items-start justify-between gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
+          <div className="flex flex-1 items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <div className="font-medium">Edytujesz nieznanego zawodnika</div>
-              <div className="opacity-90">Uzupełnij przynajmniej <b>imię</b> lub <b>nazwisko</b>, aby oznaczyć profil jako znany.</div>
+              <div className="opacity-90">
+                Uzupełnij przynajmniej <b>imię</b> lub <b>nazwisko</b>, aby oznaczyć profil jako znany.
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="h-10 border-amber-300 dark:border-amber-800" onClick={cancelToOriginal}>
-              Anuluj
-            </Button>
+          <div className="flex w-full sm:w-auto items-center gap-2 justify-end sm:justify-normal sm:ml-4">
             <Button className="h-10 bg-gray-900 text-white hover:bg-gray-800" onClick={manualSave}>
               Zapisz
             </Button>
@@ -523,9 +705,7 @@ function addObservationForPlayer() {
         </div>
       )}
 
-      {/* ========== STACK: wszystkie sekcje 100% szerokości ========== */}
       <div className="space-y-4">
-
         {/* --- Podstawowe informacje --- */}
         <Card>
           <CardHeader className="p-0">
@@ -556,17 +736,29 @@ function addObservationForPlayer() {
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div>
                       <Label className="text-sm">Imię</Label>
-                      <Input
-                        value={p.firstName ?? ""}
-                        onChange={(e) => saveBasic({ firstName: e.target.value, name: `${e.target.value} ${p.lastName ?? ""}`.trim() })}
-                      />
+                      <div className="relative">
+                        <Input
+                          value={p.firstName ?? ""}
+                          onChange={(e) =>
+                            saveBasic({ firstName: e.target.value, name: `${e.target.value} ${p.lastName ?? ""}`.trim() })
+                          }
+                          className={isUnknown ? "pr-24" : undefined}
+                        />
+                        {isUnknown && <Chip text="Wymagane" />}
+                      </div>
                     </div>
                     <div>
                       <Label className="text-sm">Nazwisko</Label>
-                      <Input
-                        value={p.lastName ?? ""}
-                        onChange={(e) => saveBasic({ lastName: e.target.value, name: `${p.firstName ?? ""} ${e.target.value}`.trim() })}
-                      />
+                      <div className="relative">
+                        <Input
+                          value={p.lastName ?? ""}
+                          onChange={(e) =>
+                            saveBasic({ lastName: e.target.value, name: `${p.firstName ?? ""} ${e.target.value}`.trim() })
+                          }
+                          className={isUnknown ? "pr-24" : undefined}
+                        />
+                        {isUnknown && <Chip text="Wymagane" />}
+                      </div>
                     </div>
                     <div>
                       <Label className="text-sm">Pozycja</Label>
@@ -641,195 +833,52 @@ function addObservationForPlayer() {
             >
               <AccordionItem value="ext">
                 <AccordionContent id="ext-panel">
-                  <Tabs defaultValue="club" className="w-full">
-                    <TabsList className="grid w-full grid-cols-5">
-                      <TabsTrigger value="club">Klub</TabsTrigger>
-                      <TabsTrigger value="physical">Fizyczne</TabsTrigger>
-                      <TabsTrigger value="contact">Kontakt</TabsTrigger>
-                      <TabsTrigger value="contract">Kontrakt</TabsTrigger>
-                      <TabsTrigger value="stats">Statystyki</TabsTrigger>
-                    </TabsList>
+                  {/* Mobile: Select; Desktop: Tabs (both bound to extView) */}
+                  <div className="md:hidden">
+                    <Label className="mb-1 block text-sm">Sekcja</Label>
+                    <select
+                      value={extView}
+                      onChange={(e) => setExtView(e.target.value as ExtKey)}
+                      className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                    >
+                      <option value="club">Klub</option>
+                      <option value="physical">Fizyczne</option>
+                      <option value="contact">Kontakt</option>
+                      <option value="contract">Kontrakt</option>
+                      <option value="stats">Statystyki</option>
+                    </select>
+                    <div className="mt-4">
+                      <ExtContent view={extView} />
+                    </div>
+                  </div>
 
-                    <TabsContent value="club" className="mt-4">
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div>
-                          <Label className="text-sm">Klub</Label>
-                          <Input value={p.club} onChange={(e) => saveBasic({ club: e.target.value })} />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Drużyna/Rocznik</Label>
-                          <Input
-                            placeholder="U19 / Rezerwy…"
-                            value={ext.teamLevel}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, teamLevel: v }));
-                              saveExtPatch({ teamLevel: v });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </TabsContent>
+                  <div className="hidden md:block">
+                    <Tabs value={extView} onValueChange={(v: any) => setExtView(v)} className="w-full">
+                      <TabsList className="grid w-full grid-cols-5">
+                        <TabsTrigger value="club">Klub</TabsTrigger>
+                        <TabsTrigger value="physical">Fizyczne</TabsTrigger>
+                        <TabsTrigger value="contact">Kontakt</TabsTrigger>
+                        <TabsTrigger value="contract">Kontrakt</TabsTrigger>
+                        <TabsTrigger value="stats">Statystyki</TabsTrigger>
+                      </TabsList>
 
-                    <TabsContent value="physical" className="mt-4">
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <div>
-                          <Label className="text-sm">Wzrost (cm)</Label>
-                          <Input
-                            type="number"
-                            value={ext.height}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, height: v }));
-                              saveExtPatch({ height: v });
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Waga (kg)</Label>
-                          <Input
-                            type="number"
-                            value={ext.weight}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, weight: v }));
-                              saveExtPatch({ weight: v });
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Budowa</Label>
-                          <Input
-                            value={ext.body}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, body: v }));
-                              saveExtPatch({ body: v });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="contact" className="mt-4">
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div>
-                          <Label className="text-sm">E-mail</Label>
-                          <Input
-                            type="email"
-                            value={ext.email}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, email: v }));
-                              saveExtPatch({ email: v });
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Telefon</Label>
-                          <Input
-                            value={ext.phone}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, phone: v }));
-                              saveExtPatch({ phone: v });
-                            }}
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label className="text-sm">Agent</Label>
-                          <Input
-                            value={ext.agent}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, agent: v }));
-                              saveExtPatch({ agent: v });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="contract" className="mt-4">
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <div>
-                          <Label className="text-sm">Do kiedy</Label>
-                          <Input
-                            type="date"
-                            value={ext.contractUntil}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, contractUntil: v }));
-                              saveExtPatch({ contractUntil: v });
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Kara/klauzula</Label>
-                          <Input
-                            value={ext.clause}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, clause: v }));
-                              saveExtPatch({ clause: v });
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Status</Label>
-                          <Input
-                            value={ext.status}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, status: v }));
-                              saveExtPatch({ status: v });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="stats" className="mt-4">
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <div>
-                          <Label className="text-sm">Mecze</Label>
-                          <Input
-                            type="number"
-                            value={ext.matches}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, matches: v }));
-                              saveExtPatch({ matches: v });
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Gole</Label>
-                          <Input
-                            type="number"
-                            value={ext.goals}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, goals: v }));
-                              saveExtPatch({ goals: v });
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Asysty</Label>
-                          <Input
-                            type="number"
-                            value={ext.assists}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setExt((s) => ({ ...s, assists: v }));
-                              saveExtPatch({ assists: v });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
+                      <TabsContent value="club" className="mt-4">
+                        <ExtContent view="club" />
+                      </TabsContent>
+                      <TabsContent value="physical" className="mt-4">
+                        <ExtContent view="physical" />
+                      </TabsContent>
+                      <TabsContent value="contact" className="mt-4">
+                        <ExtContent view="contact" />
+                      </TabsContent>
+                      <TabsContent value="contract" className="mt-4">
+                        <ExtContent view="contract" />
+                      </TabsContent>
+                      <TabsContent value="stats" className="mt-4">
+                        <ExtContent view="stats" />
+                      </TabsContent>
+                    </Tabs>
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -931,21 +980,30 @@ function addObservationForPlayer() {
               onClick={() => setObsOpen((v) => !v)}
               className="flex w-full items-center justify-between rounded-t-lg px-6 py-4 text-left"
             >
+              <div className="text-2xl font-semibold leading-none tracking-tight">
+                Obserwacje
+              </div>
               <div className="flex items-center gap-3">
-                <div className="text-2xl font-semibold leading-none tracking-tight">Obserwacje</div>
                 <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
                   {playerObs.length}
                 </span>
+                <ChevronDown
+                  className={cn("h-5 w-5 transition-transform", obsOpen ? "rotate-180" : "rotate-0")}
+                />
               </div>
-              <ChevronDown className={cn("h-5 w-5 transition-transform", obsOpen ? "rotate-180" : "rotate-0")} />
             </button>
           </CardHeader>
-          <CardContent className="p-0">
-            <Accordion type="single" collapsible value={obsOpen ? "obs" : undefined} onValueChange={(v) => setObsOpen(v === "obs")}>
+
+          <CardContent className="p-6 pt-0">
+            <Accordion
+              type="single"
+              collapsible
+              value={obsOpen ? "obs" : undefined}
+              onValueChange={(v) => setObsOpen(v === "obs")}
+            >
               <AccordionItem value="obs">
                 <AccordionContent id="obs-panel" className="p-6">
                   <Tabs defaultValue="new" className="w-full">
-                    {/* CHANGED: Nowa / Istniejąca => h-8 */}
                     <TabsList className="mb-2 inline-flex h-10 items-center rounded bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
                       <TabsTrigger
                         value="new"
@@ -963,7 +1021,7 @@ function addObservationForPlayer() {
 
                     {/* NEW */}
                     <TabsContent value="new" className="mt-2 space-y-4">
-                      <div className="rounded  dark:border-neutral-800">
+                      <div className="rounded">
                         <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">Mecz</div>
                         <div className="mb-3 text-xs text-dark dark:text-neutral-400">
                           Wpisz drużyny — pole „Mecz” składa się automatycznie.
@@ -1023,7 +1081,6 @@ function addObservationForPlayer() {
                           </div>
                         </div>
 
-                        {/* Styl jak w Observations.tsx */}
                         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
                             <Label className="text-sm">Tryb</Label>
