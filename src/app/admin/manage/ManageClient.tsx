@@ -892,7 +892,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
     <>
       <div className="fixed inset-0 z-[100] bg-black/40" onClick={onClose} />
       <div
-        className="fixed inset-x-3 top-[8vh] z-[101] mx-auto max-w-2xl rounded-xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
+        className="fixed inset-x-3 top-[8vh] z-[101] mx-auto max-w-2xl rounded border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
         role="dialog" aria-modal="true"
       >
         <div className="mb-3 flex flex-wrap items-center justify-between">

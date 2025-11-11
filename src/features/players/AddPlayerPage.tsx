@@ -365,7 +365,7 @@ export default function AddPlayerPage() {
             <CardContent className="p-0">
               <Accordion type="single" collapsible value={basicOpen ? "basic" : undefined} onValueChange={(v) => setBasicOpen(v === "basic")} className="w-full">
                 <AccordionItem value="basic" className="border-0">
-                  <AccordionContent id="basic-panel" className="px-6 pb-6 pt-2">
+                  <AccordionContent id="basic-panel" className="p-6">
                     {choice === "known" ? (
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 gap-4">
@@ -533,7 +533,7 @@ export default function AddPlayerPage() {
             <CardContent className="p-0">
               <Accordion type="single" collapsible value={gradeOpen ? "grade" : undefined} onValueChange={(v) => setGradeOpen(v === "grade")} className="w-full">
                 <AccordionItem value="grade" className="border-0">
-                  <AccordionContent id="grade-panel" className="px-6 pb-6 pt-2">
+                  <AccordionContent id="grade-panel" className="p-6">
                     {/* No nested accordions – ONLY headers + rows */}
                     <SectionHeader>Kategorie bazowe</SectionHeader>
                     <div className="grid grid-cols-1 gap-2">

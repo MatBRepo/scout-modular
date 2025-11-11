@@ -110,7 +110,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 sm:p-6">
+    <section className="w-full rounded border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 sm:p-6">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3 sm:mb-4">
         <div className="min-w-0">
           <h2 className="text-2xl font-semibold leading-none tracking-tight text-gray-900 dark:text-neutral-50">
@@ -623,7 +623,7 @@ export function ObservationEditor({
             </div>
           )}
 
-          <div className="w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+          <div className="w-full overflow-x-auto rounded border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                 <tr className="text-xs sm:text-sm">

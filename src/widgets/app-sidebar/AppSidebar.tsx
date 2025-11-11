@@ -384,7 +384,7 @@ function BrandMark({ showName }: { showName: boolean }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: prefersReduced ? 0 : 0.14, ease: "easeOut" }}
-              className="absolute bottom-12 left-2 right-2 z-40 w-auto max-w-full overflow-x-hidden rounded-xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
+              className="absolute bottom-12 left-2 right-2 z-40 w-auto max-w-full overflow-x-hidden rounded border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
             >
               {/* START rank quick card */}
               {role === "scout" && (
@@ -512,7 +512,7 @@ function BrandMark({ showName }: { showName: boolean }) {
           {open && (
             <motion.div
               key="sb-backdrop"
-              className="fixed inset-0 z-40 bg-black/70 lg:hidden"
+              className="fixed inset-0 z-50 bg-black/70 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -601,7 +601,7 @@ function SubNavItem({ href, label, active }: { href: string; label: string; acti
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+      className={`flex min-w-0 items-center gap-2 rounded px-3 py-1.5 text-[14px] transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
         active ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
                : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}

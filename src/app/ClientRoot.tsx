@@ -371,7 +371,7 @@ function AuthGate({
 
             {/* Tabs */}
             <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")}>
-              <TabsList className="mb-4 grid w-full grid-cols-2 gap-1 rounded-lg bg-transparent p-0">
+              <TabsList className="mb-4 grid w-full grid-cols-2 gap-1 rounded bg-transparent p-0">
                 <TabsTrigger
                   value="login"
                   className="rounded px-4 py-2 data-[state=active]:bg-stone-100 dark:data-[state=active]:bg-neutral-900"
@@ -756,7 +756,7 @@ function AppShell({
             </nav>
 
             {/* Actions row */}
-            <div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] px-3">
+            <div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] px-3 md:px-0">
               {isAuthed ? (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
@@ -766,19 +766,20 @@ function AppShell({
                 >
                   {/* Mobile: icons */}
                   <div className="flex items-center gap-2 md:hidden">
-                    <Button
-                      size="icon"
-                      className="h-9 w-9 rounded bg-gray-900 text-white hover:bg-gray-800"
-                      aria-label="Dodaj zawodnika"
-                      onClick={onAddPlayer}
-                      title="Dodaj zawodnika"
-                    >
-                      {/* force white on mobile, different color on md+ if you want */}
-                      <AddPlayerIcon
-                        className="h-4 w-4"
-                        strokeWidthAll={1.8}
-                      />
-                    </Button>
+<Button
+  
+  className="h-9 w-9 rounded bg-gray-900 text-white hover:bg-gray-800"
+  aria-label="Dodaj zawodnika"
+  onClick={onAddPlayer}
+  title="Dodaj zawodnika"
+>
+  <AddPlayerIcon
+    className="h-4 w-4 text-white"
+  />
+</Button>
+
+
+
 
                     <Button
                       size="icon"
@@ -827,7 +828,7 @@ function AppShell({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: easeOutCustom }}
-              className="mx-auto w-full max-w-[1400px] rounded-xl bg-transparent p-0 shadow-none"
+              className="mx-auto w-full max-w-[1400px] rounded bg-transparent p-0 shadow-none"
             >
               {children}
             </motion.div>

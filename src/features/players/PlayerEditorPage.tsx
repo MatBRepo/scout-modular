@@ -943,7 +943,7 @@ function addObservationForPlayer() {
           <CardContent className="p-0">
             <Accordion type="single" collapsible value={obsOpen ? "obs" : undefined} onValueChange={(v) => setObsOpen(v === "obs")}>
               <AccordionItem value="obs">
-                <AccordionContent id="obs-panel" className="px-6 pb-6 pt-2">
+                <AccordionContent id="obs-panel" className="p-6">
                   <Tabs defaultValue="new" className="w-full">
                     {/* CHANGED: Nowa / Istniejąca => h-8 */}
                     <TabsList className="mb-2 inline-flex h-10 items-center rounded bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
@@ -1109,7 +1109,7 @@ function addObservationForPlayer() {
 
                     {/* EXISTING */}
                     <TabsContent value="existing" className="mt-2 space-y-3">
-                      <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
+                      <div className="flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
                         <Search className="h-4 w-4 opacity-70" />
                         <Input
                           value={obsQuery}

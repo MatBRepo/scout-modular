@@ -1809,7 +1809,7 @@ function QuickObservation({
   }, [observations, obsQuery]);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-0 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
+    <div className="rounded border border-gray-200 bg-white p-0 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-neutral-800">
         <div className="min-w-0">
@@ -1861,7 +1861,7 @@ function QuickObservation({
 
           {/* NEW */}
           <TabsContent value="new" className="mt-2 space-y-4">
-            <div className="rounded-xl border border-gray-200 p-4 dark:border-neutral-800">
+            <div className="rounded border border-gray-200 p-4 dark:border-neutral-800">
               <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">Mecz</div>
               <div className="mb-3 text-xs text-dark dark:text-neutral-400">
                 Wpisz drużyny — pole „Mecz” składa się automatycznie.
@@ -1910,7 +1910,7 @@ function QuickObservation({
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-gray-200 p-4 dark:border-neutral-800">
+              <div className="rounded border border-gray-200 p-4 dark:border-neutral-800">
                 <Label>Tryb</Label>
                 <div className="mt-2 inline-flex overflow-hidden rounded border">
                   {(["live", "tv"] as const).map((m) => (
@@ -1928,7 +1928,7 @@ function QuickObservation({
                   ))}
                 </div>
               </div>
-              <div className="rounded-xl border border-gray-200 p-4 dark:border-neutral-800">
+              <div className="rounded border border-gray-200 p-4 dark:border-neutral-800">
                 <Label>Status</Label>
                 <div className="mt-2 inline-flex overflow-hidden rounded border">
                   {(["draft", "final"] as const).map((s) => (

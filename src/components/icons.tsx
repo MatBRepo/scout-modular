@@ -7,17 +7,21 @@ type BaseIconProps = React.SVGProps<SVGSVGElement> & {
   strokeWidthAll?: number;
   /** Override ALL stroke colors in the icon (sets CSS `color`, used by stroke="currentColor") */
   strokeColorAll?: string;
+  /** If true, add vectorEffect="non-scaling-stroke" to all paths */
+  nonScalingStroke?: boolean;
 };
 
 function a11yProps(rest: React.SVGProps<SVGSVGElement>) {
-  const hasLabel =
-    typeof rest["aria-label"] === "string" && rest["aria-label"]!.length > 0;
+  const hasLabel = typeof rest["aria-label"] === "string" && rest["aria-label"]!.length > 0;
   return {
     role: hasLabel ? "img" : undefined,
     "aria-hidden": hasLabel ? undefined : true,
     focusable: false,
   } as const;
 }
+
+/** tiny helper to apply vectorEffect on every <path> we control */
+const ns = (on?: boolean) => (on ? { vectorEffect: "non-scaling-stroke" as const } : undefined);
 
 /* ----------------------------------------
    ADD PLAYER (T-shirt +)
@@ -26,7 +30,7 @@ export const AddPlayerIcon = React.forwardRef<
   SVGSVGElement,
   BaseIconProps & { className?: string; plusStroke?: number; shirtStroke?: number }
 >(function AddPlayerIcon(
-  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, plusStroke = 2, shirtStroke = 20, style, ...rest },
+  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, nonScalingStroke, plusStroke = 2, shirtStroke = 20, style, ...rest },
   ref
 ) {
   const plusW = strokeWidthAll ?? plusStroke;
@@ -51,6 +55,7 @@ export const AddPlayerIcon = React.forwardRef<
           strokeWidth={plusW}
           strokeLinecap="round"
           strokeLinejoin="round"
+          {...ns(nonScalingStroke)}
         />
       </g>
       {/* shirt */}
@@ -61,13 +66,13 @@ export const AddPlayerIcon = React.forwardRef<
           strokeWidth={shirtW}
           strokeLinecap="round"
           strokeLinejoin="round"
+          {...ns(nonScalingStroke)}
         />
       </g>
     </svg>
   );
 });
 AddPlayerIcon.displayName = "AddPlayerIcon";
-
 
 /* ----------------------------------------
    PLAYER ONLY T-SHIRT
@@ -76,11 +81,10 @@ export const PlayerOnlyTshirt = React.forwardRef<
   SVGSVGElement,
   BaseIconProps & { className?: string; shirtStroke?: number }
 >(function PlayerOnlyTshirt(
-  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, shirtStroke = 18.8, style, ...rest },
+  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, nonScalingStroke, shirtStroke = 18.8, style, ...rest },
   ref
 ) {
   const shirtW = strokeWidthAll ?? shirtStroke;
-
   return (
     <svg
       ref={ref}
@@ -99,13 +103,13 @@ export const PlayerOnlyTshirt = React.forwardRef<
           strokeWidth={shirtW}
           strokeLinecap="round"
           strokeLinejoin="round"
+          {...ns(nonScalingStroke)}
         />
       </g>
     </svg>
   );
 });
 PlayerOnlyTshirt.displayName = "PlayerOnlyTshirt";
-
 
 /* ----------------------------------------
    MY PLAYERS (outer torso + inner shield)
@@ -114,7 +118,7 @@ export const MyPlayersIconDefault = React.forwardRef<
   SVGSVGElement,
   BaseIconProps & { className?: string; outerStroke?: number; innerStroke?: number }
 >(function MyPlayersIconDefault(
-  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, outerStroke = 21.8, innerStroke = 31.67, style, ...rest },
+  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, nonScalingStroke, outerStroke = 21.8, innerStroke = 31.67, style, ...rest },
   ref
 ) {
   const outerW = strokeWidthAll ?? outerStroke;
@@ -139,6 +143,7 @@ export const MyPlayersIconDefault = React.forwardRef<
           strokeWidth={outerW}
           strokeLinecap="round"
           strokeLinejoin="round"
+          {...ns(nonScalingStroke)}
         />
         {/* inner shield */}
         <g transform="matrix(0.65567,0,0,0.65567,107.648,88.3778)">
@@ -148,6 +153,7 @@ export const MyPlayersIconDefault = React.forwardRef<
             strokeWidth={innerW}
             strokeLinecap="round"
             strokeLinejoin="round"
+            {...ns(nonScalingStroke)}
           />
         </g>
       </g>
@@ -163,7 +169,7 @@ export const AddObservationIcon = React.forwardRef<
   SVGSVGElement,
   BaseIconProps & { className?: string; plusStroke?: number }
 >(function AddObservationIcon(
-  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, plusStroke = 2, style, ...rest },
+  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, nonScalingStroke, plusStroke = 2, style, ...rest },
   ref
 ) {
   const plusW = strokeWidthAll ?? plusStroke;
@@ -187,6 +193,7 @@ export const AddObservationIcon = React.forwardRef<
           strokeWidth={plusW}
           strokeLinecap="round"
           strokeLinejoin="round"
+          {...ns(nonScalingStroke)}
         />
       </g>
       {/* eye */}
@@ -198,6 +205,7 @@ export const AddObservationIcon = React.forwardRef<
             strokeWidth={plusW}
             strokeLinecap="round"
             strokeLinejoin="round"
+            {...ns(nonScalingStroke)}
           />
         </g>
         <g transform="matrix(1,0,0,0.929401,0,0.847194)">
@@ -207,6 +215,7 @@ export const AddObservationIcon = React.forwardRef<
             strokeWidth={plusW}
             strokeLinecap="round"
             strokeLinejoin="round"
+            {...ns(nonScalingStroke)}
           />
         </g>
       </g>
@@ -222,7 +231,7 @@ export const KnownPlayerIcon = React.forwardRef<
   SVGSVGElement,
   BaseIconProps & { className?: string; shieldStroke?: number; markStroke?: number }
 >(function KnownPlayerIcon(
-  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, shieldStroke = 16, markStroke = 3.2, style, ...rest },
+  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, nonScalingStroke, shieldStroke = 16, markStroke = 3.2, style, ...rest },
   ref
 ) {
   const shieldW = strokeWidthAll ?? shieldStroke;
@@ -247,6 +256,7 @@ export const KnownPlayerIcon = React.forwardRef<
           strokeWidth={shieldW}
           strokeLinecap="round"
           strokeLinejoin="round"
+          {...ns(nonScalingStroke)}
         />
       </g>
       {/* check */}
@@ -257,6 +267,7 @@ export const KnownPlayerIcon = React.forwardRef<
           strokeWidth={markW}
           strokeLinecap="round"
           strokeLinejoin="round"
+          {...ns(nonScalingStroke)}
         />
       </g>
     </svg>
@@ -271,7 +282,7 @@ export const UnknownPlayerIcon = React.forwardRef<
   SVGSVGElement,
   BaseIconProps & { className?: string; shieldStroke?: number; xStroke?: number }
 >(function UnknownPlayerIcon(
-  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, shieldStroke = 16, xStroke = 3.4, style, ...rest },
+  { className = "h-4 w-4", strokeWidthAll, strokeColorAll, nonScalingStroke, shieldStroke = 16, xStroke = 3.4, style, ...rest },
   ref
 ) {
   const shieldW = strokeWidthAll ?? shieldStroke;
@@ -296,6 +307,7 @@ export const UnknownPlayerIcon = React.forwardRef<
           strokeWidth={shieldW}
           strokeLinecap="round"
           strokeLinejoin="round"
+          {...ns(nonScalingStroke)}
         />
       </g>
       {/* X */}
@@ -306,6 +318,7 @@ export const UnknownPlayerIcon = React.forwardRef<
           strokeWidth={xW}
           strokeLinecap="round"
           strokeLinejoin="round"
+          {...ns(nonScalingStroke)}
         />
       </g>
     </svg>
