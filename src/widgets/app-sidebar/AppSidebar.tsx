@@ -319,7 +319,6 @@ export default function AppSidebar({
     </nav>
   );
 
-  /* ===== Brand: Flat, rounded, no gradient ===== */
   function BrandMark({ showName }: { showName: boolean }) {
     return (
       <a href="/" className="group flex items-center gap-2" aria-label="entrisoScouting - Start">
@@ -335,9 +334,12 @@ export default function AppSidebar({
     );
   }
 
+  /* ===== Inner layout: 3-row grid =====
+     rows: [header][scrollable middle][bottom fixed]
+     This guarantees bottom is visually pinned, and only middle scrolls. */
   const inner = (
-    <div className="flex h-full flex-col">
-      {/* Header */}
+    <div className="grid h-full grid-rows-[auto,1fr,auto]">
+      {/* Header (row 1) */}
       <div className="mb-4 flex flex-wrap items-center justify-between">
         <Link
           href="/"
@@ -349,11 +351,13 @@ export default function AppSidebar({
         </Link>
       </div>
 
-      {/* Nav (role-grouped) */}
-      <InnerNav />
+      {/* Middle scrollable content (row 2) */}
+      <div className="min-h-0 overflow-y-auto pr-1">
+        <InnerNav />
+      </div>
 
-      {/* Sticky bottom (account + theme + rank) */}
-      <div className="sticky bottom-0 -mx-3 mt-6 border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/90">
+      {/* Bottom fixed panel (row 3) */}
+      <div className="-mx-3 mt-6 border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/90">
         <div ref={accountRef} className="relative">
           <button
             onClick={() => setAccountOpen(v => !v)}
@@ -494,12 +498,13 @@ export default function AppSidebar({
     </div>
   );
 
-  /* ====== PANEL STYLES (shadcn-ish) ====== */
+  /* ====== PANEL STYLES (shadcn-ish) ======
+     NOTE: remove overflow-y from aside and keep it on middle row (inner) */
   const asideDesktop =
-    "h-screen w-64 overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white p-3 shadow-sm ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
+    "h-screen w-64 overflow-hidden border-r border-slate-200 bg-white p-3 shadow-sm ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
 
   const asideMobile =
-    "h-screen w-[75vw] max-w-[380px] overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white p-3 shadow-xl ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
+    "h-screen w-[75vw] max-w-[380px] overflow-hidden border-r border-slate-200 bg-white p-3 shadow-xl ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
 
   if (variant === "mobile") {
     return (
