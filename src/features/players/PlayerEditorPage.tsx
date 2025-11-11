@@ -2,22 +2,28 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Crumb, Toolbar } from "@/shared/ui/atoms";
+import { Toolbar } from "@/shared/ui/atoms";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, CheckCircle2, Loader2, ChevronsUpDown, Check } from "lucide-react";
-import type { Player } from "@/shared/types";
-
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  ChevronsUpDown,
+  Check,
+  ChevronDown,
+  Search,
+} from "lucide-react";
+import type { Player, Observation } from "@/shared/types";
 import {
   Select,
   SelectTrigger,
@@ -25,7 +31,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -36,29 +41,13 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import StarRating from "@/shared/ui/StarRating";
 
-/* ------------------------------------------------------------------
-   Detailed positions (same as in AddPlayerPage) + mapping to bucket
-------------------------------------------------------------------- */
+/* ------------------------------ Positions ------------------------------ */
 type BucketPos = "GK" | "DF" | "MF" | "FW";
-type DetailedPos =
-  | "GK"
-  | "CB"
-  | "LB"
-  | "RB"
-  | "CDM"
-  | "CM"
-  | "CAM"
-  | "LW"
-  | "RW"
-  | "ST";
+type DetailedPos = "GK" | "CB" | "LB" | "RB" | "CDM" | "CM" | "CAM" | "LW" | "RW" | "ST";
 
-const POS_DATA: Array<{
-  value: DetailedPos;
-  code: string;
-  name: string;
-  desc: string;
-}> = [
+const POS_DATA: Array<{ value: DetailedPos; code: string; name: string; desc: string }> = [
   { value: "GK", code: "GK", name: "Bramkarz", desc: "Odbicia, gra na linii, wyjścia i gra nogami." },
   { value: "CB", code: "CB", name: "Środkowy obrońca", desc: "Gra w powietrzu, ustawienie, wyprowadzenie." },
   { value: "LB", code: "LB", name: "Lewy obrońca", desc: "Obrona strony, dośrodkowania, wsparcie ataku." },
@@ -73,42 +62,30 @@ const POS_DATA: Array<{
 
 const toBucket = (p: DetailedPos): BucketPos => {
   switch (p) {
-    case "GK":
-      return "GK";
+    case "GK": return "GK";
     case "CB":
     case "LB":
-    case "RB":
-      return "DF";
+    case "RB": return "DF";
     case "CDM":
     case "CM":
     case "CAM":
     case "LW":
-    case "RW":
-      return "MF";
-    case "ST":
-      return "FW";
+    case "RW": return "MF";
+    case "ST": return "FW";
   }
 };
 
-// Fallback detailed position from bucket if meta.detailedPos missing
 function detailedFromBucket(pos?: Player["pos"]): DetailedPos {
   switch (pos) {
-    case "GK":
-      return "GK";
-    case "DF":
-      return "CB";
-    case "MF":
-      return "CM";
-    case "FW":
-      return "ST";
-    default:
-      return "CM";
+    case "GK": return "GK";
+    case "DF": return "CB";
+    case "MF": return "CM";
+    case "FW": return "ST";
+    default: return "CM";
   }
 }
 
-/* ----------------------------------------
-   Countries (flags) + combobox (same as AddPlayerPage)
------------------------------------------ */
+/* ------------------------------ Country combobox ------------------------------ */
 type Country = { code: string; name: string; flag: string };
 const COUNTRIES: Country[] = [
   { code: "PL", name: "Polska", flag: "🇵🇱" },
@@ -144,17 +121,10 @@ const COUNTRIES: Country[] = [
 ];
 
 function CountryCombobox({
-  value,
-  onChange,
-  error,
-}: {
-  value: string; // country name
-  onChange: (next: string) => void;
-  error?: string;
-}) {
+  value, onChange, error,
+}: { value: string; onChange: (next: string) => void; error?: string }) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
-
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
@@ -173,9 +143,7 @@ function CountryCombobox({
                   <span className="text-base leading-none">{selected.flag}</span>
                   <span className="truncate">{selected.name}</span>
                 </>
-              ) : (
-                "Wybierz kraj"
-              )}
+              ) : ("Wybierz kraj")}
             </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </button>
@@ -192,10 +160,7 @@ function CountryCombobox({
                     <CommandItem
                       key={c.code}
                       value={`${c.name} ${c.code}`}
-                      onSelect={() => {
-                        onChange(c.name); // (change to c.code if you prefer ISO)
-                        setOpen(false);
-                      }}
+                      onSelect={() => { onChange(c.name); setOpen(false); }}
                     >
                       <span className="mr-2 text-base">{c.flag}</span>
                       <span className="mr-2">{c.name}</span>
@@ -215,24 +180,224 @@ function CountryCombobox({
   );
 }
 
-/* =========================================
-   Page
-========================================= */
-type Pos = Player["pos"]; // "GK" | "DF" | "MF" | "FW"
+/* ------------------------------ Save pill ------------------------------ */
+function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
+  const base = "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
+  const map = {
+    saving: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
+    saved:  "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-100",
+    idle:   "border-gray-300 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200",
+  } as const;
+  return (
+    <span className={`${base} ${map[state]}`} aria-live="polite">
+      {state === "saving" ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Zapisywanie…</>) :
+       state === "saved"  ? (<><CheckCircle2 className="mr-2 h-4 w-4" />Zapisano</>) : ("—")}
+    </span>
+  );
+}
+
+/* ========================================= Page ========================================= */
+type Pos = Player["pos"];
+type ObsRec = Omit<Observation, "player"> & {
+  player?: string;
+  /** Nowe, wieloosobowe powiązanie */
+  players?: string[];
+  mode?: "live" | "tv";
+};
 
 export default function PlayerEditorPage({ id }: { id: string }) {
   const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
   const [p, setP] = useState<Player | null>(null);
 
-  // Oryginalny snapshot (do przycisku „Anuluj”)
   const originalRef = useRef<Player | null>(null);
-
-  // Status autosave
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Ładowanie
+  // Accordion control
+  const [basicOpen, setBasicOpen] = useState(true);
+  const [extOpen, setExtOpen] = useState(false);
+  const [gradeOpen, setGradeOpen] = useState(false);
+  const [obsOpen, setObsOpen] = useState(true);
+
+  // Local extended fields
+  const [ext, setExt] = useState({
+    nickname: "", foot: "",
+    teamLevel: "",
+    height: "", weight: "", body: "",
+    email: "", phone: "", agent: "",
+    contractUntil: "", clause: "", status: "",
+    matches: "", goals: "", assists: "",
+  });
+
+  // Grade tabs
+  const RATING_KEYS = [
+    "Motoryka – szybkość, wytrzymałość",
+    "Siła, pojedynki, zwinność",
+    "Technika",
+    "Gra z piłką",
+    "Gra bez piłki",
+    "Stałe fragmenty",
+    "Faza defensywna",
+    "Faza ofensywna",
+    "Fazy przejściowe",
+    "Postawa (mentalność)",
+  ] as const;
+  type RatingMap = Record<(typeof RATING_KEYS)[number], number>;
+  const [ratings, setRatings] = useState<RatingMap>(() =>
+    Object.fromEntries(RATING_KEYS.map((k) => [k, 0])) as RatingMap
+  );
+  const [grade, setGrade] = useState({ notes: "", finalComment: "" });
+
+  /* ------------------------------ Observations ------------------------------ */
+  const [observations, setObservations] = useState<ObsRec[]>([]);
+  const [obsQuery, setObsQuery] = useState("");
+  const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
+
+  // quick-new fields
+  const [qaMatch, setQaMatch] = useState("");
+  const [qaDate, setQaDate] = useState("");
+  const [qaTime, setQaTime] = useState("");
+  const [qaMode, setQaMode] = useState<"live" | "tv">("live");
+  const [qaStatus, setQaStatus] = useState<ObsRec["status"]>("draft");
+
+  // --- Save pill helper (used also by Obserwacje autosave) ---
+  function bumpSaving() {
+    setSaveStatus("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
+  }
+
+  // normalize players[] + legacy player
+  const normalize = (arr: ObsRec[]) =>
+    arr.map((o) => {
+      const playersArray =
+        Array.isArray(o.players) ? o.players.filter(Boolean) :
+        (o.player && String(o.player).trim() ? [String(o.player).trim()] : []);
+      const unique = Array.from(new Set(playersArray));
+      return { ...o, players: unique };
+    });
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("s4s.observations");
+      const arr: ObsRec[] = raw ? JSON.parse(raw) : [];
+      setObservations(normalize(arr));
+    } catch { setObservations([]); }
+  }, []);
+
+  // --- AUTOSAVE for Obserwacje (any change that calls this persists + SavePill) ---
+  const persistObservations = (next: ObsRec[]) => {
+    bumpSaving();
+    const norm = normalize(next);
+    setObservations(norm);
+    try { localStorage.setItem("s4s.observations", JSON.stringify(norm)); } catch {}
+  };
+
+  const playerObs = useMemo(() => {
+    if (!p) return [];
+    return [...observations]
+      .filter(o => (o.players ?? []).includes(p.name))
+      .sort((a, b) => ((b.date || "") + (b.time || "")).localeCompare((a.date || "") + (a.time || "")));
+  }, [observations, p]);
+
+  const existingFiltered = useMemo(() => {
+    const q = obsQuery.trim().toLowerCase();
+    const arr = [...observations]
+      .filter(o => (o.players && o.players.length > 0))
+      .sort((a, b) =>
+        ((b.date || "") + (b.time || "")).localeCompare((a.date || "") + (a.time || ""))
+      );
+    if (!q) return arr;
+    return arr.filter(
+      (o) =>
+        (o.match || "").toLowerCase().includes(q) ||
+        (o.players || []).some(n => (n || "").toLowerCase().includes(q)) ||
+        (o.date || "").includes(q)
+    );
+  }, [observations, obsQuery]);
+
+function addObservationForPlayer() {
+  if (!p) return;
+  const next: ObsRec = {
+    id: Date.now(),
+    match: qaMatch.trim() || "—",
+    date: qaDate || "",
+    time: qaTime || "",
+    status: qaStatus,
+    mode: qaMode,
+    players: [p.name],
+    player: p.name, // <-- DODANE: zgodność z typem Observation
+  };
+  persistObservations([next, ...observations]);
+  setQaMatch(""); setQaDate(""); setQaTime(""); setQaMode("live"); setQaStatus("draft");
+}
+
+  function ensurePlayerLinked(o: ObsRec, name: string): ObsRec {
+    const list = Array.isArray(o.players) ? o.players.slice() : [];
+    if (!list.includes(name)) list.push(name);
+    return { ...o, players: Array.from(new Set(list)) };
+  }
+
+  function duplicateExistingToThisPlayer() {
+    if (!p || obsSelectedId == null) return;
+    const base = observations.find(o => o.id === obsSelectedId);
+    if (!base) return;
+    const copy: ObsRec = { ...base, id: Date.now(), players: [p.name] };
+    persistObservations([copy, ...observations]);
+  }
+
+  function reassignExistingToThisPlayer() {
+    if (!p || obsSelectedId == null) return;
+    const next = observations.map(o => o.id === obsSelectedId ? ensurePlayerLinked(o, p.name) : o);
+    persistObservations(next);
+  }
+
+  /* ------------------------------ Player persistence ------------------------------ */
+  function overwritePlayer(next: Player) {
+    setP(next);
+    const arr = players.map((x) => (x.id === next.id ? next : x));
+    setPlayers(arr);
+    try { localStorage.setItem("s4s.players", JSON.stringify(arr)); } catch {}
+  }
+
+  function saveBasic(next: Partial<Player>) {
+    if (!p) return;
+    const updated = { ...p, ...next } as Player;
+    bumpSaving();
+    overwritePlayer(updated);
+  }
+
+  function saveMetaPatch(patch: any) {
+    if (!p) return;
+    const prevMeta: any = (p as any).meta ?? {};
+    const updated = { ...(p as any), meta: { ...prevMeta, ...patch } } as Player;
+    bumpSaving();
+    overwritePlayer(updated);
+  }
+
+  function saveExtPatch(patch: Partial<typeof ext>) {
+    if (!p) return;
+    const prevMeta: any = (p as any).meta ?? {};
+    const prevExt: any = prevMeta.ext ?? {};
+    saveMetaPatch({ ext: { ...prevExt, ...patch } });
+  }
+
+  function updateDetailedPos(sel: DetailedPos) {
+    if (!p) return;
+    const prevMeta: any = (p as any).meta ?? {};
+    const next: Player = { ...p, pos: toBucket(sel) as Pos, meta: { ...prevMeta, detailedPos: sel } } as any;
+    bumpSaving();
+    overwritePlayer(next);
+  }
+
+  const currentDetailedPos: DetailedPos | null = useMemo(() => {
+    if (!p) return null;
+    const metaPos = ((p as any).meta?.detailedPos as DetailedPos | undefined) ?? undefined;
+    return metaPos ?? detailedFromBucket(p.pos);
+  }, [p]);
+
+  /* ------------------------------ Load player ------------------------------ */
   useEffect(() => {
     try {
       const raw = localStorage.getItem("s4s.players");
@@ -240,8 +405,33 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       setPlayers(arr);
       const found = arr.find((x) => String(x.id) === id) || null;
       setP(found);
-      // snapshot
       originalRef.current = found ? structuredClone(found) : null;
+
+      const meta: any = (found as any)?.meta ?? {};
+      const extPrev: any = meta.ext ?? {};
+      setExt({
+        nickname: extPrev.nickname ?? "",
+        foot: extPrev.foot ?? "",
+        teamLevel: extPrev.teamLevel ?? "",
+        height: extPrev.height ?? "",
+        weight: extPrev.weight ?? "",
+        body: extPrev.body ?? "",
+        email: extPrev.email ?? "",
+        phone: extPrev.phone ?? "",
+        agent: extPrev.agent ?? "",
+        contractUntil: extPrev.contractUntil ?? "",
+        clause: extPrev.clause ?? "",
+        status: extPrev.status ?? "",
+        matches: extPrev.matches ?? "",
+        goals: extPrev.goals ?? "",
+        assists: extPrev.assists ?? "",
+      });
+
+      setGrade({ notes: meta.notes ?? "", finalComment: meta.finalComment ?? "" });
+
+      const rPrev: RatingMap =
+        meta.ratings ?? (Object.fromEntries(RATING_KEYS.map((k) => [k, 0])) as RatingMap);
+      setRatings(rPrev);
     } catch {
       setP(null);
       originalRef.current = null;
@@ -249,61 +439,11 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // „Nieznany” = brak imienia i nazwiska
   const isUnknown = useMemo(
     () => (p ? !(p as any).firstName && !(p as any).lastName : false),
     [p]
   );
 
-  // Zapis całego obiektu do localStorage
-  function overwritePlayer(next: Player) {
-    setP(next);
-    const arr = players.map((x) => (x.id === next.id ? next : x));
-    setPlayers(arr);
-    try {
-      localStorage.setItem("s4s.players", JSON.stringify(arr));
-    } catch {}
-  }
-
-  // Debounce UX dla statusu zapisu
-  function bumpSaving() {
-    setSaveStatus("saving");
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
-  }
-
-  // Autosave — aktualizacja podstawowych pól
-  function saveBasic(next: Partial<Player>) {
-    if (!p) return;
-    const updated = { ...p, ...next };
-    bumpSaving();
-    overwritePlayer(updated as Player);
-  }
-
-  // Zmiana szczegółowej pozycji (aktualizuje też bucket)
-  function updateDetailedPos(sel: DetailedPos) {
-    if (!p) return;
-    const next: Player = {
-      ...p,
-      pos: toBucket(sel) as Pos,
-      ...(p as any),
-      // store meta.detailedPos alongside (as in AddPlayerPage)
-      ...(typeof (p as any).meta === "object"
-        ? { meta: { ...(p as any).meta, detailedPos: sel } }
-        : { meta: { detailedPos: sel } }),
-    } as any;
-    bumpSaving();
-    overwritePlayer(next);
-  }
-
-  // Odczyt aktualnej szczegółowej pozycji do Selecta
-  const currentDetailedPos: DetailedPos | null = useMemo(() => {
-    if (!p) return null;
-    const metaPos = ((p as any).meta?.detailedPos as DetailedPos | undefined) ?? undefined;
-    return metaPos ?? detailedFromBucket(p.pos);
-  }, [p]);
-
-  // „Anuluj” — przywrócenie snapshotu
   function cancelToOriginal() {
     const orig = originalRef.current;
     if (!orig) return;
@@ -313,449 +453,781 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
   }
 
-  // Ręczne „Zapisz” (potwierdzenie; autosave i tak zapisuje on-change)
   function manualSave() {
     if (!p) return;
     bumpSaving();
     overwritePlayer({ ...p });
   }
 
-  // Drobna plakietka statusu w toolbarze
-  const SaveChip = () => (
-    <div
-      className={
-        "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] ring-1 " +
-        (saveStatus === "saving"
-          ? "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-900/40"
-          : saveStatus === "saved"
-          ? "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-100 dark:ring-emerald-900/40"
-          : "bg-slate-50 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700")
-      }
-      aria-live="polite"
-    >
-      {saveStatus === "saving" ? (
-        <>
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Zapisywanie…
-        </>
-      ) : saveStatus === "saved" ? (
-        <>
-          <CheckCircle2 className="h-3.5 w-3.5" /> Zapisano
-        </>
-      ) : (
-        "—"
-      )}
-    </div>
-  );
-
   if (!p) {
     return (
       <div className="w-full">
-        <Crumb
-          items={[
-            { label: "Start", href: "/" },
-            { label: "Baza zawodników", href: "/players" },
-            { label: "Profil" },
-          ]}
-        />
-        <Card>
-          <CardContent className="p-4">Nie znaleziono zawodnika.</CardContent>
-        </Card>
+        <Card><CardContent className="p-4">Nie znaleziono zawodnika.</CardContent></Card>
       </div>
     );
   }
 
+  /* ------------------------------ Counters ------------------------------ */
+  const countTruthy = (vals: Array<unknown>) => vals.filter((v) => {
+    if (typeof v === "number") return v > 0;
+    return !!(v !== null && v !== undefined && String(v).trim() !== "");
+  }).length;
+
+  const cntBasic   = countTruthy([p.firstName, p.lastName, p.club, p.age, p.birthDate, p.nationality]);
+  const cntClub    = countTruthy([p.club, ext.teamLevel]);
+  const cntPhys    = countTruthy([ext.height, ext.weight, ext.body]);
+  const cntContact = countTruthy([ext.email, ext.phone, ext.agent]);
+  const cntContract= countTruthy([ext.contractUntil, ext.clause, ext.status]);
+  const cntStats   = countTruthy([ext.matches, ext.goals, ext.assists]);
+  const totalExt   = cntClub + cntPhys + cntContact + cntContract + cntStats;
+  const totalExtMax= 2 + 3 + 3 + 3 + 3;
+
+  const cntNotes  = countTruthy([grade.notes]);
+  const cntAspects= countTruthy(Object.values(ratings));
+  const cntFinal  = countTruthy([grade.finalComment]);
+  const totalGrade= cntNotes + cntAspects + cntFinal;
+  const totalGradeMax = 1 + 10 + 1;
+
+  /* ========================================= Render ========================================= */
   return (
     <div className="w-full">
-      <Crumb
-        items={[
-          { label: "Start", href: "/" },
-          { label: "Baza zawodników", href: "/players" },
-          { label: p.name },
-        ]}
-      />
       <Toolbar
         title={`Profil: ${p.name}`}
         right={
-          <div className="flex items-center gap-2 mb-4">
-            <SaveChip />
-            <Button
-              className="bg-gray-900 text-white hover:bg-gray-800"
-              onClick={() => router.push("/players")}
-            >
+          <div className="mb-4 flex items-center gap-2">
+            <SavePill state={saveStatus} />
+            <Button className="h-10 bg-gray-900 text-white hover:bg-gray-800" onClick={() => router.push("/players")}>
               Wróć do listy
             </Button>
           </div>
         }
       />
 
-      {/* Baner „Nieznany zawodnik” + akcje */}
       {isUnknown && (
         <div className="mb-3 flex items-start justify-between gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <div className="font-medium">Edytujesz nieznanego zawodnika</div>
-              <div className="opacity-90">
-                Uzupełnij przynajmniej <b>imię</b> lub <b>nazwisko</b>, aby oznaczyć profil jako znany.
-              </div>
+              <div className="opacity-90">Uzupełnij przynajmniej <b>imię</b> lub <b>nazwisko</b>, aby oznaczyć profil jako znany.</div>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" className="h-8 border-amber-300 dark:border-amber-800" onClick={cancelToOriginal}>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="h-10 border-amber-300 dark:border-amber-800" onClick={cancelToOriginal}>
               Anuluj
             </Button>
-            <Button className="h-8 bg-gray-900 text-white hover:bg-gray-800" onClick={manualSave}>
+            <Button className="h-10 bg-gray-900 text-white hover:bg-gray-800" onClick={manualSave}>
               Zapisz
             </Button>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Lewa kolumna */}
+      {/* ========== STACK: wszystkie sekcje 100% szerokości ========== */}
+      <div className="space-y-4">
+
+        {/* --- Podstawowe informacje --- */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Podstawowe dane</CardTitle>
-            {isUnknown && (
-              <span className="inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-900/40">
-                Nieznany
-              </span>
-            )}
+          <CardHeader className="p-0">
+            <button
+              type="button"
+              aria-expanded={basicOpen}
+              aria-controls="basic-panel"
+              onClick={() => setBasicOpen((v) => !v)}
+              className="flex w-full items-center justify-between rounded-t-lg px-6 py-4 text-left"
+            >
+              <div className="text-2xl font-semibold leading-none tracking-tight">Podstawowe informacje</div>
+              <div className="flex items-center gap-3">
+                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">{cntBasic}</span>
+                <ChevronDown className={cn("h-5 w-5 transition-transform", basicOpen ? "rotate-180" : "rotate-0")} />
+              </div>
+            </button>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Imię</Label>
-                <Input
-                  value={p.firstName ?? ""}
-                  onChange={(e) =>
-                    saveBasic({
-                      firstName: e.target.value,
-                      name: `${e.target.value} ${p.lastName ?? ""}`.trim(),
-                    })
-                  }
-                />
-                {isUnknown && (
-                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-200">
-                    Wpisz imię, by łatwiej go zidentyfikować.
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label>Nazwisko</Label>
-                <Input
-                  value={p.lastName ?? ""}
-                  onChange={(e) =>
-                    saveBasic({
-                      lastName: e.target.value,
-                      name: `${p.firstName ?? ""} ${e.target.value}`.trim(),
-                    })
-                  }
-                />
-                {isUnknown && (
-                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-200">
-                    Dodanie nazwiska oznaczy zawodnika jako znanego.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Pozycja</Label>
-                {/* === Detailed position selector (like AddPlayerPage) === */}
-                <Select
-                  value={currentDetailedPos ?? undefined}
-                  onValueChange={(v) => updateDetailedPos(v as DetailedPos)}
-                >
-                  <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
-                    <SelectValue placeholder="Wybierz pozycję" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {POS_DATA.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        <div className="text-left">
-                          <div className="font-medium">
-                            {opt.code}: {opt.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground">{opt.desc}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="mt-1 text-[11px] text-dark">
-                  Zapisuje się jako <b>{toBucket((currentDetailedPos ?? "CM") as DetailedPos)}</b> w polu głównym <code>pos</code>.
-                </p>
-              </div>
-              <div>
-                <Label>Wiek</Label>
-                <Input
-                  type="number"
-                  value={p.age}
-                  onChange={(e) => saveBasic({ age: Number(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Klub</Label>
-                <Input value={p.club} onChange={(e) => saveBasic({ club: e.target.value })} />
-              </div>
-              <div>
-                <Label>Narodowość</Label>
-                {/* === Country combobox (like AddPlayerPage) === */}
-                <CountryCombobox
-                  value={p.nationality ?? ""}
-                  onChange={(val) => saveBasic({ nationality: val })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Data urodzenia</Label>
-              <Input
-                type="date"
-                value={p.birthDate ?? ""}
-                onChange={(e) => saveBasic({ birthDate: e.target.value })}
-              />
-            </div>
+          <CardContent>
+            <Accordion
+              type="single"
+              collapsible
+              value={basicOpen ? "basic" : undefined}
+              onValueChange={(v) => setBasicOpen(v === "basic")}
+              className="w-full"
+            >
+              <AccordionItem value="basic">
+                <AccordionContent id="basic-panel">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <Label className="text-sm">Imię</Label>
+                      <Input
+                        value={p.firstName ?? ""}
+                        onChange={(e) => saveBasic({ firstName: e.target.value, name: `${e.target.value} ${p.lastName ?? ""}`.trim() })}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Nazwisko</Label>
+                      <Input
+                        value={p.lastName ?? ""}
+                        onChange={(e) => saveBasic({ lastName: e.target.value, name: `${p.firstName ?? ""} ${e.target.value}`.trim() })}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Pozycja</Label>
+                      <Select value={currentDetailedPos ?? undefined} onValueChange={(v) => updateDetailedPos(v as DetailedPos)}>
+                        <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
+                          <SelectValue placeholder="Wybierz pozycję" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {POS_DATA.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              <div className="text-left">
+                                <div className="font-medium">{opt.code}: {opt.name}</div>
+                                <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="mt-1 text-[11px] text-dark">
+                        Zapisuje się jako <b>{toBucket((currentDetailedPos ?? "CM") as DetailedPos)}</b> w polu <code>pos</code>.
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm">Wiek</Label>
+                      <Input type="number" value={p.age} onChange={(e) => saveBasic({ age: Number(e.target.value) || 0 })} />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Klub</Label>
+                      <Input value={p.club} onChange={(e) => saveBasic({ club: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Narodowość</Label>
+                      <CountryCombobox value={p.nationality ?? ""} onChange={(val) => saveBasic({ nationality: val })} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label className="text-sm">Data urodzenia</Label>
+                      <Input type="date" value={p.birthDate ?? ""} onChange={(e) => saveBasic({ birthDate: e.target.value })} />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </CardContent>
         </Card>
 
-        {/* Prawa kolumna */}
-        <div className="space-y-4">
-          {/* --- Rozszerzone informacje --- */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Rozszerzone informacje</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Tylko jedna sekcja na raz (accordion single) */}
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="ext">
-                  <AccordionTrigger>Rozwiń / Zwiń</AccordionTrigger>
-                  <AccordionContent>
-                    <Tabs defaultValue="basic" className="w-full">
-                      <TabsList className="grid w-full grid-cols-6">
-                        <TabsTrigger value="basic">Podstawowe</TabsTrigger>
-                        <TabsTrigger value="club">Klub</TabsTrigger>
-                        <TabsTrigger value="physical">Fizyczne</TabsTrigger>
-                        <TabsTrigger value="contact">Kontakt</TabsTrigger>
-                        <TabsTrigger value="contract">Kontrakt</TabsTrigger>
-                        <TabsTrigger value="stats">Statystyki</TabsTrigger>
-                      </TabsList>
+        {/* --- Rozszerzone informacje --- */}
+        <Card>
+          <CardHeader className="p-0">
+            <button
+              type="button"
+              aria-expanded={extOpen}
+              aria-controls="ext-panel"
+              onClick={() => setExtOpen((v) => !v)}
+              className="flex w-full items-center justify-between rounded-t-lg px-6 py-4 text-left"
+            >
+              <div className="text-2xl font-semibold leading-none tracking-tight">Rozszerzone informacje</div>
+              <div className="flex items-center gap-3">
+                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                  {totalExt}/{totalExtMax}
+                </span>
+                <ChevronDown className={cn("h-5 w-5 transition-transform", extOpen ? "rotate-180" : "rotate-0")} />
+              </div>
+            </button>
+          </CardHeader>
+          <CardContent>
+            <Accordion
+              type="single"
+              collapsible
+              value={extOpen ? "ext" : undefined}
+              onValueChange={(v) => setExtOpen(v === "ext")}
+              className="w-full"
+            >
+              <AccordionItem value="ext">
+                <AccordionContent id="ext-panel">
+                  <Tabs defaultValue="club" className="w-full">
+                    <TabsList className="grid w-full grid-cols-5">
+                      <TabsTrigger value="club">Klub</TabsTrigger>
+                      <TabsTrigger value="physical">Fizyczne</TabsTrigger>
+                      <TabsTrigger value="contact">Kontakt</TabsTrigger>
+                      <TabsTrigger value="contract">Kontrakt</TabsTrigger>
+                      <TabsTrigger value="stats">Statystyki</TabsTrigger>
+                    </TabsList>
 
-                      <TabsContent value="basic" className="mt-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label>Pseudonim</Label>
-                            <Input placeholder="—" />
-                          </div>
-                          <div>
-                            <Label>Dominująca noga</Label>
-                            <Input placeholder="—" />
-                          </div>
+                    <TabsContent value="club" className="mt-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                          <Label className="text-sm">Klub</Label>
+                          <Input value={p.club} onChange={(e) => saveBasic({ club: e.target.value })} />
                         </div>
-                      </TabsContent>
+                        <div>
+                          <Label className="text-sm">Drużyna/Rocznik</Label>
+                          <Input
+                            placeholder="U19 / Rezerwy…"
+                            value={ext.teamLevel}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, teamLevel: v }));
+                              saveExtPatch({ teamLevel: v });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
 
-                      <TabsContent value="club" className="mt-4">
-                        <div className="grid grid-cols-2 gap-3">
+                    <TabsContent value="physical" className="mt-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <div>
+                          <Label className="text-sm">Wzrost (cm)</Label>
+                          <Input
+                            type="number"
+                            value={ext.height}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, height: v }));
+                              saveExtPatch({ height: v });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Waga (kg)</Label>
+                          <Input
+                            type="number"
+                            value={ext.weight}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, weight: v }));
+                              saveExtPatch({ weight: v });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Budowa</Label>
+                          <Input
+                            value={ext.body}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, body: v }));
+                              saveExtPatch({ body: v });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="contact" className="mt-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                          <Label className="text-sm">E-mail</Label>
+                          <Input
+                            type="email"
+                            value={ext.email}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, email: v }));
+                              saveExtPatch({ email: v });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Telefon</Label>
+                          <Input
+                            value={ext.phone}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, phone: v }));
+                              saveExtPatch({ phone: v });
+                            }}
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label className="text-sm">Agent</Label>
+                          <Input
+                            value={ext.agent}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, agent: v }));
+                              saveExtPatch({ agent: v });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="contract" className="mt-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <div>
+                          <Label className="text-sm">Do kiedy</Label>
+                          <Input
+                            type="date"
+                            value={ext.contractUntil}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, contractUntil: v }));
+                              saveExtPatch({ contractUntil: v });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Kara/klauzula</Label>
+                          <Input
+                            value={ext.clause}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, clause: v }));
+                              saveExtPatch({ clause: v });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Status</Label>
+                          <Input
+                            value={ext.status}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, status: v }));
+                              saveExtPatch({ status: v });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="stats" className="mt-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <div>
+                          <Label className="text-sm">Mecze</Label>
+                          <Input
+                            type="number"
+                            value={ext.matches}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, matches: v }));
+                              saveExtPatch({ matches: v });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Gole</Label>
+                          <Input
+                            type="number"
+                            value={ext.goals}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, goals: v }));
+                              saveExtPatch({ goals: v });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Asysty</Label>
+                          <Input
+                            type="number"
+                            value={ext.assists}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setExt((s) => ({ ...s, assists: v }));
+                              saveExtPatch({ assists: v });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+
+        {/* --- Ocena --- */}
+        <Card>
+          <CardHeader className="p-0">
+            <button
+              type="button"
+              aria-expanded={gradeOpen}
+              aria-controls="grade-panel"
+              onClick={() => setGradeOpen((v) => !v)}
+              className="flex w-full items-center justify-between rounded-t-lg px-6 py-4 text-left"
+            >
+              <div className="text-2xl font-semibold leading-none tracking-tight">Ocena</div>
+              <div className="flex items-center gap-3">
+                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                  {totalGrade}/{totalGradeMax}
+                </span>
+                <ChevronDown className={cn("h-5 w-5 transition-transform", gradeOpen ? "rotate-180" : "rotate-0")} />
+              </div>
+            </button>
+          </CardHeader>
+          <CardContent>
+            <Accordion
+              type="single"
+              collapsible
+              value={gradeOpen ? "grade" : undefined}
+              onValueChange={(v) => setGradeOpen(v === "grade")}
+              className="w-full"
+            >
+              <AccordionItem value="grade">
+                <AccordionContent id="grade-panel">
+                  <Tabs defaultValue="notes" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="notes">Notatki</TabsTrigger>
+                      <TabsTrigger value="aspects">Oceny</TabsTrigger>
+                      <TabsTrigger value="final">Komentarz</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="notes" className="mt-4 space-y-3">
+                      <Textarea
+                        placeholder="Krótki komentarz…"
+                        value={grade.notes}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setGrade((s) => ({ ...s, notes: v }));
+                          saveMetaPatch({ notes: v });
+                        }}
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="aspects" className="mt-4">
+                      <div className="space-y-3">
+                        {RATING_KEYS.map((k) => (
+                          <div key={k} className="flex items-center justify-between gap-3">
+                            <Label className="text-sm">{k}</Label>
+                            <StarRating
+                              max={5}
+                              value={ratings[k] ?? 0}
+                              onChange={(v) => {
+                                const next = { ...ratings, [k]: v };
+                                setRatings(next);
+                                saveMetaPatch({ ratings: next });
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="final" className="mt-4 space-y-3">
+                      <Textarea
+                        placeholder="Podsumowanie obserwacji…"
+                        value={grade.finalComment}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setGrade((s) => ({ ...s, finalComment: v }));
+                          saveMetaPatch({ finalComment: v });
+                        }}
+                      />
+                    </TabsContent>
+                  </Tabs>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+
+        {/* --- Obserwacje --- */}
+        <Card>
+          <CardHeader className="p-0">
+            <button
+              type="button"
+              aria-expanded={obsOpen}
+              aria-controls="obs-panel"
+              onClick={() => setObsOpen((v) => !v)}
+              className="flex w-full items-center justify-between rounded-t-lg px-6 py-4 text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-2xl font-semibold leading-none tracking-tight">Obserwacje</div>
+                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                  {playerObs.length}
+                </span>
+              </div>
+              <ChevronDown className={cn("h-5 w-5 transition-transform", obsOpen ? "rotate-180" : "rotate-0")} />
+            </button>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Accordion type="single" collapsible value={obsOpen ? "obs" : undefined} onValueChange={(v) => setObsOpen(v === "obs")}>
+              <AccordionItem value="obs">
+                <AccordionContent id="obs-panel" className="px-6 pb-6 pt-2">
+                  <Tabs defaultValue="new" className="w-full">
+                    {/* CHANGED: Nowa / Istniejąca => h-8 */}
+                    <TabsList className="mb-2 inline-flex h-10 items-center rounded bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
+                      <TabsTrigger
+                        value="new"
+                        className="h-8 px-3 py-1 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+                      >
+                        Nowa
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="existing"
+                        className="h-8 px-3 py-1 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+                      >
+                        Istniejąca
+                      </TabsTrigger>
+                    </TabsList>
+
+                    {/* NEW */}
+                    <TabsContent value="new" className="mt-2 space-y-4">
+                      <div className="rounded  dark:border-neutral-800">
+                        <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">Mecz</div>
+                        <div className="mb-3 text-xs text-dark dark:text-neutral-400">
+                          Wpisz drużyny — pole „Mecz” składa się automatycznie.
+                        </div>
+
+                        <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
                           <div>
-                            <Label>Klub</Label>
+                            <Label>Drużyna A</Label>
                             <Input
-                              value={p.club}
-                              onChange={(e) => saveBasic({ club: e.target.value })}
+                              value={qaMatch.split(/ *vs */i)[0] || ""}
+                              onChange={(e) => {
+                                const b = (qaMatch.split(/ *vs */i)[1] || "").trim();
+                                const a = e.target.value;
+                                setQaMatch(a && b ? `${a} vs ${b}` : (a + " " + b).trim());
+                              }}
+                              placeholder="np. Lech U19"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">vs</div>
+                          <div>
+                            <Label>Drużyna B</Label>
+                            <Input
+                              value={(qaMatch.split(/ *vs */i)[1] || "").trim()}
+                              onChange={(e) => {
+                                const a = (qaMatch.split(/ *vs */i)[0] || "").trim();
+                                const b = e.target.value;
+                                setQaMatch(a && b ? `${a} vs ${b}` : (a + " " + b).trim());
+                              }}
+                              placeholder="np. Wisła U19"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div className="sm:hidden text-center text-sm text-dark">vs</div>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div>
+                            <Label>Data meczu</Label>
+                            <Input
+                              type="date"
+                              value={qaDate}
+                              onChange={(e) => setQaDate(e.target.value)}
+                              placeholder="dd.mm.rrrr"
+                              className="mt-1"
                             />
                           </div>
                           <div>
-                            <Label>Drużyna/Rocznik</Label>
-                            <Input placeholder="U19 / Rezerwy…" />
+                            <Label>Godzina meczu</Label>
+                            <Input
+                              type="time"
+                              value={qaTime}
+                              onChange={(e) => setQaTime(e.target.value)}
+                              placeholder="--:--"
+                              className="mt-1"
+                            />
                           </div>
                         </div>
-                      </TabsContent>
 
-                      <TabsContent value="physical" className="mt-4">
-                        <div className="grid grid-cols-3 gap-3">
+                        {/* Styl jak w Observations.tsx */}
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
-                            <Label>Wzrost (cm)</Label>
-                            <Input type="number" placeholder="—" />
-                          </div>
-                          <div>
-                            <Label>Waga (kg)</Label>
-                            <Input type="number" placeholder="—" />
-                          </div>
-                          <div>
-                            <Label>Budowa</Label>
-                            <Input placeholder="—" />
-                          </div>
-                        </div>
-                      </TabsContent>
-
-                      <TabsContent value="contact" className="mt-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label>E-mail</Label>
-                            <Input type="email" placeholder="—" />
-                          </div>
-                          <div>
-                            <Label>Telefon</Label>
-                            <Input placeholder="—" />
-                          </div>
-                          <div className="col-span-2">
-                            <Label>Agent</Label>
-                            <Input placeholder="—" />
-                          </div>
-                        </div>
-                      </TabsContent>
-
-                      <TabsContent value="contract" className="mt-4">
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <Label>Do kiedy</Label>
-                            <Input type="date" />
-                          </div>
-                          <div>
-                            <Label>Kara/klauzula</Label>
-                            <Input placeholder="—" />
-                          </div>
-                          <div>
-                            <Label>Status</Label>
-                            <Input placeholder="—" />
-                          </div>
-                        </div>
-                      </TabsContent>
-
-                      <TabsContent value="stats" className="mt-4">
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <Label>Mecze</Label>
-                            <Input type="number" placeholder="—" />
-                          </div>
-                          <div>
-                            <Label>Gole</Label>
-                            <Input type="number" placeholder="—" />
-                          </div>
-                          <div>
-                            <Label>Asysty</Label>
-                            <Input type="number" placeholder="—" />
-                          </div>
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </CardContent>
-          </Card>
-
-          {/* --- Ocena --- */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Ocena</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Tylko jedna sekcja na raz (accordion single) */}
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="grade">
-                  <AccordionTrigger>Rozwiń / Zwiń</AccordionTrigger>
-                  <AccordionContent>
-                    <Tabs defaultValue="notes" className="w-full">
-                      <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="notes">Notatki</TabsTrigger>
-                        <TabsTrigger value="aspects">Oceny</TabsTrigger>
-                        <TabsTrigger value="final">Komentarz końcowy</TabsTrigger>
-                      </TabsList>
-
-                      {/* Notatki */}
-                      <TabsContent value="notes" className="mt-4 space-y-3">
-                        <div className="text-sm font-medium">Notatki skauta</div>
-                        <Textarea
-                          placeholder="Krótki komentarz…"
-                          onChange={() => setSaveStatus("idle")}
-                        />
-                        <div className="text-xs text-dark">Widoczne tylko dla Ciebie</div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            className="border-gray-300 dark:border-neutral-700"
-                          >
-                            Sugestie asystenta
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="border-gray-300 dark:border-neutral-700"
-                          >
-                            Kopiuj
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="border-gray-300 dark:border-neutral-700"
-                          >
-                            Generuj
-                          </Button>
-                        </div>
-                        <div className="text-xs text-dark">
-                          1 = słabo · 3–4 = solidnie · 6 = elita
-                        </div>
-                      </TabsContent>
-
-                      {/* Oceny (przykładowe pola liczbowo) */}
-                      <TabsContent value="aspects" className="mt-4">
-                        <div className="space-y-3">
-                          {[
-                            "Motoryka – szybkość, wytrzymałość",
-                            "Siła, pojedynki, zwinność",
-                            "Technika",
-                            "Gra z piłką",
-                            "Gra bez piłki",
-                            "Stałe fragmenty",
-                            "Faza defensywna",
-                            "Faza ofensywna",
-                            "Fazy przejściowe",
-                            "Postawa (mentalność)",
-                          ].map((k) => (
-                            <div
-                              key={k}
-                              className="grid grid-cols-[1fr_120px] items-center gap-3"
-                            >
-                              <Label className="text-sm">{k}</Label>
-                              <Input type="number" min={1} max={6} placeholder="—" />
+                            <Label className="text-sm">Tryb</Label>
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                onClick={() => setQaMode("live")}
+                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                  qaMode === "live"
+                                    ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                }`}
+                                type="button"
+                                aria-pressed={qaMode === "live"}
+                              >
+                                Live
+                              </button>
+                              <button
+                                onClick={() => setQaMode("tv")}
+                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                  qaMode === "tv"
+                                    ? "bg-violet-600 text-white hover:bg-violet-700"
+                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                }`}
+                                type="button"
+                                aria-pressed={qaMode === "tv"}
+                              >
+                                TV
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                      </TabsContent>
+                          </div>
 
-                      {/* Komentarz końcowy */}
-                      <TabsContent value="final" className="mt-4 space-y-3">
-                        <Label>Komentarz końcowy</Label>
-                        <Textarea placeholder="—" />
-                        <div className="flex flex-wrap gap-2">
+                          <div>
+                            <Label className="text-sm">Status</Label>
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                onClick={() => setQaStatus("draft")}
+                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                  qaStatus === "draft"
+                                    ? "bg-amber-600 text-white hover:bg-amber-700"
+                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                }`}
+                                type="button"
+                                aria-pressed={qaStatus === "draft"}
+                              >
+                                Szkic
+                              </button>
+                              <button
+                                onClick={() => setQaStatus("final")}
+                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                  qaStatus === "final"
+                                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                }`}
+                                type="button"
+                                aria-pressed={qaStatus === "final"}
+                              >
+                                Finalna
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 text-xs text-dark dark:text-neutral-300">
+                          Mecz: <span className="font-medium">{qaMatch || "—"}</span>
+                          <span className="ml-2 inline-flex items-center rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                            {qaMode === "tv" ? "TV" : "Live"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="sticky bottom-0 mt-1 -mx-6 border-t border-gray-200 bg-white/90 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
+                        <div className="flex items-center justify-end gap-2">
                           <Button
-                            variant="outline"
-                            className="border-gray-300 dark:border-neutral-700"
+                            className="bg-gray-900 text-white hover:bg-gray-800"
+                            onClick={addObservationForPlayer}
+                            disabled={!qaMatch.trim() || !qaDate.trim()}
                           >
-                            Kopiuj
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="border-gray-300 dark:border-neutral-700"
-                          >
-                            Generuj
-                          </Button>
-                          <Button className="bg-gray-900 text-white hover:bg-gray-800">
-                            Wstaw do „Komentarza końcowego”
+                            Zapisz
                           </Button>
                         </div>
-                      </TabsContent>
-                    </Tabs>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </CardContent>
-          </Card>
-        </div>
+                      </div>
+                    </TabsContent>
+
+                    {/* EXISTING */}
+                    <TabsContent value="existing" className="mt-2 space-y-3">
+                      <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
+                        <Search className="h-4 w-4 opacity-70" />
+                        <Input
+                          value={obsQuery}
+                          onChange={(e) => setObsQuery(e.target.value)}
+                          placeholder="Szukaj po meczu, zawodniku, dacie…"
+                          className="flex-1 border-0 focus-visible:ring-0"
+                        />
+                      </div>
+
+                      <div className="max-h-80 overflow-auto rounded border border-gray-200 dark:border-neutral-700">
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                            <tr>
+                              <th className="p-2 text-left font-medium">#</th>
+                              <th className="p-2 text-left font-medium">Mecz</th>
+                              <th className="p-2 text-left font-medium">Zawodnicy</th>
+                              <th className="p-2 text-left font-medium">Data</th>
+                              <th className="p-2 text-left font-medium">Tryb</th>
+                              <th className="p-2 text-left font-medium">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {existingFiltered.map((o, idx) => (
+                              <tr
+                                key={o.id}
+                                className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
+                                  obsSelectedId === o.id ? "bg-blue-50/60 dark:bg-blue-900/20" : idx % 2 ? "bg-stone-100/40 dark:bg-neutral-900/30" : ""
+                                }`}
+                                onClick={() => setObsSelectedId(o.id)}
+                              >
+                                <td className="p-2">
+                                  <input
+                                    type="radio"
+                                    name="obsPick"
+                                    checked={obsSelectedId === o.id}
+                                    onChange={() => setObsSelectedId(o.id)}
+                                  />
+                                </td>
+                                <td className="p-2">{o.match || "—"}</td>
+                                <td className="p-2">
+                                  {(o.players ?? []).length > 0 ? (
+                                    <div className="flex flex-wrap gap-1">
+                                      {(o.players ?? []).map((n, i) => (
+                                        <span
+                                          key={`${o.id}-pl-${i}`}
+                                          className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+                                        >
+                                          {n}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : "—"}
+                                </td>
+                                <td className="p-2">{[o.date || "—", o.time || ""].filter(Boolean).join(" ")}</td>
+                                <td className="p-2">
+                                  <span
+                                    className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                                      (o as any).mode === "tv"
+                                        ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                                        : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                                    }`}
+                                  >
+                                    {(o as any).mode === "tv" ? "TV" : "Live"}
+                                  </span>
+                                </td>
+                                <td className="p-2">
+                                  <span
+                                    className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                                      o.status === "final"
+                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                    }`}
+                                  >
+                                    {o.status === "final" ? "Finalna" : "Szkic"}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                            {existingFiltered.length === 0 && (
+                              <tr>
+                                <td colSpan={6} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
+                                  Brak obserwacji dla podanych kryteriów.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[11px] text-dark dark:text-neutral-400">
+                          Wybierz rekord i wybierz akcję.
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            className="border-gray-300 dark:border-neutral-700"
+                            disabled={obsSelectedId == null}
+                            onClick={duplicateExistingToThisPlayer}
+                          >
+                            Skopiuj do zawodnika
+                          </Button>
+                          <Button
+                            className="bg-gray-900 text-white hover:bg-gray-800"
+                            disabled={obsSelectedId == null}
+                            onClick={reassignExistingToThisPlayer}
+                          >
+                            Przypisz do zawodnika
+                          </Button>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

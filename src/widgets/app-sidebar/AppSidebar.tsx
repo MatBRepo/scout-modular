@@ -11,6 +11,8 @@ import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
+import { MyPlayersIconDefault } from "@/components/icons";
+
 /* ========= Types & keys ========= */
 type Role = "admin" | "scout" | "scout-agent";
 type Rank = "bronze" | "silver" | "gold" | "platinum";
@@ -47,7 +49,7 @@ function rankClass(r: Rank) {
   switch (r) {
     case "platinum": return "bg-indigo-100 text-indigo-800 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-800/70";
     case "gold": return "bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/70";
-    case "silver": return "bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-200 dark:ring-slate-700/70";
+    case "silver": return "bg-stone-100 text-slate-800 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-200 dark:ring-slate-700/70";
     default: return "bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-200 dark:ring-orange-800/70";
   }
 }
@@ -246,7 +248,7 @@ export default function AppSidebar({
           {/* Simplified: plain link, no dropdown, no chevron */}
           <NavItem
             href="/players"
-            icon={<Users className="h-4 w-4" />}
+            icon={<MyPlayersIconDefault/>}
             label="Moi zawodnicy"
             active={isPlayersSection}
             badge={playersBadge}
@@ -267,7 +269,7 @@ export default function AppSidebar({
       {role === "admin" && (
         <>
           {/* ===== Better highlighted ADMIN section ===== */}
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+          <div className="mt-4 rounded border border-slate-200 bg-stone-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
             <div className="mb-2 flex items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-800">
                 <Settings className="h-3.5 w-3.5" />
@@ -357,7 +359,7 @@ function BrandMark({ showName }: { showName: boolean }) {
       <div ref={accountRef} className="relative">
         <button
           onClick={() => setAccountOpen(v => !v)}
-          className="flex w-full items-center justify-between rounded py-2 text-sm text-gray-800 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900"
+          className="flex w-full items-center justify-between rounded py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900"
           aria-haspopup="menu"
           aria-expanded={accountOpen}
         >
@@ -386,7 +388,7 @@ function BrandMark({ showName }: { showName: boolean }) {
             >
               {/* START rank quick card */}
               {role === "scout" && (
-                <div className="mx-1 mb-2 rounded bg-gray-50 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
+                <div className="mx-1 mb-2 rounded bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
                   <div className="mb-1 flex flex-wrap items-center justify-between">
                     <span className="font-semibold whitespace-normal break-words">Twój poziom</span>
                     <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(rank)}`}>
@@ -421,7 +423,7 @@ function BrandMark({ showName }: { showName: boolean }) {
 
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <button
-                      className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                      className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
                       onClick={readCounts}
                       title="Odśwież liczniki (LocalStorage)"
                     >
@@ -436,10 +438,10 @@ function BrandMark({ showName }: { showName: boolean }) {
               <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
                 Szybkie akcje
               </div>
-              <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings" onClick={onClose}>
+              <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings" onClick={onClose}>
                 <Settings className="h-4 w-4" /> Ustawienia
               </Link>
-              <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings/navigation" onClick={onClose}>
+              <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings/navigation" onClick={onClose}>
                 <Map className="h-4 w-4" /> Nawigacja
               </Link>
 
@@ -482,7 +484,7 @@ function BrandMark({ showName }: { showName: boolean }) {
               <span className="truncate">{formatNum(playersCount)} / {formatNum(obsCount)}</span>
             </div>
             <button
-              className="rounded border border-gray-300 p-1.5 text-xs transition hover:bg-gray-50 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
+              className="rounded border border-gray-300 p-1.5 text-xs transition hover:bg-stone-100 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Przełącz motyw (T)"
               title="Przełącz motyw (T)"
@@ -567,7 +569,7 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       className={`group relative flex min-w-0 items-center gap-2 rounded px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
         active
-          ? "bg-slate-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+          ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
           : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
       title={badge && badgeTitle ? `${badgeTitle}: ${badge}` : undefined}
@@ -584,7 +586,7 @@ function NavItem({
       <span className="truncate">{label}</span>
       {badge && (
         <span
-          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
           title={badgeTitle}
         >
           <span className="truncate">{badge}</span>
@@ -600,7 +602,7 @@ function SubNavItem({ href, label, active }: { href: string; label: string; acti
       href={href}
       aria-current={active ? "page" : undefined}
       className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-        active ? "bg-slate-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+        active ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
                : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
     >
@@ -624,8 +626,8 @@ function RoleOption({
       role="menuitemradio"
       aria-checked={selected}
       onClick={() => onChange(value)}
-      className={`mb-1 flex w-full items-center justify-between rounded px-2 py-2 text-left text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900 ${
-        selected ? "bg-slate-100 dark:bg-neutral-900" : ""
+      className={`mb-1 flex w-full items-center justify-between rounded px-2 py-2 text-left text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900 ${
+        selected ? "bg-stone-100 dark:bg-neutral-900" : ""
       }`}
     >
       <span className="whitespace-normal break-words">{label}</span>

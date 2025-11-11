@@ -9,6 +9,26 @@
 :root { --radius: 0.75rem; }
 html, body { height: 100%; }
 
+
+@layer utilities {
+  /* exclude radios/checkboxes */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    @apply focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0;
+  }
+}
+
+@layer components {
+  .input, .select, .textarea {
+    @apply h-9 rounded border bg-background px-3 py-2 text-sm
+           ring-offset-background placeholder:text-muted-foreground
+           focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-0
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .textarea { @apply h-auto min-h-[112px]; }
+}
+
 /* ===== Design tokens (HSL) =====
    Matches shadcn-admin palette & component theming
 */
@@ -148,7 +168,7 @@ html, body { height: 100%; }
   }
   .data-table table { @apply w-full border-collapse; }
   .data-table thead th {
-    @apply text-xs font-medium text-muted-foreground bg-muted/50 uppercase tracking-wide text-left
+    @apply text-xs font-medium text-muted-foreground bg-stone-100/50 uppercase tracking-wide text-left
            border-b sticky top-0 z-10;
   }
   .data-table thead th,
@@ -156,7 +176,7 @@ html, body { height: 100%; }
     @apply px-3 py-2 align-middle;
   }
   .data-table tbody tr { @apply border-b; }
-  .data-table tbody tr:hover { @apply bg-muted/40; }
+  .data-table tbody tr:hover { @apply bg-stone-100/40; }
   .data-table .cell-secondary { @apply text-xs text-muted-foreground; }
   .data-table .cell-badge { @apply text-[10px] px-1.5 py-0.5 rounded ring-1; }
 
@@ -187,7 +207,7 @@ html, body { height: 100%; }
     @apply inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium
            ring-1 ring-inset;
   }
-  .badge-muted { @apply bg-muted text-muted-foreground border-transparent; }
+  .badge-muted { @apply bg-stone-100 text-muted-foreground border-transparent; }
   .badge-ok    { @apply bg-green-100 text-green-800 ring-green-200 dark:bg-green-900/30 dark:text-green-200 dark:ring-green-800/60; }
   .badge-warn  { @apply bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/60; }
   .badge-danger{ @apply bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-800/60; }
@@ -203,7 +223,7 @@ html, body { height: 100%; }
 
   /* Simple avatar */
   .avatar {
-    @apply inline-flex h-8 w-8 items-center justify-center rounded bg-muted text-xs font-semibold;
+    @apply inline-flex h-8 w-8 items-center justify-center rounded bg-stone-100 text-xs font-semibold;
   }
 }
 

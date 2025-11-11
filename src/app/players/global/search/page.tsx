@@ -259,7 +259,7 @@ export default function GlobalSearchPage() {
               className={`inline-flex flex-wrap items-center gap-2 rounded border px-2 py-1 text-xs transition ${
                 enabled[s.id]
                   ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200"
-                  : "border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                  : "border-gray-300 text-gray-700 hover:bg-stone-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
               }`}
               title={s.note}
             >
@@ -279,7 +279,7 @@ export default function GlobalSearchPage() {
 
       {/* Results & merge view */}
       <Tabs defaultValue="merged" className="space-y-3">
-        <TabsList className="mt-4 rounded bg-gray-50 p-1 shadow-sm dark:bg-neutral-900">
+        <TabsList className="mt-4 rounded bg-stone-100 p-1 shadow-sm dark:bg-neutral-900">
           <TabsTrigger value="merged" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
             Scalona lista ({flatFiltered.length})
           </TabsTrigger>
@@ -338,7 +338,7 @@ function ResultsTable({
         <div>
           <CardTitle className="text-sm">
             {sourceLabel ? `Wyniki: ${sourceLabel}` : "Wyniki (scalone)"}{" "}
-            <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            <span className="ml-1 rounded bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
               {rows.length}
             </span>
           </CardTitle>
@@ -360,7 +360,7 @@ function ResultsTable({
       <CardContent className="p-0">
         <div className="w-full overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+            <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
                 <th className="p-3 text-left font-medium">Zawodnik</th>
                 <th className="p-3 text-left font-medium">Klub</th>

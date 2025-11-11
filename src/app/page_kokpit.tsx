@@ -384,7 +384,7 @@ export default function Page() {
                     return (
                       <li key={p.id} className="flex items-center gap-3 py-2">
                         {/* Avatar / image placeholder */}
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-gray-200 bg-gray-50 text-xs font-medium dark:border-neutral-800 dark:bg-neutral-900">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-gray-200 bg-stone-100 text-xs font-medium dark:border-neutral-800 dark:bg-neutral-900">
                           {initials(p.name)}
                         </div>
                         <div className="min-w-0 flex-1">

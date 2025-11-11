@@ -234,7 +234,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <div className="fixed bottom-3 right-3 z-[150]">
         <button
           onClick={logout}
-          className="rounded border border-gray-200 bg-white px-3 py-1 text-xs text-dark shadow-sm hover:bg-gray-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+          className="rounded border border-gray-200 bg-white px-3 py-1 text-xs text-dark shadow-sm hover:bg-stone-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
           title="Wyloguj (dev)"
         >
           Wyloguj

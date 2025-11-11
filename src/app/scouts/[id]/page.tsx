@@ -187,7 +187,7 @@ export default function ScoutProfilePage() {
             <TabsContent value="players">
               <div className="w-full overflow-x-auto rounded border border-gray-200 dark:border-neutral-800">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                  <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                     <tr>
                       <th className="p-3 text-left font-medium">Zawodnik</th>
                       <th className="p-3 text-left font-medium">Klub</th>
@@ -229,7 +229,7 @@ export default function ScoutProfilePage() {
             <TabsContent value="obs">
               <div className="w-full overflow-x-auto rounded border border-gray-200 dark:border-neutral-800">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                  <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                     <tr>
                       <th className="p-3 text-left font-medium">Mecz</th>
                       <th className="p-3 text-left font-medium">Zawodnik</th>

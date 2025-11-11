@@ -392,7 +392,7 @@ export default function ManagePage() {
         </CardHeader>
         <CardContent className="w-full overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+            <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
                 <th className="p-3 text-left font-medium">Osoba</th>
                 <th className="p-3 text-left font-medium">Rola</th>
@@ -410,7 +410,7 @@ export default function ManagePage() {
                     <div className="text-xs text-dark dark:text-neutral-400">{inv.email || "brak e-maila"}</div>
                   </td>
                   <td className="p-3 text-xs">
-                    <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                    <span className="inline-flex items-center gap-1 rounded bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
                       <Shield className="h-3.5 w-3.5" /> {labelForRole(inv.role)}
                     </span>
                   </td>
@@ -459,7 +459,7 @@ export default function ManagePage() {
         </CardHeader>
         <CardContent className="w-full overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+            <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
                 <th className="p-3 text-left font-medium">Użytkownik</th>
                 <th className="p-3 text-left font-medium">Kontakt</th>
@@ -566,7 +566,7 @@ export default function ManagePage() {
             <div key={g} className="rounded border border-gray-200 dark:border-neutral-800">
               <button
                 onClick={() => toggleGroup(g)}
-                className="flex w-full items-center justify-between gap-2 rounded-t-lg bg-gray-50 px-3 py-2 text-left text-sm font-semibold dark:bg-neutral-900"
+                className="flex w-full items-center justify-between gap-2 rounded-t-lg bg-stone-100 px-3 py-2 text-left text-sm font-semibold dark:bg-neutral-900"
                 aria-expanded={openGroups[g]}
               >
                 <span className="flex items-center gap-2">
@@ -590,7 +590,7 @@ export default function ManagePage() {
 
                   <div className="w-full overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                      <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                         <tr>
                           <th className="w-12 p-2 text-left font-medium">#</th>
                           <th className="min-w-[220px] p-2 text-left font-medium">Etykieta</th>
@@ -602,7 +602,7 @@ export default function ManagePage() {
                       </thead>
                       <tbody>
                         {mCfg[g].map((m, i) => (
-                          <tr key={m.id} className="border-t border-gray-200 align-middle hover:bg-gray-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+                          <tr key={m.id} className="border-t border-gray-200 align-middle hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
                             <td className="p-2 text-xs text-dark">{i + 1}</td>
 
                             <td className="p-2">
@@ -615,7 +615,7 @@ export default function ManagePage() {
                             <td className="p-2">
                               <button
                                 onClick={() => toggleMetric(g, m.id)}
-                                className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs transition hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs transition hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                 title={m.enabled ? "Wyłącz metrykę" : "Włącz metrykę"}
                               >
                                 {m.enabled ? <ToggleRight className="h-4 w-4 text-emerald-600" /> : <ToggleLeft className="h-4 w-4 text-gray-400" />}
@@ -626,7 +626,7 @@ export default function ManagePage() {
                             <td className="p-2">
                               <div className="flex items-center gap-1">
                                 <button
-                                  className="rounded border border-gray-300 p-1 text-xs hover:bg-gray-50 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                  className="rounded border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                   onClick={() => moveMetric(g, m.id, -1)}
                                   disabled={i === 0}
                                   title="Przenieś w górę"
@@ -634,7 +634,7 @@ export default function ManagePage() {
                                   <ArrowUp className="h-3.5 w-3.5" />
                                 </button>
                                 <button
-                                  className="rounded border border-gray-300 p-1 text-xs hover:bg-gray-50 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                  className="rounded border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                   onClick={() => moveMetric(g, m.id, 1)}
                                   disabled={i === mCfg[g].length - 1}
                                   title="Przenieś w dół"

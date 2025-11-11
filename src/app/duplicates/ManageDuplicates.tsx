@@ -371,7 +371,7 @@ export default function DuplicatesPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
-            className="inline-flex flex-wrap items-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            className="inline-flex flex-wrap items-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
             onClick={runRefresh}
             title={lastRefreshAt ? `Ostatnie odświeżenie: ${fmtTime(lastRefreshAt)}` : "Odśwież teraz"}
           >
@@ -466,7 +466,7 @@ export default function DuplicatesPage() {
                           {rep?.name || "Nieznany"} • ur. {prettyDate(rep?.birthDate)} • {g.list.length} wpis(y)
                         </div>
                         <div className="mt-0.5 text-[12px] text-dark">
-                          Klucz grupy: <code className="rounded bg-gray-50 px-1 py-0.5 dark:bg-neutral-900">{g.key}</code>{" "}
+                          Klucz grupy: <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-neutral-900">{g.key}</code>{" "}
                           {existingGlobal && (
                             <span className="ml-2 inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
                               Ma globalny wpis #{existingGlobal.id}
@@ -507,7 +507,7 @@ export default function DuplicatesPage() {
                           Oznacz duplikaty (keeper)
                         </button>
                         <button
-                          className="inline-flex items-center gap-1 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                          className="inline-flex items-center gap-1 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                           onClick={() => setKeeperByKey((prev) => ({ ...prev, [g.key]: null }))}
                           title="Wyczyść wybór keepera"
                         >
@@ -519,7 +519,7 @@ export default function DuplicatesPage() {
 
                     <div className="w-full overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                        <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                           <tr>
                             <th className="p-3 text-left font-medium">Keeper</th>
                             <th className="p-3 text-left font-medium">Scout</th>
@@ -604,7 +604,7 @@ export default function DuplicatesPage() {
                                   </td>
                                   <td className="p-3 align-middle text-right">
                                     <button
-                                      className="inline-flex items-center gap-1 rounded border border-gray-300 px-2.5 py-1.5 text-xs hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                      className="inline-flex items-center gap-1 rounded border border-gray-300 px-2.5 py-1.5 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                       onClick={() => setDetails(p)}
                                       title="Podgląd szczegółów rekordu skauta"
                                     >
@@ -637,7 +637,7 @@ export default function DuplicatesPage() {
             <div className="flex flex-wrap items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-neutral-800">
               <div className="text-sm font-semibold">Szczegóły zawodnika skauta</div>
               <button
-                className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                 onClick={() => setDetails(null)}
               >
                 Zamknij
@@ -682,14 +682,14 @@ export default function DuplicatesPage() {
                   <div>{details.globalId ? `#${details.globalId}` : "—"}</div>
                 </div>
               </div>
-              <div className="mt-4 rounded bg-gray-50 p-3 text-xs leading-relaxed dark:bg-neutral-900">
+              <div className="mt-4 rounded bg-stone-100 p-3 text-xs leading-relaxed dark:bg-neutral-900">
                 <div className="font-medium mb-1">Uwaga dot. scalania i przyszłych duplikatów</div>
                 Po scaleniu do globalnej bazy, kolejne wpisy scoutów o tym samym zawodniku zostaną
                 wykryte jako grupa o tym samym kluczu. Wystarczy użyć akcji
                 <b> „Powiąż z globalnym”</b>, aby dopiąć nowy wpis do istn. rekordu globalnego.
               </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between border-t border-gray-200 bg-gray-50 px-4 py-2 text-xs dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="flex flex-wrap items-center justify-between border-t border-gray-200 bg-stone-100 px-4 py-2 text-xs dark:border-neutral-800 dark:bg-neutral-900">
               <span className="text-gray-500">Klucz: <code>{dupKey(details)}</code></span>
               <div className="text-gray-500">Kompletność: {completenessScore(details)}/4</div>
             </div>

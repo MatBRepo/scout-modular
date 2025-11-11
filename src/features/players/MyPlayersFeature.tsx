@@ -22,6 +22,8 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { AddPlayerIcon, PlayerOnlyTshirt } from "@/components/icons";
+
 
 /* ====== helpers: mobile detection + portal ====== */
 function useIsMobile(maxPx = 640) {
@@ -699,7 +701,7 @@ export default function MyPlayersFeature({
               {/* Right: tabs block (fixed height) */}
               <div className="hidden md:block shrink-0 h-10">
                 <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-                  <TabsList className="h-10 rounded inline-flex items-center justify-center text-muted-foreground bg-stone-100 p-1 shadow-sm dark:bg-stone-900">
+                  <TabsList className="h-10 rounded inline-flex items-center justify-center text-muted-foreground bg-stone-200 p-1 shadow-sm dark:bg-stone-900">
                     <TabsTrigger value="all" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                       Wszyscy
                       <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
@@ -737,7 +739,7 @@ export default function MyPlayersFeature({
                       <button
                         ref={chipsMoreBtnRef}
                         type="button"
-                        className="inline-flex h-10 items-center gap-1 rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
+                        className="inline-flex h-10 items-center gap-1 rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
                         onClick={() => setChipsOpen((v) => !v)}
                         onMouseEnter={() => {
                           if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
@@ -836,8 +838,7 @@ export default function MyPlayersFeature({
                   onClick={() => router.push("/players/new")}
                   className={`${controlH} inline-flex items-center justify-center gap-2 rounded bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
                 >
-                  <PlusCircle className="h-4 w-4" />
-                  <span className="hidden sm:inline">Dodaj</span>
+                  <AddPlayerIcon className="mr-0  h-4 w-4" />
                 </Button>
 
                 {/* Więcej (h-10, w-10) */}
@@ -926,7 +927,7 @@ export default function MyPlayersFeature({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
-                        className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900"
+                        className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900"
                         onClick={() => {
                           setPos({ GK:true, DF:true, MF:true, FW:true });
                           setClub("");
@@ -949,7 +950,7 @@ export default function MyPlayersFeature({
 
                 <div className="mb-2 grid grid-cols-4 gap-2">
                   {POS.map((p) => (
-                    <label key={p} className="flex items-center justify-between rounded px-2 py-1 hover:bg-gray-50 dark:hover:bg-neutral-800">
+                    <label key={p} className="flex items-center justify-between rounded px-2 py-1 hover:bg-stone-100 dark:hover:bg-neutral-800">
                       <span>{p}</span>
                       <Checkbox
                         checked={pos[p]}
@@ -1008,7 +1009,7 @@ export default function MyPlayersFeature({
                   return (
                     <label
                       key={key}
-                      className="flex cursor-pointer items-center justify-between rounded px-2 py-1 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                      className="flex cursor-pointer items-center justify-between rounded px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
                       <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
                       <Checkbox
@@ -1031,33 +1032,33 @@ export default function MyPlayersFeature({
             >
               <div className="w-full p-1">
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setColsOpen(true); setMoreOpen(false); }}
                 >
                   <Columns3 className="h-4 w-4" /> Kolumny
                 </button>
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setScope("active"); setMoreOpen(false); }}
                 >
                   <Users className="h-4 w-4" /> Aktywni
                 </button>
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setScope("trash"); setMoreOpen(false); }}
                 >
                   <Trash2 className="h-4 w-4" /> Kosz
                 </button>
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setMoreOpen(false); exportCSV(); }}
                 >
                   <FileDown className="h-4 w-4" /> Eksport CSV
                 </button>
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setMoreOpen(false); exportExcel(); }}
                 >
                   <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
@@ -1177,7 +1178,7 @@ export default function MyPlayersFeature({
             >
               <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
                 <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   onClick={() => {
                     setMoreSheetOpen(false);
                     setColsSheetOpen(true);
@@ -1187,7 +1188,7 @@ export default function MyPlayersFeature({
                 </button>
 
                 <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   onClick={() => {
                     setScope("active");
                     setMoreSheetOpen(false);
@@ -1196,7 +1197,7 @@ export default function MyPlayersFeature({
                   <Users className="h-4 w-4" /> Aktywni
                 </button>
                 <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   onClick={() => {
                     setScope("trash");
                     setMoreSheetOpen(false);
@@ -1206,7 +1207,7 @@ export default function MyPlayersFeature({
                 </button>
 
                 <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   onClick={() => {
                     setMoreSheetOpen(false);
                     exportCSV();
@@ -1215,7 +1216,7 @@ export default function MyPlayersFeature({
                   <FileDown className="h-4 w-4" /> Eksport CSV
                 </button>
                 <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   onClick={() => {
                     setMoreSheetOpen(false);
                     exportExcel();
@@ -1238,7 +1239,7 @@ export default function MyPlayersFeature({
                   return (
                     <label
                       key={key}
-                      className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+                      className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
                       <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
                       <Checkbox
@@ -1352,7 +1353,7 @@ export default function MyPlayersFeature({
               </div>
 
               {/* Pagination footer */}
-              <div className="mt-3 flex flex-row flex-wrap items-center justify-between gap-2 rounded bg-white p-2 text-sm shadow-sm dark:bg-neutral-950">
+<div className="mt-3 flex flex-row flex-wrap items-center justify-center lg:justify-between gap-2 rounded p-2 text-sm shadow-sm dark:bg-neutral-950">
                 {/* Left: page size + range */}
                 <div className="flex flex-row flex-wrap items-center gap-2">
                   <span className="text-dark dark:text-neutral-300 leading-none">Wiersze na stronę:</span>
@@ -1512,7 +1513,7 @@ function PlayersTable({
       className="w-full overflow-x-auto rounded border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
     >
       <table className="w-full text-sm">
-        <thead className="sticky top-0 z-10 bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+        <thead className="sticky top-0 z-10 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
           <tr>
             {visibleCols.photo && <th className={`${cellPad} text-left font-medium w-16`}></th>}
             {visibleCols.select && (
@@ -1545,7 +1546,7 @@ function PlayersTable({
             return (
               <tr
                 key={r.id}
-                className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-gray-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
+                className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
                 onDoubleClick={() => onOpen(r.id)}
               >
                 {visibleCols.photo && (
@@ -1553,9 +1554,7 @@ function PlayersTable({
                     <div className="relative">
                       {!r._known ? (
                         <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
-                          <svg className="h-5 w-5 text-gray-800 dark:text-neutral-200" viewBox="0 0 16 16" aria-hidden="true">
-                            <path d="M13.5867 2.30659L10.6667 1.33325C10.6667 2.0405 10.3857 2.71877 9.88565 3.21887C9.38555 3.71897 8.70727 3.99992 8.00003 3.99992C7.29278 3.99992 6.61451 3.71897 6.11441 3.21887C5.61431 2.71877 5.33336 2.0405 5.33336 1.33325L2.41336 2.30659C2.11162 2.40711 1.85575 2.6122 1.69193 2.88481C1.52811 3.15743 1.46715 3.47963 1.52003 3.79325L1.90669 6.10659C1.93208 6.26319 2.01248 6.40562 2.13345 6.50826C2.25443 6.61091 2.40804 6.66704 2.56669 6.66659H4.00003V13.3333C4.00003 14.0666 4.60003 14.6666 5.33336 14.6666H10.6667C11.0203 14.6666 11.3595 14.5261 11.6095 14.2761C11.8596 14.026 12 13.6869 12 13.3333V6.66659H13.4334C13.592 6.66704 13.7456 6.61091 13.8666 6.50826C13.9876 6.40562 14.068 6.26319 14.0934 6.10659L14.48 3.79325C14.5329 3.47963 14.4719 3.15743 14.3081 2.88481C14.1443 2.6122 13.8884 2.40711 13.5867 2.30659Z" stroke="currentColor" strokeWidth="0.222" strokeLinecap="round" strokeLinejoin="round" fill="none"></path>
-                          </svg>
+                         <PlayerOnlyTshirt className="h-6 w-6"  strokeWidthAll={14} />
                           {jersey && (
                             <span className="absolute -bottom-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-indigo-600 px-1.5 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-neutral-950">
                               {jersey}
@@ -1610,7 +1609,7 @@ function PlayersTable({
                 {visibleCols.age && <td className={`${cellPad} text-gray-700 dark:text-neutral-200`}>{r.age}</td>}
                 {visibleCols.obs && (
                   <td className={cellPad}>
-                    <span className="inline-flex rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                    <span className="inline-flex rounded bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
                       {r._obs}
                     </span>
                   </td>
@@ -1729,7 +1728,7 @@ function QuickObservation({
     a.trim() && b.trim() ? `${a.trim()} vs ${b.trim()}` : (a + " " + b).trim();
 
   const chip = (txt: string) => (
-    <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+    <span className="inline-flex items-center rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
       {txt}
     </span>
   );
@@ -1921,7 +1920,7 @@ function QuickObservation({
                       className={`px-3 py-1 text-sm transition-colors ${
                         qaMode === m
                           ? "bg-blue-600 text-white"
-                          : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                          : "bg-white text-gray-700 hover:bg-stone-100 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                       }`}
                     >
                       {m === "live" ? <span className="inline-flex items-center gap-1"><Radio className="h-3.5 w-3.5" /> Live</span> : <span className="inline-flex items-center gap-1"><Tv className="h-3.5 w-3.5" /> TV</span>}
@@ -1939,7 +1938,7 @@ function QuickObservation({
                       className={`px-3 py-1 text-sm transition-colors ${
                         qaStatus === s
                           ? "bg-green-600 text-white"
-                          : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                          : "bg-white text-gray-700 hover:bg-stone-100 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                       }`}
                     >
                       {s === "draft" ? "Szkic" : "Finalna"}
@@ -1985,7 +1984,7 @@ function QuickObservation({
 
             <div className="max-h-80 overflow-auto rounded border border-gray-200 dark:border-neutral-700">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                   <tr>
                     <th className="p-2 text-left font-medium">#</th>
                     <th className="p-2 text-left font-medium">Mecz</th>
@@ -1999,7 +1998,7 @@ function QuickObservation({
                   {existingFiltered.map((o) => (
                     <tr
                       key={o.id}
-                      className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-gray-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
+                      className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
                         obsSelectedId === o.id ? "bg-blue-50/60 dark:bg-blue-900/20" : ""
                       }`}
                       onClick={() => setObsSelectedId(o.id)}

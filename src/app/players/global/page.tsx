@@ -172,7 +172,7 @@ export default function GlobalDatabasePage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">
                 Globalna baza •{" "}
-                <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <span className="inline-flex items-center rounded bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                   {filtered.length} rekordów
                 </span>
               </CardTitle>
@@ -180,7 +180,7 @@ export default function GlobalDatabasePage() {
             <CardContent className="p-0">
               <div className="w-full overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                  <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                     <tr>
                       <th className="p-3 text-left font-medium">Zawodnik</th>
                       <th className="p-3 text-left font-medium">Klub</th>

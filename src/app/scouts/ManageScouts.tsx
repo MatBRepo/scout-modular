@@ -101,7 +101,7 @@ function rankPillCls(r: Rank) {
   if (r === "gold")
     return `${base} bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/70`;
   if (r === "silver")
-    return `${base} bg-slate-100 text-slate-800 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-200 dark:ring-slate-700/70`;
+    return `${base} bg-stone-100 text-slate-800 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-200 dark:ring-slate-700/70`;
   return `${base} bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-200 dark:ring-orange-800/70`;
 }
 
@@ -653,7 +653,7 @@ export default function ScoutsAdminPage() {
       {/* Desktop: table */}
       <div className="hidden w-full overflow-x-auto rounded border border-gray-200 dark:border-neutral-800 md:block">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+          <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
             <tr>
               {[
                 { key: "position", label: "Pozycja" },
@@ -697,11 +697,11 @@ export default function ScoutsAdminPage() {
               })}
             </tr>
           </thead>
-          <tbody className="[&>tr:nth-child(even)]:bg-gray-50/40 dark:[&>tr:nth-child(even)]:bg-neutral-900/40">
+          <tbody className="[&>tr:nth-child(even)]:bg-stone-100/40 dark:[&>tr:nth-child(even)]:bg-neutral-900/40">
             {filtered.map((s) => (
               <tr
                 key={s.id}
-                className="border-t border-gray-200 align-top transition-colors hover:bg-gray-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/60"
+                className="border-t border-gray-200 align-top transition-colors hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/60"
                 onClick={() => setDetail(s)}
               >
                 {/* Sticky position column */}

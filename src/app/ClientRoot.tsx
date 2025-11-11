@@ -8,7 +8,7 @@ import AppSidebar from "@/widgets/app-sidebar/AppSidebar";
 import PageTransition from "@/shared/ui/PageTransition";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Menu, PlusCircle, Mail, Lock, User as UserIcon, Eye, EyeOff, CheckCircle2,
+  Menu, Mail, Lock, User as UserIcon, Eye, EyeOff, CheckCircle2,
   Loader2, ChevronRight
 } from "lucide-react";
 import { HomeIcon } from "@heroicons/react/24/outline";
@@ -19,7 +19,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import LoaderOverlay from "@/shared/ui/LoaderOverlay";
 import { motion, AnimatePresence, cubicBezier, type Variants, useReducedMotion } from "framer-motion";
 
-
+import {  AddPlayerIcon,
+  AddObservationIcon } from "@/components/icons";
 
 /* ===== Keys ===== */
 const AUTH_KEY = "s4s.auth";
@@ -143,7 +144,7 @@ function AuthGate({
   // Login form
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
-  const [showPassLogin, setShowPassLogin] = useState(false);
+  const [showPassLogin, setShowPassLogin] = useState(false); // <-- keep variable name
   const [loginErr, setLoginErr] = useState<string | null>(null);
   const [loginBusy, setLoginBusy] = useState(false);
   const [loginCaps, setLoginCaps] = useState(false);
@@ -290,7 +291,7 @@ function AuthGate({
         {/* LEFT */}
         <motion.section variants={colVariants} className="relative hidden min-h-[540px] items-center md:flex">
           <div className="mx-auto w-full max-w-[620px] p-2 md:p-6">
-            <div className="mb-4 inline-flex items-center gap-2 rounded bg-slate-100 px-3 py-1.5 text-xs text-slate-800 dark:bg-neutral-900 dark:text-neutral-200">
+            <div className="mb-4 inline-flex items-center gap-2 rounded bg-stone-100 px-3 py-1.5 text-xs text-slate-800 dark:bg-neutral-900 dark:text-neutral-200">
               <CheckCircle2 className="h-3.5 w-3.5" />
               entrisoScouting — panel analityczny
             </div>
@@ -346,7 +347,7 @@ function AuthGate({
           <div ref={loginCardRef} className="w-full max-w-md rounded-2xl p-5 md:p-6">
             {/* Mobile short description */}
             <div className="mb-3 block md:hidden">
-              <div className="rounded bg-slate-100 p-3 text-xs text-slate-700 dark:bg-neutral-900 dark:text-neutral-300">
+              <div className="rounded bg-stone-100 p-3 text-xs text-slate-700 dark:bg-neutral-900 dark:text-neutral-300">
                 <div className="mb-1 font-medium text-slate-900 dark:text-neutral-100">
                   Szybka platforma dla scoutów
                 </div>
@@ -373,13 +374,13 @@ function AuthGate({
               <TabsList className="mb-4 grid w-full grid-cols-2 gap-1 rounded-lg bg-transparent p-0">
                 <TabsTrigger
                   value="login"
-                  className="rounded px-4 py-2 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-neutral-900"
+                  className="rounded px-4 py-2 data-[state=active]:bg-stone-100 dark:data-[state=active]:bg-neutral-900"
                 >
                   Logowanie
                 </TabsTrigger>
                 <TabsTrigger
                   value="register"
-                  className="rounded px-4 py-2 data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-neutral-900"
+                  className="rounded px-4 py-2 data-[state=active]:bg-stone-100 dark:data-[state=active]:bg-neutral-900"
                 >
                   Rejestracja
                 </TabsTrigger>
@@ -430,7 +431,7 @@ function AuthGate({
                               />
                               <button
                                 type="button"
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:bg-slate-100 dark:hover:bg-neutral-800"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:bg-stone-100 dark:hover:bg-neutral-800"
                                 onClick={() => setShowPassLogin((s) => !s)}
                                 aria-label={showPassLogin ? "Ukryj hasło" : "Pokaż hasło"}
                               >
@@ -516,7 +517,7 @@ function AuthGate({
                               />
                               <button
                                 type="button"
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:bg-slate-100 dark:hover:bg-neutral-800"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 hover:bg-stone-100 dark:hover:bg-neutral-800"
                                 onClick={() => setShowPassReg((s) => !s)}
                                 aria-label={showPassReg ? "Ukryj hasło" : "Pokaż hasło"}
                               >
@@ -594,7 +595,7 @@ function AuthGate({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">Admin</span>
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">
+                    <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">
                       demo
                     </span>
                   </div>
@@ -613,7 +614,7 @@ function AuthGate({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">Scout Agent</span>
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">
+                    <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">
                       demo
                     </span>
                   </div>
@@ -632,7 +633,7 @@ function AuthGate({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">Scout</span>
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">
+                    <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-700 dark:bg-neutral-800 dark:text-neutral-200">
                       demo
                     </span>
                   </div>
@@ -683,21 +684,17 @@ function AppShell({
 }) {
   const crumbs = buildBreadcrumb(pathname);
 
+  const search = useSearchParams();
 
-const search = useSearchParams();
+  const isObsCreateQuery =
+    pathname.startsWith("/observations") && search.get("create") === "1";
 
-const isObsCreateQuery =
-  pathname.startsWith("/observations") && search.get("create") === "1";
-
-const hideHeaderActions =
-  /^\/players\/new(?:\/|$)/.test(pathname) ||       // add player
-  /^\/players\/\d+(?:\/|$)/.test(pathname) ||       // player details (e.g. /players/8)
-  /^\/observations\/new(?:\/|$)/.test(pathname) ||  // add observation
-  /^\/observations\/\d+(?:\/|$)/.test(pathname) ||  // observation details
-  isObsCreateQuery;       
-
-
-
+  const hideHeaderActions =
+    /^\/players\/new(?:\/|$)/.test(pathname) ||       // add player
+    /^\/players\/\d+(?:\/|$)/.test(pathname) ||       // player details (e.g. /players/8)
+    /^\/observations\/new(?:\/|$)/.test(pathname) ||  // add observation
+    /^\/observations\/\d+(?:\/|$)/.test(pathname) ||  // observation details
+    isObsCreateQuery;
 
   return (
     <>
@@ -720,10 +717,10 @@ const hideHeaderActions =
             )}
 
             {/* ABSOLUTE breadcrumb on the left, aligned to app bar */}
-<nav
-  aria-label="Breadcrumb"
-  className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
->
+            <nav
+              aria-label="Breadcrumb"
+              className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
+            >
               <ol className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300">
                 {crumbs.map((c, i) => {
                   const last = i === crumbs.length - 1;
@@ -758,66 +755,68 @@ const hideHeaderActions =
               </ol>
             </nav>
 
-{/* Actions row — same horizontal padding as content (md:px-6) */}
-<div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] px-3">
-  {isAuthed ? (
-    <motion.div
-      initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: easeOutCustom }}
-      // 👇 keep space when hidden
-      className={`ml-2 flex shrink-0 items-center gap-2 min-h-[36px] ${hideHeaderActions ? "invisible pointer-events-none" : ""}`}
-    >
-      {/* Mobile: icons */}
-      <div className="flex items-center gap-2 md:hidden">
-        <Button
-          size="icon"
-          className="h-9 w-9 rounded bg-gray-900 text-white hover:bg-gray-800"
-          aria-label="Dodaj zawodnika"
-          onClick={onAddPlayer}
-          title="Dodaj zawodnika"
-        >
-          <UserIcon className="h-4 w-4" />
-        </Button>
-        <Button
-          size="icon"
-          variant="outline"
-          className="h-9 w-9 rounded border-gray-300 dark:border-neutral-700"
-          aria-label="Dodaj obserwacje"
-          onClick={onAddObservation}
-          title="Dodaj obserwacje"
-        >
-          <PlusCircle className="h-4 w-4" />
-        </Button>
-      </div>
+            {/* Actions row */}
+            <div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] px-3">
+              {isAuthed ? (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: easeOutCustom }}
+                  className={`ml-2 flex shrink-0 items-center gap-2 min-h-[36px] ${hideHeaderActions ? "invisible pointer-events-none" : ""}`}
+                >
+                  {/* Mobile: icons */}
+                  <div className="flex items-center gap-2 md:hidden">
+                    <Button
+                      size="icon"
+                      className="h-9 w-9 rounded bg-gray-900 text-white hover:bg-gray-800"
+                      aria-label="Dodaj zawodnika"
+                      onClick={onAddPlayer}
+                      title="Dodaj zawodnika"
+                    >
+                      {/* force white on mobile, different color on md+ if you want */}
+                      <AddPlayerIcon
+                        className="h-4 w-4"
+                        strokeWidthAll={1.8}
+                      />
+                    </Button>
 
-      {/* Desktop: full buttons */}
-      <div className="hidden items-center gap-2 md:flex">
-        <Button
-          onClick={onAddPlayer}
-          className="h-9 rounded bg-gray-900 text-white hover:bg-gray-800"
-          aria-label="Dodaj zawodnika"
-        >
-          <UserIcon className="mr-2 h-4 w-4" />
-          Dodaj zawodnika
-        </Button>
-        <Button
-          onClick={onAddObservation}
-          variant="outline"
-          className="h-9 rounded border-gray-300 dark:border-neutral-700"
-          aria-label="Dodaj obserwacje"
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Dodaj obserwacje
-        </Button>
-      </div>
-    </motion.div>
-  ) : (
-    // keep row height even when not authed
-    <div className="min-h-[36px]" />
-  )}
-</div>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-9 w-9 rounded border-gray-300 dark:border-neutral-700"
+                      aria-label="Dodaj obserwacje"
+                      onClick={onAddObservation}
+                      title="Dodaj obserwacje"
+                    >
+                      <AddObservationIcon className="h-4 w-4"  />
+                    </Button>
+                  </div>
 
+                  {/* Desktop: full buttons */}
+                  <div className="hidden items-center gap-2 md:flex">
+                    <Button
+                      onClick={onAddPlayer}
+                      className="h-9 rounded bg-gray-900 text-white hover:bg-gray-800"
+                      aria-label="Dodaj zawodnika"
+                    >
+                      <AddPlayerIcon className="mr-2 h-4 w-4" />
+                      Dodaj zawodnika
+                    </Button>
+                    <Button
+                      onClick={onAddObservation}
+                      variant="outline"
+                      className="h-9 rounded border-gray-300 dark:border-neutral-700"
+                      aria-label="Dodaj obserwacje"
+                    >
+                      <AddObservationIcon className="mr-2 h-4 w-4" />
+                      Dodaj obserwacje
+                    </Button>
+                  </div>
+                </motion.div>
+              ) : (
+                <div className="min-h-[36px]" />
+              )}
+            </div>
           </div>
         </header>
 
@@ -846,7 +845,6 @@ const hideHeaderActions =
     </>
   );
 }
-
 
 /* ===== ClientRoot ===== */
 export default function ClientRoot({ children }: { children: React.ReactNode }) {
