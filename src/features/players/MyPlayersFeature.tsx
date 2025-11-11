@@ -587,7 +587,7 @@ export default function MyPlayersFeature({
 
   // CONSISTENT HEIGHTS
   const controlH = "h-10";
-  const cellPad = "p-3";
+  const cellPad = "p-2";
   const rowH = "h-12";
 
   // Keyboard shortcuts (+ Esc closes panels)

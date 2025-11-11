@@ -1666,7 +1666,7 @@ export default function ObservationsFeature({
             <thead className="sticky top-0 z-10 bg-stone-100 text-gray-600 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
                 {visibleCols.select && (
-                  <th className="w-10 p-2 text-left font-medium sm:p-3">
+                  <th className="w-10 p-2 text-left font-medium sm:p-2">
                     <Checkbox
                       aria-label="Zaznacz wszystkie"
                       checked={
@@ -1684,37 +1684,37 @@ export default function ObservationsFeature({
                   </th>
                 )}
                 {visibleCols.match && (
-                  <th className="p-2 text-left sm:p-3">
+                  <th className="p-2 text-left sm:p-2">
                     <SortHeader k="match">Mecz</SortHeader>
                   </th>
                 )}
                 {visibleCols.date && (
-                  <th className="hidden p-2 text-left sm:table-cell sm:p-3">
+                  <th className="hidden p-2 text-left sm:table-cell sm:p-2">
                     <SortHeader k="date">Data</SortHeader>
                   </th>
                 )}
                 {visibleCols.time && (
-                  <th className="hidden p-2 text-left sm:table-cell sm:p-3">
+                  <th className="hidden p-2 text-left sm:table-cell sm:p-2">
                     <SortHeader k="time">Godzina</SortHeader>
                   </th>
                 )}
                 {visibleCols.mode && (
-                  <th className="hidden p-2 text-left sm:table-cell sm:p-3">
+                  <th className="hidden p-2 text-left sm:table-cell sm:p-2">
                     <SortHeader k="mode">Tryb</SortHeader>
                   </th>
                 )}
                 {visibleCols.status && (
-                  <th className="p-2 text-left sm:p-3">
+                  <th className="p-2 text-left sm:p-2">
                     <SortHeader k="status">Status</SortHeader>
                   </th>
                 )}
                 {visibleCols.players && (
-                  <th className="hidden p-2 text-left sm:table-cell sm:p-3">
+                  <th className="hidden p-2 text-left sm:table-cell sm:p-2">
                     <SortHeader k="players">Zawodnicy</SortHeader>
                   </th>
                 )}
                 {visibleCols.actions && (
-                  <th className="p-2 text-right font-medium sm:p-3">Akcje</th>
+                  <th className="p-2 text-right font-medium sm:p-2">Akcje</th>
                 )}
               </tr>
             </thead>
@@ -1732,7 +1732,7 @@ export default function ObservationsFeature({
                                 border-gray-200 hover:bg-stone-100/70 dark:border-neutral-800 dark:hover:bg-neutral-900/60`}
                   >
                     {visibleCols.select && (
-                      <td className="p-2 sm:p-3">
+                      <td className="p-2 sm:p-2">
                         <Checkbox
                           aria-label={`Zaznacz obserwację #${r.id}`}
                           checked={selected.has(r.id)}
@@ -1747,7 +1747,7 @@ export default function ObservationsFeature({
                     )}
 
                     {visibleCols.match && (
-                      <td className="p-2 sm:p-3 align-top">
+                      <td className="p-2 sm:p-2 align-top">
                         <div className="min-w-0">
                           <div className="truncate font-medium text-gray-900 dark:text-neutral-100">
                             {r.match || "—"}
@@ -1805,18 +1805,18 @@ export default function ObservationsFeature({
                     )}
 
                     {visibleCols.date && (
-                      <td className="hidden p-2 sm:table-cell sm:p-3 align-top">
+                      <td className="hidden p-2 sm:table-cell sm:p-2 align-top">
                         {fmtDate(r.date)}
                       </td>
                     )}
                     {visibleCols.time && (
-                      <td className="hidden p-2 sm:table-cell sm:p-3 align-top">
+                      <td className="hidden p-2 sm:table-cell sm:p-2 align-top">
                         {r.time || "—"}
                       </td>
                     )}
 
                     {visibleCols.mode && (
-                      <td className="hidden p-2 sm:table-cell sm:p-3 align-top">
+                      <td className="hidden p-2 sm:table-cell sm:p-2 align-top">
                         {/* NEW: Tooltip for Tryb button */}
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1844,7 +1844,7 @@ export default function ObservationsFeature({
                     )}
 
                     {visibleCols.status && (
-                      <td className="p-2 sm:p-3 align-top">
+                      <td className="p-2 sm:p-2 align-top">
                         <div className="flex gap-1">
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1876,20 +1876,20 @@ export default function ObservationsFeature({
                     )}
 
                     {visibleCols.players && (
-                      <td className="hidden p-2 sm:table-cell sm:p-3 align-top">
+                      <td className="hidden p-2 sm:table-cell sm:p-2 align-top">
                         <GrayTag>{pCount}</GrayTag>
                       </td>
                     )}
 
                     {visibleCols.actions && (
-                      <td className="p-2 text-right sm:p-3 align-top">
+                      <td className="p-2 text-right sm:p-2 align-top">
                         <div className="inline-flex items-center gap-2">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-9 w-9 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                 onClick={() => {
                                   setEditing(r);
                                   setPageMode("editor");
@@ -1908,7 +1908,7 @@ export default function ObservationsFeature({
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-9 w-9 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                   onClick={() => moveToTrash(r.id)}
                                   aria-label="Przenieś do kosza"
                                 >
@@ -1923,7 +1923,7 @@ export default function ObservationsFeature({
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-9 w-9 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                   onClick={() => restoreFromTrash(r.id)}
                                   aria-label="Przywróć z kosza"
                                 >
