@@ -8,89 +8,218 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
 import {
-  Accordion, AccordionContent, AccordionItem,
+  Accordion,
+  AccordionContent,
+  AccordionItem,
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  ChevronsUpDown, Check, Loader2, CheckCircle2, ChevronDown, Search,
+  ChevronsUpDown,
+  Check,
+  Loader2,
+  CheckCircle2,
+  ChevronDown,
+  Search,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import StarRating from "@/shared/ui/StarRating";
 import { KnownPlayerIcon, UnknownPlayerIcon } from "@/components/icons";
 
+// 🔥 konfiguracja ocen – ta sama, co w ManagePage / PlayerEditor
+import {
+  loadRatings,
+  type RatingsConfig,
+  type RatingAspect,
+} from "@/shared/ratings";
+
 /* ===== Positions ===== */
 type BucketPos = "GK" | "DF" | "MF" | "FW";
-type DetailedPos = "GK" | "CB" | "LB" | "RB" | "CDM" | "CM" | "CAM" | "LW" | "RW" | "ST";
+type DetailedPos =
+  | "GK"
+  | "CB"
+  | "LB"
+  | "RB"
+  | "CDM"
+  | "CM"
+  | "CAM"
+  | "LW"
+  | "RW"
+  | "ST";
 
-const POS_DATA: Array<{ value: DetailedPos; code: string; name: string; desc: string }> = [
-  { value: "GK", code: "GK", name: "Bramkarz", desc: "Odbicia, gra na linii, wyjścia i gra nogami." },
-  { value: "CB", code: "CB", name: "Środkowy obrońca", desc: "Gra w powietrzu, ustawienie, wyprowadzenie." },
-  { value: "LB", code: "LB", name: "Lewy obrońca", desc: "Obrona strony, dośrodkowania, wsparcie ataku." },
-  { value: "RB", code: "RB", name: "Prawy obrońca", desc: "Obrona strony, dośrodkowania, wsparcie ataku." },
-  { value: "CDM", code: "CDM", name: "Śr. pomocnik defensywny", desc: "Odbiór, asekuracja, pierwsze podanie." },
-  { value: "CM", code: "CM", name: "Środkowy pomocnik", desc: "Równowaga defensywa/kreacja." },
-  { value: "CAM", code: "CAM", name: "Ofensywny pomocnik", desc: "Ostatnie podanie, kreacja, strzał." },
-  { value: "LW", code: "LW", name: "Lewy pomocnik/skrzydłowy", desc: "1v1, dośrodkowania, zejścia do strzału." },
-  { value: "RW", code: "RW", name: "Prawy pomocnik/skrzydłowy", desc: "1v1, dośrodkowania, zejścia do strzału." },
-  { value: "ST", code: "ST", name: "Napastnik", desc: "Wykończenie, gra tyłem, ruch w polu karnym." },
+const POS_DATA: Array<{
+  value: DetailedPos;
+  code: string;
+  name: string;
+  desc: string;
+}> = [
+  {
+    value: "GK",
+    code: "GK",
+    name: "Bramkarz",
+    desc: "Odbicia, gra na linii, wyjścia i gra nogami.",
+  },
+  {
+    value: "CB",
+    code: "CB",
+    name: "Środkowy obrońca",
+    desc: "Gra w powietrzu, ustawienie, wyprowadzenie.",
+  },
+  {
+    value: "LB",
+    code: "LB",
+    name: "Lewy obrońca",
+    desc: "Obrona strony, dośrodkowania, wsparcie ataku.",
+  },
+  {
+    value: "RB",
+    code: "RB",
+    name: "Prawy obrońca",
+    desc: "Obrona strony, dośrodkowania, wsparcie ataku.",
+  },
+  {
+    value: "CDM",
+    code: "CDM",
+    name: "Śr. pomocnik defensywny",
+    desc: "Odbiór, asekuracja, pierwsze podanie.",
+  },
+  {
+    value: "CM",
+    code: "CM",
+    name: "Środkowy pomocnik",
+    desc: "Równowaga defensywa/kreacja.",
+  },
+  {
+    value: "CAM",
+    code: "CAM",
+    name: "Ofensywny pomocnik",
+    desc: "Ostatnie podanie, kreacja, strzał.",
+  },
+  {
+    value: "LW",
+    code: "LW",
+    name: "Lewy pomocnik/skrzydłowy",
+    desc: "1v1, dośrodkowania, zejścia do strzału.",
+  },
+  {
+    value: "RW",
+    code: "RW",
+    name: "Prawy pomocnik/skrzydłowy",
+    desc: "1v1, dośrodkowania, zejścia do strzału.",
+  },
+  {
+    value: "ST",
+    code: "ST",
+    name: "Napastnik",
+    desc: "Wykończenie, gra tyłem, ruch w polu karnym.",
+  },
 ];
 
 const toBucket = (p: DetailedPos): BucketPos => {
   switch (p) {
-    case "GK": return "GK";
+    case "GK":
+      return "GK";
     case "CB":
     case "LB":
-    case "RB": return "DF";
+    case "RB":
+      return "DF";
     case "CDM":
     case "CM":
     case "CAM":
     case "LW":
-    case "RW": return "MF";
-    case "ST": return "FW";
+    case "RW":
+      return "MF";
+    case "ST":
+      return "FW";
   }
 };
 
 /* ===== Countries ===== */
 type Country = { code: string; name: string; flag: string };
 const COUNTRIES: Country[] = [
-  { code: "PL", name: "Polska", flag: "🇵🇱" }, { code: "DE", name: "Niemcy", flag: "🇩🇪" },
-  { code: "GB", name: "Anglia", flag: "🇬🇧" }, { code: "ES", name: "Hiszpania", flag: "🇪🇸" },
-  { code: "IT", name: "Włochy", flag: "🇮🇹" }, { code: "FR", name: "Francja", flag: "🇫🇷" },
-  { code: "NL", name: "Holandia", flag: "🇳🇱" }, { code: "PT", name: "Portugalia", flag: "🇵🇹" },
-  { code: "SE", name: "Szwecja", flag: "🇸🇪" }, { code: "NO", name: "Norwegia", flag: "🇳🇴" },
-  { code: "DK", name: "Dania", flag: "🇩🇰" }, { code: "BE", name: "Belgia", flag: "🇧🇪" },
-  { code: "CH", name: "Szwajcaria", flag: "🇨🇭" }, { code: "AT", name: "Austria", flag: "🇦🇹" },
-  { code: "CZ", name: "Czechy", flag: "🇨🇿" }, { code: "SK", name: "Słowacja", flag: "🇸🇰" },
-  { code: "UA", name: "Ukraina", flag: "🇺🇦" }, { code: "LT", name: "Litwa", flag: "🇱🇹" },
-  { code: "LV", name: "Łotwa", flag: "🇱🇻" }, { code: "EE", name: "Estonia", flag: "🇪🇪" },
-  { code: "HU", name: "Węgry", flag: "🇭🇺" }, { code: "RO", name: "Rumunia", flag: "🇷🇴" },
-  { code: "HR", name: "Chorwacja", flag: "🇭🇷" }, { code: "RS", name: "Serbia", flag: "🇷🇸" },
-  { code: "SI", name: "Słowenia", flag: "🇸🇮" }, { code: "GR", name: "Grecja", flag: "🇬🇷" },
-  { code: "TR", name: "Turcja", flag: "🇹🇷" }, { code: "US", name: "USA", flag: "🇺🇸" },
-  { code: "BR", name: "Brazylia", flag: "🇧🇷" }, { code: "AR", name: "Argentyna", flag: "🇦🇷" },
+  { code: "PL", name: "Polska", flag: "🇵🇱" },
+  { code: "DE", name: "Niemcy", flag: "🇩🇪" },
+  { code: "GB", name: "Anglia", flag: "🇬🇧" },
+  { code: "ES", name: "Hiszpania", flag: "🇪🇸" },
+  { code: "IT", name: "Włochy", flag: "🇮🇹" },
+  { code: "FR", name: "Francja", flag: "🇫🇷" },
+  { code: "NL", name: "Holandia", flag: "🇳🇱" },
+  { code: "PT", name: "Portugalia", flag: "🇵🇹" },
+  { code: "SE", name: "Szwecja", flag: "🇸🇪" },
+  { code: "NO", name: "Norwegia", flag: "🇳🇴" },
+  { code: "DK", name: "Dania", flag: "🇩🇰" },
+  { code: "BE", name: "Belgia", flag: "🇧🇪" },
+  { code: "CH", name: "Szwajcaria", flag: "🇨🇭" },
+  { code: "AT", name: "Austria", flag: "🇦🇹" },
+  { code: "CZ", name: "Czechy", flag: "🇨🇿" },
+  { code: "SK", name: "Słowacja", flag: "🇸🇰" },
+  { code: "UA", name: "Ukraina", flag: "🇺🇦" },
+  { code: "LT", name: "Litwa", flag: "🇱🇹" },
+  { code: "LV", name: "Łotwa", flag: "🇱🇻" },
+  { code: "EE", name: "Estonia", flag: "🇪🇪" },
+  { code: "HU", name: "Węgry", flag: "🇭🇺" },
+  { code: "RO", name: "Rumunia", flag: "🇷🇴" },
+  { code: "HR", name: "Chorwacja", flag: "🇭🇷" },
+  { code: "RS", name: "Serbia", flag: "🇷🇸" },
+  { code: "SI", name: "Słowenia", flag: "🇸🇮" },
+  { code: "GR", name: "Grecja", flag: "🇬🇷" },
+  { code: "TR", name: "Turcja", flag: "🇹🇷" },
+  { code: "US", name: "USA", flag: "🇺🇸" },
+  { code: "BR", name: "Brazylia", flag: "🇧🇷" },
+  { code: "AR", name: "Argentyna", flag: "🇦🇷" },
 ];
 
 /* ===== Small UI ===== */
 function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
-  const base = "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
+  const base =
+    "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
   const map = {
-    saving: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
-    saved:  "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-100",
-    idle:   "border-gray-300 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200",
+    saving:
+      "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
+    saved:
+      "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-100",
+    idle:
+      "border-gray-300 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200",
   } as const;
   return (
     <span className={`${base} ${map[state]}`} aria-live="polite">
-      {state === "saving" ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Zapisywanie…</>) :
-       state === "saved"  ? (<><CheckCircle2 className="mr-2 h-4 w-4" />Zapisano</>) : ("—")}
+      {state === "saving" ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Zapisywanie…
+        </>
+      ) : state === "saved" ? (
+        <>
+          <CheckCircle2 className="mr-2 h-4 w-4" />
+          Zapisano
+        </>
+      ) : (
+        "—"
+      )}
     </span>
   );
 }
@@ -105,8 +234,16 @@ function Chip({ text }: { text: string }) {
 
 /* Country combobox with optional chip inside the trigger */
 function CountryCombobox({
-  value, onChange, error, chip,
-}: { value: string; onChange: (next: string) => void; error?: string; chip?: string }) {
+  value,
+  onChange,
+  error,
+  chip,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  error?: string;
+  chip?: string;
+}) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
   return (
@@ -118,11 +255,18 @@ function CountryCombobox({
             aria-expanded={open}
             className={cn(
               "relative flex w-full items-center justify-between rounded border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
-              error ? "border-red-500" : "border-gray-300 dark:border-neutral-700",
+              error
+                ? "border-red-500"
+                : "border-gray-300 dark:border-neutral-700",
               chip ? "pr-24" : ""
             )}
           >
-            <span className={cn("flex min-w-0 items-center gap-2", !selected && "text-muted-foreground")}>
+            <span
+              className={cn(
+                "flex min-w-0 items-center gap-2",
+                !selected && "text-muted-foreground"
+              )}
+            >
               {selected ? (
                 <>
                   <span className="text-base leading-none">{selected.flag}</span>
@@ -136,7 +280,10 @@ function CountryCombobox({
             {chip ? <Chip text={chip} /> : null}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <PopoverContent
+          className="w-[--radix-popover-trigger-width] p-0"
+          align="start"
+        >
           <Command shouldFilter>
             <CommandInput placeholder="Szukaj kraju…" />
             <CommandList>
@@ -148,11 +295,19 @@ function CountryCombobox({
                     <CommandItem
                       key={c.code}
                       value={`${c.name} ${c.code}`}
-                      onSelect={() => { onChange(c.name); setOpen(false); }}
+                      onSelect={() => {
+                        onChange(c.name);
+                        setOpen(false);
+                      }}
                     >
                       <span className="mr-2 text-base">{c.flag}</span>
                       <span className="mr-2">{c.name}</span>
-                      <span className={cn("ml-auto", active ? "opacity-100" : "opacity-0")}>
+                      <span
+                        className={cn(
+                          "ml-auto",
+                          active ? "opacity-100" : "opacity-0"
+                        )}
+                      >
                         <Check className="h-4 w-4" />
                       </span>
                     </CommandItem>
@@ -182,6 +337,9 @@ type ObsRec = {
   players?: string[];
 };
 
+// oceny zawodnika w formularzu: key z rCfg -> wartość 0–5
+type PlayerRatings = Record<string, number>;
+
 export default function AddPlayerPage() {
   const router = useRouter();
 
@@ -197,61 +355,98 @@ export default function AddPlayerPage() {
 
   useEffect(() => {
     if (choice) {
-      try { localStorage.setItem("s4s.addPlayer.choice", choice); } catch {}
+      try {
+        localStorage.setItem("s4s.addPlayer.choice", choice);
+      } catch {}
     }
   }, [choice]);
 
   /* Accordions */
   const [basicOpen, setBasicOpen] = useState(true);
-  const [extOpen, setExtOpen]     = useState(false);
+  const [extOpen, setExtOpen] = useState(false);
   const [gradeOpen, setGradeOpen] = useState(false);
-  const [obsOpen, setObsOpen]     = useState(false);
+  const [obsOpen, setObsOpen] = useState(false);
 
-  /* Known */
+  /* Known basic */
   const [firstName, setFirstName] = useState("");
-  const [lastName,  setLastName]  = useState("");
-  const [posDet,    setPosDet]    = useState<DetailedPos>("CM");
-  const [age,       setAge]       = useState<number | "">("");
-  const [club,      setClub]      = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [nationality, setNationality] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+  const [club, setClub] = useState("");
+  const [clubCountry, setClubCountry] = useState("");
 
-  /* Unknown */
+  /* Unknown basic */
   const [jerseyNumber, setJerseyNumber] = useState("");
-  const [uClub,        setUClub]        = useState("");
+  const [uClub, setUClub] = useState("");
   const [uClubCountry, setUClubCountry] = useState("");
-  const [uPosDet,      setUPosDet]      = useState<DetailedPos>("CM");
-  const [uNote,        setUNote]        = useState("");
+  const [uNote, setUNote] = useState("");
 
-  /* Extended (optional) */
+  /* Positions */
+  const [posDet, setPosDet] = useState<DetailedPos>("CM");
+  const [uPosDet, setUPosDet] = useState<DetailedPos>("CM");
+
+  /* Extended (jak w PlayerEditor) */
   const [ext, setExt] = useState({
-    teamLevel: "",
-    height: "", weight: "", body: "",
-    email: "", phone: "", agent: "",
-    contractUntil: "", clause: "", status: "",
-    matches: "", goals: "", assists: "",
+    // Tab 1 – Profil boiskowy
+    height: "",
+    weight: "",
+    dominantFoot: "", // "R" | "L" | "Both"
+    mainPos: "" as DetailedPos | "",
+    altPositions: [] as DetailedPos[],
+
+    // Tab 2 – Status & scouting
+    english: null as null | boolean,
+    euPassport: null as null | boolean,
+    birthCountry: "",
+    contractStatus: "",
+    agency: "",
+    releaseClause: "",
+    leagueLevel: "",
+    clipsLinks: "",
+    transfermarkt: "",
+    wyscout: "",
+
+    // Tab 3 – Zdrowie i statystyki
+    injuryHistory: "",
+    minutes365: "",
+    starts365: "",
+    subs365: "",
+    goals365: "",
+
+    // Tab 4 – Kontakt & social
+    phone: "",
+    email: "",
+    fb: "",
+    ig: "",
+    tiktok: "",
   });
 
-  /* Grade (optional) */
-  const RATING_KEYS = [
-    "Motoryka – szybkość, wytrzymałość",
-    "Siła, pojedynki, zwinność",
-    "Technika",
-    "Gra z piłką",
-    "Gra bez piłki",
-    "Stałe fragmenty",
-    "Faza defensywna",
-    "Faza ofensywna",
-    "Fazy przejściowe",
-    "Postawa (mentalność)",
-  ] as const;
-  const [ratings, setRatings] = useState<Record<(typeof RATING_KEYS)[number], number>>(
-    () => Object.fromEntries(RATING_KEYS.map((k) => [k, 0])) as any
+  /* Grade (opcjonalne) – oceny z konfiguracji */
+  const [ratingConfig, setRatingConfig] = useState<RatingsConfig>(() =>
+    loadRatings()
   );
+  const [ratings, setRatings] = useState<PlayerRatings>({});
   const [notes, setNotes] = useState("");
 
+  // nasłuch zmian konfiguracji ocen (ManagePage)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "s4s.playerRatings.v1") {
+        setRatingConfig(loadRatings());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const enabledRatingAspects = useMemo<RatingAspect[]>(
+    () => ratingConfig.filter((r) => r.enabled !== false),
+    [ratingConfig]
+  );
+
   /* Save pill (draft autosave) */
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle"
+  );
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -263,37 +458,122 @@ export default function AddPlayerPage() {
     setSaveStatus("saving");
     const draft = {
       choice,
-      known: { firstName, lastName, posDet, age, club, birthDate, nationality },
-      unknown: { jerseyNumber, uClub, uClubCountry, uPosDet, uNote },
+      known: {
+        firstName,
+        lastName,
+        birthYear,
+        club,
+        clubCountry,
+        posDet,
+      },
+      unknown: {
+        jerseyNumber,
+        uClub,
+        uClubCountry,
+        uPosDet,
+        uNote,
+      },
       meta: { ext, ratings, notes },
     };
-    try { localStorage.setItem("s4s.addPlayerDraft.v2", JSON.stringify(draft)); } catch {}
+    try {
+      localStorage.setItem(
+        "s4s.addPlayerDraft.v3",
+        JSON.stringify(draft)
+      );
+    } catch {}
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
   }, [
     choice,
-    firstName, lastName, posDet, age, club, birthDate, nationality,
-    jerseyNumber, uClub, uClubCountry, uPosDet, uNote,
-    ext, ratings, notes,
+    firstName,
+    lastName,
+    birthYear,
+    club,
+    clubCountry,
+    jerseyNumber,
+    uClub,
+    uClubCountry,
+    uPosDet,
+    uNote,
+    posDet,
+    ext,
+    ratings,
+    notes,
   ]);
 
-  /* Counters for badges (like editor) */
-  const countTruthy = (vals: Array<unknown>) => vals.filter((v) => {
-    if (typeof v === "number") return v > 0;
-    return !!(v !== null && v !== undefined && String(v).trim() !== "");
-  }).length;
+  /* Counters for badges (jak editor) */
+  const countTruthy = (vals: Array<unknown>) =>
+    vals.filter((v) => {
+      if (typeof v === "number") return v > 0;
+      return !!(
+        v !== null &&
+        v !== undefined &&
+        String(v).trim() !== ""
+      );
+    }).length;
 
-  const cntBasicKnown   = countTruthy([firstName, lastName, club, age, birthDate, nationality]);
-  const cntBasicUnknown = countTruthy([jerseyNumber, uClub, uClubCountry, uPosDet]);
-  const badgeBasic = (choice === "unknown") ? cntBasicUnknown : cntBasicKnown;
+  // Basic
+  const cntBasicKnown = countTruthy([
+    firstName,
+    lastName,
+    birthYear,
+    club,
+    clubCountry,
+  ]);
+  const cntBasicUnknown = countTruthy([
+    jerseyNumber,
+    uClub,
+    uClubCountry,
+    uNote,
+  ]);
+  const badgeBasic = choice === "unknown" ? cntBasicUnknown : cntBasicKnown;
+  const basicMax = choice === "unknown" ? 4 : 5;
 
-  const cntClub    = countTruthy([(choice === "unknown" ? uClub : club), (ext.teamLevel)]);
-  const cntPhys    = countTruthy([ext.height, ext.weight, ext.body]);
-  const cntContact = countTruthy([ext.email, ext.phone, ext.agent]);
-  const cntContract= countTruthy([ext.contractUntil, ext.clause, ext.status]);
-  const cntStats   = countTruthy([ext.matches, ext.goals, ext.assists]);
-  const totalExt   = cntClub + cntPhys + cntContact + cntContract + cntStats;
-  const totalExtMax= 2 + 3 + 3 + 3 + 3;
+  // Ext tabs – liczniki jak w PlayerEditor
+  const cntProfile = countTruthy([
+    ext.height,
+    ext.weight,
+    ext.dominantFoot,
+    ext.mainPos,
+    ext.altPositions?.length ? 1 : "",
+  ]);
+
+  const cntEligibility = countTruthy([
+    ext.english ? "yes" : "",
+    ext.euPassport ? "yes" : "",
+    ext.birthCountry,
+    ext.contractStatus,
+    ext.agency,
+    ext.releaseClause,
+    ext.leagueLevel,
+    ext.clipsLinks,
+    ext.transfermarkt,
+    ext.wyscout,
+  ]);
+
+  const cntStats365 = countTruthy([
+    ext.injuryHistory,
+    ext.minutes365,
+    ext.starts365,
+    ext.subs365,
+    ext.goals365,
+  ]);
+
+  const cntContact = countTruthy([
+    ext.phone,
+    ext.email,
+    ext.fb,
+    ext.ig,
+    ext.tiktok,
+  ]);
+
+  const totalExt = cntProfile + cntEligibility + cntStats365 + cntContact;
+  const totalExtMax = 5 + 10 + 5 + 5;
+
+  // Grade
+  const cntRatingsFilled = countTruthy(Object.values(ratings));
+  const cntGradeBadge = Number(Boolean(notes)) + cntRatingsFilled;
+  const cntGradeMax = 1 + enabledRatingAspects.length;
 
   /* Observations (local) */
   const [observations, setObservations] = useState<ObsRec[]>([]);
@@ -311,7 +591,9 @@ export default function AddPlayerPage() {
       const raw = localStorage.getItem("s4s.observations");
       const arr: ObsRec[] = raw ? JSON.parse(raw) : [];
       setObservations(Array.isArray(arr) ? arr : []);
-    } catch { setObservations([]); }
+    } catch {
+      setObservations([]);
+    }
   }, []);
 
   function bumpSaving() {
@@ -322,7 +604,9 @@ export default function AddPlayerPage() {
   function persistObservations(next: ObsRec[]) {
     bumpSaving();
     setObservations(next);
-    try { localStorage.setItem("s4s.observations", JSON.stringify(next)); } catch {}
+    try {
+      localStorage.setItem("s4s.observations", JSON.stringify(next));
+    } catch {}
   }
   function addObservation() {
     const next: ObsRec = {
@@ -336,13 +620,20 @@ export default function AddPlayerPage() {
       players: [],
     };
     persistObservations([next, ...observations]);
-    setQaMatch(""); setQaDate(""); setQaTime(""); setQaMode("live"); setQaStatus("draft"); setQaOpponentLevel("");
+    setQaMatch("");
+    setQaDate("");
+    setQaTime("");
+    setQaMode("live");
+    setQaStatus("draft");
+    setQaOpponentLevel("");
   }
 
   const existingFiltered = useMemo(() => {
     const q = obsQuery.trim().toLowerCase();
     const arr = [...observations].sort((a, b) =>
-      ((b.date || "") + (b.time || "")).localeCompare((a.date || "") + (a.time || ""))
+      ((b.date || "") + (b.time || "")).localeCompare(
+        (a.date || "") + (a.time || "")
+      )
     );
     if (!q) return arr;
     return arr.filter(
@@ -363,102 +654,447 @@ export default function AddPlayerPage() {
 
   function saveEditedObservation() {
     if (!editingObs) return;
-    const next = observations.map((o) => (o.id === editingObs.id ? editingObs : o));
+    const next = observations.map((o) =>
+      o.id === editingObs.id ? editingObs : o
+    );
     persistObservations(next);
     setEditOpen(false);
   }
 
-  /* Ext tabs – controlled & mobile-friendly */
-  type ExtKey = "club" | "physical" | "contact" | "contract" | "stats";
-  const [extView, setExtView] = useState<ExtKey>("club");
+  /* Ext tabs – jak w PlayerEditor */
+  type ExtKey = "profile" | "eligibility" | "stats365" | "contact";
+  const [extView, setExtView] = useState<ExtKey>("profile");
 
   function ExtContent({ view }: { view: ExtKey }) {
     switch (view) {
-      case "club":
+      case "profile":
         return (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div>
-              <Label className="text-sm">Klub</Label>
-              <Input
-                value={choice === "unknown" ? uClub : club}
-                onChange={(e) => choice === "unknown" ? setUClub(e.target.value) : setClub(e.target.value)}
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div>
+                <Label className="text-sm">Wzrost (cm)</Label>
+                <Input
+                  type="number"
+                  value={ext.height}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, height: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Waga (kg)</Label>
+                <Input
+                  type="number"
+                  value={ext.weight}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, weight: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Dominująca noga</Label>
+                <Select
+                  value={ext.dominantFoot || undefined}
+                  onValueChange={(val) =>
+                    setExt((s) => ({ ...s, dominantFoot: val }))
+                  }
+                >
+                  <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
+                    <SelectValue placeholder="Wybierz" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="R">Prawa (R)</SelectItem>
+                    <SelectItem value="L">Lewa (L)</SelectItem>
+                    <SelectItem value="Both">Obunożny</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label className="text-sm">Drużyna/Rocznik</Label>
-              <Input
-                placeholder="U19 / Rezerwy…"
-                value={ext.teamLevel}
-                onChange={(e) => setExt((s) => ({ ...s, teamLevel: e.target.value }))}
-              />
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <Label className="text-sm">Główna pozycja</Label>
+                <Select
+                  value={ext.mainPos || (choice === "unknown" ? uPosDet : posDet)}
+                  onValueChange={(v) => {
+                    const val = v as DetailedPos;
+                    setExt((s) => ({ ...s, mainPos: val }));
+                    if (choice === "unknown") {
+                      setUPosDet(val);
+                    } else {
+                      setPosDet(val);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
+                    <SelectValue placeholder="Wybierz pozycję" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {POS_DATA.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <div className="text-left">
+                          <div className="font-medium">
+                            {opt.code}: {opt.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {opt.desc}
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-sm">Pozycje alternatywne</Label>
+                <div className="mt-1 grid grid-cols-2 gap-1 sm:grid-cols-3">
+                  {POS_DATA.map((opt) => {
+                    const checked = ext.altPositions.includes(opt.value);
+                    return (
+                      <label
+                        key={opt.value}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs",
+                          checked
+                            ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-950/40"
+                            : "border-slate-200 bg-white dark:border-neutral-700 dark:bg-neutral-950"
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-3 w-3"
+                          checked={checked}
+                          onChange={() =>
+                            setExt((s) => {
+                              const current = s.altPositions;
+                              const next = checked
+                                ? current.filter((x) => x !== opt.value)
+                                : [...current, opt.value];
+                              return { ...s, altPositions: next };
+                            })
+                          }
+                        />
+                        <span>{opt.code}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         );
-      case "physical":
+
+      case "eligibility":
         return (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div>
-              <Label className="text-sm">Wzrost (cm)</Label>
-              <Input type="number" value={ext.height} onChange={(e) => setExt((s) => ({ ...s, height: e.target.value }))} />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div>
+                <Label className="text-sm">Znajomość języka angielskiego</Label>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExt((s) => ({ ...s, english: true }))
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      ext.english === true
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    )}
+                  >
+                    Tak
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExt((s) => ({ ...s, english: false }))
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      ext.english === false
+                        ? "bg-rose-600 text-white hover:bg-rose-700"
+                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    )}
+                  >
+                    Nie
+                  </button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm">Paszport UE</Label>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExt((s) => ({ ...s, euPassport: true }))
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      ext.euPassport === true
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    )}
+                  >
+                    Tak
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExt((s) => ({ ...s, euPassport: false }))
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      ext.euPassport === false
+                        ? "bg-rose-600 text-white hover:bg-rose-700"
+                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    )}
+                  >
+                    Nie
+                  </button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm">Kraj urodzenia</Label>
+                <CountryCombobox
+                  value={ext.birthCountry}
+                  onChange={(val) =>
+                    setExt((s) => ({ ...s, birthCountry: val }))
+                  }
+                />
+              </div>
             </div>
-            <div>
-              <Label className="text-sm">Waga (kg)</Label>
-              <Input type="number" value={ext.weight} onChange={(e) => setExt((s) => ({ ...s, weight: e.target.value }))} />
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <Label className="text-sm">Status kontraktu</Label>
+                <Input
+                  value={ext.contractStatus}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      contractStatus: e.target.value,
+                    }))
+                  }
+                  placeholder="np. do 2027, wolny agent…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Agencja menadżerska</Label>
+                <Input
+                  value={ext.agency}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, agency: e.target.value }))
+                  }
+                  placeholder="np. XYZ Management"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Klauzula wykupu</Label>
+                <Input
+                  value={ext.releaseClause}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      releaseClause: e.target.value,
+                    }))
+                  }
+                  placeholder="Kwota, zapis, uwagi…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">
+                  Poziom rozgrywkowy obecnego klubu
+                </Label>
+                <Input
+                  value={ext.leagueLevel}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, leagueLevel: e.target.value }))
+                  }
+                  placeholder="np. Ekstraklasa, CLJ U19, 3 liga…"
+                />
+              </div>
             </div>
-            <div>
-              <Label className="text-sm">Budowa</Label>
-              <Input value={ext.body} onChange={(e) => setExt((s) => ({ ...s, body: e.target.value }))} />
+
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm">Linki do klipów / time-codes</Label>
+                <Textarea
+                  value={ext.clipsLinks}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, clipsLinks: e.target.value }))
+                  }
+                  placeholder="Lista linków (po jednym w linii)…"
+                  className="mt-1"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <Label className="text-sm">Link do Transfermarkt</Label>
+                  <Input
+                    value={ext.transfermarkt}
+                    onChange={(e) =>
+                      setExt((s) => ({
+                        ...s,
+                        transfermarkt: e.target.value,
+                      }))
+                    }
+                    placeholder="https://www.transfermarkt…"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">Link do Wyscout</Label>
+                  <Input
+                    value={ext.wyscout}
+                    onChange={(e) =>
+                      setExt((s) => ({ ...s, wyscout: e.target.value }))
+                    }
+                    placeholder="https://platform.wyscout…"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );
+
+      case "stats365":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm">
+                Historia urazów (jeśli dostępna)
+              </Label>
+              <Textarea
+                value={ext.injuryHistory}
+                onChange={(e) =>
+                  setExt((s) => ({
+                    ...s,
+                    injuryHistory: e.target.value,
+                  }))
+                }
+                placeholder="Krótki opis kontuzji, przerw, operacji…"
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+              <div>
+                <Label className="text-sm">
+                  Minuty w ostatnich 365 dniach
+                </Label>
+                <Input
+                  type="number"
+                  value={ext.minutes365}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      minutes365: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Mecze jako starter</Label>
+                <Input
+                  type="number"
+                  value={ext.starts365}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      starts365: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Mecze jako rezerwowy</Label>
+                <Input
+                  type="number"
+                  value={ext.subs365}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      subs365: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">
+                  Gole w ostatnich 365 dniach
+                </Label>
+                <Input
+                  type="number"
+                  value={ext.goals365}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      goals365: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        );
+
       case "contact":
         return (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div>
-              <Label className="text-sm">E-mail</Label>
-              <Input type="email" value={ext.email} onChange={(e) => setExt((s) => ({ ...s, email: e.target.value }))} />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <Label className="text-sm">Telefon kontaktowy</Label>
+                <Input
+                  value={ext.phone}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, phone: e.target.value }))
+                  }
+                  placeholder="+48…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">E-mail kontaktowy</Label>
+                <Input
+                  type="email"
+                  value={ext.email}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, email: e.target.value }))
+                  }
+                  placeholder="mail@przyklad.pl"
+                />
+              </div>
             </div>
-            <div>
-              <Label className="text-sm">Telefon</Label>
-              <Input value={ext.phone} onChange={(e) => setExt((s) => ({ ...s, phone: e.target.value }))} />
-            </div>
-            <div className="md:col-span-2">
-              <Label className="text-sm">Agent</Label>
-              <Input value={ext.agent} onChange={(e) => setExt((s) => ({ ...s, agent: e.target.value }))} />
-            </div>
-          </div>
-        );
-      case "contract":
-        return (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div>
-              <Label className="text-sm">Do kiedy</Label>
-              <Input type="date" value={ext.contractUntil} onChange={(e) => setExt((s) => ({ ...s, contractUntil: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-sm">Kara/klauzula</Label>
-              <Input value={ext.clause} onChange={(e) => setExt((s) => ({ ...s, clause: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-sm">Status</Label>
-              <Input value={ext.status} onChange={(e) => setExt((s) => ({ ...s, status: e.target.value }))} />
-            </div>
-          </div>
-        );
-      case "stats":
-        return (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div>
-              <Label className="text-sm">Mecze</Label>
-              <Input type="number" value={ext.matches} onChange={(e) => setExt((s) => ({ ...s, matches: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-sm">Gole</Label>
-              <Input type="number" value={ext.goals} onChange={(e) => setExt((s) => ({ ...s, goals: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-sm">Asysty</Label>
-              <Input type="number" value={ext.assists} onChange={(e) => setExt((s) => ({ ...s, assists: e.target.value }))} />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div>
+                <Label className="text-sm">Link FB</Label>
+                <Input
+                  value={ext.fb}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, fb: e.target.value }))
+                  }
+                  placeholder="https://facebook.com/…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Link IG</Label>
+                <Input
+                  value={ext.ig}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, ig: e.target.value }))
+                  }
+                  placeholder="https://instagram.com/…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Link TikTok</Label>
+                <Input
+                  value={ext.tiktok}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, tiktok: e.target.value }))
+                  }
+                  placeholder="https://tiktok.com/@…"
+                />
+              </div>
             </div>
           </div>
         );
@@ -499,22 +1135,42 @@ export default function AddPlayerPage() {
               "w-full rounded p-4 text-left shadow-sm transition bg-white dark:bg-neutral-950 ring-1",
               choice === "known"
                 ? "ring-green-800"
-                : "ring-gray-200 hover:ring-green-600/70 dark:ring-neutral-800 dark:hover:ring-green-600/50",
+                : "ring-gray-200 hover:ring-green-600/70 dark:ring-neutral-800 dark:hover:ring-green-600/50"
             )}
           >
             <div className="flex items-start gap-4">
               <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded bg-transparent">
                 <KnownPlayerIcon
-                  className={cn("h-8 w-8", choice === "known" ? "text-green-900" : "text-black dark:text-neutral-100")}
+                  className={cn(
+                    "h-8 w-8",
+                    choice === "known"
+                      ? "text-green-900"
+                      : "text-black dark:text-neutral-100"
+                  )}
                   strokeWidth={1.0}
                 />
               </span>
               <div className="min-w-0">
-                <div className={cn("mb-1 text-sm font-semibold", choice === "known" ? "text-green-900" : "text-black dark:text-neutral-100")}>
+                <div
+                  className={cn(
+                    "mb-1 text-sm font-semibold",
+                    choice === "known"
+                      ? "text-green-900"
+                      : "text-black dark:text-neutral-100"
+                  )}
+                >
                   Znam zawodnika
                 </div>
-                <div className={cn("text-xs", choice === "known" ? "text-green-900/80" : "text-black/70 dark:text-neutral-300")}>
-                  Podaj imię i/lub nazwisko – resztę uzupełnisz później w profilu.
+                <div
+                  className={cn(
+                    "text-xs",
+                    choice === "known"
+                      ? "text-green-900/80"
+                      : "text-black/70 dark:text-neutral-300"
+                  )}
+                >
+                  Uzupełnij imię, nazwisko, rok urodzenia, klub i kraj klubu.
+                  Resztę dodasz później w profilu.
                 </div>
               </div>
             </div>
@@ -528,22 +1184,42 @@ export default function AddPlayerPage() {
               "w-full rounded p-4 text-left shadow-sm transition bg-white dark:bg-neutral-950 ring-1",
               choice === "unknown"
                 ? "ring-red-800"
-                : "ring-gray-200 hover:ring-red-600/70 dark:ring-neutral-800 dark:hover:ring-red-600/50",
+                : "ring-gray-200 hover:ring-red-600/70 dark:ring-neutral-800 dark:hover:ring-red-600/50"
             )}
           >
             <div className="flex items-start gap-4">
               <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded bg-transparent">
                 <UnknownPlayerIcon
-                  className={cn("h-8 w-8", choice === "unknown" ? "text-red-900" : "text-black dark:text-neutral-100")}
+                  className={cn(
+                    "h-8 w-8",
+                    choice === "unknown"
+                      ? "text-red-900"
+                      : "text-black dark:text-neutral-100"
+                  )}
                   strokeWidth={1.0}
                 />
               </span>
               <div className="min-w-0">
-                <div className={cn("mb-1 text-sm font-semibold", choice === "unknown" ? "text-red-900" : "text-black dark:text-neutral-100")}>
+                <div
+                  className={cn(
+                    "mb-1 text-sm font-semibold",
+                    choice === "unknown"
+                      ? "text-red-900"
+                      : "text-black dark:text-neutral-100"
+                  )}
+                >
                   Nie znam zawodnika
                 </div>
-                <div className={cn("text-xs", choice === "unknown" ? "text-red-900/80" : "text-black/70 dark:text-neutral-300")}>
-                  Zapisz numer, klub i/lub kraj klubu — szczegóły dodasz później.
+                <div
+                  className={cn(
+                    "text-xs",
+                    choice === "unknown"
+                      ? "text-red-900/80"
+                      : "text-black/70 dark:text-neutral-300"
+                  )}
+                >
+                  Zapisz numer na koszulce, klub i kraj klubu – szczegóły i
+                  dane osobowe dodasz później.
                 </div>
               </div>
             </div>
@@ -563,10 +1239,19 @@ export default function AddPlayerPage() {
               onClick={() => setBasicOpen((v) => !v)}
               className="flex w-full items-center justify-between text-left"
             >
-              <div className="text-xl font-semibold leading-none tracking-tight">Podstawowe informacje</div>
+              <div className="text-xl font-semibold leading-none tracking-tight">
+                Podstawowe informacje
+              </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">{badgeBasic}</span>
-                <ChevronDown className={cn("h-5 w-5 transition-transform", basicOpen ? "rotate-180" : "rotate-0")} />
+                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                  {badgeBasic}/{basicMax}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 transition-transform",
+                    basicOpen ? "rotate-180" : "rotate-0"
+                  )}
+                />
               </div>
             </button>
           </CardHeader>
@@ -586,17 +1271,22 @@ export default function AddPlayerPage() {
                         <Label className="text-sm">Numer na koszulce</Label>
                         <div className="relative">
                           <Input
-                            className="pr-24"
+                            className={cn(!jerseyNumber && "pr-24")}
                             value={jerseyNumber}
                             onChange={(e) => setJerseyNumber(e.target.value)}
                             placeholder="np. 27"
                           />
-                          <Chip text="Wymagane" />
+                          {!jerseyNumber && <Chip text="Wymagane" />}
                         </div>
                       </div>
                       <div>
                         <Label className="text-sm">Pozycja</Label>
-                        <Select value={uPosDet} onValueChange={(v) => setUPosDet(v as DetailedPos)}>
+                        <Select
+                          value={uPosDet}
+                          onValueChange={(v) =>
+                            setUPosDet(v as DetailedPos)
+                          }
+                        >
                           <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
                             <SelectValue placeholder="Wybierz pozycję" />
                           </SelectTrigger>
@@ -604,22 +1294,31 @@ export default function AddPlayerPage() {
                             {POS_DATA.map((opt) => (
                               <SelectItem key={opt.value} value={opt.value}>
                                 <div className="text-left">
-                                  <div className="font-medium">{opt.code}: {opt.name}</div>
-                                  <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                                  <div className="font-medium">
+                                    {opt.code}: {opt.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {opt.desc}
+                                  </div>
                                 </div>
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         <p className="mt-1 text-[11px] text-dark">
-                          Zapisze się jako <b>{toBucket(uPosDet)}</b> w polu <code>pos</code>.
+                          Zapisze się jako <b>{toBucket(uPosDet)}</b> w polu{" "}
+                          <code>pos</code>.
                         </p>
                       </div>
                       <div>
                         <Label className="text-sm">Aktualny klub</Label>
                         <div className="relative">
-                          <Input className="pr-24" value={uClub} onChange={(e) => setUClub(e.target.value)} />
-                          <Chip text="Wymagane" />
+                          <Input
+                            value={uClub}
+                            onChange={(e) => setUClub(e.target.value)}
+                            className={cn(!uClub && "pr-24")}
+                          />
+                          {!uClub && <Chip text="Wymagane" />}
                         </div>
                       </div>
                       <div>
@@ -627,15 +1326,18 @@ export default function AddPlayerPage() {
                         <CountryCombobox
                           value={uClubCountry}
                           onChange={(val) => setUClubCountry(val)}
-                          chip="Wymagane"
+                          chip={!uClubCountry ? "Wymagane" : undefined}
                         />
                       </div>
                       <div className="md:col-span-2">
-                        <Label className="text-sm">Notatka (opcjonalnie)</Label>
-                        <Input
+                        <Label className="text-sm">
+                          Notatka własna (opcjonalne)
+                        </Label>
+                        <Textarea
                           value={uNote}
                           onChange={(e) => setUNote(e.target.value)}
-                          placeholder="Krótka notatka…"
+                          placeholder="Krótka notatka z meczu, charakterystyka…"
+                          className="mt-1"
                         />
                       </div>
                     </div>
@@ -644,57 +1346,65 @@ export default function AddPlayerPage() {
                       <div>
                         <Label className="text-sm">Imię</Label>
                         <div className="relative">
-                          <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="pr-24" />
-                          <Chip text="Wymagane" />
+                          <Input
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            className={cn(!firstName && "pr-24")}
+                          />
+                          {!firstName && <Chip text="Wymagane" />}
                         </div>
                       </div>
                       <div>
                         <Label className="text-sm">Nazwisko</Label>
                         <div className="relative">
-                          <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="pr-24" />
-                          <Chip text="Wymagane" />
+                          <Input
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            className={cn(!lastName && "pr-24")}
+                          />
+                          {!lastName && <Chip text="Wymagane" />}
                         </div>
                       </div>
                       <div>
-                        <Label className="text-sm">Pozycja</Label>
-                        <Select value={posDet} onValueChange={(v) => setPosDet(v as DetailedPos)}>
-                          <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
-                            <SelectValue placeholder="Wybierz pozycję" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {POS_DATA.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                <div className="text-left">
-                                  <div className="font-medium">{opt.code}: {opt.name}</div>
-                                  <div className="text-xs text-muted-foreground">{opt.desc}</div>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="mt-1 text-[11px] text-dark">
-                          Zapisze się jako <b>{toBucket(posDet)}</b> w polu <code>pos</code>.
-                        </p>
+                        <Label className="text-sm">Rok urodzenia</Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            value={birthYear}
+                            onChange={(e) =>
+                              setBirthYear(e.target.value)
+                            }
+                            className={cn(!birthYear && "pr-24")}
+                          />
+                          {!birthYear && <Chip text="Wymagane" />}
+                        </div>
                       </div>
                       <div>
-                        <Label className="text-sm">Wiek</Label>
+                        <Label className="text-sm">Numer na koszulce</Label>
                         <Input
-                          type="number"
-                          value={age}
-                          onChange={(e) => setAge(e.target.value ? Number(e.target.value) : "")}
+                          value={jerseyNumber}
+                          onChange={(e) => setJerseyNumber(e.target.value)}
+                          placeholder="opcjonalne"
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">Klub</Label>
-                        <Input value={club} onChange={(e) => setClub(e.target.value)} />
+                        <Label className="text-sm">Aktualny klub</Label>
+                        <div className="relative">
+                          <Input
+                            value={club}
+                            onChange={(e) => setClub(e.target.value)}
+                            className={cn(!club && "pr-24")}
+                          />
+                          {!club && <Chip text="Wymagane" />}
+                        </div>
                       </div>
                       <div>
-                        <Label className="text-sm">Narodowość</Label>
-                        <CountryCombobox value={nationality} onChange={(val) => setNationality(val)} />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label className="text-sm">Data urodzenia</Label>
-                        <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+                        <Label className="text-sm">Kraj aktualnego klubu</Label>
+                        <CountryCombobox
+                          value={clubCountry}
+                          onChange={(val) => setClubCountry(val)}
+                          chip={!clubCountry ? "Wymagane" : undefined}
+                        />
                       </div>
                     </div>
                   )}
@@ -714,12 +1424,19 @@ export default function AddPlayerPage() {
               onClick={() => setExtOpen((v) => !v)}
               className="flex w-full items-center justify-between text-left"
             >
-              <div className="text-xl font-semibold leading-none tracking-tight">Rozszerzone informacje</div>
+              <div className="text-xl font-semibold leading-none tracking-tight">
+                Rozszerzone informacje
+              </div>
               <div className="flex items-center gap-3">
                 <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
-                  {cntClub + cntPhys + cntContact + cntContract + cntStats}/{totalExtMax}
+                  {totalExt}/{totalExtMax}
                 </span>
-                <ChevronDown className={cn("h-5 w-5 transition-transform", extOpen ? "rotate-180" : "rotate-0")} />
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 transition-transform",
+                    extOpen ? "rotate-180" : "rotate-0"
+                  )}
+                />
               </div>
             </button>
           </CardHeader>
@@ -738,14 +1455,15 @@ export default function AddPlayerPage() {
                     <Label className="mb-1 block text-sm">Sekcja</Label>
                     <select
                       value={extView}
-                      onChange={(e) => setExtView(e.target.value as any)}
+                      onChange={(e) =>
+                        setExtView(e.target.value as ExtKey)
+                      }
                       className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                     >
-                      <option value="club">Klub</option>
-                      <option value="physical">Fizyczne</option>
-                      <option value="contact">Kontakt</option>
-                      <option value="contract">Kontrakt</option>
-                      <option value="stats">Statystyki</option>
+                      <option value="profile">Profil boiskowy</option>
+                      <option value="eligibility">Status &amp; scouting</option>
+                      <option value="stats365">Zdrowie i statystyki</option>
+                      <option value="contact">Kontakt &amp; social</option>
                     </select>
                     <div className="mt-4">
                       <ExtContent view={extView} />
@@ -753,29 +1471,37 @@ export default function AddPlayerPage() {
                   </div>
 
                   <div className="hidden md:block">
-                    <Tabs value={extView} onValueChange={(v: any) => setExtView(v)} className="w-full">
-                      <TabsList className="grid w-full grid-cols-5">
-                        <TabsTrigger value="club">Klub</TabsTrigger>
-                        <TabsTrigger value="physical">Fizyczne</TabsTrigger>
-                        <TabsTrigger value="contact">Kontakt</TabsTrigger>
-                        <TabsTrigger value="contract">Kontrakt</TabsTrigger>
-                        <TabsTrigger value="stats">Statystyki</TabsTrigger>
+                    <Tabs
+                      value={extView}
+                      onValueChange={(v: any) => setExtView(v)}
+                      className="w-full"
+                    >
+                      <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="profile">
+                          Profil boiskowy
+                        </TabsTrigger>
+                        <TabsTrigger value="eligibility">
+                          Status &amp; scouting
+                        </TabsTrigger>
+                        <TabsTrigger value="stats365">
+                          Zdrowie i statystyki
+                        </TabsTrigger>
+                        <TabsTrigger value="contact">
+                          Kontakt &amp; social
+                        </TabsTrigger>
                       </TabsList>
 
-                      <TabsContent value="club" className="mt-4">
-                        <ExtContent view="club" />
+                      <TabsContent value="profile" className="mt-4">
+                        <ExtContent view="profile" />
                       </TabsContent>
-                      <TabsContent value="physical" className="mt-4">
-                        <ExtContent view="physical" />
+                      <TabsContent value="eligibility" className="mt-4">
+                        <ExtContent view="eligibility" />
+                      </TabsContent>
+                      <TabsContent value="stats365" className="mt-4">
+                        <ExtContent view="stats365" />
                       </TabsContent>
                       <TabsContent value="contact" className="mt-4">
                         <ExtContent view="contact" />
-                      </TabsContent>
-                      <TabsContent value="contract" className="mt-4">
-                        <ExtContent view="contract" />
-                      </TabsContent>
-                      <TabsContent value="stats" className="mt-4">
-                        <ExtContent view="stats" />
                       </TabsContent>
                     </Tabs>
                   </div>
@@ -785,7 +1511,7 @@ export default function AddPlayerPage() {
           </CardContent>
         </Card>
 
-        {/* --- Ocena (opcjonalne) --- */}
+        {/* --- Ocena (opcjonalne) – bez tabsów, notes + oceny --- */}
         <Card className="mt-3">
           <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
             <button
@@ -795,12 +1521,19 @@ export default function AddPlayerPage() {
               onClick={() => setGradeOpen((v) => !v)}
               className="flex w-full items-center justify-between text-left"
             >
-              <div className="text-xl font-semibold leading-none tracking-tight">Ocena</div>
+              <div className="text-xl font-semibold leading-none tracking-tight">
+                Ocena
+              </div>
               <div className="flex items-center gap-3">
                 <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
-                  {Number(Boolean(notes)) + countTruthy(Object.values(ratings))}/{1 + 10}
+                  {cntGradeBadge}/{cntGradeMax}
                 </span>
-                <ChevronDown className={cn("h-5 w-5 transition-transform", gradeOpen ? "rotate-180" : "rotate-0")} />
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 transition-transform",
+                    gradeOpen ? "rotate-180" : "rotate-0"
+                  )}
+                />
               </div>
             </button>
           </CardHeader>
@@ -814,35 +1547,59 @@ export default function AddPlayerPage() {
             >
               <AccordionItem value="grade" className="border-0">
                 <AccordionContent id="grade-panel" className="pt-4">
-                  <Tabs defaultValue="notes" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="notes">Notatki</TabsTrigger>
-                      <TabsTrigger value="aspects">Oceny</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="notes" className="mt-4 space-y-3">
+                  <div className="space-y-5">
+                    {/* Notatki na górze */}
+                    <div>
+                      <Label className="text-sm">Notatki ogólne</Label>
                       <Input
-                        placeholder="Krótki komentarz…"
+                        placeholder="Krótki komentarz o zawodniku…"
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
+                        className="mt-1"
                       />
-                    </TabsContent>
+                    </div>
 
-                    <TabsContent value="aspects" className="mt-4">
-                      <div className="space-y-3">
-                        {RATING_KEYS.map((k) => (
-                          <div key={k} className="flex items-center justify-between gap-3">
-                            <Label className="text-sm">{k}</Label>
+                    {/* Oceny poniżej – dynamicznie z konfiguracji */}
+                    <div className="space-y-3">
+                      {enabledRatingAspects.length === 0 && (
+                        <p className="text-xs text-slate-500 dark:text-neutral-400">
+                          Brak skonfigurowanych kategorii ocen. Dodaj je w
+                          panelu „Zarządzanie użytkownikami → Konfiguracja ocen
+                          zawodnika”.
+                        </p>
+                      )}
+
+                      {enabledRatingAspects.map((aspect) => (
+                        <div
+                          key={aspect.id}
+                          className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="max-w-[65%]">
+                            <Label className="text-sm">
+                              {aspect.label}
+                            </Label>
+                            {aspect.tooltip && (
+                              <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                {aspect.tooltip}
+                              </p>
+                            )}
+                          </div>
+                          <div className="mt-1 sm:mt-0">
                             <StarRating
                               max={5}
-                              value={ratings[k] ?? 0}
-                              onChange={(v) => setRatings((s) => ({ ...s, [k]: v }))}
+                              value={ratings[aspect.key] ?? 0}
+                              onChange={(v) =>
+                                setRatings((prev) => ({
+                                  ...prev,
+                                  [aspect.key]: v,
+                                }))
+                              }
                             />
                           </div>
-                        ))}
-                      </div>
-                    </TabsContent>
-                  </Tabs>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -859,10 +1616,19 @@ export default function AddPlayerPage() {
               onClick={() => setObsOpen((v) => !v)}
               className="flex w-full items-center justify-between text-left"
             >
-              <div className="text-xl font-semibold leading-none tracking-tight">Obserwacje</div>
+              <div className="text-xl font-semibold leading-none tracking-tight">
+                Obserwacje
+              </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">{observations.length}</span>
-                <ChevronDown className={cn("h-5 w-5 transition-transform", obsOpen ? "rotate-180" : "rotate-0")} />
+                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                  {observations.length}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 transition-transform",
+                    obsOpen ? "rotate-180" : "rotate-0"
+                  )}
+                />
               </div>
             </button>
           </CardHeader>
@@ -876,7 +1642,7 @@ export default function AddPlayerPage() {
               <AccordionItem value="obs" className="border-0">
                 <AccordionContent id="obs-panel" className="pt-4">
                   <Tabs defaultValue="new" className="w-full">
-                    {/* improved segmented control style */}
+                    {/* poprawiony segmented control */}
                     <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
                       <TabsTrigger
                         value="new"
@@ -892,13 +1658,16 @@ export default function AddPlayerPage() {
                       </TabsTrigger>
                     </TabsList>
                     <p className="mb-4 text-xs text-slate-500 dark:text-neutral-400">
-                      Dodaj nową obserwację tego zawodnika lub przypisz istniejącą z Twojego dziennika.
+                      Dodaj nową obserwację tego zawodnika lub przypisz
+                      istniejącą z Twojego dziennika.
                     </p>
 
                     {/* NEW */}
                     <TabsContent value="new" className="mt-2 space-y-4">
                       <div>
-                        <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">Mecz</div>
+                        <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
+                          Mecz
+                        </div>
                         <div className="mb-3 text-xs text-dark dark:text-neutral-400">
                           Wpisz drużyny — pole „Mecz” składa się automatycznie.
                         </div>
@@ -909,9 +1678,12 @@ export default function AddPlayerPage() {
                             <Input
                               value={qaMatch.split(/ *vs */i)[0] || ""}
                               onChange={(e) => {
-                                const b = (qaMatch.split(/ *vs */i)[1] || "").trim();
+                                const b =
+                                  (qaMatch.split(/ *vs */i)[1] || "").trim();
                                 const a = e.target.value;
-                                setQaMatch(a && b ? `${a} vs ${b}` : (a + " " + b).trim());
+                                setQaMatch(
+                                  a && b ? `${a} vs ${b}` : (a + " " + b).trim()
+                                );
                               }}
                               placeholder="np. Lech U19"
                               className="mt-1"
@@ -923,17 +1695,24 @@ export default function AddPlayerPage() {
                           <div>
                             <Label>Drużyna B</Label>
                             <Input
-                              value={(qaMatch.split(/ *vs */i)[1] || "").trim()}
+                              value={
+                                (qaMatch.split(/ *vs */i)[1] || "").trim()
+                              }
                               onChange={(e) => {
-                                const a = (qaMatch.split(/ *vs */i)[0] || "").trim();
+                                const a =
+                                  (qaMatch.split(/ *vs */i)[0] || "").trim();
                                 const b = e.target.value;
-                                setQaMatch(a && b ? `${a} vs ${b}` : (a + " " + b).trim());
+                                setQaMatch(
+                                  a && b ? `${a} vs ${b}` : (a + " " + b).trim()
+                                );
                               }}
                               placeholder="np. Wisła U19"
                               className="mt-1"
                             />
                           </div>
-                          <div className="sm:hidden text-center text-sm text-dark">vs</div>
+                          <div className="sm:hidden text-center text-sm text-dark">
+                            vs
+                          </div>
                         </div>
 
                         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -959,7 +1738,9 @@ export default function AddPlayerPage() {
                             <Label>Poziom przeciwnika</Label>
                             <Input
                               value={qaOpponentLevel}
-                              onChange={(e) => setQaOpponentLevel(e.target.value)}
+                              onChange={(e) =>
+                                setQaOpponentLevel(e.target.value)
+                              }
                               placeholder="np. CLJ U17, 3 liga, top akademia…"
                               className="mt-1"
                             />
@@ -1034,14 +1815,20 @@ export default function AddPlayerPage() {
 
                         <div className="mt-4 text-xs text-dark dark:text-neutral-300 space-y-1">
                           <div>
-                            Mecz: <span className="font-medium">{qaMatch || "—"}</span>
+                            Mecz:{" "}
+                            <span className="font-medium">
+                              {qaMatch || "—"}
+                            </span>
                             <span className="ml-2 inline-flex items-center rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
                               {qaMode === "tv" ? "TV" : "Live"}
                             </span>
                           </div>
                           {qaOpponentLevel && (
                             <div className="text-[11px] text-slate-600 dark:text-neutral-400">
-                              Poziom przeciwnika: <span className="font-medium">{qaOpponentLevel}</span>
+                              Poziom przeciwnika:{" "}
+                              <span className="font-medium">
+                                {qaOpponentLevel}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1073,7 +1860,8 @@ export default function AddPlayerPage() {
                           />
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                          Wybierz obserwację z listy, aby podejrzeć szczegóły lub ją edytować.
+                          Wybierz obserwację z listy, aby podejrzeć szczegóły
+                          lub ją edytować.
                         </p>
                       </div>
 
@@ -1082,12 +1870,24 @@ export default function AddPlayerPage() {
                           <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                             <tr>
                               <th className="p-2 text-left font-medium">#</th>
-                              <th className="p-2 text-left font-medium">Mecz</th>
-                              <th className="p-2 text-left font-medium">Data</th>
-                              <th className="p-2 text-left font-medium">Poziom</th>
-                              <th className="p-2 text-left font-medium">Tryb</th>
-                              <th className="p-2 text-left font-medium">Status</th>
-                              <th className="p-2 text-right font-medium">Akcje</th>
+                              <th className="p-2 text-left font-medium">
+                                Mecz
+                              </th>
+                              <th className="p-2 text-left font-medium">
+                                Data
+                              </th>
+                              <th className="p-2 text-left font-medium">
+                                Poziom
+                              </th>
+                              <th className="p-2 text-left font-medium">
+                                Tryb
+                              </th>
+                              <th className="p-2 text-left font-medium">
+                                Status
+                              </th>
+                              <th className="p-2 text-right font-medium">
+                                Akcje
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1110,10 +1910,20 @@ export default function AddPlayerPage() {
                                     onChange={() => setObsSelectedId(o.id)}
                                   />
                                 </td>
-                                <td className="p-2">{o.match || "—"}</td>
-                                <td className="p-2">{[o.date || "—", o.time || ""].filter(Boolean).join(" ")}</td>
+                                <td className="p-2">
+                                  {o.match || "—"}
+                                </td>
+                                <td className="p-2">
+                                  {[o.date || "—", o.time || ""]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                </td>
                                 <td className="p-2 text-xs">
-                                  {o.opponentLevel || <span className="text-slate-400">—</span>}
+                                  {o.opponentLevel || (
+                                    <span className="text-slate-400">
+                                      —
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="p-2">
                                   <span
@@ -1136,7 +1946,9 @@ export default function AddPlayerPage() {
                                         : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                                     )}
                                   >
-                                    {o.status === "final" ? "Finalna" : "Szkic"}
+                                    {o.status === "final"
+                                      ? "Finalna"
+                                      : "Szkic"}
                                   </span>
                                 </td>
                                 <td className="p-2 text-right">
@@ -1157,7 +1969,10 @@ export default function AddPlayerPage() {
                             ))}
                             {existingFiltered.length === 0 && (
                               <tr>
-                                <td colSpan={7} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
+                                <td
+                                  colSpan={7}
+                                  className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                                >
                                   Brak obserwacji dla podanych kryteriów.
                                 </td>
                               </tr>
@@ -1181,7 +1996,9 @@ export default function AddPlayerPage() {
                             <Input
                               value={editingObs.match || ""}
                               onChange={(e) =>
-                                setEditingObs((prev) => prev ? { ...prev, match: e.target.value } : prev)
+                                setEditingObs((prev) =>
+                                  prev ? { ...prev, match: e.target.value } : prev
+                                )
                               }
                               className="mt-1"
                             />
@@ -1193,7 +2010,9 @@ export default function AddPlayerPage() {
                                 type="date"
                                 value={editingObs.date || ""}
                                 onChange={(e) =>
-                                  setEditingObs((prev) => prev ? { ...prev, date: e.target.value } : prev)
+                                  setEditingObs((prev) =>
+                                    prev ? { ...prev, date: e.target.value } : prev
+                                  )
                                 }
                                 className="mt-1"
                               />
@@ -1204,7 +2023,9 @@ export default function AddPlayerPage() {
                                 type="time"
                                 value={editingObs.time || ""}
                                 onChange={(e) =>
-                                  setEditingObs((prev) => prev ? { ...prev, time: e.target.value } : prev)
+                                  setEditingObs((prev) =>
+                                    prev ? { ...prev, time: e.target.value } : prev
+                                  )
                                 }
                                 className="mt-1"
                               />
@@ -1214,7 +2035,14 @@ export default function AddPlayerPage() {
                               <Input
                                 value={editingObs.opponentLevel || ""}
                                 onChange={(e) =>
-                                  setEditingObs((prev) => prev ? { ...prev, opponentLevel: e.target.value } : prev)
+                                  setEditingObs((prev) =>
+                                    prev
+                                      ? {
+                                          ...prev,
+                                          opponentLevel: e.target.value,
+                                        }
+                                      : prev
+                                  )
                                 }
                                 className="mt-1"
                               />
@@ -1226,20 +2054,32 @@ export default function AddPlayerPage() {
                               <div className="mt-2 flex gap-2">
                                 <Button
                                   type="button"
-                                  variant={editingObs.mode === "live" ? "default" : "outline"}
+                                  variant={
+                                    editingObs.mode === "live"
+                                      ? "default"
+                                      : "outline"
+                                  }
                                   size="sm"
                                   onClick={() =>
-                                    setEditingObs((prev) => prev ? { ...prev, mode: "live" } : prev)
+                                    setEditingObs((prev) =>
+                                      prev ? { ...prev, mode: "live" } : prev
+                                    )
                                   }
                                 >
                                   Live
                                 </Button>
                                 <Button
                                   type="button"
-                                  variant={editingObs.mode === "tv" ? "default" : "outline"}
+                                  variant={
+                                    editingObs.mode === "tv"
+                                      ? "default"
+                                      : "outline"
+                                  }
                                   size="sm"
                                   onClick={() =>
-                                    setEditingObs((prev) => prev ? { ...prev, mode: "tv" } : prev)
+                                    setEditingObs((prev) =>
+                                      prev ? { ...prev, mode: "tv" } : prev
+                                    )
                                   }
                                 >
                                   TV
@@ -1251,20 +2091,32 @@ export default function AddPlayerPage() {
                               <div className="mt-2 flex gap-2">
                                 <Button
                                   type="button"
-                                  variant={editingObs.status === "draft" ? "default" : "outline"}
+                                  variant={
+                                    editingObs.status === "draft"
+                                      ? "default"
+                                      : "outline"
+                                  }
                                   size="sm"
                                   onClick={() =>
-                                    setEditingObs((prev) => prev ? { ...prev, status: "draft" } : prev)
+                                    setEditingObs((prev) =>
+                                      prev ? { ...prev, status: "draft" } : prev
+                                    )
                                   }
                                 >
                                   Szkic
                                 </Button>
                                 <Button
                                   type="button"
-                                  variant={editingObs.status === "final" ? "default" : "outline"}
+                                  variant={
+                                    editingObs.status === "final"
+                                      ? "default"
+                                      : "outline"
+                                  }
                                   size="sm"
                                   onClick={() =>
-                                    setEditingObs((prev) => prev ? { ...prev, status: "final" } : prev)
+                                    setEditingObs((prev) =>
+                                      prev ? { ...prev, status: "final" } : prev
+                                    )
                                   }
                                 >
                                   Finalna

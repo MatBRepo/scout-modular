@@ -17,6 +17,14 @@ import {
   type MetricGroupKey,
   type Metric
 } from "@/shared/metrics";
+import {
+  loadRatings,
+  saveRatings,
+  type RatingsConfig,
+  type RatingAspect,
+  safeRatingId,
+  slugRatingKey,
+} from "@/shared/ratings";
 
 /* ----------------------------- Types ----------------------------- */
 type Role = "admin" | "scout" | "scout-agent";
@@ -91,9 +99,9 @@ export default function ManagePage() {
       } else {
         const seed: Account[] = [
           { id: 1, name: "Jan Kowalski",  email: "jan.kowalski@example.com",  phone: "+48 555 111 222", role: "scout",        active: true,  createdAt: isoDaysAgo(30), lastActive: isoDaysAgo(1) },
-          { id: 2, name: "Anna Nowak",     email: "anna.nowak@example.com",     phone: "+48 555 333 444", role: "scout-agent",  active: true,  createdAt: isoDaysAgo(20), lastActive: isoDaysAgo(4) },
-          { id: 3, name: "Admin S4S",      email: "admin@example.com",          phone: "",               role: "admin",        active: true,  createdAt: isoDaysAgo(90), lastActive: isoDaysAgo(2) },
-          { id: 4, name: "Michał Test",    email: "michal@example.com",         phone: "",               role: "scout",        active: false, createdAt: isoDaysAgo(7)  },
+          { id: 2, name: "Anna Nowak",    email: "anna.nowak@example.com",    phone: "+48 555 333 444", role: "scout-agent",  active: true,  createdAt: isoDaysAgo(20), lastActive: isoDaysAgo(4) },
+          { id: 3, name: "Admin S4S",     email: "admin@example.com",         phone: "",               role: "admin",        active: true,  createdAt: isoDaysAgo(90), lastActive: isoDaysAgo(2) },
+          { id: 4, name: "Michał Test",   email: "michal@example.com",        phone: "",               role: "scout",        active: false, createdAt: isoDaysAgo(7)  },
         ];
         setAccounts(seed);
         localStorage.setItem("s4s.accounts", JSON.stringify(seed));
@@ -222,7 +230,7 @@ export default function ManagePage() {
   function copy(txt: string) {
     try { navigator.clipboard.writeText(txt); } catch {}
   }
-  const REVOKED: InviteStatus = 'revoked' as InviteStatus;
+  const REVOKED: InviteStatus = "revoked" as InviteStatus;
   function revokeInvite(id: string) {
     const next: Invite[] = invites.map(i =>
       i.id === id ? { ...i, status: REVOKED } : i
@@ -258,10 +266,19 @@ export default function ManagePage() {
     BASE: true, GK: false, DEF: false, MID: false, ATT: false,
   });
 
+  /* -------------------- Ratings configuration ------------------- */
+  const [rCfg, setRCfg] = useState<RatingsConfig>(loadRatings());
+  const [ratingsOpen, setRatingsOpen] = useState(true);
+
   // keep in sync with external changes
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "s4s.obs.metrics") setMCfg(loadMetrics());
+      if (e.key === "s4s.obs.metrics") {
+        setMCfg(loadMetrics());
+      }
+      if (e.key === "s4s.playerRatings.v1") {
+        setRCfg(loadRatings());
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -311,6 +328,65 @@ export default function ManagePage() {
   }
   function toggleGroup(g: MetricGroupKey) {
     setOpenGroups((s) => ({ ...s, [g]: !s[g] }));
+  }
+
+  /* ------- Ratings helpers (Konfiguracja ocen zawodnika) ------- */
+  function setAndSaveRatings(next: RatingsConfig) {
+    setRCfg(next);
+    saveRatings(next);
+  }
+
+  function updateRatingLabel(id: string, label: string) {
+    const next = rCfg.map((r) => (r.id === id ? { ...r, label } : r));
+    setAndSaveRatings(next);
+  }
+
+  function updateRatingKey(id: string, key: string) {
+    const safe = key.trim().toLowerCase().replace(/[^a-z0-9_.-]+/g, "-");
+    const next = rCfg.map((r) => (r.id === id ? { ...r, key: safe } : r));
+    setAndSaveRatings(next);
+  }
+
+  function updateRatingTooltip(id: string, tooltip: string) {
+    const next = rCfg.map((r) => (r.id === id ? { ...r, tooltip } : r));
+    setAndSaveRatings(next);
+  }
+
+  function toggleRating(id: string) {
+    const next = rCfg.map((r) =>
+      r.id === id ? { ...r, enabled: !r.enabled } : r
+    );
+    setAndSaveRatings(next);
+  }
+
+  function addRating() {
+    const label = "Nowa ocena";
+    const item: RatingAspect = {
+      id: safeRatingId(),
+      key: slugRatingKey(label),
+      label,
+      tooltip: "",
+      enabled: true,
+    };
+    const next = [...rCfg, item];
+    setAndSaveRatings(next);
+  }
+
+  function removeRating(id: string) {
+    const next = rCfg.filter((r) => r.id !== id);
+    setAndSaveRatings(next);
+  }
+
+  function moveRating(id: string, dir: -1 | 1) {
+    const arr = [...rCfg];
+    const idx = arr.findIndex((r) => r.id === id);
+    if (idx < 0) return;
+    const target = idx + dir;
+    if (target < 0 || target >= arr.length) return;
+    const tmp = arr[idx];
+    arr[idx] = arr[target];
+    arr[target] = tmp;
+    setAndSaveRatings(arr);
   }
 
   /* ============================ UI ============================== */
@@ -672,6 +748,181 @@ export default function ManagePage() {
               )}
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* ===== Konfiguracja ocen zawodnika (Oceny) ===== */}
+      <Card className="border-gray-200 dark:border-neutral-800">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base font-semibold">
+            Konfiguracja ocen zawodnika
+          </CardTitle>
+          <div className="text-xs text-dark dark:text-neutral-400">
+            Te kategorie pojawiają się w sekcji „Ocena” przy dodawaniu/edycji znanego zawodnika.
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="rounded border border-gray-200 dark:border-neutral-800">
+            <button
+              onClick={() => setRatingsOpen((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 rounded-t-lg bg-stone-100 px-3 py-2 text-left text-sm font-semibold dark:bg-neutral-900"
+              aria-expanded={ratingsOpen}
+            >
+              <span className="flex items-center gap-2">
+                {ratingsOpen ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                Kategorie ocen zawodnika
+              </span>
+              <span className="text-xs text-dark dark:text-neutral-400">
+                {rCfg.length} kategorii
+              </span>
+            </button>
+
+            {ratingsOpen && (
+              <div className="p-2">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    onClick={addRating}
+                    className="bg-gray-900 text-white hover:bg-gray-800"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Dodaj kategorię
+                  </Button>
+                  <div className="text-[11px] text-dark dark:text-neutral-400">
+                    <b>key</b> – krótki klucz do zapisu ocen • <b>label</b> – widoczna nazwa • <b>tooltip</b> – opis w podpowiedzi.
+                  </div>
+                </div>
+
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                      <tr>
+                        <th className="w-12 p-2 text-left font-medium">#</th>
+                        <th className="min-w-[220px] p-2 text-left font-medium">
+                          Etykieta
+                        </th>
+                        <th className="min-w-[160px] p-2 text-left font-medium">
+                          Key
+                        </th>
+                        <th className="min-w-[220px] p-2 text-left font-medium">
+                          Tooltip
+                        </th>
+                        <th className="w-28 p-2 text-left font-medium">
+                          Widoczna
+                        </th>
+                        <th className="w-28 p-2 text-left font-medium">
+                          Kolejność
+                        </th>
+                        <th className="w-28 p-2 text-right font-medium">
+                          Akcje
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rCfg.map((r, i) => (
+                        <tr
+                          key={r.id}
+                          className="border-t border-gray-200 align-middle hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60"
+                        >
+                          <td className="p-2 text-xs text-dark">{i + 1}</td>
+
+                          <td className="p-2">
+                            <InlineCell
+                              value={r.label}
+                              onChange={(val) => updateRatingLabel(r.id, val)}
+                              placeholder="Etykieta kategorii…"
+                            />
+                          </td>
+
+                          <td className="p-2">
+                            <InlineCell
+                              value={r.key}
+                              onChange={(val) => updateRatingKey(r.id, val)}
+                              placeholder="krótki-klucz"
+                            />
+                          </td>
+
+                          <td className="p-2">
+                            <InlineCell
+                              value={r.tooltip || ""}
+                              onChange={(val) => updateRatingTooltip(r.id, val)}
+                              placeholder="Opis do tooltipa (opcjonalnie)…"
+                            />
+                          </td>
+
+                          <td className="p-2">
+                            <button
+                              onClick={() => toggleRating(r.id)}
+                              className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs transition hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                              title={
+                                r.enabled
+                                  ? "Ukryj kategorię w formularzu oceny"
+                                  : "Pokaż kategorię w formularzu oceny"
+                              }
+                            >
+                              {r.enabled ? (
+                                <ToggleRight className="h-4 w-4 text-emerald-600" />
+                              ) : (
+                                <ToggleLeft className="h-4 w-4 text-gray-400" />
+                              )}
+                              {r.enabled ? "Włączona" : "Wyłączona"}
+                            </button>
+                          </td>
+
+                          <td className="p-2">
+                            <div className="flex items-center gap-1">
+                              <button
+                                className="rounded border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                onClick={() => moveRating(r.id, -1)}
+                                disabled={i === 0}
+                                title="Przenieś w górę"
+                              >
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                className="rounded border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                onClick={() => moveRating(r.id, 1)}
+                                disabled={i === rCfg.length - 1}
+                                title="Przenieś w dół"
+                              >
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+
+                          <td className="p-2 text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 border-gray-300 text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:hover:bg-red-900/20"
+                              onClick={() => removeRating(r.id)}
+                              title="Usuń kategorię"
+                            >
+                              Usuń
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {rCfg.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                          >
+                            Brak kategorii ocen — dodaj pierwszą kategorię.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
