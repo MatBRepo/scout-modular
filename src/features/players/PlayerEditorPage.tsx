@@ -44,7 +44,7 @@ import {
 import { cn } from "@/lib/utils";
 import StarRating from "@/shared/ui/StarRating";
 
-/* ------------------------------ Positions ------------------------------ */
+/* ============================== Positions ============================== */
 type BucketPos = "GK" | "DF" | "MF" | "FW";
 type DetailedPos = "GK" | "CB" | "LB" | "RB" | "CDM" | "CM" | "CAM" | "LW" | "RW" | "ST";
 
@@ -86,7 +86,7 @@ function detailedFromBucket(pos?: Player["pos"]): DetailedPos {
   }
 }
 
-/* ------------------------------ Country combobox ------------------------------ */
+/* ============================== Countries ============================== */
 type Country = { code: string; name: string; flag: string };
 const COUNTRIES: Country[] = [
   { code: "PL", name: "Polska", flag: "🇵🇱" }, { code: "DE", name: "Niemcy", flag: "🇩🇪" },
@@ -106,9 +106,34 @@ const COUNTRIES: Country[] = [
   { code: "BR", name: "Brazylia", flag: "🇧🇷" }, { code: "AR", name: "Argentyna", flag: "🇦🇷" },
 ];
 
+/* ============================== Small UI – shared with Add ============================== */
+function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
+  const base = "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
+  const map = {
+    saving: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
+    saved:  "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-100",
+    idle:   "border-gray-300 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200",
+  } as const;
+  return (
+    <span className={`${base} ${map[state]}`} aria-live="polite">
+      {state === "saving" ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Zapisywanie…</>) :
+       state === "saved"  ? (<><CheckCircle2 className="mr-2 h-4 w-4" />Zapisano</>) : ("—")}
+    </span>
+  );
+}
+
+function Chip({ text }: { text: string }) {
+  return (
+    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-stone-100 px-2 py-0.5 text-[10px] opacity-80 dark:border-neutral-700 dark:bg-neutral-800">
+      {text}
+    </span>
+  );
+}
+
+/* Country combobox – ten sam co w Add, tylko tu bez chipów "Wymagane" */
 function CountryCombobox({
-  value, onChange, error,
-}: { value: string; onChange: (next: string) => void; error?: string }) {
+  value, onChange, error, chip,
+}: { value: string; onChange: (next: string) => void; error?: string; chip?: string }) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
   return (
@@ -119,8 +144,9 @@ function CountryCombobox({
             type="button"
             aria-expanded={open}
             className={cn(
-              "flex w-full items-center justify-between rounded border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
-              error ? "border-red-500" : "border-gray-300 dark:border-neutral-700"
+              "relative flex w-full items-center justify-between rounded border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
+              error ? "border-red-500" : "border-gray-300 dark:border-neutral-700",
+              chip ? "pr-24" : ""
             )}
           >
             <span className={cn("flex min-w-0 items-center gap-2", !selected && "text-muted-foreground")}>
@@ -129,9 +155,12 @@ function CountryCombobox({
                   <span className="text-base leading-none">{selected.flag}</span>
                   <span className="truncate">{selected.name}</span>
                 </>
-              ) : ("Wybierz kraj")}
+              ) : (
+                "Wybierz kraj"
+              )}
             </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            {chip ? <Chip text={chip} /> : null}
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
@@ -166,38 +195,16 @@ function CountryCombobox({
   );
 }
 
-/* ------------------------------ Small UI ------------------------------ */
-function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
-  const base = "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
-  const map = {
-    saving: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
-    saved:  "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-100",
-    idle:   "border-gray-300 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200",
-  } as const;
-  return (
-    <span className={`${base} ${map[state]}`} aria-live="polite">
-      {state === "saving" ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Zapisywanie…</>) :
-       state === "saved"  ? (<><CheckCircle2 className="mr-2 h-4 w-4" />Zapisano</>) : ("—")}
-    </span>
-  );
-}
-
-function Chip({ text }: { text: string }) {
-  return (
-    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-stone-100 px-2 py-0.5 text-[10px] opacity-80 dark:border-neutral-700 dark:bg-neutral-800">
-      {text}
-    </span>
-  );
-}
-
-/* ========================================= Page ========================================= */
+/* ============================== Types / ObsRec ============================== */
 type Pos = Player["pos"];
 type ObsRec = Omit<Observation, "player"> & {
   player?: string;
   players?: string[];
   mode?: "live" | "tv";
+  opponentLevel?: string;
 };
 
+/* ============================== Page ============================== */
 export default function PlayerEditorPage({ id }: { id: string }) {
   const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
@@ -207,13 +214,13 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Accordion control
+  // Accordions (spójne z Add)
   const [basicOpen, setBasicOpen] = useState(true);
-  const [extOpen, setExtOpen] = useState(false);
+  const [extOpen, setExtOpen]     = useState(false);
   const [gradeOpen, setGradeOpen] = useState(false);
-  const [obsOpen, setObsOpen] = useState(false);
+  const [obsOpen, setObsOpen]     = useState(false);
 
-  // Extended tabs (controlled; mobile <select> + desktop tabs)
+  // Extended tabs
   type ExtKey = "club" | "physical" | "contact" | "contract" | "stats";
   const [extView, setExtView] = useState<ExtKey>("club");
 
@@ -227,7 +234,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     matches: "", goals: "", assists: "",
   });
 
-  // Grade tabs/values
+  // Grade
   const RATING_KEYS = [
     "Motoryka – szybkość, wytrzymałość",
     "Siła, pojedynki, zwinność",
@@ -257,6 +264,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const [qaTime, setQaTime] = useState("");
   const [qaMode, setQaMode] = useState<"live" | "tv">("live");
   const [qaStatus, setQaStatus] = useState<ObsRec["status"]>("draft");
+  const [qaOpponentLevel, setQaOpponentLevel] = useState("");
 
   /* ------------------------------ Helpers ------------------------------ */
   function bumpSaving() {
@@ -279,7 +287,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       const raw = localStorage.getItem("s4s.observations");
       const arr: ObsRec[] = raw ? JSON.parse(raw) : [];
       setObservations(normalize(arr));
-    } catch { setObservations([]); }
+    } catch {
+      setObservations([]);
+    }
   }, []);
 
   const persistObservations = (next: ObsRec[]) => {
@@ -321,11 +331,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       time: qaTime || "",
       status: qaStatus,
       mode: qaMode,
+      opponentLevel: qaOpponentLevel.trim() || "",
       players: [p.name],
       player: p.name,
     };
     persistObservations([next, ...observations]);
-    setQaMatch(""); setQaDate(""); setQaTime(""); setQaMode("live"); setQaStatus("draft");
+    setQaMatch(""); setQaDate(""); setQaTime(""); setQaMode("live"); setQaStatus("draft"); setQaOpponentLevel("");
   }
 
   function ensurePlayerLinked(o: ObsRec, name: string): ObsRec {
@@ -338,7 +349,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     if (!p || obsSelectedId == null) return;
     const base = observations.find(o => o.id === obsSelectedId);
     if (!base) return;
-    const copy: ObsRec = { ...base, id: Date.now(), players: [p.name] };
+    const copy: ObsRec = { ...base, id: Date.now(), players: [p.name], player: p.name };
     persistObservations([copy, ...observations]);
   }
 
@@ -457,7 +468,11 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   if (!p) {
     return (
       <div className="w-full">
-        <Card><CardContent className="p-4">Nie znaleziono zawodnika.</CardContent></Card>
+        <Card className="mt-3">
+          <CardContent className="px-4 py-4 md:px-6">
+            Nie znaleziono zawodnika.
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -468,7 +483,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     return !!(v !== null && v !== undefined && String(v).trim() !== "");
   }).length;
 
-  const cntBasic   = countTruthy([p.firstName, p.lastName, p.club, p.age, p.birthDate, p.nationality]);
+  const cntBasic   = countTruthy([ (p as any).firstName, (p as any).lastName, p.club, p.age, p.birthDate, p.nationality ]);
   const cntClub    = countTruthy([p.club, ext.teamLevel]);
   const cntPhys    = countTruthy([ext.height, ext.weight, ext.body]);
   const cntContact = countTruthy([ext.email, ext.phone, ext.agent]);
@@ -491,7 +506,10 @@ export default function PlayerEditorPage({ id }: { id: string }) {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
               <Label className="text-sm">Klub</Label>
-              <Input value={p.club} onChange={(e) => saveBasic({ club: e.target.value })} />
+              <Input
+                value={p.club}
+                onChange={(e) => saveBasic({ club: e.target.value })}
+              />
             </div>
             <div>
               <Label className="text-sm">Drużyna/Rocznik</Label>
@@ -669,7 +687,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     }
   }
 
-  /* ========================================= Render ========================================= */
+  /* ============================== Render ============================== */
   return (
     <div className="w-full">
       <Toolbar
@@ -677,8 +695,18 @@ export default function PlayerEditorPage({ id }: { id: string }) {
         right={
           <div className="mb-4 flex w-full items-center gap-2 sm:gap-3 md:flex-nowrap justify-end">
             <SavePill state={saveStatus} />
-            <div className="ml-auto md:ml-0">
-              <Button className="h-10 bg-gray-900 text-white hover:bg-gray-800" onClick={() => router.push("/players")}>
+            <div className="ml-auto md:ml-0 flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="h-10 border-amber-300 dark:border-amber-800"
+                onClick={cancelToOriginal}
+              >
+                Cofnij zmiany
+              </Button>
+              <Button
+                className="h-10 bg-gray-900 text-white hover:bg-gray-800"
+                onClick={() => router.push("/players")}
+              >
                 Wróć do listy
               </Button>
             </div>
@@ -687,43 +715,52 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       />
 
       {isUnknown && (
-        <div className="mb-3 flex flex-col sm:flex-row sm:items-start justify-between gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
-          <div className="flex flex-1 items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <div className="font-medium">Edytujesz nieznanego zawodnika</div>
-              <div className="opacity-90">
-                Uzupełnij przynajmniej <b>imię</b> lub <b>nazwisko</b>, aby oznaczyć profil jako znany.
+        <div className="mb-4 mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-1 items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <div className="font-medium">Edytujesz nieznanego zawodnika</div>
+                <div className="opacity-90">
+                  Uzupełnij przynajmniej <b>imię</b> lub <b>nazwisko</b>, aby oznaczyć profil jako znany.
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex w-full sm:w-auto items-center gap-2 justify-end sm:justify-normal sm:ml-4">
-            <Button className="h-10 bg-gray-900 text-white hover:bg-gray-800" onClick={manualSave}>
-              Zapisz
-            </Button>
+            <div className="flex w-full sm:w-auto items-center gap-2 justify-end sm:justify-normal sm:ml-4">
+              <Button
+                variant="outline"
+                className="h-9 border-amber-300 dark:border-amber-800"
+                onClick={cancelToOriginal}
+              >
+                Anuluj zmiany
+              </Button>
+              <Button className="h-9 bg-gray-900 text-white hover:bg-gray-800" onClick={manualSave}>
+                Zapisz jako nieznany
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       <div className="space-y-4">
         {/* --- Podstawowe informacje --- */}
-        <Card>
-          <CardHeader className="p-0">
+        <Card className="mt-3">
+          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
             <button
               type="button"
               aria-expanded={basicOpen}
               aria-controls="basic-panel"
               onClick={() => setBasicOpen((v) => !v)}
-              className="flex w-full items-center justify-between rounded-t-lg px-6 py-4 text-left"
+              className="flex w-full items-center justify-between text-left"
             >
-              <div className="text-2xl font-semibold leading-none tracking-tight">Podstawowe informacje</div>
+              <div className="text-xl font-semibold leading-none tracking-tight">Podstawowe informacje</div>
               <div className="flex items-center gap-3">
                 <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">{cntBasic}</span>
                 <ChevronDown className={cn("h-5 w-5 transition-transform", basicOpen ? "rotate-180" : "rotate-0")} />
               </div>
             </button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 py-0 md:px-6">
             <Accordion
               type="single"
               collapsible
@@ -731,16 +768,19 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               onValueChange={(v) => setBasicOpen(v === "basic")}
               className="w-full"
             >
-              <AccordionItem value="basic">
-                <AccordionContent id="basic-panel">
+              <AccordionItem value="basic" className="border-0">
+                <AccordionContent id="basic-panel" className="pt-4">
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div>
                       <Label className="text-sm">Imię</Label>
                       <div className="relative">
                         <Input
-                          value={p.firstName ?? ""}
+                          value={(p as any).firstName ?? ""}
                           onChange={(e) =>
-                            saveBasic({ firstName: e.target.value, name: `${e.target.value} ${p.lastName ?? ""}`.trim() })
+                            saveBasic({
+                              firstName: e.target.value,
+                              name: `${e.target.value} ${(p as any).lastName ?? ""}`.trim(),
+                            } as any)
                           }
                           className={isUnknown ? "pr-24" : undefined}
                         />
@@ -751,9 +791,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       <Label className="text-sm">Nazwisko</Label>
                       <div className="relative">
                         <Input
-                          value={p.lastName ?? ""}
+                          value={(p as any).lastName ?? ""}
                           onChange={(e) =>
-                            saveBasic({ lastName: e.target.value, name: `${p.firstName ?? ""} ${e.target.value}`.trim() })
+                            saveBasic({
+                              lastName: e.target.value,
+                              name: `${(p as any).firstName ?? ""} ${e.target.value}`.trim(),
+                            } as any)
                           }
                           className={isUnknown ? "pr-24" : undefined}
                         />
@@ -762,7 +805,10 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                     </div>
                     <div>
                       <Label className="text-sm">Pozycja</Label>
-                      <Select value={currentDetailedPos ?? undefined} onValueChange={(v) => updateDetailedPos(v as DetailedPos)}>
+                      <Select
+                        value={currentDetailedPos ?? undefined}
+                        onValueChange={(v) => updateDetailedPos(v as DetailedPos)}
+                      >
                         <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
                           <SelectValue placeholder="Wybierz pozycję" />
                         </SelectTrigger>
@@ -783,7 +829,11 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                     </div>
                     <div>
                       <Label className="text-sm">Wiek</Label>
-                      <Input type="number" value={p.age} onChange={(e) => saveBasic({ age: Number(e.target.value) || 0 })} />
+                      <Input
+                        type="number"
+                        value={p.age}
+                        onChange={(e) => saveBasic({ age: Number(e.target.value) || 0 })}
+                      />
                     </div>
                     <div>
                       <Label className="text-sm">Klub</Label>
@@ -791,11 +841,18 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                     </div>
                     <div>
                       <Label className="text-sm">Narodowość</Label>
-                      <CountryCombobox value={p.nationality ?? ""} onChange={(val) => saveBasic({ nationality: val })} />
+                      <CountryCombobox
+                        value={p.nationality ?? ""}
+                        onChange={(val) => saveBasic({ nationality: val })}
+                      />
                     </div>
                     <div className="md:col-span-2">
                       <Label className="text-sm">Data urodzenia</Label>
-                      <Input type="date" value={p.birthDate ?? ""} onChange={(e) => saveBasic({ birthDate: e.target.value })} />
+                      <Input
+                        type="date"
+                        value={p.birthDate ?? ""}
+                        onChange={(e) => saveBasic({ birthDate: e.target.value })}
+                      />
                     </div>
                   </div>
                 </AccordionContent>
@@ -805,16 +862,16 @@ export default function PlayerEditorPage({ id }: { id: string }) {
         </Card>
 
         {/* --- Rozszerzone informacje --- */}
-        <Card>
-          <CardHeader className="p-0">
+        <Card className="mt-3">
+          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
             <button
               type="button"
               aria-expanded={extOpen}
               aria-controls="ext-panel"
               onClick={() => setExtOpen((v) => !v)}
-              className="flex w-full items-center justify-between rounded-t-lg px-6 py-4 text-left"
+              className="flex w-full items-center justify-between text-left"
             >
-              <div className="text-2xl font-semibold leading-none tracking-tight">Rozszerzone informacje</div>
+              <div className="text-xl font-semibold leading-none tracking-tight">Rozszerzone informacje</div>
               <div className="flex items-center gap-3">
                 <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
                   {totalExt}/{totalExtMax}
@@ -823,7 +880,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               </div>
             </button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 py-0 md:px-6">
             <Accordion
               type="single"
               collapsible
@@ -831,9 +888,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               onValueChange={(v) => setExtOpen(v === "ext")}
               className="w-full"
             >
-              <AccordionItem value="ext">
-                <AccordionContent id="ext-panel">
-                  {/* Mobile: Select; Desktop: Tabs (both bound to extView) */}
+              <AccordionItem value="ext" className="border-0">
+                <AccordionContent id="ext-panel" className="pt-4">
+                  {/* Mobile: select; desktop: Tabs */}
                   <div className="md:hidden">
                     <Label className="mb-1 block text-sm">Sekcja</Label>
                     <select
@@ -886,16 +943,16 @@ export default function PlayerEditorPage({ id }: { id: string }) {
         </Card>
 
         {/* --- Ocena --- */}
-        <Card>
-          <CardHeader className="p-0">
+        <Card className="mt-3">
+          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
             <button
               type="button"
               aria-expanded={gradeOpen}
               aria-controls="grade-panel"
               onClick={() => setGradeOpen((v) => !v)}
-              className="flex w-full items-center justify-between rounded-t-lg px-6 py-4 text-left"
+              className="flex w-full items-center justify-between text-left"
             >
-              <div className="text-2xl font-semibold leading-none tracking-tight">Ocena</div>
+              <div className="text-xl font-semibold leading-none tracking-tight">Ocena</div>
               <div className="flex items-center gap-3">
                 <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
                   {totalGrade}/{totalGradeMax}
@@ -904,7 +961,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               </div>
             </button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 py-0 md:px-6">
             <Accordion
               type="single"
               collapsible
@@ -912,8 +969,8 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               onValueChange={(v) => setGradeOpen(v === "grade")}
               className="w-full"
             >
-              <AccordionItem value="grade">
-                <AccordionContent id="grade-panel">
+              <AccordionItem value="grade" className="border-0">
+                <AccordionContent id="grade-panel" className="pt-4">
                   <Tabs defaultValue="notes" className="w-full">
                     <TabsList className="grid w-full grid-cols-3">
                       <TabsTrigger value="notes">Notatki</TabsTrigger>
@@ -971,16 +1028,16 @@ export default function PlayerEditorPage({ id }: { id: string }) {
         </Card>
 
         {/* --- Obserwacje --- */}
-        <Card>
-          <CardHeader className="p-0">
+        <Card className="mt-3">
+          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
             <button
               type="button"
               aria-expanded={obsOpen}
               aria-controls="obs-panel"
               onClick={() => setObsOpen((v) => !v)}
-              className="flex w-full items-center justify-between rounded-t-lg px-6 py-4 text-left"
+              className="flex w-full items-center justify-between text-left"
             >
-              <div className="text-2xl font-semibold leading-none tracking-tight">
+              <div className="text-xl font-semibold leading-none tracking-tight">
                 Obserwacje
               </div>
               <div className="flex items-center gap-3">
@@ -994,34 +1051,38 @@ export default function PlayerEditorPage({ id }: { id: string }) {
             </button>
           </CardHeader>
 
-          <CardContent className="p-6 pt-0">
+          <CardContent className="px-4 py-0 md:px-6">
             <Accordion
               type="single"
               collapsible
               value={obsOpen ? "obs" : undefined}
               onValueChange={(v) => setObsOpen(v === "obs")}
             >
-              <AccordionItem value="obs">
-                <AccordionContent id="obs-panel" className="p-6">
+              <AccordionItem value="obs" className="border-0">
+                <AccordionContent id="obs-panel" className="pt-4">
                   <Tabs defaultValue="new" className="w-full">
-                    <TabsList className="mb-2 inline-flex h-10 items-center rounded bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
+                    {/* segmented control – jak w Add */}
+                    <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
                       <TabsTrigger
                         value="new"
-                        className="h-8 px-3 py-1 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+                        className="flex-1 rounded px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
                       >
-                        Nowa
+                        Nowa obserwacja
                       </TabsTrigger>
                       <TabsTrigger
                         value="existing"
-                        className="h-8 px-3 py-1 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+                        className="flex-1 rounded px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
                       >
-                        Istniejąca
+                        Istniejące
                       </TabsTrigger>
                     </TabsList>
+                    <p className="mb-4 text-xs text-slate-500 dark:text-neutral-400">
+                      Dodaj nową obserwację tego zawodnika lub przypisz istniejącą z Twojego dziennika.
+                    </p>
 
                     {/* NEW */}
                     <TabsContent value="new" className="mt-2 space-y-4">
-                      <div className="rounded">
+                      <div>
                         <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">Mecz</div>
                         <div className="mb-3 text-xs text-dark dark:text-neutral-400">
                           Wpisz drużyny — pole „Mecz” składa się automatycznie.
@@ -1041,7 +1102,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               className="mt-1"
                             />
                           </div>
-                          <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">vs</div>
+                          <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">
+                            vs
+                          </div>
                           <div>
                             <Label>Drużyna B</Label>
                             <Input
@@ -1058,14 +1121,13 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                           <div className="sm:hidden text-center text-sm text-dark">vs</div>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                           <div>
                             <Label>Data meczu</Label>
                             <Input
                               type="date"
                               value={qaDate}
                               onChange={(e) => setQaDate(e.target.value)}
-                              placeholder="dd.mm.rrrr"
                               className="mt-1"
                             />
                           </div>
@@ -1075,7 +1137,15 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               type="time"
                               value={qaTime}
                               onChange={(e) => setQaTime(e.target.value)}
-                              placeholder="--:--"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label>Poziom przeciwnika</Label>
+                            <Input
+                              value={qaOpponentLevel}
+                              onChange={(e) => setQaOpponentLevel(e.target.value)}
+                              placeholder="np. CLJ U17, 3 liga, top akademia…"
                               className="mt-1"
                             />
                           </div>
@@ -1087,11 +1157,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                             <div className="mt-2 flex gap-2">
                               <button
                                 onClick={() => setQaMode("live")}
-                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                className={cn(
+                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaMode === "live"
                                     ? "bg-indigo-600 text-white hover:bg-indigo-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                }`}
+                                )}
                                 type="button"
                                 aria-pressed={qaMode === "live"}
                               >
@@ -1099,11 +1170,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               </button>
                               <button
                                 onClick={() => setQaMode("tv")}
-                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                className={cn(
+                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaMode === "tv"
                                     ? "bg-violet-600 text-white hover:bg-violet-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                }`}
+                                )}
                                 type="button"
                                 aria-pressed={qaMode === "tv"}
                               >
@@ -1117,11 +1189,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                             <div className="mt-2 flex gap-2">
                               <button
                                 onClick={() => setQaStatus("draft")}
-                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                className={cn(
+                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaStatus === "draft"
                                     ? "bg-amber-600 text-white hover:bg-amber-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                }`}
+                                )}
                                 type="button"
                                 aria-pressed={qaStatus === "draft"}
                               >
@@ -1129,11 +1202,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               </button>
                               <button
                                 onClick={() => setQaStatus("final")}
-                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                className={cn(
+                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaStatus === "final"
                                     ? "bg-emerald-600 text-white hover:bg-emerald-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                }`}
+                                )}
                                 type="button"
                                 aria-pressed={qaStatus === "final"}
                               >
@@ -1143,22 +1217,29 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                           </div>
                         </div>
 
-                        <div className="mt-4 text-xs text-dark dark:text-neutral-300">
-                          Mecz: <span className="font-medium">{qaMatch || "—"}</span>
-                          <span className="ml-2 inline-flex items-center rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-                            {qaMode === "tv" ? "TV" : "Live"}
-                          </span>
+                        <div className="mt-4 space-y-1 text-xs text-dark dark:text-neutral-300">
+                          <div>
+                            Mecz: <span className="font-medium">{qaMatch || "—"}</span>
+                            <span className="ml-2 inline-flex items-center rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                              {qaMode === "tv" ? "TV" : "Live"}
+                            </span>
+                          </div>
+                          {qaOpponentLevel && (
+                            <div className="text-[11px] text-slate-600 dark:text-neutral-400">
+                              Poziom przeciwnika: <span className="font-medium">{qaOpponentLevel}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="sticky bottom-0 mt-1 -mx-6 border-t border-gray-200 bg-white/90 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
+                      <div className="sticky bottom-0 mt-1 -mx-4 border-t border-gray-200 bg-white/90 px-4 py-5 md:-mx-6 md:px-6 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             className="bg-gray-900 text-white hover:bg-gray-800"
                             onClick={addObservationForPlayer}
                             disabled={!qaMatch.trim() || !qaDate.trim()}
                           >
-                            Zapisz
+                            Dodaj obserwację tego zawodnika
                           </Button>
                         </div>
                       </div>
@@ -1166,14 +1247,19 @@ export default function PlayerEditorPage({ id }: { id: string }) {
 
                     {/* EXISTING */}
                     <TabsContent value="existing" className="mt-2 space-y-3">
-                      <div className="flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
-                        <Search className="h-4 w-4 opacity-70" />
-                        <Input
-                          value={obsQuery}
-                          onChange={(e) => setObsQuery(e.target.value)}
-                          placeholder="Szukaj po meczu, zawodniku, dacie…"
-                          className="flex-1 border-0 focus-visible:ring-0"
-                        />
+                      <div className="flex flex-col gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
+                        <div className="flex items-center gap-2">
+                          <Search className="h-4 w-4 opacity-70" />
+                          <Input
+                            value={obsQuery}
+                            onChange={(e) => setObsQuery(e.target.value)}
+                            placeholder="Szukaj po meczu, zawodniku, dacie…"
+                            className="flex-1 border-0 focus-visible:ring-0"
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                          Wybierz obserwację z listy, aby przypisać ją do tego profilu lub skopiować.
+                        </p>
                       </div>
 
                       <div className="max-h-80 overflow-auto rounded border border-gray-200 dark:border-neutral-700">
@@ -1184,6 +1270,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               <th className="p-2 text-left font-medium">Mecz</th>
                               <th className="p-2 text-left font-medium">Zawodnicy</th>
                               <th className="p-2 text-left font-medium">Data</th>
+                              <th className="p-2 text-left font-medium">Poziom</th>
                               <th className="p-2 text-left font-medium">Tryb</th>
                               <th className="p-2 text-left font-medium">Status</th>
                             </tr>
@@ -1192,9 +1279,13 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                             {existingFiltered.map((o, idx) => (
                               <tr
                                 key={o.id}
-                                className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
-                                  obsSelectedId === o.id ? "bg-blue-50/60 dark:bg-blue-900/20" : idx % 2 ? "bg-stone-100/40 dark:bg-neutral-900/30" : ""
-                                }`}
+                                className={cn(
+                                  "cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+                                  idx % 2
+                                    ? "bg-stone-100/40 dark:bg-neutral-900/30"
+                                    : "",
+                                  obsSelectedId === o.id ? "bg-blue-50/60 dark:bg-blue-900/20" : ""
+                                )}
                                 onClick={() => setObsSelectedId(o.id)}
                               >
                                 <td className="p-2">
@@ -1221,24 +1312,29 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                                   ) : "—"}
                                 </td>
                                 <td className="p-2">{[o.date || "—", o.time || ""].filter(Boolean).join(" ")}</td>
+                                <td className="p-2 text-xs">
+                                  {o.opponentLevel || <span className="text-slate-400">—</span>}
+                                </td>
                                 <td className="p-2">
                                   <span
-                                    className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                                    className={cn(
+                                      "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium",
                                       (o as any).mode === "tv"
                                         ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
                                         : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                    }`}
+                                    )}
                                   >
                                     {(o as any).mode === "tv" ? "TV" : "Live"}
                                   </span>
                                 </td>
                                 <td className="p-2">
                                   <span
-                                    className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                                    className={cn(
+                                      "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium",
                                       o.status === "final"
                                         ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                                         : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                                    }`}
+                                    )}
                                   >
                                     {o.status === "final" ? "Finalna" : "Szkic"}
                                   </span>
@@ -1247,7 +1343,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                             ))}
                             {existingFiltered.length === 0 && (
                               <tr>
-                                <td colSpan={6} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
+                                <td colSpan={7} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
                                   Brak obserwacji dla podanych kryteriów.
                                 </td>
                               </tr>

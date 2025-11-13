@@ -347,7 +347,7 @@ export default function AppSidebar({
           title="Wróć na kokpit"
           onClick={onClose}
         >
-          <BrandMark showName={!isAuthed} /> S4S
+          <BrandMark showName={!isAuthed} /> entrisoScouting
         </Link>
       </div>
 

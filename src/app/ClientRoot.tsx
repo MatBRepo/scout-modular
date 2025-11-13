@@ -189,6 +189,8 @@ function AuthGate({
 
   const loginCardRef = useRef<HTMLDivElement>(null);
 
+  
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginErr(null);
@@ -716,44 +718,48 @@ function AppShell({
               </button>
             )}
 
-            {/* ABSOLUTE breadcrumb on the left, aligned to app bar */}
-            <nav
-              aria-label="Breadcrumb"
-              className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
+
+<nav
+  aria-label="Breadcrumb"
+  className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
+>
+  <ol className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300">
+    {crumbs.map((c, i) => {
+      const last = i === crumbs.length - 1;
+      const raw = c.label || "Home";
+      const label = titleCaseAll(raw); // <-- ALL words capitalized
+
+      return (
+        <li key={c.href} className="flex min-w-0 items-center">
+          {!last ? (
+            <>
+              <Link
+                href={c.href}
+                className="truncate hover:underline normal-case"
+                title={label}
+              >
+                {i === 0 ? (
+                  <HomeIcon className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <span className="normal-case">{label}</span>
+                )}
+              </Link>
+              <ChevronRight className="mx-1 h-4 w-4 opacity-60" aria-hidden="true" />
+            </>
+          ) : (
+            <span
+              className="truncate font-medium text-slate-900 dark:text-neutral-100 normal-case"
+              title={label}
             >
-              <ol className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300">
-                {crumbs.map((c, i) => {
-                  const last = i === crumbs.length - 1;
-                  return (
-                    <li key={c.href} className="flex min-w-0 items-center">
-                      {!last ? (
-                        <>
-                          <Link
-                            href={c.href}
-                            className="truncate hover:underline"
-                            title={c.label}
-                          >
-                            {i === 0 ? (
-                              <HomeIcon className="h-4 w-4" aria-hidden="true" />
-                            ) : (
-                              c.label
-                            )}
-                          </Link>
-                          <ChevronRight className="mx-1 h-4 w-4 opacity-60" aria-hidden="true" />
-                        </>
-                      ) : (
-                        <span
-                          className="truncate font-medium text-slate-900 dark:text-neutral-100"
-                          title={c.label}
-                        >
-                          {c.label || "Home"}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
+              {label}
+            </span>
+          )}
+        </li>
+      );
+    })}
+  </ol>
+</nav>
+
 
             {/* Actions row */}
             <div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] px-3 md:px-0">
@@ -846,6 +852,16 @@ function AppShell({
     </>
   );
 }
+
+
+// ---- helpers (module-scope): available to all components ----
+export const titleCaseAll = (input: string) =>
+  String(input ?? "")
+    .replace(/[-_/]+/g, " ")   // treat -, _, / as word breaks
+    .trim()
+    .split(/\s+/)              // split on spaces
+    .map(w => (w ? w[0].toLocaleUpperCase() + w.slice(1) : ""))
+    .join(" ");
 
 /* ===== ClientRoot ===== */
 export default function ClientRoot({ children }: { children: React.ReactNode }) {
