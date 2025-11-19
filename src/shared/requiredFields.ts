@@ -1,10 +1,9 @@
-// src/shared/requiredFields.ts
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabaseClient";
 
-/* ================== Typy & helpery ================== */
+/* ===== KONTEKSTY FORMULARZY – takie same jak w RequiredFieldsPage ===== */
 
 export type FormContext =
   | "player_basic_known"
@@ -19,15 +18,9 @@ export type FormContext =
   | "player_editor_contact"
   | "player_editor_grade";
 
-export type RequiredMap = Record<string, boolean>;
+/* ===== Domyślne wymagalności – IDENTYCZNE jak w RequiredFieldsPage ===== */
 
-export function makeFieldKey(context: FormContext, fieldKey: string) {
-  return `${context}.${fieldKey}`;
-}
-
-/* ================== Domyślne wymagalności ================== */
-
-export const DEFAULT_REQUIRED: RequiredMap = {
+export const DEFAULT_REQUIRED: Record<string, boolean> = {
   // player_basic_known (AddPlayer)
   "player_basic_known.firstName": true,
   "player_basic_known.lastName": true,
@@ -50,7 +43,7 @@ export const DEFAULT_REQUIRED: RequiredMap = {
   "observation_new.mode": false,
   "observation_new.status": false,
 
-  // observations_main – domyślnie jak dotychczasowa walidacja w ObservationEditor
+  // observations_main (ObservationEditor)
   "observations_main.teamA": true,
   "observations_main.teamB": true,
   "observations_main.reportDate": true,
@@ -74,7 +67,7 @@ export const DEFAULT_REQUIRED: RequiredMap = {
   "player_editor_basic_unknown.clubCountry": true,
   "player_editor_basic_unknown.unknownNote": false,
 
-  // PlayerEditor – profil boiskowy (wszystko opcjonalne domyślnie)
+  // PlayerEditor – profil boiskowy
   "player_editor_ext_profile.height": false,
   "player_editor_ext_profile.weight": false,
   "player_editor_ext_profile.dominantFoot": false,
@@ -112,10 +105,11 @@ export const DEFAULT_REQUIRED: RequiredMap = {
   "player_editor_grade.finalComment": false,
 };
 
-const STORAGE_KEY = "s4s.fieldRequirements";
+/* ===== Pomocnik klucza ===== */
 
-let inMemoryMap: RequiredMap | null = null;
-let loadingPromise: Promise<RequiredMap> | null = null;
+export function makeKey(context: FormContext | string, fieldKey: string) {
+  return `${context}.${fieldKey}`;
+}
 
 type DbRow = {
   context: string;
@@ -123,109 +117,61 @@ type DbRow = {
   required: boolean;
 };
 
-/* ================== Fetch z Supabase + cache ================== */
-
-async function fetchFromSupabase(): Promise<RequiredMap> {
-  const base: RequiredMap = { ...DEFAULT_REQUIRED };
-
-  try {
-    const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from("field_requirements")
-      .select("context, field_key, required");
-
-    if (error || !data) {
-      console.warn("[requiredFields] using DEFAULT_REQUIRED (load error)", error);
-      return base;
-    }
-
-    for (const row of data as DbRow[]) {
-      const ctx = row.context as FormContext;
-      const key = makeFieldKey(ctx, row.field_key);
-      base[key] = !!row.required;
-    }
-
-    return base;
-  } catch (err) {
-    console.error("[requiredFields] exception while load:", err);
-    return base;
-  }
-}
-
-export async function loadRequiredMap(): Promise<RequiredMap> {
-  if (inMemoryMap) return inMemoryMap;
-
-  if (loadingPromise) return loadingPromise;
-
-  loadingPromise = (async () => {
-    // 1) spróbuj z localStorage
-    if (typeof window !== "undefined") {
-      try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as RequiredMap;
-          inMemoryMap = { ...DEFAULT_REQUIRED, ...parsed };
-          return inMemoryMap;
-        }
-      } catch (e) {
-        console.warn("[requiredFields] localStorage parse error:", e);
-      }
-    }
-
-    // 2) Supabase + fallback
-    const fromDb = await fetchFromSupabase();
-    inMemoryMap = fromDb;
-
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fromDb));
-      } catch {
-        /* ignore */
-      }
-    }
-
-    return inMemoryMap!;
-  })();
-
-  return loadingPromise;
-}
-
-/* ================== Hook do użycia w formularzach ================== */
+/* ===========================================================
+ *  useRequiredFields – hook używany w AddPlayer / ObservationEditor
+ * ========================================================= */
 
 export function useRequiredFields() {
-  const [map, setMap] = useState<RequiredMap | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as RequiredMap;
-      return { ...DEFAULT_REQUIRED, ...parsed };
-    } catch {
-      return null;
-    }
-  });
-
-  const [loading, setLoading] = useState(!map);
+  const [requiredMap, setRequiredMap] = useState<Record<string, boolean>>(
+    () => ({ ...DEFAULT_REQUIRED })
+  );
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setLoading(true);
-      const loaded = await loadRequiredMap();
-      if (!cancelled) {
-        setMap(loaded);
-        setLoading(false);
+
+      try {
+        const supabase = getSupabase();
+        const { data, error } = await supabase
+          .from("field_requirements")
+          .select("context, field_key, required");
+
+        if (cancelled) return;
+
+        if (error) {
+          console.error("[useRequiredFields] load error", error);
+          // fallback do domyślnych
+          setRequiredMap({ ...DEFAULT_REQUIRED });
+        } else if (!data || data.length === 0) {
+          // brak wierszy → też fallback
+          setRequiredMap({ ...DEFAULT_REQUIRED });
+        } else {
+          const next: Record<string, boolean> = { ...DEFAULT_REQUIRED };
+          for (const row of data as DbRow[]) {
+            const key = makeKey(row.context, row.field_key);
+            next[key] = !!row.required;
+          }
+          setRequiredMap(next);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.error("[useRequiredFields] exception while load:", e);
+          setRequiredMap({ ...DEFAULT_REQUIRED });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
-    if (!map) {
-      load();
-    }
+    load();
 
-    function handleUpdated() {
+    // Nasłuchaj eventu z RequiredFieldsPage
+    const handleUpdated = () => {
       load();
-    }
+    };
 
     if (typeof window !== "undefined") {
       window.addEventListener("required-fields-updated", handleUpdated);
@@ -237,20 +183,16 @@ export function useRequiredFields() {
         window.removeEventListener("required-fields-updated", handleUpdated);
       }
     };
-  }, [map]);
+  }, []);
 
   const isRequiredField = useCallback(
-    (context: FormContext, fieldKey: string) => {
-      const key = makeFieldKey(context, fieldKey);
-      const source = map || DEFAULT_REQUIRED;
-      return source[key] ?? DEFAULT_REQUIRED[key] ?? false;
+    (context: FormContext | string, fieldKey: string) => {
+      const key = makeKey(context, fieldKey);
+      if (key in requiredMap) return requiredMap[key];
+      return DEFAULT_REQUIRED[key] ?? false;
     },
-    [map]
+    [requiredMap]
   );
 
-  return {
-    requiredMap: map || DEFAULT_REQUIRED,
-    loading,
-    isRequiredField,
-  };
+  return { isRequiredField, loading };
 }
