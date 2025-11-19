@@ -261,18 +261,11 @@ export default function RankSettingsPage() {
       {/* zamiast Toolbar – zwykły header */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Link
-            href="/admin/manage"
-            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-stone-100 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 dark:hover:bg-neutral-900"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Zarządzanie
-          </Link>
           <div>
-            <h1 className="text-base font-semibold leading-tight">
-              Progi poziomów (rank)
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Poziomy scouta
             </h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-1 text-sm text-dark dark:text-neutral-300">
               Ustal, od ilu punktów użytkownik otrzymuje Bronze / Silver / Gold
               / Platinum.
             </p>
@@ -452,7 +445,7 @@ export default function RankSettingsPage() {
             )}
 
             {validationMessage && (
-              <div className="mt-1 inline-flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+              <div className="!mt-1 inline-flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
                 <TriangleAlert className="mt-[1px] h-3.5 w-3.5 shrink-0" />
                 <span>{validationMessage}</span>
               </div>

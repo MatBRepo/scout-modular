@@ -59,10 +59,7 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-
-/* ============================== Storage keys ============================== */
-const PLAYERS_KEY = "s4s.players";
-const OBS_KEY = "s4s.observations";
+import { getSupabase } from "@/lib/supabaseClient";
 
 /* ============================== Positions ============================== */
 type Pos = Player["pos"];
@@ -364,7 +361,6 @@ type RatingMap = Record<string, number>;
 /* ============================== Page ============================== */
 export default function PlayerEditorPage({ id }: { id: string }) {
   const router = useRouter();
-  const [players, setPlayers] = useState<Player[]>([]);
   const [p, setP] = useState<Player | null>(null);
 
   const originalRef = useRef<Player | null>(null);
@@ -425,7 +421,14 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     tiktok: "",
   }));
 
-  /* ---------- Ratings config z Supabase (jak AddPlayerPage) ---------- */
+  // highlight głównej pozycji
+  const [highlightMainPos, setHighlightMainPos] = useState(false);
+
+  useEffect(() => {
+    if (ext.mainPos) setHighlightMainPos(false);
+  }, [ext.mainPos]);
+
+  /* ---------- Ratings config z Supabase ---------- */
   const [ratingCfg, setRatingCfg] = useState<RatingsConfig>(() =>
     loadRatings()
   );
@@ -435,17 +438,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     [ratingCfg]
   );
 
-  // pobierz konfigurację z Supabase przy starcie (raz)
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
       const cfg = await syncRatingsFromSupabase();
-      if (!cancelled) {
-        setRatingCfg(cfg);
-      }
+      if (!cancelled) setRatingCfg(cfg);
     })();
-
     return () => {
       cancelled = true;
     };
@@ -464,7 +462,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const midAspects = enabledRatingAspects.filter((a) => a.groupKey === "MID");
   const attAspects = enabledRatingAspects.filter((a) => a.groupKey === "FW");
 
-  // Pozycja główna dla oceny (sterowana przez Główną pozycję w Ext)
+  // Pozycja główna dla oceny
   const effectiveMainPos: DetailedPos | "" =
     (ext.mainPos as DetailedPos | "") || "";
   const effectiveBucket: Pos | null = effectiveMainPos
@@ -491,36 +489,74 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
   }
 
-  const normalize = (arr: ObsRec[]) =>
-    arr.map((o) => {
-      const playersArray = Array.isArray(o.players)
-        ? o.players.filter(Boolean)
-        : o.player && String(o.player).trim()
-        ? [String(o.player).trim()]
-        : [];
-      const unique = Array.from(new Set(playersArray));
-      return { ...o, players: unique };
-    });
+const normalize = (arr: ObsRec[]) =>
+  arr.map((o) => {
+    const rawPlayers = Array.isArray(o.players)
+      ? o.players
+      : o.player && String(o.player).trim()
+      ? [o.player]
+      : [];
 
-  /* ------------------------------ Load observations ------------------------------ */
-  useEffect(() => {
+    // Zamień obiekty { id, name, ... } na stringi z name
+    const playersArray = rawPlayers
+      .map((pl: any) => {
+        if (!pl) return null;
+        if (typeof pl === "string") return pl;
+        if (typeof pl === "object" && "name" in pl) return String(pl.name);
+        return null;
+      })
+      .filter((x): x is string => !!x && x.trim() !== "");
+
+    const unique = Array.from(new Set(playersArray));
+    return { ...o, players: unique };
+  });
+
+
+  async function fetchObservations() {
     try {
-      const raw = localStorage.getItem(OBS_KEY);
-      const arr: ObsRec[] = raw ? JSON.parse(raw) : [];
-      setObservations(normalize(arr));
-    } catch {
-      setObservations([]);
+      const supabase = getSupabase();
+      const { data, error } = await supabase
+        .from("observations")
+        .select("id, player, match, date, time, status, mode, players, payload")
+        .order("date", { ascending: false })
+        .order("time", { ascending: false });
+
+      if (error) {
+        console.error("Błąd wczytywania obserwacji", error);
+        return;
+      }
+
+      const rows = (data ?? []) as any[];
+
+      const mapped: ObsRec[] = normalize(
+        rows.map((row) => ({
+          id: row.id,
+          player: row.player ?? undefined,
+          match: row.match ?? "",
+          date: row.date ?? "",
+          time: row.time ?? "",
+          status: (row.status as ObsRec["status"]) ?? "draft",
+          mode: (row.mode as "live" | "tv") ?? "live",
+          opponentLevel:
+            (row.payload && (row.payload as any).opponentLevel) || "",
+          players:
+            Array.isArray(row.players) && row.players.length
+              ? row.players.filter(Boolean)
+              : row.player
+              ? [row.player]
+              : [],
+        }))
+      );
+
+      setObservations(mapped);
+    } catch (err) {
+      console.error(err);
     }
-  }, []);
+  }
 
-  const persistObservations = (next: ObsRec[]) => {
-    bumpSaving();
-    const norm = normalize(next);
-    setObservations(norm);
-    try {
-      localStorage.setItem(OBS_KEY, JSON.stringify(norm));
-    } catch {}
-  };
+  useEffect(() => {
+    fetchObservations();
+  }, []);
 
   const playerObs = useMemo(() => {
     if (!p) return [];
@@ -551,70 +587,148 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     );
   }, [observations, obsQuery]);
 
-  function addObservationForPlayer() {
+  async function addObservationForPlayer() {
     if (!p) return;
-    const next: ObsRec = {
-      id: Date.now(),
-      match: qaMatch.trim() || "—",
-      date: qaDate || "",
-      time: qaTime || "",
-      status: qaStatus,
-      mode: qaMode,
-      opponentLevel: qaOpponentLevel.trim() || "",
-      players: [p.name],
-      player: p.name,
-    };
-    persistObservations([next, ...observations]);
-    setQaMatch("");
-    setQaDate("");
-    setQaTime("");
-    setQaMode("live");
-    setQaStatus("draft");
-    setQaOpponentLevel("");
+    bumpSaving();
+    try {
+      const supabase = getSupabase();
+      const payload: any = {};
+      if (qaOpponentLevel.trim()) {
+        payload.opponentLevel = qaOpponentLevel.trim();
+      }
+
+      const { error } = await supabase.from("observations").insert([
+        {
+          player: p.name,
+          match: qaMatch.trim() || null,
+          date: qaDate || null,
+          time: qaTime || null,
+          status: qaStatus,
+          mode: qaMode,
+          players: [p.name],
+          bucket: "active",
+          payload,
+        },
+      ]);
+
+      if (error) {
+        console.error("Błąd dodawania obserwacji", error);
+      } else {
+        await fetchObservations();
+        setQaMatch("");
+        setQaDate("");
+        setQaTime("");
+        setQaMode("live");
+        setQaStatus("draft");
+        setQaOpponentLevel("");
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
-  function ensurePlayerLinked(o: ObsRec, name: string): ObsRec {
-    const list = Array.isArray(o.players) ? o.players.slice() : [];
-    if (!list.includes(name)) list.push(name);
-    return { ...o, players: Array.from(new Set(list)) };
-  }
-
-  function duplicateExistingToThisPlayer() {
+  async function duplicateExistingToThisPlayer() {
     if (!p || obsSelectedId == null) return;
     const base = observations.find((o) => o.id === obsSelectedId);
     if (!base) return;
-    const copy: ObsRec = {
-      ...base,
-      id: Date.now(),
-      players: [p.name],
-      player: p.name,
-    };
-    persistObservations([copy, ...observations]);
-  }
 
-  function reassignExistingToThisPlayer() {
-    if (!p || obsSelectedId == null) return;
-    const next = observations.map((o) =>
-      o.id === obsSelectedId ? ensurePlayerLinked(o, p.name) : o
-    );
-    persistObservations(next);
-  }
-
-  /* ------------------------------ Player persistence (local) ------------------------------ */
-  function overwritePlayer(next: Player) {
-    setP(next);
-    const arr = players.map((x) => (x.id === next.id ? next : x));
-    setPlayers(arr);
+    bumpSaving();
     try {
-      localStorage.setItem(PLAYERS_KEY, JSON.stringify(arr));
-    } catch {}
+      const supabase = getSupabase();
+      const payload: any = {};
+      if (base.opponentLevel) {
+        payload.opponentLevel = base.opponentLevel;
+      }
+
+      const { error } = await supabase.from("observations").insert([
+        {
+          player: p.name,
+          match: base.match ?? null,
+          date: base.date ?? null,
+          time: base.time ?? null,
+          status: base.status,
+          mode: base.mode ?? "live",
+          players: [p.name],
+          bucket: "active",
+          payload,
+        },
+      ]);
+
+      if (error) {
+        console.error("Błąd kopiowania obserwacji", error);
+      } else {
+        await fetchObservations();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function reassignExistingToThisPlayer() {
+    if (!p || obsSelectedId == null) return;
+    const base = observations.find((o) => o.id === obsSelectedId);
+    if (!base) return;
+
+    bumpSaving();
+    try {
+      const supabase = getSupabase();
+      const updatedPlayers = Array.from(
+        new Set([...(base.players ?? []), p.name])
+      );
+
+      const { error } = await supabase
+        .from("observations")
+        .update({ players: updatedPlayers })
+        .eq("id", obsSelectedId);
+
+      if (error) {
+        console.error("Błąd przypisywania obserwacji", error);
+      } else {
+        await fetchObservations();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  /* ------------------------------ Player persistence (Supabase) ------------------------------ */
+
+  async function savePlayerToSupabase(updated: Player) {
+    try {
+      const supabase = getSupabase();
+      const patch: any = {
+        name: updated.name,
+        pos: updated.pos,
+        club: updated.club,
+        age: (updated as any).age,
+        status: (updated as any).status,
+        firstName: (updated as any).firstName ?? null,
+        lastName: (updated as any).lastName ?? null,
+        birthDate: (updated as any).birthDate ?? null,
+        nationality: (updated as any).nationality ?? null,
+        photo: (updated as any).photo ?? null,
+        meta: (updated as any).meta ?? {},
+      };
+
+      const { error } = await supabase
+        .from("players")
+        .update(patch)
+        .eq("id", (updated as any).id);
+
+      if (error) {
+        console.error("Błąd zapisu zawodnika", error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   function saveBasic(next: Partial<Player>) {
     if (!p) return;
     const updated = { ...p, ...next } as Player;
     bumpSaving();
-    overwritePlayer(updated);
+    setP(updated);
+    void savePlayerToSupabase(updated);
   }
 
   function saveMetaPatch(patch: any) {
@@ -625,7 +739,8 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       meta: { ...prevMeta, ...patch },
     } as Player;
     bumpSaving();
-    overwritePlayer(updated);
+    setP(updated);
+    void savePlayerToSupabase(updated);
   }
 
   function saveExtPatch(patch: Partial<typeof ext>) {
@@ -639,13 +754,14 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   function updateDetailedPos(sel: DetailedPos) {
     if (!p) return;
     const prevMeta: any = (p as any).meta ?? {};
-    const next: Player = {
-      ...p,
+    const updated: Player = {
+      ...(p as any),
       pos: toBucket(sel) as Pos,
       meta: { ...prevMeta, detailedPos: sel },
-    } as any;
+    } as Player;
     bumpSaving();
-    overwritePlayer(next);
+    setP(updated);
+    void savePlayerToSupabase(updated);
   }
 
   const currentDetailedPos: DetailedPos | null = useMemo(() => {
@@ -655,72 +771,99 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     return metaPos ?? detailedFromBucket(p.pos);
   }, [p]);
 
-  /* ------------------------------ Load player (z localStorage) ------------------------------ */
+  /* ------------------------------ Load player from Supabase ------------------------------ */
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PLAYERS_KEY);
-      const arr: Player[] = raw ? JSON.parse(raw) : [];
-      setPlayers(arr);
-      const found = arr.find((x) => String(x.id) === id) || null;
-      setP(found);
-      originalRef.current = found ? structuredClone(found) : null;
+    let cancelled = false;
 
-      const meta: any = (found as any)?.meta ?? {};
-      const extPrev: any = meta.ext ?? {};
+    async function loadPlayer() {
+      try {
+        const supabase = getSupabase();
+        const { data, error } = await supabase
+          .from("players")
+          .select("*")
+          .eq("id", Number(id))
+          .maybeSingle();
 
-      setExt((prev) => ({
-        ...prev,
-        birthYear: extPrev.birthYear ?? "",
-        clubCountry: extPrev.clubCountry ?? "",
-        jerseyNumber: extPrev.jerseyNumber ?? "",
-        unknownNote: extPrev.unknownNote ?? "",
+        if (cancelled) return;
 
-        height: extPrev.height ?? "",
-        weight: extPrev.weight ?? "",
-        dominantFoot: extPrev.dominantFoot ?? "",
-        mainPos: extPrev.mainPos ?? meta.detailedPos ?? "",
-        altPositions: Array.isArray(extPrev.altPositions)
-          ? extPrev.altPositions
-          : [],
+        if (error || !data) {
+          console.error("Nie udało się pobrać zawodnika", error);
+          setP(null);
+          originalRef.current = null;
+          return;
+        }
 
-        english:
-          typeof extPrev.english === "boolean" ? extPrev.english : null,
-        euPassport:
-          typeof extPrev.euPassport === "boolean" ? extPrev.euPassport : null,
-        birthCountry: extPrev.birthCountry ?? "",
-        contractStatus: extPrev.contractStatus ?? "",
-        agency: extPrev.agency ?? "",
-        releaseClause: extPrev.releaseClause ?? "",
-        leagueLevel: extPrev.leagueLevel ?? "",
-        clipsLinks: extPrev.clipsLinks ?? "",
-        transfermarkt: extPrev.transfermarkt ?? "",
-        wyscout: extPrev.wyscout ?? "",
+        const found = data as Player;
+        setP(found);
+        originalRef.current = structuredClone(found);
 
-        injuryHistory: extPrev.injuryHistory ?? "",
-        minutes365: extPrev.minutes365 ?? "",
-        starts365: extPrev.starts365 ?? "",
-        subs365: extPrev.subs365 ?? "",
-        goals365: extPrev.goals365 ?? "",
+        const meta: any = (found as any).meta ?? {};
+        const extPrev: any = meta.ext ?? {};
 
-        phone: extPrev.phone ?? "",
-        email: extPrev.email ?? "",
-        fb: extPrev.fb ?? "",
-        ig: extPrev.ig ?? "",
-        tiktok: extPrev.tiktok ?? "",
-      }));
+        setExt((prev) => ({
+          ...prev,
+          birthYear: extPrev.birthYear ?? "",
+          clubCountry: extPrev.clubCountry ?? "",
+          jerseyNumber: extPrev.jerseyNumber ?? "",
+          unknownNote: extPrev.unknownNote ?? "",
 
-      setGrade({
-        notes: meta.notes ?? "",
-        finalComment: meta.finalComment ?? "",
-      });
+          height: extPrev.height ?? "",
+          weight: extPrev.weight ?? "",
+          dominantFoot: extPrev.dominantFoot ?? "",
+          mainPos: extPrev.mainPos ?? meta.detailedPos ?? "",
+          altPositions: Array.isArray(extPrev.altPositions)
+            ? extPrev.altPositions
+            : [],
 
-      const rPrev: RatingMap = meta.ratings ?? {};
-      setRatings(rPrev);
-    } catch {
-      setP(null);
-      originalRef.current = null;
+          english:
+            typeof extPrev.english === "boolean" ? extPrev.english : null,
+          euPassport:
+            typeof extPrev.euPassport === "boolean"
+              ? extPrev.euPassport
+              : null,
+          birthCountry: extPrev.birthCountry ?? "",
+          contractStatus: extPrev.contractStatus ?? "",
+          agency: extPrev.agency ?? "",
+          releaseClause: extPrev.releaseClause ?? "",
+          leagueLevel: extPrev.leagueLevel ?? "",
+          clipsLinks: extPrev.clipsLinks ?? "",
+          transfermarkt: extPrev.transfermarkt ?? "",
+          wyscout: extPrev.wyscout ?? "",
+
+          injuryHistory: extPrev.injuryHistory ?? "",
+          minutes365: extPrev.minutes365 ?? "",
+          starts365: extPrev.starts365 ?? "",
+          subs365: extPrev.subs365 ?? "",
+          goals365: extPrev.goals365 ?? "",
+
+          phone: extPrev.phone ?? "",
+          email: extPrev.email ?? "",
+          fb: extPrev.fb ?? "",
+          ig: extPrev.ig ?? "",
+          tiktok: extPrev.tiktok ?? "",
+        }));
+
+        setGrade({
+          notes: meta.notes ?? "",
+          finalComment: meta.finalComment ?? "",
+        });
+
+        const rPrev: RatingMap = meta.ratings ?? {};
+        setRatings(rPrev);
+      } catch (err) {
+        if (!cancelled) {
+          console.error(err);
+          setP(null);
+          originalRef.current = null;
+        }
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    loadPlayer();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const isUnknown = useMemo(
@@ -736,7 +879,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     const orig = originalRef.current;
     if (!orig) return;
     setSaveStatus("saving");
-    overwritePlayer(structuredClone(orig));
+    const cloned = structuredClone(orig);
+    setP(cloned);
+    void savePlayerToSupabase(cloned);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
   }
@@ -744,7 +889,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   function manualSave() {
     if (!p) return;
     bumpSaving();
-    overwritePlayer({ ...p });
+    void savePlayerToSupabase(p);
   }
 
   if (!p) {
@@ -770,7 +915,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       );
     }).length;
 
-  // Basic – różne zestawy dla znanego vs nieznanego
+  // Basic
   const cntBasicKnown = countTruthy([
     firstName,
     lastName,
@@ -787,7 +932,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const cntBasic = isKnown ? cntBasicKnown : cntBasicUnknown;
   const basicMax = isKnown ? 5 : 4;
 
-  // Tab 1 – Profil boiskowy
+  // Tabs – ext
   const cntProfile = countTruthy([
     ext.height,
     ext.weight,
@@ -796,7 +941,6 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     ext.altPositions?.length ? 1 : "",
   ]);
 
-  // Tab 2 – Status & scouting
   const cntEligibility = countTruthy([
     ext.english ? "yes" : "",
     ext.euPassport ? "yes" : "",
@@ -810,7 +954,6 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     ext.wyscout,
   ]);
 
-  // Tab 3 – Zdrowie i statystyki
   const cntStats365 = countTruthy([
     ext.injuryHistory,
     ext.minutes365,
@@ -819,7 +962,6 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     ext.goals365,
   ]);
 
-  // Tab 4 – Kontakt & social
   const cntContact = countTruthy([
     ext.phone,
     ext.email,
@@ -831,7 +973,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const totalExt = cntProfile + cntEligibility + cntStats365 + cntContact;
   const totalExtMax = 5 + 10 + 5 + 5;
 
-  // 6. Ocena
+  // Ocena
   const cntNotes = countTruthy([grade.notes]);
   const cntAspects = countTruthy(
     enabledRatingAspects.map((a) => ratings[a.key] ?? 0)
@@ -840,7 +982,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const totalGrade = cntNotes + cntAspects + cntFinal;
   const totalGradeMax = 1 + enabledRatingAspects.length + 1;
 
-  /* ---------- Ocena helpery: Tooltip + grupy (jak w AddPlayerPage) ---------- */
+  /* ---------- Ocena helpery ---------- */
   function RatingRow({ aspect }: { aspect: RatingAspect }) {
     const val = ratings[aspect.key] ?? 0;
     const hasTooltip = !!aspect.tooltip;
@@ -962,7 +1104,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div>
+              <div
+                className={cn(
+                  highlightMainPos &&
+                    "rounded-md bg-indigo-50/60 p-2 ring-2 ring-indigo-500/80 dark:bg-indigo-950/30"
+                )}
+              >
                 <Label className="text-sm">Główna pozycja</Label>
                 <Select
                   value={ext.mainPos || (currentDetailedPos ?? undefined)}
@@ -973,7 +1120,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                     updateDetailedPos(val);
                   }}
                 >
-                  <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
+                  <SelectTrigger className="mt-1 w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
                     <SelectValue placeholder="Wybierz pozycję" />
                   </SelectTrigger>
                   <SelectContent>
@@ -991,6 +1138,10 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="mt-1 text-[11px] text-slate-600 dark:text-neutral-400">
+                  Ta pozycja steruje dodatkowymi kategoriami oceny
+                  (GK/DEF/MID/ATT).
+                </p>
               </div>
 
               <div>
@@ -1480,7 +1631,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               name: `${e.target.value} ${lastName}`.trim(),
                             } as any)
                           }
-                          className={isKnown && !firstName ? "pr-24" : undefined}
+                          className={
+                            isKnown && !firstName ? "pr-24" : undefined
+                          }
                         />
                         {isKnown && !firstName && <Chip text="Wymagane" />}
                       </div>
@@ -1496,7 +1649,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               name: `${firstName} ${e.target.value}`.trim(),
                             } as any)
                           }
-                          className={isKnown && !lastName ? "pr-24" : undefined}
+                          className={
+                            isKnown && !lastName ? "pr-24" : undefined
+                          }
                         />
                         {isKnown && !lastName && <Chip text="Wymagane" />}
                       </div>
@@ -1554,7 +1709,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-sm pb-2">Kraj aktualnego klubu</Label>
+                      <Label className="text-sm pb-2">
+                        Kraj aktualnego klubu
+                      </Label>
                       <CountryCombobox
                         value={ext.clubCountry}
                         onChange={(val) => {
@@ -1633,7 +1790,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                     >
                       <option value="profile">Profil boiskowy</option>
-                      <option value="eligibility">Status &amp; scouting</option>
+                      <option value="eligibility">
+                        Status &amp; scouting
+                      </option>
                       <option value="stats365">Zdrowie i statystyki</option>
                       <option value="contact">Kontakt &amp; social</option>
                     </select>
@@ -1719,100 +1878,135 @@ export default function PlayerEditorPage({ id }: { id: string }) {
             >
               <AccordionItem value="grade" className="border-0">
                 <AccordionContent id="grade-panel" className="pt-4">
-                  <Tabs defaultValue="notes" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 md:max-w-md">
-                      <TabsTrigger value="notes">Poziom docelowy</TabsTrigger>
-                      <TabsTrigger value="aspects">Oceny 1–5</TabsTrigger>
-                      <TabsTrigger value="final">Podsumowanie</TabsTrigger>
-                    </TabsList>
+                  {isUnknown && (
+                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                      Dla nieznanych profili ocena jest opcjonalna – możesz ją
+                      uzupełnić, gdy będziesz mieć więcej informacji o
+                      zawodniku.
+                    </p>
+                  )}
 
-                    {/* 6a. Poziom docelowy */}
-                    <TabsContent value="notes" className="mt-4 space-y-3">
-                      <Label className="text-sm">
-                        Poziom docelowy – gdzie mógłby grać zawodnik
-                      </Label>
-                      <Textarea
-                        placeholder='Np. "Ekstraklasa top 8", "CLJ U19 czołowy zespół", "II liga – górna połowa"…'
-                        value={grade.notes}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setGrade((s) => ({ ...s, notes: v }));
-                          // zapis w meta (local)
-                          saveMetaPatch({ targetLevel: v, notes: v });
-                        }}
-                      />
-                    </TabsContent>
-
-                    {/* Oceny 1–5 – jak w AddPlayerPage: grupy + bucket */}
-                    <TabsContent value="aspects" className="mt-4">
-                      {enabledRatingAspects.length === 0 ? (
-                        <p className="text-xs text-slate-500 dark:text-neutral-400">
-                          Brak skonfigurowanych kategorii ocen. Dodaj je w
-                          panelu <b>„Konfiguracja ocen zawodnika”</b>.
-                        </p>
-                      ) : (
-                        <div className="space-y-5">
-                          {/* Zawsze: podstawowe */}
-                          <RatingGroup
-                            title="Podstawowe"
-                            aspects={baseAspects}
-                          />
-
-                          {/* Dodatkowe grupy dopiero po ustawieniu Głównej pozycji */}
-                          {effectiveBucket === "GK" && (
-                            <RatingGroup
-                              title="Bramkarz (GK)"
-                              aspects={gkAspects}
-                            />
-                          )}
-                          {effectiveBucket === "DF" && (
-                            <RatingGroup
-                              title="Obrońca (DEF)"
-                              aspects={defAspects}
-                            />
-                          )}
-                          {effectiveBucket === "MF" && (
-                            <RatingGroup
-                              title="Pomocnik (MID)"
-                              aspects={midAspects}
-                            />
-                          )}
-                          {effectiveBucket === "FW" && (
-                            <RatingGroup
-                              title="Napastnik (ATT)"
-                              aspects={attAspects}
-                            />
-                          )}
-
-                          {!effectiveBucket &&
-                            enabledRatingAspects.length > 0 && (
-                              <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                                Ustaw <b>Główną pozycję</b> w sekcji „Rozszerzone
-                                informacje”, aby zobaczyć dodatkowe kategorie
-                                oceny (GK/DEF/MID/ATT).
-                              </p>
-                            )}
-                        </div>
+                  <div className="relative">
+                    {/* Główna treść */}
+                    <div
+                      className={cn(
+                        "space-y-5",
+                        !effectiveMainPos && "pointer-events-none opacity-40"
                       )}
-                    </TabsContent>
+                    >
+                      {/* Poziom docelowy */}
+                      <div>
+                        <Label className="text-sm">
+                          Poziom docelowy – gdzie mógłby grać zawodnik
+                        </Label>
+                        <Textarea
+                          placeholder='Np. "Ekstraklasa top 8", "CLJ U19 czołowy zespół", "II liga – górna połowa"…'
+                          value={grade.notes}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setGrade((s) => ({ ...s, notes: v }));
+                            saveMetaPatch({ targetLevel: v, notes: v });
+                          }}
+                          className="mt-1"
+                        />
+                      </div>
 
-                    {/* 6b. Podsumowanie */}
-                    <TabsContent value="final" className="mt-4 space-y-3">
-                      <Label className="text-sm">
-                        Podsumowanie – opis zawodnika, mocne/słabe strony,
-                        ryzyka, rekomendacja
-                      </Label>
-                      <Textarea
-                        placeholder="Swobodny opis zawodnika, mocne / słabe strony, kluczowe ryzyka, rekomendacja (TAK / NIE / OBSERWOWAĆ)…"
-                        value={grade.finalComment}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setGrade((s) => ({ ...s, finalComment: v }));
-                          saveMetaPatch({ finalSummary: v, finalComment: v });
-                        }}
-                      />
-                    </TabsContent>
-                  </Tabs>
+                      {/* Oceny 1–5 */}
+                      <div className="space-y-5">
+                        {enabledRatingAspects.length === 0 ? (
+                          <p className="text-xs text-slate-500 dark:text-neutral-400">
+                            Brak skonfigurowanych kategorii ocen. Dodaj je w
+                            panelu <b>„Konfiguracja ocen zawodnika”</b>.
+                          </p>
+                        ) : (
+                          <>
+                            <RatingGroup
+                              title="Podstawowe"
+                              aspects={baseAspects}
+                            />
+
+                            {effectiveBucket === "GK" && (
+                              <RatingGroup
+                                title="Bramkarz (GK)"
+                                aspects={gkAspects}
+                              />
+                            )}
+                            {effectiveBucket === "DF" && (
+                              <RatingGroup
+                                title="Obrońca (DEF)"
+                                aspects={defAspects}
+                              />
+                            )}
+                            {effectiveBucket === "MF" && (
+                              <RatingGroup
+                                title="Pomocnik (MID)"
+                                aspects={midAspects}
+                              />
+                            )}
+                            {effectiveBucket === "FW" && (
+                              <RatingGroup
+                                title="Napastnik (ATT)"
+                                aspects={attAspects}
+                              />
+                            )}
+
+                            {!effectiveBucket &&
+                              enabledRatingAspects.length > 0 && (
+                                <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                  Ustaw <b>Główną pozycję</b> w sekcji
+                                  „Rozszerzone informacje”, aby zobaczyć
+                                  dodatkowe kategorie oceny (GK/DEF/MID/ATT).
+                                </p>
+                              )}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Podsumowanie */}
+                      <div>
+                        <Label className="text-sm">
+                          Podsumowanie – opis zawodnika, mocne/słabe strony,
+                          ryzyka, rekomendacja
+                        </Label>
+                        <Textarea
+                          placeholder="Swobodny opis zawodnika, mocne / słabe strony, kluczowe ryzyka, rekomendacja (TAK / NIE / OBSERWOWAĆ)…"
+                          value={grade.finalComment}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setGrade((s) => ({ ...s, finalComment: v }));
+                            saveMetaPatch({
+                              finalSummary: v,
+                              finalComment: v,
+                            });
+                          }}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Overlay blokujący, jeśli nie wybrano Głównej pozycji */}
+                    {!effectiveMainPos && (
+                      <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
+                        <p className="mb-3 text-xs sm:text-sm text-slate-700 dark:text-neutral-200">
+                          Aby wprowadzić oceny i poziom docelowy, najpierw
+                          uzupełnij <b>Główną pozycję</b> w sekcji
+                          „Rozszerzone informacje”.
+                        </p>
+                        <Button
+                          size="sm"
+                          type="button"
+                          className="bg-gray-900 text-white hover:bg-gray-800"
+                          onClick={() => {
+                            setExtOpen(true);
+                            setExtView("profile");
+                            setHighlightMainPos(true);
+                          }}
+                        >
+                          Uzupełnij Główną pozycję
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -1909,7 +2103,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                           <div>
                             <Label>Drużyna B</Label>
                             <Input
-                              value={(qaMatch.split(/ *vs */i)[1] || "").trim()}
+                              value={
+                                (qaMatch.split(/ *vs */i)[1] || "").trim()
+                              }
                               onChange={(e) => {
                                 const a =
                                   (qaMatch.split(/ *vs */i)[0] || "").trim();
@@ -2126,22 +2322,34 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                                   />
                                 </td>
                                 <td className="p-2">{o.match || "—"}</td>
-                                <td className="p-2">
-                                  {(o.players ?? []).length > 0 ? (
-                                    <div className="flex flex-wrap gap-1">
-                                      {(o.players ?? []).map((n, i) => (
-                                        <span
-                                          key={`${o.id}-pl-${i}`}
-                                          className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
-                                        >
-                                          {n}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    "—"
-                                  )}
-                                </td>
+<td className="p-2">
+  {(o.players ?? []).length > 0 ? (
+    <div className="flex flex-wrap gap-1">
+      {(o.players ?? []).map((n: any, i) => {
+        const label =
+          typeof n === "string"
+            ? n
+            : n && typeof n === "object" && "name" in n
+            ? String(n.name)
+            : "";
+
+        if (!label) return null;
+
+        return (
+          <span
+            key={`${o.id}-pl-${i}`}
+            className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+          >
+            {label}
+          </span>
+        );
+      })}
+    </div>
+  ) : (
+    "—"
+  )}
+</td>
+
                                 <td className="p-2">
                                   {[o.date || "—", o.time || ""]
                                     .filter(Boolean)
@@ -2199,14 +2407,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                           Wybierz rekord i wybierz akcję.
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            className="border-gray-300 dark:border-neutral-700"
-                            disabled={obsSelectedId == null}
-                            onClick={duplicateExistingToThisPlayer}
-                          >
-                            Skopiuj do zawodnika
-                          </Button>
+                         
                           <Button
                             className="bg-gray-900 text-white hover:bg-gray-800"
                             disabled={obsSelectedId == null}

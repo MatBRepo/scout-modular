@@ -10,7 +10,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         ref={ref}
         className={cn(
           // width: 2px cut from left & right -> 4px total
-          "flex h-10 w-[calc(100%-4px)] mx-auto mt-2",
+          "flex h-10 w-[calc(100%-4px)] mx-auto",
           "rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
           "placeholder:text-muted-foreground",
           "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:ring-offset-1",
