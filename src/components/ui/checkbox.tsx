@@ -19,17 +19,17 @@ export const Checkbox = React.forwardRef<
       {...props}
       className={cn(
         // base box
-        "grid place-content-center h-4 w-4 shrink-0 rounded-md-[3px] border",
+        "grid place-content-center h-4 w-4 shrink-0 rounded border",
         // colors (light/dark)
-        "border-input bg-background text-primary dark:border-neutral-700",
+        "border-input bg-background text-primary dark:border-neutral-700 rounded ",
         // focus
-        "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded",
         // disabled
         "disabled:cursor-not-allowed disabled:opacity-50",
         // checked
-        "data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground",
+        "data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground rounded",
         // indeterminate
-        "data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:text-primary-foreground",
+        "data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:text-primary-foreground rounded",
         className
       )}
     >

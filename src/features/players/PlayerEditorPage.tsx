@@ -1554,7 +1554,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-sm">Kraj aktualnego klubu</Label>
+                      <Label className="text-sm pb-2">Kraj aktualnego klubu</Label>
                       <CountryCombobox
                         value={ext.clubCountry}
                         onChange={(val) => {

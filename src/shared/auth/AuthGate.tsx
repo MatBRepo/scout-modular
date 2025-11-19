@@ -56,8 +56,21 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [showPass, setShowPass] = useState(false);
   const [capsOn, setCapsOn] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(false);
+
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
+
+  /* ===== Mobile detection (do autofocus only on desktop) ===== */
+  useEffect(() => {
+    const checkMobile = () => {
+      if (typeof window === "undefined") return;
+      setIsMobile(window.innerWidth < 768); // < md breakpoint
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // ===== 1. Obecna sesja + nasłuch zmian auth =====
   useEffect(() => {
@@ -86,9 +99,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Autofocus między trybami
+  // Autofocus między trybami – tylko desktop
   useEffect(() => {
-    if (initialLoading) return;
+    if (initialLoading || isMobile) return;
     if (mode === "register" && nameInputRef.current) {
       nameInputRef.current.focus();
       return;
@@ -96,7 +109,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     if (emailInputRef.current) {
       emailInputRef.current.focus();
     }
-  }, [mode, initialLoading]);
+  }, [mode, initialLoading, isMobile]);
 
   const passScore = strengthScore(pwd);
 
@@ -236,24 +249,25 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   if (!user) {
     return (
       <div className="relative min-h-screen overflow-hidden bg-stone-100 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-        {/* Stone + gradient background */}
+        {/* Gradient + noise background */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.18),transparent_55%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.12),transparent_60%)] dark:bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.18),transparent_55%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.16),transparent_60%)]" />
         <div
-  className="pointer-events-none absolute inset-0 opacity-[0.14] mix-blend-soft-light"
-  style={{
-    backgroundImage:
-      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E\")",
-  }}
-/>
+          className="pointer-events-none absolute inset-0 opacity-[0.14] mix-blend-soft-light"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E\")",
+          }}
+        />
 
-        <div className="relative z-10 flex min-h-screen items-center justify-center px-3 py-8 sm:py-12">
+        <div className="relative z-10 flex min-h-screen items-start justify-center px-3 py-8 pb-24 sm:py-10 md:items-center md:pb-10">
           <div className="w-full max-w-lg">
             {/* Główny nagłówek */}
             <div className="mb-5 text-center">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-500 dark:text-emerald-400">
+              <p className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900/90 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.28em] text-emerald-400 shadow-sm ring-1 ring-emerald-500/40 dark:bg-black">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.25)]" />
                 Platforma scoutingowa
               </p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
                 entrisoScouting
               </h1>
               <p className="mt-2 text-[13px] text-slate-600 dark:text-slate-300">
@@ -267,7 +281,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               className="relative mx-auto flex items-center justify-center"
               style={{ perspective: "1200px" }}
             >
-              {/* Strzałka lewa (bez tła/border) */}
+              {/* Strzałka lewa – desktop only */}
               <button
                 type="button"
                 onClick={toggleMode}
@@ -277,7 +291,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 <ChevronLeft className="h-4 w-4" />
               </button>
 
-              {/* Strzałka prawa (bez tła/border) */}
+              {/* Strzałka prawa – desktop only */}
               <button
                 type="button"
                 onClick={toggleMode}
@@ -287,21 +301,21 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 <ChevronRight className="h-4 w-4" />
               </button>
 
-              {/* Karta (stała wysokość formularza) */}
+              {/* Karta */}
               <motion.div
                 initial={{ opacity: 0, y: 16, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.45, ease: easeOutCustom }}
-                className="w-full rounded-md bg-white/90 p-4 text-slate-900 shadow-[0_18px_60px_rgba(15,23,42,0.15)] ring-1 ring-slate-200 backdrop-blur-lg dark:bg-slate-950/70 dark:text-slate-50 dark:ring-slate-800/80 md:p-6"
+                className="w-full rounded-2xl bg-white/90 p-4 text-slate-900 shadow-[0_18px_60px_rgba(15,23,42,0.18)] ring-1 ring-slate-200/80 backdrop-blur-xl dark:bg-slate-950/70 dark:text-slate-50 dark:ring-slate-800/80 md:p-6"
               >
                 {/* Przełącznik Logowanie / Rejestracja */}
                 <div className="mb-4 flex flex-col gap-2">
                   <div className="flex justify-center">
-                    <div className="inline-flex rounded-md bg-stone-100 p-1 text-xs ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700/80">
+                    <div className="inline-flex rounded-full bg-stone-100/80 p-1 text-xs ring-1 ring-slate-200 dark:bg-slate-900/80 dark:ring-slate-700/80">
                       <button
                         type="button"
                         onClick={() => switchMode("login")}
-                        className={`rounded-md px-4 py-1.5 transition-all ${
+                        className={`rounded-full px-4 py-1.5 text-[11px] transition-all ${
                           mode === "login"
                             ? "bg-slate-900 text-slate-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
                             : "text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-50"
@@ -312,7 +326,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       <button
                         type="button"
                         onClick={() => switchMode("register")}
-                        className={`rounded-md px-4 py-1.5 transition-all ${
+                        className={`rounded-full px-4 py-1.5 text-[11px] transition-all ${
                           mode === "register"
                             ? "bg-slate-900 text-slate-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
                             : "text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-50"
@@ -330,7 +344,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.25, ease: "easeOut" }}
-                      className="text-center text-[11px] text-slate-600 dark:text-slate-300 pt-3 pb-3"
+                      className="pt-3 pb-3 text-center text-[11px] text-slate-600 dark:text-slate-300"
                     >
                       {mode === "login" ? (
                         <>
@@ -340,24 +354,24 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         </>
                       ) : (
                         <>
-                          Rejestrując się uzyskujesz dostęp do własnej
-                          przestrzeni roboczej w entrisoScouting — możesz
-                          budować bazę zawodników, dodawać obserwacje z meczów i
-                          tworzyć raporty. Jeśli korzystasz z systemu w klubie
-                          lub akademii, użyj służbowego adresu e-mail, aby
-                          łatwiej powiązać Cię z właściwą organizacją.
+                          Rejestrując się, tworzysz własną przestrzeń roboczą w{" "}
+                          <span className="font-medium">entrisoScouting</span> —
+                          buduj bazę zawodników, dodawaj obserwacje meczowe i
+                          generuj raporty. Jeśli korzystasz z systemu klubowo,
+                          użyj służbowego adresu e-mail.
                         </>
                       )}
                     </motion.p>
                   </AnimatePresence>
                 </div>
 
-                {/* Obszar formularza o stałej wysokości (bez „bounce”) */}
+                {/* Obszar formularza o stałej wysokości */}
                 <div className="relative mt-1 h-[360px]">
                   <AnimatePresence mode="wait">
                     {mode === "login" ? (
                       <motion.form
                         key="login"
+                        id="auth-login-form"
                         onSubmit={handleLogin}
                         className="absolute inset-0 flex flex-col space-y-3"
                         autoComplete="on"
@@ -447,7 +461,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                           </motion.div>
                         )}
 
-                        <div className="mt-auto">
+                        {/* Desktop CTA; na mobile korzystamy z paska dolnego */}
+                        <div className="mt-auto hidden md:block">
                           <Button
                             type="submit"
                             disabled={!canSubmit || busy}
@@ -460,6 +475,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                     ) : (
                       <motion.form
                         key="register"
+                        id="auth-register-form"
                         onSubmit={handleRegister}
                         className="absolute inset-0 flex flex-col space-y-3"
                         autoComplete="on"
@@ -571,7 +587,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                                   <div
                                     key={i}
                                     className={`h-1.5 flex-1 rounded-full transition-colors ${
-                                      isActive ? activeColor : "bg-slate-200 dark:bg-slate-800"
+                                      isActive
+                                        ? activeColor
+                                        : "bg-slate-200 dark:bg-slate-800"
                                     }`}
                                   />
                                 );
@@ -604,7 +622,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                           </motion.div>
                         )}
 
-                        <div className="mt-auto">
+                        {/* Desktop CTA; na mobile korzystamy z paska dolnego */}
+                        <div className="mt-auto hidden md:block">
                           <Button
                             type="submit"
                             disabled={!canSubmit || busy}
@@ -619,6 +638,24 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 </div>
               </motion.div>
             </div>
+          </div>
+
+          {/* Mobilny pasek z CTA przyklejony do dołu */}
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 py-2 shadow-[0_-10px_30px_rgba(15,23,42,0.22)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/95 md:hidden">
+            <Button
+              type="submit"
+              form={mode === "login" ? "auth-login-form" : "auth-register-form"}
+              disabled={!canSubmit || busy}
+              className="h-10 w-full rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-50 hover:bg-black disabled:opacity-50 dark:bg-stone-100 dark:text-slate-950 dark:hover:bg-white"
+            >
+              {busy
+                ? mode === "login"
+                  ? "Logowanie…"
+                  : "Tworzenie konta…"
+                : mode === "login"
+                ? "Zaloguj się"
+                : "Utwórz konto"}
+            </Button>
           </div>
         </div>
       </div>

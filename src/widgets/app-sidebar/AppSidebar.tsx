@@ -323,6 +323,7 @@ export default function AppSidebar({
   const manageMetricsActive = pathname?.startsWith("/admin/manage/metrics");
   const manageRatingsActive = pathname?.startsWith("/admin/manage/ratings");
   const manageRanksActive = pathname?.startsWith("/admin/manage/ranks");
+    const manageRequiredActive = pathname?.startsWith("/admin/manage/required-fields");
 
   const playersBadge = playersCount > 0 ? String(playersCount) : undefined;
   const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
@@ -418,7 +419,7 @@ export default function AppSidebar({
                 <div className="mt-0.5 space-y-0.5 pl-9">
                   <SubNavItem
                     href="/admin/manage"
-                    label="Użytkownicy & zaproszenia"
+                    label="Użytkownicy"
                     active={manageBaseActive}
                   />
                   <SubNavItem
@@ -433,8 +434,13 @@ export default function AppSidebar({
                   />
                   <SubNavItem
                     href="/admin/manage/ranks"
-                    label="Ranking użytkowników"
+                    label="Rangi użytkowników"
                     active={manageRanksActive}
+                  />
+                  <SubNavItem
+                    href="/admin/manage/required-fields"
+                    label="Wymagane pola"
+                    active={manageRequiredActive}
                   />
                 </div>
               </div>
@@ -680,8 +686,9 @@ export default function AppSidebar({
   );
 
   /* ====== PANEL STYLES ====== */
-  const asideDesktop =
-    "h-screen w-64 overflow-hidden border-r border-slate-200 bg-white p-3 shadow-sm ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
+const asideDesktop =
+  "h-screen w-64 overflow-hidden border-r border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
+
 
   const asideMobile =
     "h-screen w-[75vw] max-w-[380px] overflow-hidden border-r border-slate-200 bg-white p-3 shadow-xl ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
