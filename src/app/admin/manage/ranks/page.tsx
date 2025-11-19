@@ -317,22 +317,7 @@ export default function RankSettingsPage() {
               </span>
             </CardTitle>
 
-            {/* Krótka instrukcja */}
-            <div className="flex flex-wrap items-start gap-2 rounded-md bg-stone-100 px-3 py-2 text-[11px] text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-800">
-              <Info className="mt-[1px] h-3.5 w-3.5 shrink-0 text-indigo-500" />
-              <div className="space-y-0.5">
-                <p>
-                  <span className="font-semibold">Formuła wyniku:</span>{" "}
-                  <code className="rounded bg-black/5 px-1 py-0.5 text-[11px] dark:bg-white/10">
-                    wynik = 2 × aktywni zawodnicy + obserwacje (final)
-                  </code>
-                </p>
-                <p>
-                  Wynik decyduje o poziomie (rank) widocznym w panelu oraz
-                  pasku postępu.
-                </p>
-              </div>
-            </div>
+           
 
             {/* Presety */}
             <div className="flex flex-wrap items-center gap-2 text-[11px]">
@@ -468,13 +453,7 @@ export default function RankSettingsPage() {
         </Card>
 
         {/* Right column – szybka ściąga + preview */}
-        <Card className="border-slate-200 bg-stone-100/70 dark:border-neutral-800 dark:bg-neutral-900/40">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Info className="h-4 w-4 text-indigo-500" />
-              Szybka ściąga
-            </CardTitle>
-          </CardHeader>
+        <Card className="border-slate-200 bg-stone-100/70 dark:border-neutral-800 dark:bg-neutral-900/40  pt-6">
           <CardContent className="space-y-3 text-xs text-muted-foreground">
             <div>
               <p className="mb-1 font-medium text-foreground">

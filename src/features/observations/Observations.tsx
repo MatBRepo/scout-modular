@@ -394,62 +394,6 @@ export default function ObservationsFeature({
       const already = localStorage.getItem(SEED_FLAG);
       if ((data?.length ?? 0) === 0 && !already) {
         const demo: XO[] = [
-          {
-            id: 1,
-            player: "",
-            match: "Lech U19 vs Legia U19",
-            date: "2025-05-10",
-            time: "12:00",
-            status: "draft",
-            bucket: "active",
-            mode: "live",
-            note: "Sparing A — dobre tempo gry.",
-            voiceUrl: null,
-            players: [
-              {
-                id: crypto.randomUUID(),
-                type: "known",
-                name: "Jan Kowalski",
-                minutes: 75,
-                position: "CF",
-                overall: 7,
-                note: "Dużo ruchu bez piłki.",
-              },
-              {
-                id: crypto.randomUUID(),
-                type: "unknown",
-                shirtNo: "27",
-                name: "#27",
-                minutes: 30,
-                position: "RW",
-                overall: 6,
-                note: "Dobre 1v1, decyzje do poprawy.",
-              },
-            ],
-          },
-          {
-            id: 2,
-            player: "",
-            match: "Pogoń U17 vs Warta U17",
-            date: "2025-04-28",
-            time: "17:30",
-            status: "final",
-            bucket: "active",
-            mode: "tv",
-            note: "Analiza TV — solidna organizacja defensywy.",
-            voiceUrl: null,
-            players: [
-              {
-                id: crypto.randomUUID(),
-                type: "known",
-                name: "Michał Nowak",
-                minutes: 90,
-                position: "CB",
-                overall: 8,
-                note: "Świetna gra w powietrzu.",
-              },
-            ],
-          },
         ];
         onChange(demo as unknown as Observation[]);
         localStorage.setItem(SEED_FLAG, "1");

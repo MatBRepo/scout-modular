@@ -323,10 +323,13 @@ export default function AppSidebar({
   const manageMetricsActive = pathname?.startsWith("/admin/manage/metrics");
   const manageRatingsActive = pathname?.startsWith("/admin/manage/ratings");
   const manageRanksActive = pathname?.startsWith("/admin/manage/ranks");
-    const manageRequiredActive = pathname?.startsWith("/admin/manage/required-fields");
+  const manageRequiredActive = pathname?.startsWith(
+    "/admin/manage/required-fields"
+  );
 
   const playersBadge = playersCount > 0 ? String(playersCount) : undefined;
-  const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
+  // OBS: badge dla obserwacji usunięty – obsCount jest używany tylko w rank-cardzie
+  // const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
 
   /* ===== Logout via Supabase ===== */
   async function handleLogout() {
@@ -369,8 +372,9 @@ export default function AppSidebar({
           pathname === "/observations" ||
           pathname?.startsWith("/observations/")
         }
-        badge={obsBadge}
-        badgeTitle="Wypełnione obserwacje (final)"
+        // badge usunięty – liczba obserwacji nie pokazuje się już w nav
+        // badge={obsBadge}
+        // badgeTitle="Wypełnione obserwacje (final)"
       />
 
       {role === "admin" && (
@@ -686,9 +690,8 @@ export default function AppSidebar({
   );
 
   /* ====== PANEL STYLES ====== */
-const asideDesktop =
-  "h-screen w-64 overflow-hidden border-r border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
-
+  const asideDesktop =
+    "h-screen w-64 overflow-hidden border-r border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
 
   const asideMobile =
     "h-screen w-[75vw] max-w-[380px] overflow-hidden border-r border-slate-200 bg-white p-3 shadow-xl ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";

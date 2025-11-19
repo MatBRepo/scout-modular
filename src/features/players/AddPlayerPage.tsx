@@ -1375,7 +1375,7 @@ export default function AddPlayerPage() {
   ]);
 
   const stepPillClass =
-    "inline-flex h-6 items-center rounded-full bg-slate-100 px-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
+    "inline-flex h-6 items-center rounded-md bg-slate-100 px-2.5 text-[11px]   tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
 
   /* ========================================= UI ========================================= */
   return (

@@ -8,101 +8,45 @@ import { getSupabase } from "@/lib/supabaseClient";
 
 export const dynamic = "force-dynamic"; // żeby nie było statycznego prerenderu
 
-const PLAYERS_KEY = "s4s.players";
-
-// Jeśli chcesz – możesz tu wrzucić swój seed startowy
-const seed: Player[] = []; // <-- opcjonalnie uzupełnij demo-zawodnikami
-
-const initialObs: Observation[] = [
-  {
-    id: 1,
-    player: "Jan Kowalski",
-    match: "CLJ U19",
-    date: "2025-05-02",
-    time: "17:30",
-    status: "final",
-  },
-  {
-    id: 2,
-    player: "Marco Rossi",
-    match: "Sparing A",
-    date: "2025-05-10",
-    time: "12:00",
-    status: "draft",
-  },
-  {
-    id: 3,
-    player: "Kacper Wójcik",
-    match: "Śląsk U19 - Zagłębie",
-    date: "2025-05-18",
-    time: "11:00",
-    status: "draft",
-  },
-];
-
 export default function Page() {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [observations] = useState<Observation[]>(initialObs);
+  const [observations, setObservations] = useState<Observation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1) Ładowanie z Supabase (i jednorazowy seed jeśli pusto) + sync do localStorage
+  // 1) Ładowanie graczy + obserwacji wyłącznie z Supabase
   useEffect(() => {
     let cancelled = false;
     const supabase = getSupabase();
 
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from("players")
-          .select("*")
-          .order("id", { ascending: true });
+        const [
+          { data: playersData, error: playersError },
+          { data: obsData, error: obsError },
+        ] = await Promise.all([
+          supabase.from("players").select("*").order("id", { ascending: true }),
+          supabase
+            .from("observations")
+            .select("id, player, match, date, time, status")
+            .order("created_at", { ascending: false }),
+        ]);
 
-        if (error) throw error;
         if (cancelled) return;
 
-        if (data && data.length > 0) {
-          // mamy już graczy w Supabase
-          const loaded = data as Player[];
-          setPlayers(loaded);
-          // SYNC -> localStorage dla PlayerEditorPage
-          try {
-            localStorage.setItem(PLAYERS_KEY, JSON.stringify(loaded));
-          } catch {
-            // ignorujemy błąd localStorage
-          }
-        } else {
-          // tabela pusta → zasiej seedem (jeśli zdefiniowany)
-          const base = seed && seed.length ? seed : [];
-          if (base.length) {
-            const { data: inserted, error: insertError } = await supabase
-              .from("players")
-              .insert(base)
-              .select("*");
-
-            if (insertError) throw insertError;
-            if (cancelled) return;
-
-            const next = (inserted as Player[]) ?? base;
-            setPlayers(next);
-            try {
-              localStorage.setItem(PLAYERS_KEY, JSON.stringify(next));
-            } catch {}
-          } else {
-            // brak seeda – po prostu pusta lista
-            setPlayers([]);
-            try {
-              localStorage.setItem(PLAYERS_KEY, JSON.stringify([]));
-            } catch {}
-          }
+        if (playersError) {
+          throw playersError;
         }
+        if (obsError) {
+          throw obsError;
+        }
+
+        setPlayers((playersData ?? []) as Player[]);
+        setObservations((obsData ?? []) as Observation[]);
       } catch (err) {
         console.error("[players/page] Błąd ładowania z Supabase:", err);
         if (!cancelled) {
-          // awaryjnie przynajmniej pokaż seed w pamięci
-          setPlayers(seed);
-          try {
-            localStorage.setItem(PLAYERS_KEY, JSON.stringify(seed));
-          } catch {}
+          setPlayers([]);
+          setObservations([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -114,19 +58,11 @@ export default function Page() {
     };
   }, []);
 
-  // 2) Zmiana listy graczy → zapis do Supabase + localStorage
+  // 2) Zmiana listy graczy → zapis do Supabase
   const handleChangePlayers = async (next: Player[]) => {
     // optymistycznie aktualizujemy UI
     setPlayers(next);
 
-    // SYNC -> localStorage (żeby PlayerEditorPage widział aktualną listę)
-    try {
-      localStorage.setItem(PLAYERS_KEY, JSON.stringify(next));
-    } catch {
-      // ignorujemy błędy storage
-    }
-
-    // zapis do Supabase
     try {
       const supabase = getSupabase();
       const { error } = await supabase
@@ -138,7 +74,7 @@ export default function Page() {
       }
     } catch (err) {
       console.error("[players/page] Błąd zapisu do Supabase:", err);
-      // tu możesz dodać toast/alert
+      // tu możesz dorzucić toast/alert
     }
   };
 
@@ -148,7 +84,7 @@ export default function Page() {
         players={players}
         observations={observations}
         onChangePlayers={handleChangePlayers}
-        // jeśli MyPlayersFeature ma props `loading`, możesz go dodać:
+        // jeśli MyPlayersFeature obsługuje loading, możesz odkomentować:
         // loading={loading}
       />
     </Suspense>

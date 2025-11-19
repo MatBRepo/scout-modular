@@ -263,10 +263,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <div className="w-full max-w-lg">
             {/* Główny nagłówek */}
             <div className="mb-5 text-center">
-              <p className="inline-flex items-center justify-center gap-2 rounded bg-slate-900/90 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-400 shadow-sm  dark:bg-black">
-                <span className="h-1.5 w-1.5 rounded-md bg-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.25)]" />
-                Platforma scoutingowa
-              </p>
+<p className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+  <span>entrisoScouting • panel logowania</span>
+</p>
+
               <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
                 entrisoScouting
               </h1>
