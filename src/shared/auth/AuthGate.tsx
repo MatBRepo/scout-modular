@@ -245,14 +245,18 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{ duration: 0.5, ease: easeOutCustom }}
-          className="relative w-full max-w-xl rounded-2xl border border-white/10 bg-slate-900/80 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl"
+          className="relative w-full max-w-xl rounded-md border border-white/10 bg-slate-900/80 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl"
         >
           <div className="grid gap-0 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
             {/* main form card */}
-            <div className="rounded-2xl bg-slate-950/60 p-4 md:p-6">
+            <div className="rounded-md bg-slate-950/60 p-4 md:p-6">
               {/* Nagłówek */}
               <div className="mb-4">
                 <div className="flex items-center justify-between gap-2">
+                  
+                  <span className="hidden rounded-md bg-emerald-500/10 px-3 py-1 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/30 md:inline-flex">
+                    Wersja beta
+                  </span>
                   <div className="flex items-center gap-2">
                     <motion.div
                       initial={{ scale: 0.9, opacity: 0 }}
@@ -262,7 +266,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         ease: easeOutCustom,
                         delay: 0.05,
                       }}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-900 shadow-sm shadow-black/30"
+                      className="flex h-10 w-10 items-center justify-center rounded-md-xl bg-slate-100 text-slate-900 shadow-sm shadow-black/30"
                     >
                       <span className="text-[13px] font-bold leading-none">
                         S4S
@@ -277,15 +281,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       </p>
                     </div>
                   </div>
-                  <span className="hidden rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/30 md:inline-flex">
-                    Wersja beta
-                  </span>
                 </div>
               </div>
 
               {/* Przełącznik Logowanie / Rejestracja */}
               <div className="mb-4 flex justify-center">
-                <div className="inline-flex rounded-full bg-slate-900/80 p-1 text-xs ring-1 ring-white/10">
+                <div className="inline-flex rounded-md bg-slate-900/80 p-1 text-xs ring-1 ring-white/10">
                   <button
                     type="button"
                     onClick={() => {
@@ -293,7 +294,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       setError(null);
                       setInfo(null);
                     }}
-                    className={`rounded-full px-4 py-1.5 transition-all ${
+                    className={`rounded-md px-4 py-1.5 transition-all ${
                       mode === "login"
                         ? "bg-slate-100 text-slate-900 shadow-sm shadow-black/30"
                         : "text-slate-200"
@@ -308,7 +309,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       setError(null);
                       setInfo(null);
                     }}
-                    className={`rounded-full px-4 py-1.5 transition-all ${
+                    className={`rounded-md px-4 py-1.5 transition-all ${
                       mode === "register"
                         ? "bg-slate-100 text-slate-900 shadow-sm shadow-black/30"
                         : "text-slate-200"
@@ -410,7 +411,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       </span>
                     )}
                     <span className="ml-auto">
-                      Enter = szybsze wysłanie formularza
+                      
                     </span>
                   </div>
 
@@ -426,9 +427,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                           {strengthLabel(passScore)}
                         </span>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                      <div className="h-2 w-full overflow-hidden rounded-md bg-slate-800">
                         <div
-                          className={`h-2 rounded-full transition-[width] ${
+                          className={`h-2 rounded-md transition-[width] ${
                             passScore <= 1
                               ? "bg-rose-500"
                               : passScore === 2
@@ -490,7 +491,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             </div>
 
             {/* right side – opis / “marketing” */}
-            <div className="hidden flex-col justify-between rounded-2xl bg-gradient-to-br from-emerald-500/15 via-sky-500/10 to-indigo-500/20 p-4 text-[11px] text-slate-100 ring-1 ring-white/5 md:flex">
+            <div className="hidden flex-col justify-between rounded-md bg-gradient-to-br from-emerald-500/15 via-sky-500/10 to-indigo-500/20 p-4 text-[11px] text-slate-100 ring-1 ring-white/5 md:flex">
               <div className="space-y-2">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
                   Dla scoutów & analityków
@@ -504,15 +505,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                   <li>• Konfigurowalne metryki oceny i role użytkowników</li>
                 </ul>
               </div>
-              <div className="mt-4 space-y-1 text-[10px] text-slate-300/90">
-                <p className="font-medium text-slate-100">
-                  Wskazówka bezpieczeństwa
-                </p>
-                <p>
-                  Nie używaj tego samego hasła co do bankowości lub poczty
-                  firmowej. Dbaj o unikalne hasła.
-                </p>
-              </div>
+             
             </div>
           </div>
         </motion.div>
