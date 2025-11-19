@@ -67,7 +67,6 @@ import {
 
 import { getSupabase } from "@/lib/supabaseClient";
 
-
 /* ===== Positions ===== */
 type BucketPos = "GK" | "DF" | "MF" | "FW";
 type DetailedPos =
@@ -205,7 +204,14 @@ const COUNTRIES: Country[] = [
 ];
 
 /* ===== Small UI ===== */
-function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
+
+function SavePill({
+  state,
+  mode,
+}: {
+  state: "idle" | "saving" | "saved";
+  mode?: "known" | "unknown" | null;
+}) {
   const base =
     "inline-flex h-10 items-center rounded-md border px-3 text-sm leading-none";
   const map = {
@@ -228,8 +234,12 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
           <CheckCircle2 className="mr-2 h-4 w-4" />
           Zapisano
         </>
+      ) : mode === "known" ? (
+        "Uzupełnij: imię, nazwisko, rok ur., klub i kraj klubu"
+      ) : mode === "unknown" ? (
+        "Uzupełnij: numer, klub i kraj klubu"
       ) : (
-        "Czeka na uzupełnienie danych"
+        "Wybierz tryb i uzupełnij podstawowe dane"
       )}
     </span>
   );
@@ -525,7 +535,7 @@ export default function AddPlayerPage() {
   const [qaStatus, setQaStatus] = useState<"draft" | "final">("draft");
   const [qaOpponentLevel, setQaOpponentLevel] = useState("");
 
-    // Ładowanie obserwacji z Supabase (globalny dziennik obserwacji)
+  // Ładowanie obserwacji z Supabase (globalny dziennik obserwacji)
   useEffect(() => {
     let cancelled = false;
 
@@ -574,7 +584,6 @@ export default function AddPlayerPage() {
       cancelled = true;
     };
   }, []);
-
 
   function addObservation() {
     const next: ObsRec = {
@@ -1375,7 +1384,7 @@ export default function AddPlayerPage() {
         title="Dodaj zawodnika"
         right={
           <div className="flex w-full items-center justify-end gap-2 sm:gap-3 md:flex-nowrap">
-            <SavePill state={saveState} />
+            <SavePill state={saveState} mode={choice} />
             <Button
               variant="outline"
               className="h-10"
@@ -1984,10 +1993,10 @@ export default function AddPlayerPage() {
                     </p>
                   )}
                   <Tabs
-  value={obsTab}
-  onValueChange={(v) => setObsTab(v as "new" | "existing")}
-  className="w-full"
->
+                    value={obsTab}
+                    onValueChange={(v) => setObsTab(v as "new" | "existing")}
+                    className="w-full"
+                  >
                     <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded-md bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
                       <TabsTrigger
                         value="new"
@@ -2461,21 +2470,21 @@ export default function AddPlayerPage() {
                               <Label className="text-sm">Status</Label>
                               <div className="mt-2 flex gap-2">
                                 <Button
-  type="button"
-  variant={
-    editingObs.status === "draft"
-      ? "default"
-      : "outline"
-  }
-  size="sm"
-  onClick={() =>
-    setEditingObs((prev) =>
-      prev ? { ...prev, status: "draft" } : prev
-    )
-  }
->
-  Szkic
-</Button>
+                                  type="button"
+                                  variant={
+                                    editingObs.status === "draft"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  onClick={() =>
+                                    setEditingObs((prev) =>
+                                      prev ? { ...prev, status: "draft" } : prev
+                                    )
+                                  }
+                                >
+                                  Szkic
+                                </Button>
 
                                 <Button
                                   type="button"

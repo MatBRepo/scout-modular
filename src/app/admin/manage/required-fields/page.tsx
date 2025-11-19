@@ -44,9 +44,6 @@ type FormDef = {
 
 /* ===== Definicje pól w formularzach ===== */
 const FORM_DEFS: FormDef[] = [
-  /* ------------------------------------------------------------------ */
-  /* 1) AddPlayer – zawodnik znany                                      */
-  /* ------------------------------------------------------------------ */
   {
     id: "player_basic_known",
     label: "AddPlayer – zawodnik znany",
@@ -54,16 +51,8 @@ const FORM_DEFS: FormDef[] = [
       "Formularz używany, gdy znasz dane osobowe zawodnika (imię, nazwisko, rocznik).",
     highlight: "AddPlayerPage – tryb „Znam zawodnika”.",
     fields: [
-      {
-        key: "firstName",
-        label: "Imię",
-        description: "Np. Jan.",
-      },
-      {
-        key: "lastName",
-        label: "Nazwisko",
-        description: "Np. Kowalski.",
-      },
+      { key: "firstName", label: "Imię", description: "Np. Jan." },
+      { key: "lastName", label: "Nazwisko", description: "Np. Kowalski." },
       {
         key: "birthYear",
         label: "Rok urodzenia",
@@ -87,10 +76,6 @@ const FORM_DEFS: FormDef[] = [
       },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 2) AddPlayer – zawodnik nieznany                                   */
-  /* ------------------------------------------------------------------ */
   {
     id: "player_basic_unknown",
     label: "AddPlayer – zawodnik nieznany",
@@ -121,10 +106,6 @@ const FORM_DEFS: FormDef[] = [
       },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 3) AddPlayer – sekcja „Nowa obserwacja”                            */
-  /* ------------------------------------------------------------------ */
   {
     id: "observation_new",
     label: "AddPlayer – sekcja „Nowa obserwacja”",
@@ -164,10 +145,6 @@ const FORM_DEFS: FormDef[] = [
       },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 4) ObservationEditor – formularz główny                            */
-  /* ------------------------------------------------------------------ */
   {
     id: "observations_main",
     label: "ObservationEditor – formularz główny",
@@ -176,16 +153,8 @@ const FORM_DEFS: FormDef[] = [
     highlight:
       "Używane w ObservationEditor (widok obserwacji – drużyny, data, zawodnicy itd.).",
     fields: [
-      {
-        key: "teamA",
-        label: "Drużyna A",
-        description: "Pierwsza drużyna w meczu.",
-      },
-      {
-        key: "teamB",
-        label: "Drużyna B",
-        description: "Druga drużyna w meczu.",
-      },
+      { key: "teamA", label: "Drużyna A", description: "Pierwsza drużyna w meczu." },
+      { key: "teamB", label: "Drużyna B", description: "Druga drużyna w meczu." },
       {
         key: "reportDate",
         label: "Data meczu",
@@ -219,10 +188,6 @@ const FORM_DEFS: FormDef[] = [
       },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 5) PlayerEditor – podstawowe (znany)                               */
-  /* ------------------------------------------------------------------ */
   {
     id: "player_editor_basic_known",
     label: "PlayerEditor – podstawowe (znany)",
@@ -245,11 +210,7 @@ const FORM_DEFS: FormDef[] = [
         label: "Rok urodzenia",
         description: "ext.birthYear – rok urodzenia używany do wieku.",
       },
-      {
-        key: "club",
-        label: "Aktualny klub",
-        description: "Pole `club` z PlayerEditor.",
-      },
+      { key: "club", label: "Aktualny klub", description: "Pole `club` z PlayerEditor." },
       {
         key: "clubCountry",
         label: "Kraj aktualnego klubu",
@@ -262,10 +223,6 @@ const FORM_DEFS: FormDef[] = [
       },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 6) PlayerEditor – podstawowe (nieznany)                            */
-  /* ------------------------------------------------------------------ */
   {
     id: "player_editor_basic_unknown",
     label: "PlayerEditor – podstawowe (nieznany)",
@@ -279,11 +236,7 @@ const FORM_DEFS: FormDef[] = [
         label: "Numer na koszulce",
         description: "ext.jerseyNumber – numer, po którym rozpoznajesz gracza.",
       },
-      {
-        key: "club",
-        label: "Aktualny klub",
-        description: "Pole `club` z PlayerEditor.",
-      },
+      { key: "club", label: "Aktualny klub", description: "Pole `club` z PlayerEditor." },
       {
         key: "clubCountry",
         label: "Kraj aktualnego klubu",
@@ -297,10 +250,6 @@ const FORM_DEFS: FormDef[] = [
       },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 7) PlayerEditor – Rozszerzone: Profil boiskowy                     */
-  /* ------------------------------------------------------------------ */
   {
     id: "player_editor_ext_profile",
     label: "PlayerEditor – profil boiskowy",
@@ -319,10 +268,6 @@ const FORM_DEFS: FormDef[] = [
       },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 8) PlayerEditor – Rozszerzone: Status & scouting                   */
-  /* ------------------------------------------------------------------ */
   {
     id: "player_editor_ext_eligibility",
     label: "PlayerEditor – status & scouting",
@@ -336,19 +281,12 @@ const FORM_DEFS: FormDef[] = [
       { key: "contractStatus", label: "Status kontraktu" },
       { key: "agency", label: "Agencja menadżerska" },
       { key: "releaseClause", label: "Klauzula wykupu" },
-      {
-        key: "leagueLevel",
-        label: "Poziom rozgrywkowy obecnego klubu",
-      },
+      { key: "leagueLevel", label: "Poziom rozgrywkowy obecnego klubu" },
       { key: "clipsLinks", label: "Linki do klipów / time-codes" },
       { key: "transfermarkt", label: "Link do Transfermarkt" },
       { key: "wyscout", label: "Link do Wyscout" },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 9) PlayerEditor – Rozszerzone: Zdrowie i statystyki                */
-  /* ------------------------------------------------------------------ */
   {
     id: "player_editor_ext_stats365",
     label: "PlayerEditor – zdrowie i statystyki",
@@ -363,10 +301,6 @@ const FORM_DEFS: FormDef[] = [
       { key: "goals365", label: "Gole w ostatnich 365 dniach" },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 10) PlayerEditor – Kontakt & social                                */
-  /* ------------------------------------------------------------------ */
   {
     id: "player_editor_contact",
     label: "PlayerEditor – kontakt & social",
@@ -381,10 +315,6 @@ const FORM_DEFS: FormDef[] = [
       { key: "tiktok", label: "Link TikTok" },
     ],
   },
-
-  /* ------------------------------------------------------------------ */
-  /* 11) PlayerEditor – Ocena                                           */
-  /* ------------------------------------------------------------------ */
   {
     id: "player_editor_grade",
     label: "PlayerEditor – ocena",
@@ -404,6 +334,43 @@ const FORM_DEFS: FormDef[] = [
         description:
           "Pole grade.finalComment / meta.finalSummary – końcowa rekomendacja.",
       },
+    ],
+  },
+];
+
+const FORM_DEF_BY_ID: Record<FormContext, FormDef> = FORM_DEFS.reduce(
+  (acc, form) => {
+    acc[form.id] = form;
+    return acc;
+  },
+  {} as Record<FormContext, FormDef>
+);
+
+const FORM_GROUPS: { id: string; label: string; items: FormContext[] }[] = [
+  {
+    id: "addPlayer",
+    label: "Dodawanie zawodnika",
+    items: ["player_basic_known", "player_basic_unknown", "observation_new"],
+  },
+  {
+    id: "observations",
+    label: "Obserwacje",
+    items: ["observations_main"],
+  },
+  {
+    id: "player_basic",
+    label: "Edytor zawodnika – podstawowe",
+    items: ["player_editor_basic_known", "player_editor_basic_unknown"],
+  },
+  {
+    id: "player_ext",
+    label: "Edytor zawodnika – rozszerzone",
+    items: [
+      "player_editor_ext_profile",
+      "player_editor_ext_eligibility",
+      "player_editor_ext_stats365",
+      "player_editor_contact",
+      "player_editor_grade",
     ],
   },
 ];
@@ -433,7 +400,7 @@ const DEFAULT_REQUIRED: Record<string, boolean> = {
   "observation_new.mode": false,
   "observation_new.status": false,
 
-  // observations_main – domyślnie jak dotychczasowa walidacja w ObservationEditor
+  // observations_main
   "observations_main.teamA": true,
   "observations_main.teamB": true,
   "observations_main.reportDate": true,
@@ -457,7 +424,7 @@ const DEFAULT_REQUIRED: Record<string, boolean> = {
   "player_editor_basic_unknown.clubCountry": true,
   "player_editor_basic_unknown.unknownNote": false,
 
-  // PlayerEditor – profil boiskowy (wszystko opcjonalne domyślnie)
+  // PlayerEditor – profil boiskowy
   "player_editor_ext_profile.height": false,
   "player_editor_ext_profile.weight": false,
   "player_editor_ext_profile.dominantFoot": false,
@@ -516,7 +483,6 @@ export default function RequiredFieldsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // map: "context.fieldKey" -> required?
   const [requiredMap, setRequiredMap] = useState<Record<string, boolean>>({});
 
   /* ======================== Load config from Supabase ======================== */
@@ -603,6 +569,21 @@ export default function RequiredFieldsPage() {
     setSuccess(null);
   }
 
+  function setAllInForm(context: FormContext, value: boolean) {
+    const form = FORM_DEF_BY_ID[context];
+    if (!form) return;
+    setRequiredMap((prev) => {
+      const next = { ...prev };
+      for (const field of form.fields) {
+        const key = makeKey(context, field.key);
+        next[key] = value;
+      }
+      return next;
+    });
+    setError(null);
+    setSuccess(null);
+  }
+
   function handleResetToDefaults() {
     setRequiredMap({ ...DEFAULT_REQUIRED });
     setError(null);
@@ -652,16 +633,40 @@ export default function RequiredFieldsPage() {
     }
   }
 
-  const activeFormDef = FORM_DEFS.find((f) => f.id === activeForm)!;
+  const activeFormDef = FORM_DEF_BY_ID[activeForm];
+
+  const activeStats = useMemo(() => {
+    if (!activeFormDef) {
+      return { total: 0, required: 0, changed: 0 };
+    }
+    let total = activeFormDef.fields.length;
+    let required = 0;
+    let changed = 0;
+
+    for (const field of activeFormDef.fields) {
+      const key = makeKey(activeFormDef.id, field.key);
+      const currentRequired =
+        requiredMap[key] ?? DEFAULT_REQUIRED[key] ?? false;
+      const defaultRequired = DEFAULT_REQUIRED[key] ?? false;
+
+      if (currentRequired) required += 1;
+      if (currentRequired !== defaultRequired) changed += 1;
+    }
+
+    return { total, required, changed };
+  }, [activeFormDef, requiredMap]);
 
   /* ======================== Render ======================== */
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
       <Toolbar
         title="Wymagane pola w formularzach"
         right={
           <div className="flex items-center gap-2">
+            <span className="hidden text-sm text-muted-foreground md:inline">
+              {isDirty ? "Masz niezapisane zmiany" : "Wszystkie zmiany zapisane"}
+            </span>
             <Button
               variant="outline"
               size="sm"
@@ -675,7 +680,7 @@ export default function RequiredFieldsPage() {
               variant="outline"
               size="sm"
               onClick={handleResetToDefaults}
-              disabled={saving}
+              disabled={saving || loading}
               className="rounded-md"
             >
               Przywróć domyślne
@@ -700,78 +705,192 @@ export default function RequiredFieldsPage() {
         }
       />
 
-      <div className="mt-4 grid gap-4 md:grid-cols-1">
-        {/* LEFT: główna konfiguracja */}
-        <Card className="rounded-md border-slate-200 dark:border-neutral-800">
+      {/* Krótki opis u góry – bez gradientów */}
+      <Card className="rounded-md border border-slate-200 bg-card px-4 py-3 text-sm dark:border-neutral-800">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            Ustal, które pola w AddPlayer, PlayerEditor i Observations są
+            wymagane przed zapisem. Ustawienia są globalne dla całej aplikacji.
+          </p>
+          <div className="flex flex-col items-end text-sm text-muted-foreground">
+            <span>
+              Aktywny formularz:{" "}
+              <span className="font-medium text-foreground">
+                {activeFormDef.label}
+              </span>
+            </span>
+            <span className="text-[10px]">
+              {activeStats.required} z {activeStats.total} pól oznaczonych jako
+              wymagane
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,260px),minmax(0,1fr)]">
+        {/* LEFT: konteksty formularzy */}
+        <Card className="h-full rounded-md border border-slate-200 bg-card dark:border-neutral-800">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">
-              Konfiguracja wymagalności pól
+            <CardTitle className="text-md font-semibold">
+              Konteksty formularzy
             </CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Zaznacz, które pola muszą być{" "}
-              <span className="font-semibold">uzupełnione</span>, aby
-              formularz mógł być zapisany (auto-zapis / utworzenie rekordu).
+            <p className="mt-1 text-sm text-muted-foreground">
+              Wybierz widok, w którym chcesz określić wymagalność pól.
             </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {FORM_GROUPS.map((group, groupIndex) => (
+              <div key={group.id} className="space-y-1.5">
+                <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.09em] text-slate-500 dark:text-neutral-500">
+                  {group.label}
+                </p>
+                <div className="space-y-1">
+                  {group.items.map((ctx) => {
+                    const form = FORM_DEF_BY_ID[ctx];
+                    const isActive = activeForm === ctx;
+
+                    let total = form.fields.length;
+                    let requiredCount = 0;
+                    let changed = false;
+
+                    for (const field of form.fields) {
+                      const key = makeKey(form.id, field.key);
+                      const currentRequired =
+                        requiredMap[key] ?? DEFAULT_REQUIRED[key] ?? false;
+                      const defaultRequired =
+                        DEFAULT_REQUIRED[key] ?? false;
+                      if (currentRequired) requiredCount += 1;
+                      if (currentRequired !== defaultRequired) {
+                        changed = true;
+                      }
+                    }
+
+                    return (
+                      <button
+                        key={ctx}
+                        type="button"
+                        onClick={() => setActiveForm(ctx)}
+                        className={cn(
+                          "flex w-full flex-col rounded-md border px-2.5 py-2 text-left text-sm transition",
+                          isActive
+                            ? "border-slate-900 bg-background dark:border-neutral-100"
+                            : "border-slate-200 bg-background hover:border-slate-300 dark:border-neutral-800 dark:hover:border-neutral-700"
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={cn(
+                              "line-clamp-1 font-medium",
+                              isActive
+                                ? "text-foreground"
+                                : "text-slate-700 dark:text-neutral-200"
+                            )}
+                          >
+                            {form.label}
+                          </span>
+                          <span className="inline-flex items-center rounded-md border border-slate-200 px-2 py-0.5 text-[10px] text-slate-600 dark:border-neutral-700 dark:text-neutral-300">
+                            {requiredCount}/{total} wymagane
+                          </span>
+                        </div>
+                        {form.highlight && (
+                          <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">
+                            {form.highlight}
+                          </p>
+                        )}
+                        {changed && (
+                          <span className="mt-1 inline-flex items-center text-[9px] text-amber-700 dark:text-amber-300">
+                            • Zmieniono względem domyślnych
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {groupIndex < FORM_GROUPS.length - 1 && (
+                  <Separator className="my-2" />
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* RIGHT: detale aktywnego formularza */}
+        <Card className="rounded-md border-none">
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="text-sm font-semibold">
+                  {activeFormDef.label}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {activeFormDef.description}
+                </p>
+                {activeFormDef.highlight && (
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      Powiązanie w aplikacji:
+                    </span>{" "}
+                    {activeFormDef.highlight}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-1 text-sm text-muted-foreground">
+                <span>
+                  Wymagane pola:{" "}
+                  <span className="font-medium text-foreground">
+                    {activeStats.required}/{activeStats.total}
+                  </span>
+                </span>
+                {activeStats.changed > 0 && (
+                  <span className="text-[10px]">
+                    Zmienione:{" "}
+                    <span className="font-medium text-foreground">
+                      {activeStats.changed}
+                    </span>
+                  </span>
+                )}
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={loading || saving}
+                    onClick={() => setAllInForm(activeForm, true)}
+                    className="h-7 rounded-md px-2 text-[10px]"
+                  >
+                    Wszystko wymagane
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={loading || saving}
+                    onClick={() => setAllInForm(activeForm, false)}
+                    className="h-7 rounded-md px-2 text-[10px]"
+                  >
+                    Wszystko opcjonalne
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             {loading && (
-              <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <p className="mt-2 inline-flex items-center gap-1 text-sm text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 Ładowanie konfiguracji z Supabase…
               </p>
             )}
           </CardHeader>
+
           <CardContent className="space-y-4">
-            {/* wybór formularza */}
-            <div className="inline-flex flex-wrap gap-2 rounded-md bg-slate-50 p-1 text-xs ring-1 ring-slate-200 dark:bg-neutral-900 dark:ring-neutral-800">
-              {FORM_DEFS.map((form) => (
-                <button
-                  key={form.id}
-                  type="button"
-                  onClick={() => setActiveForm(form.id)}
-                  className={cn(
-                    "rounded-md px-3 py-1 font-medium transition",
-                    activeForm === form.id
-                      ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-neutral-800 dark:text-neutral-50 dark:ring-neutral-700"
-                      : "text-slate-600 hover:bg-white/60 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
-                  )}
-                >
-                  {form.label}
-                </button>
-              ))}
-            </div>
-
-            <Separator />
-
-            {/* opis aktywnego formularza */}
-            <div className="space-y-1 text-xs">
-              <p className="font-semibold text-foreground">
-                {activeFormDef.label}
-              </p>
-              <p className="text-muted-foreground">
-                {activeFormDef.description}
-              </p>
-              {activeFormDef.highlight && (
-                <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                  <span className="font-semibold">Powiązanie w aplikacji:</span>{" "}
-                  {activeFormDef.highlight}
-                </p>
-              )}
-            </div>
-
-            {/* tabela pól */}
-            <div className="overflow-hidden rounded-md border border-slate-200 text-xs dark:border-neutral-800">
-              <div className="grid grid-cols-[minmax(0,1.6fr),minmax(0,2.4fr),auto] bg-slate-50 px-3 py-2 font-medium text-slate-700 dark:bg-neutral-900 dark:text-neutral-200">
-                <div>Pole</div>
-                <div>Opis / przeznaczenie</div>
-                <div className="text-right">Wymagane</div>
-              </div>
-
+            {/* Lista pól – minimalne „kafelki” */}
+            <div className="space-y-2">
               {activeFormDef.fields.length === 0 ? (
-                <div className="px-4 py-6 text-center text-[11px] text-slate-500 dark:text-neutral-400">
-                  Dla tego formularza nie zdefiniowano jeszcze żadnych pól.
-                  Gdy dodasz je do konfiguracji, pojawią się tutaj.
+                <div className="rounded-md border border-dashed border-slate-200 bg-background px-4 py-6 text-center text-sm text-muted-foreground dark:border-neutral-800">
+                  Dla tego formularza nie zdefiniowano żadnych pól.
                 </div>
               ) : (
-                <div className="divide-y divide-slate-200 dark:divide-neutral-800">
+                <div className="space-y-1.5">
                   {activeFormDef.fields.map((field) => {
                     const key = makeKey(activeFormDef.id, field.key);
                     const required = isRequired(activeFormDef.id, field.key);
@@ -782,46 +901,67 @@ export default function RequiredFieldsPage() {
                     return (
                       <div
                         key={field.key}
-                        className="grid grid-cols-[minmax(0,1.6fr),minmax(0,2.4fr),auto] items-center bg-white px-3 py-2 text-[11px] dark:bg-neutral-950"
+                        className={cn(
+                          "flex items-start justify-between gap-3 rounded-md  bg-background px-3 py-2 text-sm dark:border-neutral-800"
+                        )}
                       >
-                        <div className="space-y-0.5">
-                          <div className="font-semibold text-slate-900 dark:text-neutral-50">
-                            {field.label}
-                          </div>
-                          <div className="text-[10px] text-slate-500 dark:text-neutral-400">
-                            Klucz:{" "}
-                            <code className="rounded bg-black/5 px-1 py-0.5 dark:bg-white/10">
-                              {field.key}
-                            </code>
-                          </div>
-                        </div>
-                        <div className="pr-3 text-[11px] text-slate-600 dark:text-neutral-300">
-                          {field.description}
-                        </div>
-
-                        <div className="flex items-center justify-end gap-3">
-                          <div className="text-right">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-medium text-foreground">
+                              {field.label}
+                            </span>
+                            <span className="rounded-md border border-slate-200 px-1.5 py-0.5 text-[9px] text-slate-600 dark:border-neutral-700 dark:text-neutral-300">
+                              {required ? "Wymagane" : "Opcjonalne"}
+                            </span>
                             {changed && (
-                              <div className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900/60">
+                              <span className="rounded-md border border-amber-300 px-1.5 py-0.5 text-[9px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
                                 Zmienione
-                              </div>
+                              </span>
                             )}
                             {isDefaultRequired && !changed && required && (
-                              <div className="mt-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-900 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-900/60">
+                              <span className="rounded-md border border-slate-300 px-1.5 py-0.5 text-[9px] text-slate-600 dark:border-neutral-600 dark:text-neutral-300">
                                 Domyślnie wymagane
-                              </div>
+                              </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              checked={required}
-                              onCheckedChange={() =>
-                                toggleRequired(activeFormDef.id, field.key)
-                              }
-                              disabled={loading || saving}
-                              className="h-4 w-4"
-                            />
+                          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                            <span>
+                              Klucz:{" "}
+                              <code className="rounded-md bg-muted px-1 py-0.5">
+                                {field.key}
+                              </code>
+                            </span>
+                            {field.description && (
+                              <span>{field.description}</span>
+                            )}
                           </div>
+                        </div>
+
+                        {/* Minimalistyczny „switch” */}
+                        <div className="flex flex-col items-end gap-1">
+                          <button
+                            type="button"
+                            disabled={loading || saving}
+                            onClick={() =>
+                              toggleRequired(activeFormDef.id, field.key)
+                            }
+                            className={cn(
+                              "relative inline-flex h-5 w-9 cursor-pointer items-center rounded-md border px-0.5 transition",
+                              required
+                                ? "border-slate-900 bg-slate-900"
+                                : "border-slate-300 bg-background dark:border-neutral-700"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "inline-block h-[14px] w-[14px] rounded-full bg-white transition-transform",
+                                required ? "translate-x-3.5" : "translate-x-0"
+                              )}
+                            />
+                          </button>
+                          <span className="text-[10px] text-muted-foreground">
+                            {required ? "Ustaw jako opcjonalne" : "Ustaw jako wymagane"}
+                          </span>
                         </div>
                       </div>
                     );
@@ -830,26 +970,29 @@ export default function RequiredFieldsPage() {
               )}
             </div>
 
-            {/* info o stanie */}
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 dark:text-neutral-400">
-              <span>
-                Ustawienia są używane przez formularze (AddPlayer, PlayerEditor,
-                Observations) do sprawdzania, które pola są obowiązkowe.
-              </span>
+            {/* info + błędy / sukces */}
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                Te ustawienia są używane przez formularze AddPlayer,
+                PlayerEditor i Observations do weryfikacji wymagalności przed
+                zapisem (w tym auto-zapis).
+              </p>
               {isDirty && (
-                <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900/60">
-                  Masz niezapisane zmiany
+                <span className="inline-flex items-center rounded-md border border-amber-300 bg-background px-2 py-0.5 text-[10px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
+                  Masz niezapisane zmiany – kliknij „Zapisz ustawienia”.
                 </span>
               )}
             </div>
 
             {error && (
-              <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+              <div className="rounded-md border border-red-500/40 bg-background px-3 py-2 text-sm text-red-700 dark:border-red-500/50 dark:text-red-200">
+                {error}
+              </div>
             )}
             {success && (
-              <p className="text-xs text-emerald-600 dark:text-emerald-300">
+              <div className="rounded-md border border-emerald-500/40 bg-background px-3 py-2 text-sm text-emerald-700 dark:border-emerald-500/50 dark:text-emerald-200">
                 {success}
-              </p>
+              </div>
             )}
           </CardContent>
         </Card>

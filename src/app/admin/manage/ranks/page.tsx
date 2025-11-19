@@ -307,7 +307,7 @@ export default function RankSettingsPage() {
         {/* Main configuration card */}
         <Card className="border-slate-200 dark:border-neutral-800">
           <CardHeader className="pb-3 space-y-3">
-            <CardTitle className="flex items-center justify-between text-sm font-semibold">
+            <CardTitle className="flex items-center justify-between text-md font-semibold">
               <span>Konfiguracja poziomów</span>
               <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 dark:bg-neutral-800 dark:text-neutral-300">
                 Bronze / Silver / Gold / Platinum:{" "}

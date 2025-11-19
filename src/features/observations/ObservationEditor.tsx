@@ -146,7 +146,7 @@ function Section({
   );
 }
 
-/* 💊 SavePill – bardziej „status chip” niż przycisk */
+/* 💊 SavePill – status autozapisu (localStorage) */
 function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
   const base =
     "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium";
@@ -178,7 +178,7 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
   );
 }
 
-/* Mały znacznik “Wymagane” */
+/* Znacznik “Wymagane” przy polu */
 function ReqChip({ text = "Wymagane" }: { text?: string }) {
   return (
     <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
@@ -257,7 +257,6 @@ export function ObservationEditor({
 
   /* ===== Wymagalność pól z Supabase (observations_main) ===== */
   const { isRequiredField, loading: requiredLoading } = useRequiredFields();
-
   const isRequired = (fieldKey: string) =>
     isRequiredField("observations_main", fieldKey);
 
@@ -663,14 +662,11 @@ export function ObservationEditor({
 
   const missingRequirements = useMemo(() => {
     const items: string[] = [];
-    if (isRequired("teamA") && !hasTeamA)
-      items.push("ustaw drużynę A");
-    if (isRequired("teamB") && !hasTeamB)
-      items.push("ustaw drużynę B");
+    if (isRequired("teamA") && !hasTeamA) items.push("ustaw drużynę A");
+    if (isRequired("teamB") && !hasTeamB) items.push("ustaw drużynę B");
     if (isRequired("reportDate") && !hasDate)
       items.push("wybierz datę meczu");
-    if (isRequired("time") && !hasTime)
-      items.push("ustaw godzinę meczu");
+    if (isRequired("time") && !hasTime) items.push("ustaw godzinę meczu");
     if (isRequired("competition") && !hasCompetition)
       items.push("uzupełnij ligę / turniej");
     if (isRequired("conditions") && !hasConditions)
@@ -854,7 +850,9 @@ export function ObservationEditor({
                 className="h-10 bg-gray-900 text-white hover:bg-gray-800"
                 onClick={handleSaveToSupabase}
                 disabled={
-                  saveState === "saving" || !canSaveObservation || requiredLoading
+                  saveState === "saving" ||
+                  !canSaveObservation ||
+                  requiredLoading
                 }
               >
                 {saveState === "saving" && (
@@ -867,19 +865,21 @@ export function ObservationEditor({
         }
       />
 
-      {/* Podpowiedź wymagań – „nice feature” */}
-      {!requiredLoading && !canSaveObservation && missingRequirements.length > 0 && (
-        <div className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
-          <div className="font-semibold">
-            Uzupełnij wymagane pola, aby zapisać obserwację:
+      {/* Podpowiedź wymagań */}
+      {!requiredLoading &&
+        !canSaveObservation &&
+        missingRequirements.length > 0 && (
+          <div className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
+            <div className="font-semibold">
+              Uzupełnij wymagane pola, aby zapisać obserwację:
+            </div>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {missingRequirements.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
           </div>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4">
-            {missingRequirements.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
 
       {/* ===== RESZTA – INFORMACJE, ZAWODNICY, NOTATKA ===== */}
       <div className="mt-4 space-y-6">
@@ -943,46 +943,45 @@ export function ObservationEditor({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <Label className="text-sm">Data meczu</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "mt-1 w-full justify-start border-gray-300 text-left font-normal dark:border-neutral-700",
-                      !dateObj && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateObj
-                      ? dateObj.toLocaleDateString("pl-PL", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                        })
-                      : "Wybierz datę"}
-                    {isRequired("reportDate") && !hasDate && (
-                      <span className="ml-auto text-[10px] text-rose-600">
-                        Wymagane
-                      </span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateObj ?? undefined}
-                    onSelect={(d) => {
-                      const next = d ?? null;
-                      setDateObj(next);
-                      setField(
-                        "reportDate",
-                        next ? next.toISOString().slice(0, 10) : ""
-                      );
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="relative mt-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start border-gray-300 text-left font-normal dark:border-neutral-700",
+                        !dateObj && "text-muted-foreground",
+                        isRequired("reportDate") && !hasDate ? "pr-24" : ""
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateObj
+                        ? dateObj.toLocaleDateString("pl-PL", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })
+                        : "Wybierz datę"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateObj ?? undefined}
+                      onSelect={(d) => {
+                        const next = d ?? null;
+                        setDateObj(next);
+                        setField(
+                          "reportDate",
+                          next ? next.toISOString().slice(0, 10) : ""
+                        );
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {isRequired("reportDate") && !hasDate && <ReqChip />}
+              </div>
             </div>
             <div>
               <Label htmlFor="time-picker" className="px-1 text-sm">
@@ -1060,11 +1059,17 @@ export function ObservationEditor({
 
           <div>
             <Label className="text-sm">Liga / turniej</Label>
-            <Input
-              value={o.competition ?? ""}
-              onChange={(e) => setField("competition", e.target.value)}
-              placeholder="np. CLJ U19, Puchar Polski"
-            />
+            <div className="relative mt-1">
+              <Input
+                value={o.competition ?? ""}
+                onChange={(e) => setField("competition", e.target.value)}
+                placeholder="np. CLJ U19, Puchar Polski"
+                className={cn(
+                  isRequired("competition") && !hasCompetition ? "pr-24" : ""
+                )}
+              />
+              {isRequired("competition") && !hasCompetition && <ReqChip />}
+            </div>
             {isRequired("competition") && !hasCompetition && (
               <p className="mt-1 text-[11px] text-rose-600">
                 Pole ustawione jako wymagane w konfiguracji.
