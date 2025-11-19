@@ -62,6 +62,7 @@ import {
 import { getSupabase } from "@/lib/supabaseClient";
 
 /* ============================== Positions ============================== */
+
 type Pos = Player["pos"];
 
 type DetailedPos =
@@ -181,7 +182,9 @@ function detailedFromBucket(pos?: Pos): DetailedPos {
 }
 
 /* ============================== Countries ============================== */
+
 type Country = { code: string; name: string; flag: string };
+
 const COUNTRIES: Country[] = [
   { code: "PL", name: "Polska", flag: "🇵🇱" },
   { code: "DE", name: "Niemcy", flag: "🇩🇪" },
@@ -216,6 +219,7 @@ const COUNTRIES: Country[] = [
 ];
 
 /* ============================== Small UI ============================== */
+
 function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
   const base =
     "inline-flex h-10 items-center rounded-md border px-3 text-sm leading-none";
@@ -255,6 +259,7 @@ function Chip({ text }: { text: string }) {
 }
 
 /* Country combobox */
+
 function CountryCombobox({
   value,
   onChange,
@@ -268,6 +273,7 @@ function CountryCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
+
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
@@ -348,6 +354,7 @@ function CountryCombobox({
 }
 
 /* ============================== Types / ObsRec ============================== */
+
 type ObsRec = Omit<Observation, "player"> & {
   player?: string;
   players?: string[];
@@ -356,9 +363,11 @@ type ObsRec = Omit<Observation, "player"> & {
 };
 
 /* ===== Ratings map stored on player.meta (key -> value) ===== */
+
 type RatingMap = Record<string, number>;
 
 /* ============================== Page ============================== */
+
 export default function PlayerEditorPage({ id }: { id: string }) {
   const router = useRouter();
   const [p, setP] = useState<Player | null>(null);
@@ -423,12 +432,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
 
   // highlight głównej pozycji
   const [highlightMainPos, setHighlightMainPos] = useState(false);
-
   useEffect(() => {
     if (ext.mainPos) setHighlightMainPos(false);
   }, [ext.mainPos]);
 
   /* ---------- Ratings config z Supabase ---------- */
+
   const [ratingCfg, setRatingCfg] = useState<RatingsConfig>(() =>
     loadRatings()
   );
@@ -470,6 +479,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     : null;
 
   /* ------------------------------ Observations ------------------------------ */
+
   const [observations, setObservations] = useState<ObsRec[]>([]);
   const [obsQuery, setObsQuery] = useState("");
   const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
@@ -483,34 +493,33 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const [qaOpponentLevel, setQaOpponentLevel] = useState("");
 
   /* ------------------------------ Helpers ------------------------------ */
+
   function bumpSaving() {
     setSaveStatus("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
   }
 
-const normalize = (arr: ObsRec[]) =>
-  arr.map((o) => {
-    const rawPlayers = Array.isArray(o.players)
-      ? o.players
-      : o.player && String(o.player).trim()
-      ? [o.player]
-      : [];
+  const normalize = (arr: ObsRec[]) =>
+    arr.map((o) => {
+      const rawPlayers = Array.isArray(o.players)
+        ? o.players
+        : o.player && String(o.player).trim()
+        ? [o.player]
+        : [];
 
-    // Zamień obiekty { id, name, ... } na stringi z name
-    const playersArray = rawPlayers
-      .map((pl: any) => {
-        if (!pl) return null;
-        if (typeof pl === "string") return pl;
-        if (typeof pl === "object" && "name" in pl) return String(pl.name);
-        return null;
-      })
-      .filter((x): x is string => !!x && x.trim() !== "");
+      const playersArray = rawPlayers
+        .map((pl: any) => {
+          if (!pl) return null;
+          if (typeof pl === "string") return pl;
+          if (typeof pl === "object" && "name" in pl) return String(pl.name);
+          return null;
+        })
+        .filter((x): x is string => !!x && x.trim() !== "");
 
-    const unique = Array.from(new Set(playersArray));
-    return { ...o, players: unique };
-  });
-
+      const unique = Array.from(new Set(playersArray));
+      return { ...o, players: unique };
+    });
 
   async function fetchObservations() {
     try {
@@ -556,6 +565,7 @@ const normalize = (arr: ObsRec[]) =>
 
   useEffect(() => {
     fetchObservations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playerObs = useMemo(() => {
@@ -772,6 +782,7 @@ const normalize = (arr: ObsRec[]) =>
   }, [p]);
 
   /* ------------------------------ Load player from Supabase ------------------------------ */
+
   useEffect(() => {
     let cancelled = false;
 
@@ -905,14 +916,11 @@ const normalize = (arr: ObsRec[]) =>
   }
 
   /* ------------------------------ Counters ------------------------------ */
+
   const countTruthy = (vals: Array<unknown>) =>
     vals.filter((v) => {
       if (typeof v === "number") return v > 0;
-      return !!(
-        v !== null &&
-        v !== undefined &&
-        String(v).trim() !== ""
-      );
+      return !!(v !== null && v !== undefined && String(v).trim() !== "");
     }).length;
 
   // Basic
@@ -983,6 +991,7 @@ const normalize = (arr: ObsRec[]) =>
   const totalGradeMax = 1 + enabledRatingAspects.length + 1;
 
   /* ---------- Ocena helpery ---------- */
+
   function RatingRow({ aspect }: { aspect: RatingAspect }) {
     const val = ratings[aspect.key] ?? 0;
     const hasTooltip = !!aspect.tooltip;
@@ -1052,6 +1061,7 @@ const normalize = (arr: ObsRec[]) =>
   }
 
   /* ------------------------------ ExtContent (tabs) ------------------------------ */
+
   function ExtContent({ view }: { view: ExtKey }) {
     switch (view) {
       case "profile":
@@ -1374,7 +1384,9 @@ const normalize = (arr: ObsRec[]) =>
         return (
           <div className="space-y-4">
             <div>
-              <Label className="text-sm">Historia urazów (jeśli dostępna)</Label>
+              <Label className="text-sm">
+                Historia urazów (jeśli dostępna)
+              </Label>
               <Textarea
                 value={ext.injuryHistory}
                 onChange={(e) => {
@@ -1517,6 +1529,7 @@ const normalize = (arr: ObsRec[]) =>
   }
 
   /* ============================== Render ============================== */
+
   return (
     <div className="w-full">
       <Toolbar
@@ -1900,7 +1913,7 @@ const normalize = (arr: ObsRec[]) =>
                           Poziom docelowy – gdzie mógłby grać zawodnik
                         </Label>
                         <Textarea
-                          placeholder='Np. "Ekstraklasa top 8", "CLJ U19 czołowy zespół", "II liga – górna połowa"…'
+                          placeholder={`Np. "Ekstraklasa top 8", "CLJ U19 czołowy zespół", "II liga – górna połowa"…`}
                           value={grade.notes}
                           onChange={(e) => {
                             const v = e.target.value;
@@ -2090,7 +2103,9 @@ const normalize = (arr: ObsRec[]) =>
                                   (qaMatch.split(/ *vs */i)[1] || "").trim();
                                 const a = e.target.value;
                                 setQaMatch(
-                                  a && b ? `${a} vs ${b}` : (a + " " + b).trim()
+                                  a && b
+                                    ? `${a} vs ${b}`
+                                    : (a + " " + b).trim()
                                 );
                               }}
                               placeholder="np. Lech U19"
@@ -2111,7 +2126,9 @@ const normalize = (arr: ObsRec[]) =>
                                   (qaMatch.split(/ *vs */i)[0] || "").trim();
                                 const b = e.target.value;
                                 setQaMatch(
-                                  a && b ? `${a} vs ${b}` : (a + " " + b).trim()
+                                  a && b
+                                    ? `${a} vs ${b}`
+                                    : (a + " " + b).trim()
                                 );
                               }}
                               placeholder="np. Wisła U19"
@@ -2322,33 +2339,35 @@ const normalize = (arr: ObsRec[]) =>
                                   />
                                 </td>
                                 <td className="p-2">{o.match || "—"}</td>
-<td className="p-2">
-  {(o.players ?? []).length > 0 ? (
-    <div className="flex flex-wrap gap-1">
-      {(o.players ?? []).map((n: any, i) => {
-        const label =
-          typeof n === "string"
-            ? n
-            : n && typeof n === "object" && "name" in n
-            ? String(n.name)
-            : "";
+                                <td className="p-2">
+                                  {(o.players ?? []).length > 0 ? (
+                                    <div className="flex flex-wrap gap-1">
+                                      {(o.players ?? []).map((n: any, i) => {
+                                        const label =
+                                          typeof n === "string"
+                                            ? n
+                                            : n &&
+                                              typeof n === "object" &&
+                                              "name" in n
+                                            ? String(n.name)
+                                            : "";
 
-        if (!label) return null;
+                                        if (!label) return null;
 
-        return (
-          <span
-            key={`${o.id}-pl-${i}`}
-            className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
-          >
-            {label}
-          </span>
-        );
-      })}
-    </div>
-  ) : (
-    "—"
-  )}
-</td>
+                                        return (
+                                          <span
+                                            key={`${o.id}-pl-${i}`}
+                                            className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+                                          >
+                                            {label}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </td>
 
                                 <td className="p-2">
                                   {[o.date || "—", o.time || ""]
@@ -2407,7 +2426,14 @@ const normalize = (arr: ObsRec[]) =>
                           Wybierz rekord i wybierz akcję.
                         </div>
                         <div className="flex items-center gap-2">
-                         
+                          {/* opcjonalnie: duplikat */}
+                          {/* <Button
+                            variant="outline"
+                            disabled={obsSelectedId == null}
+                            onClick={duplicateExistingToThisPlayer}
+                          >
+                            Skopiuj jako nową obserwację
+                          </Button> */}
                           <Button
                             className="bg-gray-900 text-white hover:bg-gray-800"
                             disabled={obsSelectedId == null}

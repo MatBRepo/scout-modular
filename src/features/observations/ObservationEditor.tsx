@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Observation, Player } from "@/shared/types";
+import { useRequiredFields } from "@/shared/requiredFields";
 import {
   Users,
   GripVertical,
@@ -145,32 +146,33 @@ function Section({
   );
 }
 
-/* 💊 SavePill – wersja jak w AddPlayerPage (Czekam na uzupełnienie danych) */
+/* 💊 SavePill – bardziej „status chip” niż przycisk */
 function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
   const base =
-    "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
+    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium";
   const map = {
     saving:
-      "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
+      "bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-100 dark:ring-amber-900/40",
     saved:
-      "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-100",
+      "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-100 dark:ring-emerald-900/40",
     idle:
-      "border-gray-300 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200",
+      "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200 dark:bg-neutral-900/60 dark:text-neutral-300 dark:ring-neutral-700",
   } as const;
+
   return (
     <span className={`${base} ${map[state]}`} aria-live="polite">
       {state === "saving" ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Autozapis…
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Autozapis…</span>
         </>
       ) : state === "saved" ? (
         <>
-          <CheckCircle2 className="mr-2 h-4 w-4" />
-          Zapisano
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          <span>Zapisano</span>
         </>
       ) : (
-        "Czeka na uzupełnienie danych"
+        <span>Czeka na uzupełnienie danych</span>
       )}
     </span>
   );
@@ -219,7 +221,7 @@ function MetricItem({
 export function ObservationEditor({
   initial,
   onSave,
-  onClose,
+  onClose, // (na razie niewykorzystane)
 }: {
   initial: XO;
   onSave: (o: XO) => void;
@@ -252,6 +254,12 @@ export function ObservationEditor({
         "new") ?? "new";
     return `s4s.obs.editor.${baseId}`;
   }, []);
+
+  /* ===== Wymagalność pól z Supabase (observations_main) ===== */
+  const { isRequiredField, loading: requiredLoading } = useRequiredFields();
+
+  const isRequired = (fieldKey: string) =>
+    isRequiredField("observations_main", fieldKey);
 
   /* ===== Players: Supabase ===== */
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
@@ -445,7 +453,7 @@ export function ObservationEditor({
     o.__listMeta?.time || (o as any).time
   )} • ${(o.players?.length ?? 0)} zawodników`;
 
-  /* ===== Autozapis (localStorage) – stan dla SavePill (jak w AddPlayer) ===== */
+  /* ===== Autozapis (localStorage) – stan dla SavePill ===== */
   const [autoState, setAutoState] = useState<"idle" | "saving" | "saved">(
     "idle"
   );
@@ -633,14 +641,61 @@ export function ObservationEditor({
     setDateObj(o.reportDate ? new Date(o.reportDate) : null);
   }, [o.reportDate]);
 
-  /* ===== Walidacja wymaganych pól do zapisu ===== */
+  /* ===== Walidacja wymaganych pól (Supabase-config) ===== */
   const playerCount = o.players?.length ?? 0;
-  const hasTeams = !!teamA.trim() && !!teamB.trim();
+  const hasTeamA = !!teamA.trim();
+  const hasTeamB = !!teamB.trim();
   const hasDate = !!o.reportDate;
-  const canSaveObservation = hasTeams && hasDate && playerCount > 0;
+  const hasTime = !!(o.__listMeta?.time && o.__listMeta.time.trim());
+  const hasCompetition = !!(o.competition ?? "").trim();
+  const hasNote = !!(o.note ?? "").trim();
+  const hasConditions = !!(o.conditions ?? "live");
+
+  const canSaveObservation =
+    (!isRequired("teamA") || hasTeamA) &&
+    (!isRequired("teamB") || hasTeamB) &&
+    (!isRequired("reportDate") || hasDate) &&
+    (!isRequired("time") || hasTime) &&
+    (!isRequired("competition") || hasCompetition) &&
+    (!isRequired("conditions") || hasConditions) &&
+    (!isRequired("players") || playerCount > 0) &&
+    (!isRequired("note") || hasNote);
+
+  const missingRequirements = useMemo(() => {
+    const items: string[] = [];
+    if (isRequired("teamA") && !hasTeamA)
+      items.push("ustaw drużynę A");
+    if (isRequired("teamB") && !hasTeamB)
+      items.push("ustaw drużynę B");
+    if (isRequired("reportDate") && !hasDate)
+      items.push("wybierz datę meczu");
+    if (isRequired("time") && !hasTime)
+      items.push("ustaw godzinę meczu");
+    if (isRequired("competition") && !hasCompetition)
+      items.push("uzupełnij ligę / turniej");
+    if (isRequired("conditions") && !hasConditions)
+      items.push("wybierz tryb meczu (Live / TV)");
+    if (isRequired("players") && playerCount === 0)
+      items.push("dodaj przynajmniej jednego zawodnika");
+    if (isRequired("note") && !hasNote)
+      items.push("dodaj notatkę do obserwacji");
+    return items;
+  }, [
+    hasTeamA,
+    hasTeamB,
+    hasDate,
+    hasTime,
+    hasCompetition,
+    hasConditions,
+    hasNote,
+    playerCount,
+    isRequired,
+  ]);
 
   /* ========= ZAPIS OBSERWACJI DO SUPABASE (ręczny) ========= */
   async function handleSaveToSupabase() {
+    if (!canSaveObservation) return;
+
     const supabase = getSupabase();
     setSaveState("saving");
 
@@ -650,12 +705,30 @@ export function ObservationEditor({
       id = Date.now();
     }
 
-    const meta = o.__listMeta ?? {
+    const baseMeta =
+      o.__listMeta ?? ({
+        id,
+        status: (o as any).status ?? "draft",
+        bucket: "active",
+        time: (o as any).time ?? "",
+        player: (o as any).player ?? "",
+      } as XO["__listMeta"]);
+
+    // Główny zawodnik – wymagany przez Supabase (player)
+    const primaryPlayerName =
+      (baseMeta?.player && baseMeta.player.trim().length > 0
+        ? baseMeta.player
+        : (o.players && o.players[0]
+            ? (o.players[0].name ||
+                (o.players[0].shirtNo
+                  ? `#${o.players[0].shirtNo}`
+                  : "")) ?? ""
+            : "")) || "";
+
+    const meta: XO["__listMeta"] = {
+      ...baseMeta,
       id,
-      status: (o as any).status ?? "draft",
-      bucket: "active" as const,
-      time: (o as any).time ?? "",
-      player: (o as any).player ?? "",
+      player: primaryPlayerName,
     };
 
     const payload: XO = {
@@ -666,8 +739,11 @@ export function ObservationEditor({
 
     const row: any = {
       id,
-      player: meta.player || null,
+      player: primaryPlayerName || null,
       match: payload.match ?? null,
+      team_a: payload.teamA ?? null,
+      team_b: payload.teamB ?? null,
+      competition: payload.competition ?? null,
       date: payload.reportDate ?? (payload as any).date ?? null,
       time: meta.time || null,
       status: meta.status,
@@ -694,8 +770,24 @@ export function ObservationEditor({
       setO((prev) => ({
         ...prev,
         id: data.id,
-        __listMeta: { ...(prev.__listMeta ?? meta), id: data.id },
+        __listMeta: {
+          ...(prev.__listMeta ?? meta),
+          id: data.id,
+          player: primaryPlayerName,
+        },
       }));
+    }
+
+    // Po udanym zapisie można wyczyścić szkic
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(draftKey);
+      }
+    } catch (err) {
+      console.error(
+        "[ObservationEditor] Błąd czyszczenia szkicu po zapisie:",
+        err
+      );
     }
 
     setSaveState("saved");
@@ -747,21 +839,23 @@ export function ObservationEditor({
               </button>
             </div>
 
-            {/* Status autozapisu + akcje – jak AddPlayer (SavePill + przyciski) */}
+            {/* Status autozapisu + akcje */}
             <div className="ml-auto flex flex-wrap items-center gap-2 sm:gap-3">
               <SavePill state={autoState} />
-<Button
-  variant="outline"
-  className="h-10 border-gray-300 dark:border-neutral-700"
-  onClick={restoreOriginal}
->
-  Cofnij zmiany
-</Button>
+              <Button
+                variant="outline"
+                className="h-10 border-gray-300 dark:border-neutral-700"
+                onClick={restoreOriginal}
+              >
+                Cofnij zmiany
+              </Button>
 
               <Button
                 className="h-10 bg-gray-900 text-white hover:bg-gray-800"
                 onClick={handleSaveToSupabase}
-                disabled={saveState === "saving" || !canSaveObservation}
+                disabled={
+                  saveState === "saving" || !canSaveObservation || requiredLoading
+                }
               >
                 {saveState === "saving" && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -772,6 +866,20 @@ export function ObservationEditor({
           </div>
         }
       />
+
+      {/* Podpowiedź wymagań – „nice feature” */}
+      {!requiredLoading && !canSaveObservation && missingRequirements.length > 0 && (
+        <div className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
+          <div className="font-semibold">
+            Uzupełnij wymagane pola, aby zapisać obserwację:
+          </div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {missingRequirements.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* ===== RESZTA – INFORMACJE, ZAWODNICY, NOTATKA ===== */}
       <div className="mt-4 space-y-6">
@@ -801,9 +909,11 @@ export function ObservationEditor({
                   value={teamA}
                   onChange={(e) => updateMatchFromTeams(e.target.value, teamB)}
                   placeholder="np. U19 Liga"
-                  className={cn(!teamA.trim() ? "pr-24" : "")}
+                  className={cn(
+                    isRequired("teamA") && !teamA.trim() ? "pr-24" : ""
+                  )}
                 />
-                {!teamA.trim() && <ReqChip />}
+                {isRequired("teamA") && !teamA.trim() && <ReqChip />}
               </div>
             </div>
 
@@ -821,9 +931,11 @@ export function ObservationEditor({
                   value={teamB}
                   onChange={(e) => updateMatchFromTeams(teamA, e.target.value)}
                   placeholder="np. Legia U19"
-                  className={cn(!teamB.trim() ? "pr-24" : "")}
+                  className={cn(
+                    isRequired("teamB") && !teamB.trim() ? "pr-24" : ""
+                  )}
                 />
-                {!teamB.trim() && <ReqChip />}
+                {isRequired("teamB") && !teamB.trim() && <ReqChip />}
               </div>
             </div>
           </div>
@@ -848,7 +960,7 @@ export function ObservationEditor({
                           year: "numeric",
                         })
                       : "Wybierz datę"}
-                    {!hasDate && (
+                    {isRequired("reportDate") && !hasDate && (
                       <span className="ml-auto text-[10px] text-rose-600">
                         Wymagane
                       </span>
@@ -872,20 +984,22 @@ export function ObservationEditor({
                 </PopoverContent>
               </Popover>
             </div>
-<div>
-  <Label htmlFor="time-picker" className="px-1 text-sm">
-    Godzina meczu
-  </Label>
-  <Input
-    type="time"
-    id="time-picker"
-    step="1"
-    value={o.__listMeta?.time ?? ""}
-    onChange={(e) => setMeta("time", e.target.value)}
-    className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-  />
-</div>
-
+            <div>
+              <Label htmlFor="time-picker" className="px-1 text-sm">
+                Godzina meczu
+              </Label>
+              <div className="relative mt-1">
+                <Input
+                  type="time"
+                  id="time-picker"
+                  step="1"
+                  value={o.__listMeta?.time ?? ""}
+                  onChange={(e) => setMeta("time", e.target.value)}
+                  className="h-9 w-full bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                />
+                {isRequired("time") && !hasTime && <ReqChip />}
+              </div>
+            </div>
           </div>
 
           <div>
@@ -932,7 +1046,15 @@ export function ObservationEditor({
               })}
             </div>
             <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
-              Mecz: {(o.conditions ?? "live") === "live" ? "Live (boisko)" : "TV / wideo"}
+              Mecz:{" "}
+              {(o.conditions ?? "live") === "live"
+                ? "Live (boisko)"
+                : "TV / wideo"}
+              {isRequired("conditions") && (
+                <span className="ml-1 font-semibold text-rose-500">
+                  – pole ustawione jako wymagane
+                </span>
+              )}
             </p>
           </div>
 
@@ -943,6 +1065,11 @@ export function ObservationEditor({
               onChange={(e) => setField("competition", e.target.value)}
               placeholder="np. CLJ U19, Puchar Polski"
             />
+            {isRequired("competition") && !hasCompetition && (
+              <p className="mt-1 text-[11px] text-rose-600">
+                Pole ustawione jako wymagane w konfiguracji.
+              </p>
+            )}
           </div>
         </Section>
 
@@ -1156,7 +1283,7 @@ export function ObservationEditor({
                                     <ChevronDown className="mr-1 h-4 w-4" />
                                     <span className="hidden sm:inline">
                                       Szczegóły
-                                      </span>
+                                    </span>
                                   </>
                                 )}
                               </Button>
@@ -1320,7 +1447,8 @@ export function ObservationEditor({
                                   className="min-h-[80px] bg-white/90 text-sm dark:bg-neutral-950"
                                 />
                                 <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
-                                  Wewnętrzna notatka – widoczna tylko w tej obserwacji.
+                                  Wewnętrzna notatka – widoczna tylko w tej
+                                  obserwacji.
                                 </p>
                               </div>
                             </div>
@@ -1336,8 +1464,9 @@ export function ObservationEditor({
                       colSpan={5}
                       className="p-6 text-center text-sm text-dark dark:text-neutral-400"
                     >
-                      Brak zawodników — wpisz numer lub nazwisko i kliknij
-                      „Dodaj”.
+                      {isRequired("players")
+                        ? "Musisz dodać przynajmniej jednego zawodnika, aby zapisać obserwację (pole ustawione jako wymagane)."
+                        : "Brak zawodników — wpisz numer lub nazwisko i kliknij „Dodaj”."}
                     </td>
                   </tr>
                 )}
@@ -1359,8 +1488,16 @@ export function ObservationEditor({
               placeholder="Krótka notatka…"
               className="min-h-[140px]"
             />
-            <div className="inline-flex items-center gap-1 text-xs text-dark dark:text-neutral-400">
-              <FileEdit className="h-3.5 w-3.5" /> Notatka dot. całej obserwacji.
+            <div className="inline-flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
+              <span className="inline-flex items-center gap-1">
+                <FileEdit className="h-3.5 w-3.5" />
+                <span>Notatka dot. całej obserwacji.</span>
+              </span>
+              {isRequired("note") && !hasNote && (
+                <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-100">
+                  Wymagane wg konfiguracji
+                </span>
+              )}
             </div>
           </div>
         </Section>
