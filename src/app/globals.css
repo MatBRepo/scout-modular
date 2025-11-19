@@ -21,7 +21,7 @@ html, body { height: 100%; }
 
 @layer components {
   .input, .select, .textarea {
-    @apply h-9 rounded border bg-background px-3 py-2 text-sm
+    @apply h-9 rounded-md border bg-background px-3 py-2 text-sm
            ring-offset-background placeholder:text-muted-foreground
            focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-0
            disabled:cursor-not-allowed disabled:opacity-50;
@@ -156,7 +156,7 @@ html, body { height: 100%; }
 @layer components {
   /* Card */
   .card {
-    @apply bg-card text-card-foreground rounded border shadow-sm;
+    @apply bg-card text-card-foreground rounded-md border shadow-sm;
   }
   .card-header { @apply p-[var(--card-pad)] pb-3; }
   .card-title  { @apply text-sm font-semibold; }
@@ -164,7 +164,7 @@ html, body { height: 100%; }
 
   /* Data table look (dense, subtle grid, sticky header on scrollable containers) */
   .data-table {
-    @apply w-full border rounded overflow-hidden;
+    @apply w-full border rounded-md overflow-hidden;
   }
   .data-table table { @apply w-full border-collapse; }
   .data-table thead th {
@@ -178,20 +178,20 @@ html, body { height: 100%; }
   .data-table tbody tr { @apply border-b; }
   .data-table tbody tr:hover { @apply bg-stone-100/40; }
   .data-table .cell-secondary { @apply text-xs text-muted-foreground; }
-  .data-table .cell-badge { @apply text-[10px] px-1.5 py-0.5 rounded ring-1; }
+  .data-table .cell-badge { @apply text-[10px] px-1.5 py-0.5 rounded-md ring-1; }
 
   /* Inputs / Selects / Textareas match shadcn sizing */
   .input, .select, .textarea {
-    @apply h-9 rounded border bg-background px-3 py-2 text-sm
+    @apply h-9 rounded-md border bg-background px-3 py-2 text-sm
            ring-offset-background placeholder:text-muted-foreground
-           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+           rounded-md focus:ring-ring focus:ring-offset-2
            disabled:cursor-not-allowed disabled:opacity-50;
   }
   .textarea { @apply h-auto min-h-[112px]; }
 
   /* Buttons (primary/secondary/ghost/destructive) */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-sm font-medium
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium
            transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
            focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50
            h-9 px-3;
@@ -204,7 +204,7 @@ html, body { height: 100%; }
 
   /* Badges */
   .badge {
-    @apply inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium
+    @apply inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium
            ring-1 ring-inset;
   }
   .badge-muted { @apply bg-stone-100 text-muted-foreground border-transparent; }
@@ -223,7 +223,7 @@ html, body { height: 100%; }
 
   /* Simple avatar */
   .avatar {
-    @apply inline-flex h-8 w-8 items-center justify-center rounded bg-stone-100 text-xs font-semibold;
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md bg-stone-100 text-xs font-semibold;
   }
 }
 

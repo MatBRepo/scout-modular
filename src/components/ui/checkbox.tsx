@@ -19,7 +19,7 @@ export const Checkbox = React.forwardRef<
       {...props}
       className={cn(
         // base box
-        "grid place-content-center h-4 w-4 shrink-0 rounded-[3px] border",
+        "grid place-content-center h-4 w-4 shrink-0 rounded-md-[3px] border",
         // colors (light/dark)
         "border-input bg-background text-primary dark:border-neutral-700",
         // focus

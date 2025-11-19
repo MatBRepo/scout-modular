@@ -215,7 +215,7 @@ export default function GlobalSearchPage() {
             </Button>
 
             {/* === Unified-height chip with shadcn Checkbox === */}
-            <div className="ml-2 inline-flex h-9 items-center gap-2 rounded border border-gray-300 bg-white px-2 text-xs dark:border-neutral-700 dark:bg-neutral-950">
+            <div className="ml-2 inline-flex h-9 items-center gap-2 rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-neutral-700 dark:bg-neutral-950">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="only-new"
@@ -256,7 +256,7 @@ export default function GlobalSearchPage() {
             <button
               key={s.id}
               onClick={() => setEnabled((prev) => ({ ...prev, [s.id]: !prev[s.id] }))}
-              className={`inline-flex flex-wrap items-center gap-2 rounded border px-2 py-1 text-xs transition ${
+              className={`inline-flex flex-wrap items-center gap-2 rounded-md border px-2 py-1 text-xs transition ${
                 enabled[s.id]
                   ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200"
                   : "border-gray-300 text-gray-700 hover:bg-stone-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
@@ -272,14 +272,14 @@ export default function GlobalSearchPage() {
 
       {/* Status */}
       {statusMsg && (
-        <div className="mb-3 inline-flex items-center rounded bg-slate-50 px-2.5 py-1 text-xs text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
+        <div className="mb-3 inline-flex items-center rounded-md bg-slate-50 px-2.5 py-1 text-xs text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
           {statusMsg}
         </div>
       )}
 
       {/* Results & merge view */}
       <Tabs defaultValue="merged" className="space-y-3">
-        <TabsList className="mt-4 rounded bg-stone-100 p-1 shadow-sm dark:bg-neutral-900">
+        <TabsList className="mt-4 rounded-md bg-stone-100 p-1 shadow-sm dark:bg-neutral-900">
           <TabsTrigger value="merged" className="px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
             Scalona lista ({flatFiltered.length})
           </TabsTrigger>
@@ -338,7 +338,7 @@ function ResultsTable({
         <div>
           <CardTitle className="text-sm">
             {sourceLabel ? `Wyniki: ${sourceLabel}` : "Wyniki (scalone)"}{" "}
-            <span className="ml-1 rounded bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            <span className="ml-1 rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
               {rows.length}
             </span>
           </CardTitle>
@@ -382,7 +382,7 @@ function ResultsTable({
                     <td className="p-3">{r.club || "—"}</td>
                     <td className="p-3">
                       {r.pos ? (
-                        <span className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                        <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
                           {r.pos}
                         </span>
                       ) : "—"}

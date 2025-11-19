@@ -38,7 +38,7 @@ export default function StarRating({
             aria-checked={filled && n === v}
             disabled={readOnly}
             onClick={() => !readOnly && onChange(n)}
-            className={`rounded p-0.5 transition focus-visible:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+            className={`rounded-md p-0.5 transition focus-visible:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
               readOnly ? "cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"
             }`}
             title={`${n}/${max}`}

@@ -24,10 +24,23 @@ import {
   PlayCircle,
   Monitor,
   Search,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import StarRating from "@/shared/ui/StarRating";
-import { loadMetrics, type MetricsConfig } from "@/shared/metrics";
+import {
+  loadMetrics,
+  syncMetricsFromSupabase,
+  type MetricsConfig,
+} from "@/shared/metrics";
 import { AddPlayerIcon } from "@/components/icons";
+import { getSupabase } from "@/lib/supabaseClient";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 /* ------------ Types ------------ */
 type Mode = "live" | "tv";
@@ -51,7 +64,7 @@ type ObsPlayer = {
 
   position?: PositionKey;
   minutes?: number;
-  overall?: number; // 1..6 stars
+  overall?: number;
 
   base?: Record<string, number>;
   gk?: Record<string, number>;
@@ -100,7 +113,7 @@ function isNumberLike(value: string) {
   return /^[0-9]{1,3}$/.test(value.trim());
 }
 
-/* ------------- Small atoms ------------- */
+/* ------------- Section ------------- */
 function Section({
   title,
   description,
@@ -132,7 +145,7 @@ function Section({
   );
 }
 
-/* 🔁 SavePill – jak w AddPlayerPage.tsx */
+/* 💊 SavePill – wersja jak w AddPlayerPage (Czekam na uzupełnienie danych) */
 function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
   const base =
     "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
@@ -149,7 +162,7 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
       {state === "saving" ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Zapisywanie…
+          Autozapis…
         </>
       ) : state === "saved" ? (
         <>
@@ -157,8 +170,17 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
           Zapisano
         </>
       ) : (
-        "—"
+        "Czeka na uzupełnienie danych"
       )}
+    </span>
+  );
+}
+
+/* Mały znacznik “Wymagane” */
+function ReqChip({ text = "Wymagane" }: { text?: string }) {
+  return (
+    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
+      {text}
     </span>
   );
 }
@@ -203,7 +225,7 @@ export function ObservationEditor({
   onSave: (o: XO) => void;
   onClose: () => void;
 }) {
-  /** Freeze the first `initial` to avoid mid-edit resets. */
+  /** Freeze initial, żeby nie nadpisywać w trakcie edycji */
   const frozenInitialRef = useRef<XO>(initial);
 
   const [o, setO] = useState<XO>(() => {
@@ -222,27 +244,70 @@ export function ObservationEditor({
     };
   });
 
-  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
-  useEffect(() => {
-    try {
-      setAllPlayers(JSON.parse(localStorage.getItem("s4s.players") || "[]"));
-    } catch {}
+  /* Klucz autozapisu dla tej obserwacji */
+  const draftKey = useMemo(() => {
+    const baseId =
+      (frozenInitialRef.current.id ??
+        frozenInitialRef.current.__listMeta?.id ??
+        "new") ?? "new";
+    return `s4s.obs.editor.${baseId}`;
   }, []);
 
-  const [metrics, setMetrics] = useState<MetricsConfig>(loadMetrics());
+  /* ===== Players: Supabase ===== */
+  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = getSupabase();
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("players")
+          .select("*")
+          .order("name", { ascending: true });
+        if (error) throw error;
+        if (!cancelled && data) {
+          setAllPlayers(data as Player[]);
+        }
+      } catch (err) {
+        console.error(
+          "[ObservationEditor] Błąd ładowania players z Supabase:",
+          err
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /* ===== Metrics (konfiguracja z Supabase + localStorage) ===== */
+  const [metrics, setMetrics] = useState<MetricsConfig>(() => loadMetrics());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const cfg = await syncMetricsFromSupabase();
+      if (!cancelled) {
+        setMetrics(cfg);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === "s4s.obs.metrics") {
         setMetrics(loadMetrics());
       }
-      if (e.key === "s4s.players") {
-        try {
-          setAllPlayers(JSON.parse(localStorage.getItem("s4s.players") || "[]"));
-        } catch {}
-      }
     };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", onStorage);
+      return () => window.removeEventListener("storage", onStorage);
+    }
   }, []);
 
   function setField<K extends keyof XO>(key: K, val: XO[K]) {
@@ -264,7 +329,7 @@ export function ObservationEditor({
       id: crypto.randomUUID(),
       type: "known",
       name: name.trim(),
-      shirtNo: shirtNo,
+      shirtNo,
       position: undefined,
       overall: 3,
       base: {},
@@ -321,7 +386,7 @@ export function ObservationEditor({
     });
   }
 
-  /** Positions: single-select + human labels */
+  /** Positions */
   const POSITIONS: PositionKey[] = [
     "GK",
     "CB",
@@ -380,54 +445,67 @@ export function ObservationEditor({
     o.__listMeta?.time || (o as any).time
   )} • ${(o.players?.length ?? 0)} zawodników`;
 
-  /* Autosave – idle → saving → saved */
-  const [saveState, setSaveState] =
-    useState<"idle" | "saving" | "saved">("idle");
-  const draftKey = useMemo(
-    () => `s4s.observations.editor.draft.${o.id || "new"}`,
-    [o.id]
+  /* ===== Autozapis (localStorage) – stan dla SavePill (jak w AddPlayer) ===== */
+  const [autoState, setAutoState] = useState<"idle" | "saving" | "saved">(
+    "idle"
   );
-  const tRef = useRef<number | null>(null);
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadedDraftOnce = useRef(false);
+  // wczytaj szkic, jeśli istnieje
   useEffect(() => {
-    if (loadedDraftOnce.current) return;
-    loadedDraftOnce.current = true;
     try {
-      const raw = localStorage.getItem(draftKey);
-      if (raw) setO((prev) => ({ ...prev, ...JSON.parse(raw) }));
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    setSaveState("saving");
-    if (tRef.current) window.clearTimeout(tRef.current);
-    // @ts-ignore
-    tRef.current = window.setTimeout(() => {
-      try {
-        localStorage.setItem(
-          draftKey,
-          JSON.stringify({ ...o, _ts: Date.now() })
-        );
-        setSaveState("saved");
-      } catch {
-        setSaveState("idle");
+      if (typeof window === "undefined") return;
+      const raw = window.localStorage.getItem(draftKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as XO;
+        setO(parsed);
+        setAutoState("saved");
       }
-    }, 600);
-    return () => {
-      if (tRef.current) window.clearTimeout(tRef.current);
-    };
+    } catch (err) {
+      console.error(
+        "[ObservationEditor] Błąd odczytu szkicu z localStorage:",
+        err
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  // zapisuj szkic przy każdej zmianie stanu obserwacji
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(draftKey, JSON.stringify(o));
+      }
+    } catch (err) {
+      console.error(
+        "[ObservationEditor] Błąd zapisu szkicu do localStorage:",
+        err
+      );
+    }
+    setAutoState("saving");
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    autoTimerRef.current = setTimeout(() => setAutoState("saved"), 450);
   }, [o, draftKey]);
 
-  function handleSave() {
+  function restoreOriginal() {
+    const base = frozenInitialRef.current;
+    setO(base);
     try {
-      localStorage.removeItem(draftKey);
-    } catch {}
-    onSave(o);
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(draftKey);
+      }
+    } catch {
+      // ignore
+    }
+    setAutoState("idle");
   }
 
-  /* Quick add – jedno pole, jeden przycisk */
+  /* Save state Supabase (ręczny przycisk) */
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
+    "idle"
+  );
+
+  /* Quick add */
   const [quickInput, setQuickInput] = useState("");
   const filteredPlayers = useMemo(() => {
     const q = quickInput.trim().toLowerCase();
@@ -481,62 +559,153 @@ export function ObservationEditor({
     setQuickInput("");
   }
 
-  /** Accordion: only one details row open at a time */
+  /** Accordion */
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
   const CONDITIONS: Mode[] = ["live", "tv"];
 
-  /* Modal: dodanie zawodnika do bazy */
+  /* Modal: nowy zawodnik do bazy (players) */
   const [promotePlayer, setPromotePlayer] = useState<ObsPlayer | null>(null);
   const [newPlayerClub, setNewPlayerClub] = useState("");
   const [newPlayerPosition, setNewPlayerPosition] =
     useState<PositionKey | "">("");
 
-function handlePromotePlayerSave() {
-  if (!promotePlayer) return;
-  const rawName = (promotePlayer.name || "").replace(/^#/, "").trim();
-  if (!rawName) {
+  async function handlePromotePlayerSave() {
+    if (!promotePlayer) return;
+    const rawName = (promotePlayer.name || "").replace(/^#/, "").trim();
+    if (!rawName) {
+      setPromotePlayer(null);
+      return;
+    }
+
+    const exists = allPlayers.some(
+      (p) => (p.name || "").toLowerCase() === rawName.toLowerCase()
+    );
+    if (exists) {
+      setPromotePlayer(null);
+      return;
+    }
+
+    const payload: any = {
+      name: rawName,
+      pos: (newPlayerPosition || promotePlayer.position || "CM") as string,
+      club: newPlayerClub.trim() || "Do uzupełnienia",
+      age: 0,
+      status: "active",
+      meta: {
+        source: "observation",
+        fromObservationId: o.id ?? null,
+        shirtNo: promotePlayer.shirtNo ?? null,
+      },
+    };
+
+    try {
+      const supabase = getSupabase();
+      const { data, error } = await supabase
+        .from("players")
+        .insert(payload)
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error(
+          "[ObservationEditor] Błąd insert do players (promote):",
+          error
+        );
+      } else if (data) {
+        setAllPlayers((prev) => [...prev, data as Player]);
+      }
+    } catch (err) {
+      console.error("[ObservationEditor] Wyjątek przy zapisie players:", err);
+    }
+
     setPromotePlayer(null);
-    return;
+    setNewPlayerClub("");
+    setNewPlayerPosition("");
   }
-
-  const exists = allPlayers.some(
-    (p) => (p.name || "").toLowerCase() === rawName.toLowerCase()
-  );
-  if (exists) {
-    setPromotePlayer(null);
-    return;
-  }
-
-const base: Partial<Player> = {
-  id: Date.now(), // number – pasuje do Player.id
-  status: "active" as any,
-  name: rawName,
-  club: newPlayerClub.trim() || undefined,
-  // ✅ używamy pola, które faktycznie istnieje w Player, np. "pos"
-  pos: (newPlayerPosition || promotePlayer.position) as any,
-};
-
-const player = base as unknown as Player;
-
-const next = [...allPlayers, player];
-setAllPlayers(next);
-try {
-  localStorage.setItem("s4s.players", JSON.stringify(next));
-  window.dispatchEvent(new StorageEvent("storage", { key: "s4s.players" }));
-} catch {}
-
-  setPromotePlayer(null);
-  setNewPlayerClub("");
-  setNewPlayerPosition("");
-}
 
   const status = o.__listMeta?.status ?? "draft";
+
+  /* ===== Shadcn Calendar – data meczu ===== */
+  const [dateObj, setDateObj] = useState<Date | null>(() =>
+    o.reportDate ? new Date(o.reportDate) : null
+  );
+  useEffect(() => {
+    setDateObj(o.reportDate ? new Date(o.reportDate) : null);
+  }, [o.reportDate]);
+
+  /* ===== Walidacja wymaganych pól do zapisu ===== */
+  const playerCount = o.players?.length ?? 0;
+  const hasTeams = !!teamA.trim() && !!teamB.trim();
+  const hasDate = !!o.reportDate;
+  const canSaveObservation = hasTeams && hasDate && playerCount > 0;
+
+  /* ========= ZAPIS OBSERWACJI DO SUPABASE (ręczny) ========= */
+  async function handleSaveToSupabase() {
+    const supabase = getSupabase();
+    setSaveState("saving");
+
+    // 1) UPEWNIJ SIĘ, ŻE MAMY ID (dla nowych – generujemy)
+    let id = o.id as number | undefined;
+    if (!id || id === 0) {
+      id = Date.now();
+    }
+
+    const meta = o.__listMeta ?? {
+      id,
+      status: (o as any).status ?? "draft",
+      bucket: "active" as const,
+      time: (o as any).time ?? "",
+      player: (o as any).player ?? "",
+    };
+
+    const payload: XO = {
+      ...o,
+      id,
+      __listMeta: meta,
+    };
+
+    const row: any = {
+      id,
+      player: meta.player || null,
+      match: payload.match ?? null,
+      date: payload.reportDate ?? (payload as any).date ?? null,
+      time: meta.time || null,
+      status: meta.status,
+      bucket: meta.bucket,
+      mode: (payload.conditions ?? "live") as string,
+      note: payload.note ?? null,
+      players: (payload.players ?? []) as any,
+      payload,
+    };
+
+    const { data, error } = await supabase
+      .from("observations")
+      .upsert(row, { onConflict: "id" })
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("[ObservationEditor] Supabase upsert error:", error);
+      setSaveState("idle");
+      return;
+    }
+
+    if (!o.id && data?.id) {
+      setO((prev) => ({
+        ...prev,
+        id: data.id,
+        __listMeta: { ...(prev.__listMeta ?? meta), id: data.id },
+      }));
+    }
+
+    setSaveState("saved");
+    onSave(payload);
+  }
 
   /* Render */
   return (
     <div className="w-full">
-      {/* TOP BAR */}
+      {/* TOP BAR – styl podobny do AddPlayerPage */}
       <Toolbar
         title={
           <div className="mb-3 flex flex-col gap-1">
@@ -549,57 +718,68 @@ try {
           </div>
         }
         right={
-          <div className="mb-4 flex w-full items-center gap-3 md:flex-nowrap">
-            {/* 1) Ładny switcher Szkic / Finalna */}
+          <div className="mb-4 flex w-full items-center gap-2 sm:gap-3 md:flex-nowrap">
+            {/* Szkic / Finalna */}
             <div className="inline-flex h-10 items-center rounded border border-slate-300 bg-white p-0.5 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
               <button
                 type="button"
                 onClick={() => setMeta("status", "draft")}
-                className={`inline-flex h-8 items-center gap-1 rounded px-3 py-1 font-medium transition ${
+                className={cn(
+                  "inline-flex h-8 items-center gap-1 rounded px-3 py-1 font-medium transition",
                   status === "draft"
                     ? "bg-amber-500 text-white shadow-sm"
                     : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                }`}
+                )}
               >
                 Szkic
               </button>
               <button
                 type="button"
                 onClick={() => setMeta("status", "final")}
-                className={`inline-flex h-8 items-center gap-1 rounded px-3 py-1 font-medium transition ${
+                className={cn(
+                  "inline-flex h-8 items-center gap-1 rounded px-3 py-1 font-medium transition",
                   status === "final"
                     ? "bg-emerald-600 text-white shadow-sm"
                     : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                }`}
+                )}
               >
                 Finalna
               </button>
             </div>
 
-            {/* 2) Po prawej: Zapisano + Wróć do listy */}
+            {/* Status autozapisu + akcje – jak AddPlayer (SavePill + przyciski) */}
             <div className="ml-auto flex flex-wrap items-center gap-2 sm:gap-3">
-              <SavePill state={saveState} />
+              <SavePill state={autoState} />
+<Button
+  variant="outline"
+  className="h-10 border-gray-300 dark:border-neutral-700"
+  onClick={restoreOriginal}
+>
+  Cofnij zmiany
+</Button>
+
               <Button
                 className="h-10 bg-gray-900 text-white hover:bg-gray-800"
-                onClick={() => {
-                  handleSave();
-                  onClose();
-                }}
+                onClick={handleSaveToSupabase}
+                disabled={saveState === "saving" || !canSaveObservation}
               >
-                Wróć do listy
+                {saveState === "saving" && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Zapisz i wróć do listy
               </Button>
             </div>
           </div>
         }
       />
 
+      {/* ===== RESZTA – INFORMACJE, ZAWODNICY, NOTATKA ===== */}
       <div className="mt-4 space-y-6">
-        {/* 1) Informacje ogólne */}
+        {/* Informacje ogólne */}
         <Section
           title="Informacje ogólne"
           description="Wpisz drużyny — pole „Mecz” składa się automatycznie."
         >
-          {/* Mecz (readonly) */}
           <div>
             <Label className="text-sm">Mecz</Label>
             <Input
@@ -613,18 +793,20 @@ try {
             </p>
           </div>
 
-          {/* Drużyna A / B + VS z linią */}
           <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-[1fr_auto_1fr]">
             <div>
               <Label className="text-sm">Drużyna A</Label>
-              <Input
-                value={teamA}
-                onChange={(e) => updateMatchFromTeams(e.target.value, teamB)}
-                placeholder="np. U19 Liga"
-              />
+              <div className="relative mt-1">
+                <Input
+                  value={teamA}
+                  onChange={(e) => updateMatchFromTeams(e.target.value, teamB)}
+                  placeholder="np. U19 Liga"
+                  className={cn(!teamA.trim() ? "pr-24" : "")}
+                />
+                {!teamA.trim() && <ReqChip />}
+              </div>
             </div>
 
-            {/* separator z linią i „vs” */}
             <div className="relative flex items-center justify-center md:h-full">
               <div className="h-px w-10/12 bg-slate-200 md:h-full md:w-px" />
               <div className="absolute rounded bg-slate-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm dark:bg-neutral-900 dark:text-neutral-200">
@@ -634,35 +816,78 @@ try {
 
             <div>
               <Label className="text-sm">Drużyna B</Label>
-              <Input
-                value={teamB}
-                onChange={(e) => updateMatchFromTeams(teamA, e.target.value)}
-                placeholder="np. Legia U19"
-              />
+              <div className="relative mt-1">
+                <Input
+                  value={teamB}
+                  onChange={(e) => updateMatchFromTeams(teamA, e.target.value)}
+                  placeholder="np. Legia U19"
+                  className={cn(!teamB.trim() ? "pr-24" : "")}
+                />
+                {!teamB.trim() && <ReqChip />}
+              </div>
             </div>
           </div>
 
-          {/* Data / Godzina */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <Label className="text-sm">Data meczu</Label>
-              <Input
-                type="date"
-                value={o.reportDate ?? ""}
-                onChange={(e) => setField("reportDate", e.target.value)}
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "mt-1 w-full justify-start border-gray-300 text-left font-normal dark:border-neutral-700",
+                      !dateObj && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateObj
+                      ? dateObj.toLocaleDateString("pl-PL", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })
+                      : "Wybierz datę"}
+                    {!hasDate && (
+                      <span className="ml-auto text-[10px] text-rose-600">
+                        Wymagane
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateObj ?? undefined}
+                    onSelect={(d) => {
+                      const next = d ?? null;
+                      setDateObj(next);
+                      setField(
+                        "reportDate",
+                        next ? next.toISOString().slice(0, 10) : ""
+                      );
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-            <div>
-              <Label className="text-sm">Godzina meczu</Label>
-              <Input
-                type="time"
-                value={o.__listMeta?.time ?? ""}
-                onChange={(e) => setMeta("time", e.target.value)}
-              />
-            </div>
+<div>
+  <Label htmlFor="time-picker" className="px-1 text-sm">
+    Godzina meczu
+  </Label>
+  <Input
+    type="time"
+    id="time-picker"
+    step="1"
+    value={o.__listMeta?.time ?? ""}
+    onChange={(e) => setMeta("time", e.target.value)}
+    className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+  />
+</div>
+
           </div>
 
-          {/* Tryb meczu Live / TV – lepsze kafelki */}
           <div>
             <Label className="text-sm">Tryb meczu</Label>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -675,12 +900,12 @@ try {
                     key={mode}
                     type="button"
                     onClick={() => setField("conditions", mode)}
-                    className={[
+                    className={cn(
                       "flex w-full items-center justify-between rounded border px-3 py-2 text-left text-xs transition",
                       isActive
                         ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200 dark:border-indigo-400 dark:bg-indigo-900/30 dark:ring-indigo-500/60"
-                        : "border-gray-200 bg-white hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800",
-                    ].join(" ")}
+                        : "border-gray-200 bg-white hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                    )}
                   >
                     <div className="flex items-center gap-2">
                       {isLive ? (
@@ -711,7 +936,6 @@ try {
             </p>
           </div>
 
-          {/* Liga/turniej */}
           <div>
             <Label className="text-sm">Liga / turniej</Label>
             <Input
@@ -722,7 +946,7 @@ try {
           </div>
         </Section>
 
-        {/* 2) Zawodnicy */}
+        {/* Zawodnicy */}
         <Section
           title="Zawodnicy"
           description="Jeden input – numer lub nazwisko, dropdown z wynikami i szczegóły pod wierszem zawodnika."
@@ -732,7 +956,7 @@ try {
             </span>
           }
         >
-          {/* Searcher + jeden przycisk */}
+          {/* Searcher */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <Label className="text-sm">Numer lub nazwisko zawodnika</Label>
@@ -755,7 +979,6 @@ try {
                 </div>
               </div>
 
-              {/* Dropdown z wynikami wyszukiwania */}
               {filteredPlayers.length > 0 && (
                 <div className="absolute left-0 right-0 top-[100%] z-20 mt-1 rounded border border-gray-200 bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-950">
                   {filteredPlayers.map((p) => (
@@ -767,9 +990,9 @@ try {
                       onClick={() => addPlayerFromInput(p)}
                     >
                       <span>{p.name}</span>
-                      {p.club && (
+                      {(p as any).club && (
                         <span className="text-[11px] text-gray-500 dark:text-neutral-400">
-                          {p.club}
+                          {(p as any).club}
                         </span>
                       )}
                     </button>
@@ -824,7 +1047,6 @@ try {
 
                   return (
                     <Fragment key={p.id}>
-                      {/* Wiersz główny */}
                       <tr className="border-t border-gray-200 align-middle hover:bg-stone-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
                         <td className="p-2 sm:p-3">
                           <div className="flex items-start gap-2">
@@ -934,7 +1156,7 @@ try {
                                     <ChevronDown className="mr-1 h-4 w-4" />
                                     <span className="hidden sm:inline">
                                       Szczegóły
-                                    </span>
+                                      </span>
                                   </>
                                 )}
                               </Button>
@@ -949,12 +1171,11 @@ try {
                               </Button>
                             </div>
 
-                            {/* Dodaj do bazy – tylko jeśli NIE istnieje w bazie */}
                             {!inBase && normalizedName && (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 w-fit rounded border-black bg-black px-3  text-white hover:bg-zinc-900 hover:text-white dark:border-black dark:bg-black dark:hover:bg-zinc-900"
+                                className="h-8 w-fit rounded border-black bg-black px-3 text-white hover:bg-zinc-900 hover:text-white dark:border-black dark:bg-black dark:hover:bg-zinc-900"
                                 onClick={() => {
                                   setPromotePlayer(p);
                                   setNewPlayerClub("");
@@ -972,7 +1193,6 @@ try {
                         </td>
                       </tr>
 
-                      {/* Szczegóły POD wierszem zawodnika */}
                       {isOpen && (
                         <tr>
                           <td
@@ -1087,7 +1307,6 @@ try {
                                 </Group>
                               )}
 
-                              {/* Notatka indywidualna – w osobnej karcie */}
                               <div className="mt-2 rounded border border-stone-200 bg-white/90 p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
                                 <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
                                   Notatka do zawodnika
@@ -1127,7 +1346,7 @@ try {
           </div>
         </Section>
 
-        {/* 3) Notatka do obserwacji */}
+        {/* Notatka ogólna */}
         <Section
           title="Notatka do obserwacji"
           description="Krótki opis, kontekst, obserwacje ogólne."
@@ -1147,99 +1366,93 @@ try {
         </Section>
       </div>
 
-{/* Modal: dodaj zawodnika do bazy */}
-{promotePlayer && (
-  <>
-    {/* tło */}
-    <div
-      className="fixed inset-0 z-[110] bg-black/40"
-      onClick={() => setPromotePlayer(null)}
-    />
-
-    {/* modal wycentrowany w oknie */}
-    <div
-      className="fixed left-1/2 top-1/2 z-[111] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950 max-h-[80vh] overflow-y-auto"
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-semibold">
-          Dodaj zawodnika do bazy
-        </h2>
-        <button
-          className="rounded p-1 text-dark hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
-          onClick={() => setPromotePlayer(null)}
-        >
-          ✕
-        </button>
-      </div>
-
-      <div className="space-y-3 text-sm">
-        <div>
-          <Label className="text-xs">Imię i nazwisko</Label>
-          <Input
-            className="mt-1"
-            value={(promotePlayer.name || "").replace(/^#/, "").trim()}
-            readOnly
+      {/* Modal: dodaj zawodnika do bazy */}
+      {promotePlayer && (
+        <>
+          <div
+            className="fixed inset-0 z-[110] bg-black/40"
+            onClick={() => setPromotePlayer(null)}
           />
-          <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
-            Nazwa z obserwacji – edycję zrobisz później w „Mojej bazie”.
-          </p>
-        </div>
+          <div className="fixed left-1/2 top-1/2 z-[111] max-h-[80vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-semibold">
+                Dodaj zawodnika do bazy
+              </h2>
+              <button
+                className="rounded p-1 text-dark hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+                onClick={() => setPromotePlayer(null)}
+              >
+                ✕
+              </button>
+            </div>
 
-        <div>
-          <Label className="text-xs">Klub (opcjonalnie)</Label>
-          <Input
-            className="mt-1"
-            value={newPlayerClub}
-            onChange={(e) => setNewPlayerClub(e.target.value)}
-            placeholder="np. Lech U19"
-          />
-        </div>
+            <div className="space-y-3 text-sm">
+              <div>
+                <Label className="text-xs">Imię i nazwisko</Label>
+                <Input
+                  className="mt-1"
+                  value={(promotePlayer.name || "").replace(/^#/, "").trim()}
+                  readOnly
+                />
+                <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
+                  Nazwa z obserwacji – edycję zrobisz później w „Mojej bazie”.
+                </p>
+              </div>
 
-        <div>
-          <Label className="text-xs">Domyślna pozycja (opcjonalnie)</Label>
-          <select
-            className="mt-1 w-full rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-            value={newPlayerPosition}
-            onChange={(e) =>
-              setNewPlayerPosition(
-                (e.target.value || "") as PositionKey | ""
-              )
-            }
-          >
-            <option value="">— bez pozycji —</option>
-            {POSITIONS.map((pos) => (
-              <option key={pos} value={pos}>
-                {pos} — {POS_INFO[pos]}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+              <div>
+                <Label className="text-xs">Klub (opcjonalnie)</Label>
+                <Input
+                  className="mt-1"
+                  value={newPlayerClub}
+                  onChange={(e) => setNewPlayerClub(e.target.value)}
+                  placeholder="np. Lech U19"
+                />
+              </div>
 
-      <div className="mt-4 flex justify-end gap-2">
-        <Button
-          variant="outline"
-          className="border-gray-300 dark:border-neutral-700"
-          onClick={() => setPromotePlayer(null)}
-        >
-          Anuluj
-        </Button>
-        <Button
-          className="bg-gray-900 text-white hover:bg-gray-800"
-          onClick={handlePromotePlayerSave}
-        >
-          Dodaj do mojej bazy
-        </Button>
-      </div>
-    </div>
-  </>
-)}
+              <div>
+                <Label className="text-xs">Domyślna pozycja (opcjonalnie)</Label>
+                <select
+                  className="mt-1 w-full rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                  value={newPlayerPosition}
+                  onChange={(e) =>
+                    setNewPlayerPosition(
+                      (e.target.value || "") as PositionKey | ""
+                    )
+                  }
+                >
+                  <option value="">— bez pozycji —</option>
+                  {POSITIONS.map((pos) => (
+                    <option key={pos} value={pos}>
+                      {pos} — {POS_INFO[pos]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                className="border-gray-300 dark:border-neutral-700"
+                onClick={() => setPromotePlayer(null)}
+              >
+                Anuluj
+              </Button>
+              <Button
+                className="bg-gray-900 text-white hover:bg-gray-800"
+                onClick={handlePromotePlayerSave}
+              >
+                Dodaj do mojej bazy
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-/* Lokalny helper dla grup metryk */
+/* Group helper */
 function Group({
   title,
   children,

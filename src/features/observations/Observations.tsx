@@ -499,6 +499,10 @@ export default function ObservationsFeature({
     }, 1800);
   }
 
+    // --- NEW: inline confirm for move-to-trash ---
+  const [confirmTrashId, setConfirmTrashId] = useState<number | null>(null);
+
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(UI_KEY);
@@ -724,7 +728,9 @@ export default function ObservationsFeature({
       x.id === id ? { ...x, bucket: "trash" as Bucket } : x
     );
     onChange(next as unknown as Observation[]);
+    setConfirmTrashId((prev) => (prev === id ? null : prev));
   }
+
   function restoreFromTrash(id: number) {
     const next = rows.map((x) =>
       x.id === id ? { ...x, bucket: "active" as Bucket } : x
@@ -903,7 +909,7 @@ export default function ObservationsFeature({
     return (
       <button
         className={
-          "flex items-center gap-1 font-medium focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 rounded " +
+          "flex items-center gap-1 font-medium focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 rounded-md " +
           (active ? "text-gray-900 dark:text-neutral-100" : "")
         }
         onClick={() => {
@@ -948,10 +954,10 @@ export default function ObservationsFeature({
 
   // ===== CHIP atom (desktop height = h-10) =====
   const Chip = ({ label, onClear }: { label: string; onClear: () => void }) => (
-    <span className="inline-flex h-10 items-center rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
+    <span className="inline-flex h-10 items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
       <span className="max-w-[200px] truncate">{label}</span>
       <button
-        className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
+        className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
         onClick={onClear}
         aria-label="Wyczyść filtr"
         title="Wyczyść filtr"
@@ -994,7 +1000,7 @@ export default function ObservationsFeature({
                   <div
                     role="tablist"
                     aria-orientation="horizontal"
-                    className="h-10 rounded inline-flex items-center justify-center text-muted-foreground bg-stone-200 p-1 shadow-sm dark:bg-stone-900"
+                    className="h-10 rounded-md inline-flex items-center justify-center text-muted-foreground bg-stone-200 p-1 shadow-sm dark:bg-stone-900"
                     tabIndex={0}
                     data-orientation="horizontal"
                     style={{ outline: "none" }}
@@ -1004,11 +1010,11 @@ export default function ObservationsFeature({
                       role="tab"
                       aria-selected={tab === "active"}
                       data-state={tab === "active" ? "active" : "inactive"}
-                      className="justify-center whitespace-nowrap rounded text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+                      className="justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
                       onClick={() => setTab("active")}
                     >
                       Aktywne
-                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                      <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                         {counts.all}
                       </span>
                     </button>
@@ -1017,11 +1023,11 @@ export default function ObservationsFeature({
                       role="tab"
                       aria-selected={tab === "draft"}
                       data-state={tab === "draft" ? "active" : "inactive"}
-                      className="justify-center whitespace-nowrap rounded text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+                      className="justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
                       onClick={() => setTab("draft")}
                     >
                       Szkice
-                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                      <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                         {counts.draft}
                       </span>
                     </button>
@@ -1040,7 +1046,7 @@ export default function ObservationsFeature({
                       <button
                         ref={chipsMoreBtnRef}
                         type="button"
-                        className="inline-flex h-10 items-center gap-1 rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
+                        className="inline-flex h-10 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
                         onClick={() => setChipsOpen((v) => !v)}
                         onMouseEnter={() => {
                           if (chipsHoverTimer.current)
@@ -1067,7 +1073,7 @@ export default function ObservationsFeature({
                         open={chipsOpen}
                         onClose={() => setChipsOpen(false)}
                         width={360}
-                        className="z-[210] overflow-hidden rounded border border-gray-200 bg-white p-2 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+                        className="z-[210] overflow-hidden rounded-md border border-gray-200 bg-white p-2 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
                       >
                         <div
                           className="w-full p-1"
@@ -1175,7 +1181,7 @@ export default function ObservationsFeature({
 
         {/* Mobile tabs */}
         <div className="mt-3 flex flex-col items-stretch gap-2 sm:hidden">
-          <div className="inline-flex h-10 items-center rounded bg-stone-100 p-1 shadow-sm dark:bg-stone-900">
+          <div className="inline-flex h-10 items-center rounded-md bg-stone-100 p-1 shadow-sm dark:bg-stone-900">
             {[
               { key: "active", label: "Aktywne", count: counts.all },
               { key: "draft", label: "Szkice", count: counts.draft },
@@ -1185,13 +1191,13 @@ export default function ObservationsFeature({
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key as TabKey)}
-                  className={`justify-center whitespace-nowrap rounded text-sm font-medium h-9 inline-flex items-center px-2 py-2 ${
+                  className={`justify-center whitespace-nowrap rounded-md text-sm font-medium h-9 inline-flex items-center px-2 py-2 ${
                     active ? "bg-white shadow dark:bg-neutral-800" : ""
                   }`}
                   type="button"
                 >
                   {t.label}
-                  <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                  <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                     {t.count}
                   </span>
                 </button>
@@ -1207,7 +1213,7 @@ export default function ObservationsFeature({
               <button
                 key={c.key}
                 onClick={c.clear}
-                className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-900"
+                className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-900"
                 title="Wyczyść filtr"
                 type="button"
               >
@@ -1224,7 +1230,7 @@ export default function ObservationsFeature({
                 setDateTo("");
                 setQ("");
               }}
-              className="ml-1 inline-flex items-center gap-1 rounded bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+              className="ml-1 inline-flex items-center gap-1 rounded-md bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
               title="Wyczyść wszystkie filtry"
               type="button"
             >
@@ -1243,7 +1249,7 @@ export default function ObservationsFeature({
                 aria-hidden
               />
               <div
-                className="fixed inset-x-0 bottom-0 z-[210] max-h[80vh] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                className="fixed inset-x-0 bottom-0 z-[210] max-h[80vh] max-h-[80vh] overflow-auto rounded-md-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
                 role="dialog"
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}
@@ -1294,7 +1300,7 @@ export default function ObservationsFeature({
                     <select
                       value={modeFilter}
                       onChange={(e) => setModeFilter(e.target.value as Mode | "")}
-                      className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                      className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                     >
                       <option value="">— dowolny —</option>
                       <option value="live">Live</option>
@@ -1308,7 +1314,7 @@ export default function ObservationsFeature({
                       onChange={(e) =>
                         setLifecycleFilter(e.target.value as Observation["status"] | "")
                       }
-                      className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                      className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                     >
                       <option value="">— dowolny —</option>
                       <option value="draft">Szkic</option>
@@ -1347,7 +1353,7 @@ export default function ObservationsFeature({
               open={true}
               onClose={() => setFiltersOpen(false)}
               width={352}
-              className="rounded border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+              className="rounded-md border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
             >
               <div className="mb-3">
                 <Label className="text-xs">Mecz (kto vs kto)</Label>
@@ -1383,7 +1389,7 @@ export default function ObservationsFeature({
                   <select
                     value={modeFilter}
                     onChange={(e) => setModeFilter(e.target.value as Mode | "")}
-                    className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                   >
                     <option value="">— dowolny —</option>
                     <option value="live">Live</option>
@@ -1397,7 +1403,7 @@ export default function ObservationsFeature({
                     onChange={(e) =>
                       setLifecycleFilter(e.target.value as Observation["status"] | "")
                     }
-                    className="mt-1 w-full rounded border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                   >
                     <option value="">— dowolny —</option>
                     <option value="draft">Szkic</option>
@@ -1441,7 +1447,7 @@ export default function ObservationsFeature({
                 aria-hidden
               />
               <div
-                className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-md-t-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
                 role="dialog"
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}
@@ -1458,7 +1464,7 @@ export default function ObservationsFeature({
                   </Button>
                 </div>
 
-                <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
+                <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
                   {/* Kolumny (mobile -> own sheet) */}
                   <button
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -1516,11 +1522,11 @@ export default function ObservationsFeature({
               open={true}
               onClose={() => setMoreOpen(false)}
               width={224}
-              className="overflow-hidden rounded border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+              className="overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
             >
               {/* Kolumny opens a separate popover anchored to the dots */}
               <button
-                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setMoreOpen(false);
                   setColsOpen(true);
@@ -1532,7 +1538,7 @@ export default function ObservationsFeature({
               <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
 
               <button
-                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setScope("active");
                   setMoreOpen(false);
@@ -1541,7 +1547,7 @@ export default function ObservationsFeature({
                 <Users className="h-4 w-4" /> Aktywni
               </button>
               <button
-                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setScope("trash");
                   setMoreOpen(false);
@@ -1553,7 +1559,7 @@ export default function ObservationsFeature({
               <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
 
               <button
-                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setMoreOpen(false);
                   exportCSV();
@@ -1562,7 +1568,7 @@ export default function ObservationsFeature({
                 <FileDown className="h-4 w-4" /> Eksport CSV
               </button>
               <button
-                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setMoreOpen(false);
                   exportExcel();
@@ -1583,7 +1589,7 @@ export default function ObservationsFeature({
                 aria-hidden
               />
               <div
-                className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                className="fixed inset-x-0 bottom-0 z-[210] max-h-[75vh] overflow-auto rounded-md-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
                 role="dialog"
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}
@@ -1605,7 +1611,7 @@ export default function ObservationsFeature({
                   return (
                     <label
                       key={key}
-                      className="flex cursor-pointer items-center justify-between rounded px-2 py-2 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
                       <span className="text-gray-800 dark:text-neutral-100">
                         {COL_PL[key]}
@@ -1627,7 +1633,7 @@ export default function ObservationsFeature({
               open={true}
               onClose={() => setColsOpen(false)}
               width={288}
-              className="rounded border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+              className="rounded-md border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
             >
               <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">
                 Widoczność kolumn
@@ -1637,7 +1643,7 @@ export default function ObservationsFeature({
                 return (
                   <label
                     key={key}
-                    className="flex cursor-pointer items-center justify-between rounded px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                    className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   >
                     <span className="text-gray-800 dark:text-neutral-100">
                       {COL_PL[key]}
@@ -1658,7 +1664,7 @@ export default function ObservationsFeature({
         <div
           ref={tableWrapRef}
           className="
-            mt-3 w-full overflow-x-auto rounded border border-gray-200 bg-white p-0 shadow-sm
+            mt-3 w-full overflow-x-auto rounded-md border border-gray-200 bg-white p-0 shadow-sm
             dark:border-neutral-700 dark:bg-neutral-950
           "
         >
@@ -1763,7 +1769,7 @@ export default function ObservationsFeature({
                               <TooltipTrigger asChild>
                                 <span
                                   title="Tryb"
-                                  className={`inline-flex items-center rounded px-2 py-0.5 font-medium ${
+                                  className={`inline-flex items-center rounded-md px-2 py-0.5 font-medium ${
                                     mode === "live"
                                       ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
                                       : "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
@@ -1781,7 +1787,7 @@ export default function ObservationsFeature({
                               <TooltipTrigger asChild>
                                 <span
                                   title="Status"
-                                  className={`inline-flex cursor-default items-center rounded px-2 py-0.5 font-medium ${
+                                  className={`inline-flex cursor-default items-center rounded-md px-2 py-0.5 font-medium ${
                                     status === "final"
                                       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                                       : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
@@ -1795,7 +1801,7 @@ export default function ObservationsFeature({
                               </TooltipContent>
                             </Tooltip>
                             {pCount > 0 && (
-                              <span className="inline-flex items-center rounded bg-stone-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-900/30 dark:text-slate-300">
+                              <span className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-900/30 dark:text-slate-300">
                                 {pCount} zawodn.
                               </span>
                             )}
@@ -1822,7 +1828,7 @@ export default function ObservationsFeature({
                           <TooltipTrigger asChild>
                             <button
                               onClick={() => toggleModeInline(r.id)}
-                              className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
                                 mode === "live"
                                   ? "bg-indigo-600 text-white hover:bg-indigo-700"
                                   : "bg-violet-600 text-white hover:bg-violet-700"
@@ -1850,7 +1856,7 @@ export default function ObservationsFeature({
                             <TooltipTrigger asChild>
                               <button
                                 onClick={() => toggleStatusInline(r.id)}
-                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
+                                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 ${
                                   status === "final"
                                     ? "bg-emerald-600 text-white hover:bg-emerald-700"
                                     : "bg-amber-600 text-white hover:bg-amber-700"
@@ -1881,61 +1887,86 @@ export default function ObservationsFeature({
                       </td>
                     )}
 
-                    {visibleCols.actions && (
-                      <td className="p-2 text-right sm:p-2 align-top">
-                        <div className="inline-flex items-center gap-2">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                onClick={() => {
-                                  setEditing(r);
-                                  setPageMode("editor");
-                                }}
-                                aria-label="Edytuj"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">Edytuj</TooltipContent>
-                          </Tooltip>
+{visibleCols.actions && (
+  <td className="p-2 text-right sm:p-2 align-top">
+    <div className="inline-flex items-center gap-2">
+      {/* Edycja */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+            onClick={() => {
+              setEditing(r);
+              setPageMode("editor");
+            }}
+            aria-label="Edytuj"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Edytuj</TooltipContent>
+      </Tooltip>
 
-                          {(r.bucket ?? "active") === "active" ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                  onClick={() => moveToTrash(r.id)}
-                                  aria-label="Przenieś do kosza"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top">Przenieś do kosza</TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                  onClick={() => restoreFromTrash(r.id)}
-                                  aria-label="Przywróć z kosza"
-                                >
-                                  <Undo2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top">Przywróć z kosza</TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </td>
-                    )}
+      {/* Kosz / Przywróć z potwierdzeniem Tak / Nie dla Kosza */}
+      {(r.bucket ?? "active") === "active" ? (
+        confirmTrashId === r.id ? (
+          <div className="inline-flex items-center gap-1 text-sm ">
+            <Button
+             size="sm"
+                              className="h-8 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+              onClick={() => moveToTrash(r.id)}
+            >
+              Tak
+            </Button>
+            <Button
+              size="sm"
+                              variant="outline"
+                              className="h-8 px-2 text-xs border-gray-300 dark:border-neutral-700"
+              onClick={() => setConfirmTrashId(null)}
+            >
+              Nie
+            </Button>
+          </div>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                onClick={() => setConfirmTrashId(r.id)}
+                aria-label="Przenieś do kosza"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Przenieś do kosza</TooltipContent>
+          </Tooltip>
+        )
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+              onClick={() => restoreFromTrash(r.id)}
+              aria-label="Przywróć z kosza"
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Przywróć z kosza</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  </td>
+)}
+
+
+
                   </tr>
                 );
               })}
@@ -1955,7 +1986,7 @@ export default function ObservationsFeature({
           {/* Mobile scroll hint */}
           {showScrollHint && (
             <div className="pointer-events-none sm:hidden">
-              <div className="absolute bottom-2 right-2 z-20 inline-flex items-center gap-2 rounded bg-gray-900/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur">
+              <div className="absolute bottom-2 right-2 z-20 inline-flex items-center gap-2 rounded-md bg-gray-900/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur">
                 <span>Przeciągnij w bok</span>
                 <MoveHorizontal className="h-4 w-4" />
               </div>
@@ -1965,11 +1996,11 @@ export default function ObservationsFeature({
         </div>
 
         {/* Pagination footer */}
-        <div className="mt-3 flex flex-row flex-wrap items-center justify-center lg:justify-between gap-2 rounded p-2 text-sm shadow-sm dark:bg-neutral-950">
+        <div className="mt-3 flex flex-row flex-wrap items-center justify-center lg:justify-between gap-2 rounded-md p-2 text-sm shadow-sm dark:bg-neutral-950">
           <div className="flex flex-row flex-wrap items-center gap-2">
             <span className="text-dark dark:text-neutral-300">Wiersze na stronę:</span>
             <select
-              className="rounded border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
+              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
               value={pageSize}
               onChange={(e) => {
                 const n = Number(e.target.value) || 10;
@@ -2024,9 +2055,9 @@ export default function ObservationsFeature({
       {selected.size > 0 && (
         <Portal>
           <div className="fixed left-1/2 bottom-4 z-[240] -translate-x-1/2">
-            <div className="inline-flex items-center gap-2 rounded border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
+            <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
               <button
-                className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
                 onClick={() => setSelected(new Set())}
                 aria-label="Wyczyść zaznaczenie"
                 title="Wyczyść zaznaczenie"
@@ -2034,7 +2065,7 @@ export default function ObservationsFeature({
                 <X className="h-4 w-4" />
               </button>
 
-              <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded bg-gray-900 px-2 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+              <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded-md bg-gray-900 px-2 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
                 {selected.size}
               </span>
 
@@ -2047,7 +2078,7 @@ export default function ObservationsFeature({
               {rows.some((r) => selected.has(r.id) && (r.bucket ?? "active") === "active") &&
               scope === "active" ? (
                 <Button
-                  className="h-8 w-8 rounded bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                  className="h-8 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
                   onClick={bulkTrash}
                   aria-label="Przenieś do kosza"
                   title="Przenieś do kosza"
@@ -2056,7 +2087,7 @@ export default function ObservationsFeature({
                 </Button>
               ) : (
                 <Button
-                  className="h-8 w-8 rounded bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+                  className="h-8 w-8 rounded-md bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
                   onClick={bulkRestore}
                   aria-label="Przywróć"
                   title="Przywróć"

@@ -23,7 +23,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { AddPlayerIcon, PlayerOnlyTshirt } from "@/components/icons";
-
+import { supabase } from "@/shared/supabase-client";
 
 /* ====== helpers: mobile detection + portal ====== */
 function useIsMobile(maxPx = 640) {
@@ -67,7 +67,7 @@ function MobileSheet({
       <div
         role="dialog"
         aria-modal="true"
-        className="fixed inset-x-0 bottom-0 z-[210] max-h[80vh] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+        className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-md-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-2 flex items-center justify-between">
@@ -169,7 +169,7 @@ function AnchoredPopover({
       <div className="fixed inset-0 z-[200] bg-transparent" aria-hidden />
       <div
         data-popover-panel="true"
-        className="z-[210] overflow-hidden rounded border border-gray-200 bg-white p-0 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
+        className="z-[210] overflow-hidden rounded-md border border-gray-200 bg-white p-0 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
         style={{ ...style, width: "min(92vw, " + maxWidth + "px)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -229,7 +229,8 @@ type Scope = "active" | "trash";
 type SortKey = "name" | "club" | "pos" | "age" | "obs";
 type SortDir = "asc" | "desc";
 
-const UI_KEY = "s4s.players.ui";
+type PlayerWithOwner = Player & { user_id?: string | null; profile_id?: string | null };
+type ObservationWithOwner = Observation & { user_id?: string | null; profile_id?: string | null };
 
 /* =======================================
    Main feature
@@ -248,6 +249,51 @@ export default function MyPlayersFeature({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
+
+  // === Supabase auth: tylko swoje rekordy (user_id/profile_id) ===
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (!active) return;
+        if (error) {
+          console.error("[MyPlayersFeature] auth.getUser error:", error);
+          setAuthUserId(null);
+        } else {
+          setAuthUserId(data.user?.id ?? null);
+        }
+      } catch (e) {
+        console.error("[MyPlayersFeature] auth.getUser failed:", e);
+        setAuthUserId(null);
+      } finally {
+        if (active) setAuthLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Filtrowanie po właścicielu — zakładam kolumnę user_id (i opcjonalnie profile_id)
+  const ownedPlayers = useMemo(() => {
+    const base = players as PlayerWithOwner[];
+    if (!authUserId) return base; // fallback: wszystko, jeśli z jakiegoś powodu nie ma usera
+    return base.filter(
+      (p) => p.user_id === authUserId || p.profile_id === authUserId
+    );
+  }, [players, authUserId]);
+
+  const ownedObservations = useMemo(() => {
+    const base = observations as ObservationWithOwner[];
+    if (!authUserId) return base;
+    return base.filter(
+      (o) => o.user_id === authUserId || o.profile_id === authUserId
+    );
+  }, [observations, authUserId]);
 
   const [content, setContent] = useState<"table" | "quick">("table");
   const [quickFor, setQuickFor] = useState<Player | null>(null);
@@ -272,7 +318,7 @@ export default function MyPlayersFeature({
   // 3-dots menu (desktop)
   const [moreOpen, setMoreOpen] = useState(false);
 
-  // Mobile sheets (to mirror Observations UX)
+  // Mobile sheets
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [colsSheetOpen, setColsSheetOpen] = useState(false);
 
@@ -305,32 +351,6 @@ export default function MyPlayersFeature({
   const tableWrapRef = useRef<HTMLDivElement | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
 
-  // Load UI prefs
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(UI_KEY);
-      if (!raw) return;
-      const u = JSON.parse(raw);
-      if (u.scope) setScope(u.scope);
-      if (u.knownScope) setKnownScope(u.knownScope);
-      if (u.q) setQ(u.q);
-      if (u.pos) setPos(u.pos);
-      if (typeof u.club === "string") setClub(u.club);
-      if (u.ageMin ?? false) setAgeMin(u.ageMin);
-      if (u.ageMax ?? false) setAgeMax(u.ageMax);
-      if (u.visibleCols) setVisibleCols({ ...DEFAULT_COLS, ...u.visibleCols });
-      if (u.sortKey) setSortKey(u.sortKey);
-      if (u.sortDir) setSortDir(u.sortDir);
-      if (u.pageSize) setPageSize(u.pageSize);
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      const ui = { scope, knownScope, q, pos, club, ageMin, ageMax, visibleCols, sortKey, sortDir, pageSize };
-      localStorage.setItem(UI_KEY, JSON.stringify(ui));
-    } catch {}
-  }, [scope, knownScope, q, pos, club, ageMin, ageMax, visibleCols, sortKey, sortDir, pageSize]);
-
   /* URL param -> tab sync; default = all */
   useEffect(() => {
     const tab = (searchParams?.get("tab") as KnownScope | null) ?? "all";
@@ -351,15 +371,15 @@ export default function MyPlayersFeature({
     router.replace(`/players?${sp.toString()}`, { scroll: false });
   }
 
-  // Base with obs count + known flag
+  // Base with obs count + known flag – TYLKO dla ownedPlayers/ownedObservations
   const withObsCount = useMemo(
     () =>
-      players.map((p) => ({
+      (ownedPlayers as PlayerWithOwner[]).map((p) => ({
         ...p,
-        _obs: observations.filter((o) => o.player === p.name).length,
+        _obs: ownedObservations.filter((o) => o.player === p.name).length,
         _known: Boolean((p as any).firstName || (p as any).lastName),
       })),
-    [players, observations]
+    [ownedPlayers, ownedObservations]
   );
 
   // Apply all filters except known tab
@@ -452,7 +472,7 @@ export default function MyPlayersFeature({
     setSelected(new Set());
   }
 
-  // exports
+  // exports – tylko własny widok, ale operujemy na filtered (już zawęzonym)
   function exportCSV() {
     const headers = ["id", "name", "club", "pos", "age", "status", "obs"];
     const rows = filtered.map((p) => [p.id, p.name, p.club, p.pos, p.age, p.status, (p as any)._obs]);
@@ -489,21 +509,7 @@ export default function MyPlayersFeature({
     setContent("table");
     setQuickFor(null);
   }
-  function appendObsLocalStorage(newObs: Observation) {
-    try {
-      const raw = localStorage.getItem("s4s.observations");
-      const arr: Observation[] = raw ? JSON.parse(raw) : [];
-      localStorage.setItem("s4s.observations", JSON.stringify([newObs, ...arr]));
-    } catch {}
-  }
-  function updateObsLocalStorage(targetId: number, patch: Partial<Observation>) {
-    try {
-      const raw = localStorage.getItem("s4s.observations");
-      const arr: Observation[] = raw ? JSON.parse(raw) : [];
-      const next = arr.map(o => o.id===targetId ? { ...o, ...patch } : o);
-      localStorage.setItem("s4s.observations", JSON.stringify(next));
-    } catch {}
-  }
+
   function saveQuickNew() {
     if (!quickFor) return;
     const obs: Observation = {
@@ -516,22 +522,35 @@ export default function MyPlayersFeature({
       // @ts-ignore
       mode: qaMode,
     };
-    if (onQuickAddObservation) onQuickAddObservation(obs);
-    else appendObsLocalStorage(obs);
+    if (onQuickAddObservation) {
+      onQuickAddObservation(obs);
+    } else {
+      console.warn("[MyPlayersFeature] onQuickAddObservation not provided – quick obs not persisted");
+    }
     closeQuick();
   }
   function duplicateExistingToPlayer() {
     if (!quickFor || obsSelectedId == null) return;
-    const base = observations.find(o => o.id === obsSelectedId);
+    const base = ownedObservations.find(o => o.id === obsSelectedId);
     if (!base) return;
     const copy: Observation = { ...base, id: Date.now(), player: quickFor.name };
-    if (onQuickAddObservation) onQuickAddObservation(copy);
-    else appendObsLocalStorage(copy);
+    if (onQuickAddObservation) {
+      onQuickAddObservation(copy);
+    } else {
+      console.warn("[MyPlayersFeature] onQuickAddObservation not provided – duplicate obs not persisted");
+    }
     closeQuick();
   }
   function reassignExistingToPlayer() {
     if (!quickFor || obsSelectedId == null) return;
-    updateObsLocalStorage(obsSelectedId, { player: quickFor.name });
+    const base = ownedObservations.find(o => o.id === obsSelectedId);
+    if (!base) return;
+    const updated: Observation = { ...base, player: quickFor.name };
+    if (onQuickAddObservation) {
+      onQuickAddObservation(updated);
+    } else {
+      console.warn("[MyPlayersFeature] onQuickAddObservation not provided – reassign obs not persisted");
+    }
     closeQuick();
   }
 
@@ -611,7 +630,6 @@ export default function MyPlayersFeature({
         return;
       } else if (e.key.toLowerCase() === "x") {
         e.preventDefault();
-        // toggle columns UI depending on viewport
         if (isMobile) setColsSheetOpen((o) => !o);
         else setColsOpen((o) => !o);
         setFiltersOpen(false);
@@ -630,7 +648,6 @@ export default function MyPlayersFeature({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, isMobile]);
 
   /* ====== filtersCount for badge ====== */
@@ -644,8 +661,8 @@ export default function MyPlayersFeature({
 
   /* ====== scope-aware selection state (used by pill) ====== */
   const anyActiveSelected = useMemo(() => {
-    return players.some(p => selected.has(p.id) && ((p.status ?? "active") === "active"));
-  }, [players, selected]);
+    return ownedPlayers.some(p => selected.has(p.id) && ((p.status ?? "active") === "active"));
+  }, [ownedPlayers, selected]);
 
   // ====== MOBILE: detect horizontal overflow & first scroll ======
   useEffect(() => {
@@ -665,7 +682,6 @@ export default function MyPlayersFeature({
       el.removeEventListener("scroll", onScroll as any);
       window.removeEventListener("resize", check);
     };
-    // re-run when content/columns change affect width
   }, [isMobile, paginated.length, JSON.stringify(visibleCols)]);
 
   // Helpers for chips (desktop height = h-10)
@@ -673,10 +689,10 @@ export default function MyPlayersFeature({
     label,
     onClear,
   }: { label: string; onClear: () => void }) => (
-    <span className="inline-flex h-10 items-center rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
+    <span className="inline-flex h-10 items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
       <span className="max-w-[200px] truncate">{label}</span>
       <button
-        className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
+        className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
         onClick={onClear}
         aria-label="Wyczyść filtr"
         title="Wyczyść filtr"
@@ -686,10 +702,28 @@ export default function MyPlayersFeature({
     </span>
   );
 
+  // === Widok ładowania auth / brak usera ===
+  if (authLoading) {
+    return (
+      <div className="w-full rounded-md border border-gray-200 bg-white p-4 text-sm text-dark shadow-sm dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200">
+        Ładowanie Twoich zawodników…
+      </div>
+    );
+  }
+
+  if (!authUserId) {
+    return (
+      <div className="w-full rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+        Nie udało się powiązać listy zawodników z zalogowanym kontem. Spróbuj
+        odświeżyć stronę lub zalogować się ponownie.
+      </div>
+    );
+  }
+
   return (
     <TooltipProvider delayDuration={150}>
       <div className="w-full">
-        {/* TOOLBAR (unified layout) */}
+        {/* TOOLBAR */}
         <Toolbar
           title={
             <div className="flex items-center gap-3 w-full min-h-10">
@@ -698,25 +732,25 @@ export default function MyPlayersFeature({
                 Baza zawodników
               </span>
 
-              {/* Right: tabs block (fixed height) */}
+              {/* Right: tabs block (desktop) */}
               <div className="hidden md:block shrink-0 h-10">
                 <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-                  <TabsList className="h-10 rounded inline-flex items-center justify-center text-muted-foreground bg-stone-200 p-1 shadow-sm dark:bg-stone-900">
+                  <TabsList className="h-10 rounded-md inline-flex items-center justify-center text-muted-foreground bg-stone-200 p-1 shadow-sm dark:bg-stone-900">
                     <TabsTrigger value="all" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                       Wszyscy
-                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                      <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                         {tabCounts.all}
                       </span>
                     </TabsTrigger>
                     <TabsTrigger value="known" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                       Znani
-                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                      <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                         {tabCounts.known}
                       </span>
                     </TabsTrigger>
                     <TabsTrigger value="unknown" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                       Nieznani
-                      <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                      <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                         {tabCounts.unknown}
                       </span>
                     </TabsTrigger>
@@ -727,7 +761,7 @@ export default function MyPlayersFeature({
                 </Tabs>
               </div>
 
-              {/* Center: Active filter chips (desktop) — fixed height */}
+              {/* Center: Active filter chips (desktop) */}
               <div className="hidden md:flex flex-1 items-center justify-center h-10">
                 <div className="flex items-center gap-1 h-10">
                   {inlineChips.map(c => (
@@ -739,7 +773,7 @@ export default function MyPlayersFeature({
                       <button
                         ref={chipsMoreBtnRef}
                         type="button"
-                        className="inline-flex h-10 items-center gap-1 rounded border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
+                        className="inline-flex h-10 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
                         onClick={() => setChipsOpen((v) => !v)}
                         onMouseEnter={() => {
                           if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
@@ -794,7 +828,7 @@ export default function MyPlayersFeature({
               <div />
 
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
-                {/* Search (h-10) */}
+                {/* Search */}
                 <div className="relative order-1 w-full min-w-0 sm:order-none sm:w-64 h-10">
                   <Search
                     className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
@@ -810,7 +844,7 @@ export default function MyPlayersFeature({
                   />
                 </div>
 
-                {/* Filtry (h-10) */}
+                {/* Filtry */}
                 <Button
                   ref={filterBtnRef}
                   type="button"
@@ -831,17 +865,17 @@ export default function MyPlayersFeature({
                   </span>
                 </Button>
 
-                {/* Dodaj (h-10) */}
+                {/* Dodaj */}
                 <Button
                   type="button"
                   title="Skrót: N"
                   onClick={() => router.push("/players/new")}
-                  className={`${controlH} inline-flex items-center justify-center gap-2 rounded bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
+                  className={`${controlH} inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
                 >
                   <AddPlayerIcon className="mr-0  h-4 w-4" />
                 </Button>
 
-                {/* Więcej (h-10, w-10) */}
+                {/* Więcej */}
                 <Button
                   ref={moreBtnRef}
                   type="button"
@@ -867,25 +901,25 @@ export default function MyPlayersFeature({
           }
         />
 
-        {/* Tabs for mobile (unchanged counters), keeps default bg */}
+        {/* Tabs for mobile */}
         <div className="mt-2 md:hidden">
           <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-            <TabsList className="w-full justify-between rounded  bg-stone-100 p-1 shadow-sm dark:bg-neutral-900">
+            <TabsList className="w-full justify-between rounded-md  bg-stone-100 p-1 shadow-sm dark:bg-neutral-900">
               <TabsTrigger value="all" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                 Wszyscy
-                <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                   {tabCounts.all}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="known" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                 Znani
-                <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                   {tabCounts.known}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="unknown" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
                 Nieznani
-                <span className="ml-2 rounded bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+                <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
                   {tabCounts.unknown}
                 </span>
               </TabsTrigger>
@@ -899,9 +933,9 @@ export default function MyPlayersFeature({
           {activeChips.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1">
               {activeChips.map(c => (
-                <span key={c.key} className="inline-flex items-center rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900">
+                <span key={c.key} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900">
                   <span className="max-w-[120px] truncate">{c.label}</span>
-                  <button className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-neutral-800" onClick={c.clear}>
+                  <button className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800" onClick={c.clear}>
                     <X className="h-3 w-3" />
                   </button>
                 </span>
@@ -913,7 +947,7 @@ export default function MyPlayersFeature({
         {/* Desktop: anchored popovers */}
         {!isMobile && (
           <>
-            {/* Filters popover — improved UX + clean icon */}
+            {/* Filters popover */}
             <AnchoredPopover
               open={filtersOpen}
               onClose={() => setFiltersOpen(false)}
@@ -927,7 +961,7 @@ export default function MyPlayersFeature({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
-                        className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900"
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900"
                         onClick={() => {
                           setPos({ GK:true, DF:true, MF:true, FW:true });
                           setClub("");
@@ -950,7 +984,7 @@ export default function MyPlayersFeature({
 
                 <div className="mb-2 grid grid-cols-4 gap-2">
                   {POS.map((p) => (
-                    <label key={p} className="flex items-center justify-between rounded px-2 py-1 hover:bg-stone-100 dark:hover:bg-neutral-800">
+                    <label key={p} className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-stone-100 dark:hover:bg-neutral-800">
                       <span>{p}</span>
                       <Checkbox
                         checked={pos[p]}
@@ -976,7 +1010,6 @@ export default function MyPlayersFeature({
                   </div>
                 </div>
 
-                {/* Live preview of active filters inside popover */}
                 {activeChips.length > 0 && (
                   <div className="mt-3 border-t border-gray-200 pt-2 dark:border-neutral-800">
                     <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">Aktywne</div>
@@ -994,7 +1027,7 @@ export default function MyPlayersFeature({
               </div>
             </AnchoredPopover>
 
-            {/* Columns popover — anchored to "more" button */}
+            {/* Columns popover */}
             <AnchoredPopover
               open={colsOpen}
               onClose={() => setColsOpen(false)}
@@ -1009,7 +1042,7 @@ export default function MyPlayersFeature({
                   return (
                     <label
                       key={key}
-                      className="flex cursor-pointer items-center justify-between rounded px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
                       <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
                       <Checkbox
@@ -1032,33 +1065,33 @@ export default function MyPlayersFeature({
             >
               <div className="w-full p-1">
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setColsOpen(true); setMoreOpen(false); }}
                 >
                   <Columns3 className="h-4 w-4" /> Kolumny
                 </button>
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setScope("active"); setMoreOpen(false); }}
                 >
                   <Users className="h-4 w-4" /> Aktywni
                 </button>
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setScope("trash"); setMoreOpen(false); }}
                 >
                   <Trash2 className="h-4 w-4" /> Kosz
                 </button>
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setMoreOpen(false); exportCSV(); }}
                 >
                   <FileDown className="h-4 w-4" /> Eksport CSV
                 </button>
                 <button
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => { setMoreOpen(false); exportExcel(); }}
                 >
                   <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
@@ -1068,10 +1101,10 @@ export default function MyPlayersFeature({
           </>
         )}
 
-        {/* ===== MOBILE SHEETS (Filtry / Więcej / Kolumny) ===== */}
+        {/* MOBILE SHEETS */}
         {isMobile && (
           <>
-            {/* Filtry — mobile sheet */}
+            {/* Filtry */}
             <MobileSheet
               open={filtersOpen}
               onClose={() => setFiltersOpen(false)}
@@ -1081,7 +1114,7 @@ export default function MyPlayersFeature({
                 {POS.map((p) => (
                   <label
                     key={p}
-                    className="flex items-center justify-between rounded px-2 py-2 ring-1 ring-gray-200 dark:ring-neutral-700"
+                    className="flex items-center justify-between rounded-md px-2 py-2 ring-1 ring-gray-200 dark:ring-neutral-700"
                   >
                     <span>{p}</span>
                     <Checkbox
@@ -1130,10 +1163,10 @@ export default function MyPlayersFeature({
                   <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">Aktywne</div>
                   <div className="flex flex-wrap items-center gap-1">
                     {activeChips.map(c => (
-                      <span key={c.key} className="inline-flex items-center rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900">
+                      <span key={c.key} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900">
                         <span className="max-w-[160px] truncate">{c.label}</span>
                         <button
-                          className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
+                          className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
                           onClick={c.clear}
                           aria-label="Wyczyść filtr"
                         >
@@ -1170,13 +1203,13 @@ export default function MyPlayersFeature({
               </div>
             </MobileSheet>
 
-            {/* Więcej — mobile sheet */}
+            {/* Więcej */}
             <MobileSheet
               open={moreSheetOpen}
               onClose={() => setMoreSheetOpen(false)}
               title="Więcej"
             >
-              <div className="divide-y divide-gray-100 rounded border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
+              <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   onClick={() => {
@@ -1227,13 +1260,13 @@ export default function MyPlayersFeature({
               </div>
             </MobileSheet>
 
-            {/* Kolumny — mobile sheet */}
+            {/* Kolumny */}
             <MobileSheet
               open={colsSheetOpen}
               onClose={() => setColsSheetOpen(false)}
               title="Kolumny"
             >
-              <div className="rounded border border-gray-200 dark:border-neutral-800">
+              <div className="rounded-md border border-gray-200 dark:border-neutral-800">
                 {Object.keys(DEFAULT_COLS).map((k) => {
                   const key = k as ColKey;
                   return (
@@ -1254,14 +1287,13 @@ export default function MyPlayersFeature({
           </>
         )}
 
-        {/* Floating selection pill (center-bottom) */}
+        {/* Floating selection pill */}
         {content === "table" && selected.size > 0 && (
           <Portal>
             <div className="fixed left-1/2 bottom-4 z-[240] -translate-x-1/2">
-              <div className="inline-flex items-center gap-2 rounded border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
-                {/* Clear selection */}
+              <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
                 <button
-                  className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
                   onClick={() => setSelected(new Set())}
                   aria-label="Wyczyść zaznaczenie"
                   title="Wyczyść zaznaczenie"
@@ -1269,8 +1301,7 @@ export default function MyPlayersFeature({
                   <X className="h-4 w-4" />
                 </button>
 
-                {/* Count badge */}
-                <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded bg-gray-900 px-2 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+                <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded-md bg-gray-900 px-2 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
                   {selected.size}
                 </span>
 
@@ -1278,22 +1309,20 @@ export default function MyPlayersFeature({
                   zaznaczone
                 </span>
 
-                {/* Divider */}
                 <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-neutral-800" />
 
-                {/* Scope-aware action */}
                 {anyActiveSelected && scope === "active" ? (
-                <Button
-                  className="h-8 w-8 rounded bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
-                  onClick={bulkTrash}
-                  aria-label="Przenieś do kosza"
-                  title="Przenieś do kosza"
-                >
+                  <Button
+                    className="h-8 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                    onClick={bulkTrash}
+                    aria-label="Przenieś do kosza"
+                    title="Przenieś do kosza"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 ) : (
                   <Button
-                    className="h-8 w-8 rounded bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+                    className="h-8 w-8 rounded-md bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
                     onClick={bulkRestore}
                     aria-label="Przywróć"
                     title="Przywróć"
@@ -1311,20 +1340,18 @@ export default function MyPlayersFeature({
           {content === "table" ? (
             <>
               <div className="relative">
-                {/* subtle right fade (desktop) */}
                 <div
                   className="pointer-events-none absolute inset-y-0 right-0 hidden w-8 bg-gradient-to-l from-white to-transparent dark:from-neutral-950 sm:block"
                   aria-hidden
                 />
-                {/* subtle left fade placeholder */}
                 <div
                   className="pointer-events-none absolute inset-y-0 left-0 hidden w-8 bg-gradient-to-r from-white to-transparent dark:from-neutral-950 sm:block"
                   style={{ opacity: 0 }}
                   aria-hidden
                 />
                 <PlayersTable
-                  rows={paginated}
-                  observations={observations}
+                  rows={paginated as any}
+                  observations={ownedObservations}
                   visibleCols={visibleCols}
                   selected={selected}
                   setSelected={setSelected}
@@ -1342,10 +1369,9 @@ export default function MyPlayersFeature({
                   wrapRef={tableWrapRef}
                 />
 
-                {/* Mobile scroll hint pill */}
                 {showScrollHint && (
                   <div className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 sm:hidden">
-                    <div className="inline-flex items-center gap-1 rounded bg-gray-900/85 px-2.5 py-1 text-[11px] font-medium text-white ring-1 ring-black/10 backdrop-blur">
+                    <div className="inline-flex items-center gap-1 rounded-md bg-gray-900/85 px-2.5 py-1 text-[11px] font-medium text-white ring-1 ring-black/10 backdrop-blur">
                       Przewiń tabelę →
                     </div>
                   </div>
@@ -1353,12 +1379,11 @@ export default function MyPlayersFeature({
               </div>
 
               {/* Pagination footer */}
-<div className="mt-3 flex flex-row flex-wrap items-center justify-center lg:justify-between gap-2 rounded p-2 text-sm shadow-sm dark:bg-neutral-950">
-                {/* Left: page size + range */}
+              <div className="mt-3 flex flex-row flex-wrap items-center justify-center lg:justify-between gap-2 rounded-md p-2 text-sm shadow-sm dark:bg-neutral-950">
                 <div className="flex flex-row flex-wrap items-center gap-2">
                   <span className="text-dark dark:text-neutral-300 leading-none">Wiersze na stronę:</span>
                   <select
-                    className="rounded border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
+                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
                     value={pageSize}
                     onChange={(e)=>{ setPageSize(Number(e.target.value) as any); setPage(1); }}
                     aria-label="Liczba wierszy na stronę"
@@ -1371,7 +1396,6 @@ export default function MyPlayersFeature({
                   </span>
                 </div>
 
-                {/* Right: pager */}
                 <div className="flex flex-row flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
@@ -1400,7 +1424,6 @@ export default function MyPlayersFeature({
                   </Button>
                 </div>
               </div>
-
             </>
           ) : (
             <QuickObservation
@@ -1419,7 +1442,7 @@ export default function MyPlayersFeature({
               qaStatus={qaStatus}
               setQaStatus={setQaStatus}
               onSaveNew={saveQuickNew}
-              observations={observations}
+              observations={ownedObservations}
               obsQuery={obsQuery}
               setObsQuery={setObsQuery}
               obsSelectedId={obsSelectedId}
@@ -1477,6 +1500,14 @@ function PlayersTable({
   const allChecked = pageSliceCount > 0 && rows.every((r) => selected.has(r.id));
   const someChecked = !allChecked && rows.some((r) => selected.has(r.id));
 
+  // per-row confirmation for trash
+  const [confirmTrashId, setConfirmTrashId] = useState<number | null>(null);
+
+  useEffect(() => {
+    // reset confirmation on page/scope change
+    setConfirmTrashId(null);
+  }, [rows, scope]);
+
   function SortHeader({ k, children }: { k: SortKey; children: React.ReactNode }) {
     const active = sortKey === k;
     return (
@@ -1502,7 +1533,7 @@ function PlayersTable({
   };
 
   const KnownBadge = ({ known }: { known: boolean }) => (
-    <span className={"inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium " + (known ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200")}>
+    <span className={"inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium " + (known ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200")}>
       {known ? "znany" : "nieznany"}
     </span>
   );
@@ -1510,7 +1541,7 @@ function PlayersTable({
   return (
     <div
       ref={wrapRef as any}
-      className="w-full overflow-x-auto rounded border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
+      className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
     >
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
@@ -1543,6 +1574,8 @@ function PlayersTable({
         <tbody>
           {rows.map((r) => {
             const jersey = !r._known ? getJerseyNo(r.name) : null;
+            const isConfirmingTrash = confirmTrashId === r.id;
+
             return (
               <tr
                 key={r.id}
@@ -1553,18 +1586,18 @@ function PlayersTable({
                   <td className={cellPad}>
                     <div className="relative">
                       {!r._known ? (
-                        <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
-                         <PlayerOnlyTshirt className="h-6 w-6"  strokeWidthAll={14} />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
+                          <PlayerOnlyTshirt className="h-6 w-6"  strokeWidthAll={14} />
                           {jersey && (
-                            <span className="absolute -bottom-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-indigo-600 px-1.5 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-neutral-950">
+                            <span className="absolute -bottom-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-md bg-indigo-600 px-1.5 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-neutral-950">
                               {jersey}
                             </span>
                           )}
                         </div>
                       ) : r.photo ? (
-                        <img src={r.photo} alt={r.name} className="h-10 w-10 rounded object-cover ring-1 ring-black/5 transition group-hover:shadow-sm" loading="lazy" />
+                        <img src={r.photo} alt={r.name} className="h-10 w-10 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm" loading="lazy" />
                       ) : (
-                        <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
                           {getInitials(r.name)}
                         </div>
                       )}
@@ -1601,7 +1634,7 @@ function PlayersTable({
                 )}
                 {visibleCols.pos && (
                   <td className={cellPad}>
-                    <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
                       {r.pos}
                     </span>
                   </td>
@@ -1609,7 +1642,7 @@ function PlayersTable({
                 {visibleCols.age && <td className={`${cellPad} text-gray-700 dark:text-neutral-200`}>{r.age}</td>}
                 {visibleCols.obs && (
                   <td className={cellPad}>
-                    <span className="inline-flex rounded bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                    <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
                       {r._obs}
                     </span>
                   </td>
@@ -1617,14 +1650,13 @@ function PlayersTable({
                 {visibleCols.actions && (
                   <td className={`${cellPad} text-right`}>
                     <div className="flex justify-end gap-1.5">
-                      {/* Edit */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             size="icon"
                             variant="outline"
                             className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                            onClick={() => onOpen(r.id)}
+                            onClick={(e) => { e.stopPropagation(); onOpen(r.id); }}
                             aria-label={r._known ? "Edytuj" : "Uzupełnij dane"}
                           >
                             {r._known ? <Pencil className="h-4 w-4" /> : <FileEdit className="h-4 w-4" />}
@@ -1633,22 +1665,51 @@ function PlayersTable({
                         <TooltipContent>{r._known ? "Edytuj" : "Uzupełnij dane"}</TooltipContent>
                       </Tooltip>
 
-                      {/* Trash / Restore — outline */}
                       {scope === "active" ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                        isConfirmingTrash ? (
+                          <div className="flex items-center gap-1">
                             <Button
-                              size="icon"
-                              variant="outline"
-                              className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                              onClick={() => onTrash(r.id)}
-                              aria-label="Przenieś do kosza"
+                              size="sm"
+                              className="h-8 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTrash(r.id);
+                                setConfirmTrashId(null);
+                              }}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              Tak
                             </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Przenieś do kosza</TooltipContent>
-                        </Tooltip>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-2 text-xs border-gray-300 dark:border-neutral-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmTrashId(null);
+                              }}
+                            >
+                              Nie
+                            </Button>
+                          </div>
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmTrashId(r.id);
+                                }}
+                                aria-label="Przenieś do kosza"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Przenieś do kosza</TooltipContent>
+                          </Tooltip>
+                        )
                       ) : (
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1656,7 +1717,7 @@ function PlayersTable({
                               size="icon"
                               variant="outline"
                               className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                              onClick={() => onRestore(r.id)}
+                              onClick={(e) => { e.stopPropagation(); onRestore(r.id); }}
                               aria-label="Przywróć"
                             >
                               <Undo2 className="h-4 w-4" />
@@ -1688,7 +1749,7 @@ function PlayersTable({
 }
 
 /* =======================================
-   Quick Observation (unchanged, minor tweaks)
+   Quick Observation
 ======================================= */
 function QuickObservation({
   player,
@@ -1728,7 +1789,7 @@ function QuickObservation({
     a.trim() && b.trim() ? `${a.trim()} vs ${b.trim()}` : (a + " " + b).trim();
 
   const chip = (txt: string) => (
-    <span className="inline-flex items-center rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+    <span className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
       {txt}
     </span>
   );
@@ -1750,50 +1811,26 @@ function QuickObservation({
 
   type SaveState = "idle" | "saving" | "saved";
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const draftKey = `s4s.quickobs.draft.${player.id}`;
   const tRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(draftKey);
-      if (!raw) return;
-      const d = JSON.parse(raw);
-      if (typeof d.qaMatch === "string") setQaMatch(d.qaMatch);
-      if (typeof d.qaDate === "string") setQaDate(d.qaDate);
-      if (typeof d.qaTime === "string") setQaTime(d.qaTime);
-      if (d.qaMode === "live" || d.qaMode === "tv") setQaMode(d.qaMode);
-      if (d.qaStatus === "draft" || d.qaStatus === "final") setQaStatus(d.qaStatus);
-      if (typeof d.teamA === "string") setTeamA(d.teamA);
-      if (typeof d.teamB === "string") setTeamB(d.teamB);
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // prosty wizualny "autosave" bez localStorage / Supabase
   useEffect(() => {
     setSaveState("saving");
     window.clearTimeout(tRef.current || undefined);
     // @ts-ignore
     tRef.current = window.setTimeout(() => {
-      try {
-        const payload = { qaMatch, qaDate, qaTime, qaMode, qaStatus, teamA, teamB, _ts: Date.now() };
-        localStorage.setItem(draftKey, JSON.stringify(payload));
-        setSaveState("saved");
-        setTimeout(() => setSaveState("idle"), 1000);
-      } catch {
-        setSaveState("idle");
-      }
+      setSaveState("saved");
+      setTimeout(() => setSaveState("idle"), 1000);
     }, 600);
     return () => window.clearTimeout(tRef.current || undefined);
-  }, [qaMatch, qaDate, qaTime, qaMode, qaStatus, teamA, teamB, draftKey]);
+  }, [qaMatch, qaDate, qaTime, qaMode, qaStatus, teamA, teamB]);
 
   function handleSave() {
-    try { localStorage.removeItem(draftKey); } catch {}
     onSaveNew();
   }
 
   const canSave = qaMatch.trim().length > 0 && qaDate.trim().length > 0;
 
-  // existing list
   const existingFiltered = useMemo(() => {
     const q = obsQuery.trim().toLowerCase();
     const arr = [...observations].sort((a, b) =>
@@ -1809,7 +1846,7 @@ function QuickObservation({
   }, [observations, obsQuery]);
 
   return (
-    <div className="rounded border border-gray-200 bg-white p-0 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
+    <div className="rounded-md border border-gray-200 bg-white p-0 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-neutral-800">
         <div className="min-w-0">
@@ -1823,13 +1860,13 @@ function QuickObservation({
         <div className="flex items-center gap-2">
           {saveState !== "idle" && (
             <span
-              className={`hidden sm:inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ring-1 ${
+              className={`hidden sm:inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${
                 saveState === "saving"
                   ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/50"
                   : "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-800/50"
               }`}
             >
-              {saveState === "saving" ? "Zapisywanie…" : "Zapisano"}
+              {saveState === "saving" ? "Zapisywanie…" : "Zapisano szkic lokalnie"}
             </span>
           )}
           <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={onBack}>
@@ -1842,7 +1879,7 @@ function QuickObservation({
       {/* Tabs */}
       <div className="px-4 pt-3">
         <Tabs value={quickTab} onValueChange={(v)=>setQuickTab(v as "new"|"existing")}>
-          <TabsList className="mb-2 inline-flex h-10 items-center rounded bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
+          <TabsList className="mb-2 inline-flex h-10 items-center rounded-md bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
             <TabsTrigger
               value="new"
               className="h-10 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
@@ -1861,7 +1898,7 @@ function QuickObservation({
 
           {/* NEW */}
           <TabsContent value="new" className="mt-2 space-y-4">
-            <div className="rounded border border-gray-200 p-4 dark:border-neutral-800">
+            <div className="rounded-md border border-gray-200 p-4 dark:border-neutral-800">
               <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">Mecz</div>
               <div className="mb-3 text-xs text-dark dark:text-neutral-400">
                 Wpisz drużyny — pole „Mecz” składa się automatycznie.
@@ -1910,9 +1947,9 @@ function QuickObservation({
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded border border-gray-200 p-4 dark:border-neutral-800">
+              <div className="rounded-md border border-gray-200 p-4 dark:border-neutral-800">
                 <Label>Tryb</Label>
-                <div className="mt-2 inline-flex overflow-hidden rounded border">
+                <div className="mt-2 inline-flex overflow-hidden rounded-md border">
                   {(["live", "tv"] as const).map((m) => (
                     <button
                       key={m}
@@ -1928,9 +1965,9 @@ function QuickObservation({
                   ))}
                 </div>
               </div>
-              <div className="rounded border border-gray-200 p-4 dark:border-neutral-800">
+              <div className="rounded-md border border-gray-200 p-4 dark:border-neutral-800">
                 <Label>Status</Label>
-                <div className="mt-2 inline-flex overflow-hidden rounded border">
+                <div className="mt-2 inline-flex overflow-hidden rounded-md border">
                   {(["draft", "final"] as const).map((s) => (
                     <button
                       key={s}
@@ -1982,7 +2019,7 @@ function QuickObservation({
               />
             </div>
 
-            <div className="max-h-80 overflow-auto rounded border border-gray-200 dark:border-neutral-700">
+            <div className="max-h-80 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                   <tr>
@@ -2016,20 +2053,19 @@ function QuickObservation({
                       <td className="p-2">{[o.date || "—", o.time || ""].filter(Boolean).join(" ")}</td>
                       <td className="p-2">
                         <span
-                          className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
+                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
                             // @ts-ignore
                             (o as any).mode === "tv"
                               ? "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200"
                               : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
                           }`}
                         >
-                          {/* @ts-ignore */}
                           {(o as any).mode === "tv" ? "TV" : "Live"}
                         </span>
                       </td>
                       <td className="p-2">
                         <span
-                          className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
+                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
                             o.status === "final"
                               ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
                               : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"

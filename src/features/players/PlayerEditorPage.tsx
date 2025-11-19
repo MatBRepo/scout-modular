@@ -47,10 +47,26 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import StarRating from "@/shared/ui/StarRating";
-import { loadRatings, type RatingsConfig } from "@/shared/ratings";
+import {
+  loadRatings,
+  syncRatingsFromSupabase,
+  type RatingsConfig,
+  type RatingAspect,
+} from "@/shared/ratings";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+
+/* ============================== Storage keys ============================== */
+const PLAYERS_KEY = "s4s.players";
+const OBS_KEY = "s4s.observations";
 
 /* ============================== Positions ============================== */
-type BucketPos = "GK" | "DF" | "MF" | "FW";
+type Pos = Player["pos"];
+
 type DetailedPos =
   | "GK"
   | "CB"
@@ -131,7 +147,7 @@ const POS_DATA: Array<{
   },
 ];
 
-const toBucket = (p: DetailedPos): BucketPos => {
+const toBucket = (p: DetailedPos): Pos => {
   switch (p) {
     case "GK":
       return "GK";
@@ -147,10 +163,12 @@ const toBucket = (p: DetailedPos): BucketPos => {
       return "MF";
     case "ST":
       return "FW";
+    default:
+      return "MF";
   }
 };
 
-function detailedFromBucket(pos?: Player["pos"]): DetailedPos {
+function detailedFromBucket(pos?: Pos): DetailedPos {
   switch (pos) {
     case "GK":
       return "GK";
@@ -203,7 +221,7 @@ const COUNTRIES: Country[] = [
 /* ============================== Small UI ============================== */
 function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
   const base =
-    "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
+    "inline-flex h-10 items-center rounded-md border px-3 text-sm leading-none";
   const map = {
     saving:
       "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
@@ -217,7 +235,7 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
       {state === "saving" ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Zapisywanie…
+          Autozapis…
         </>
       ) : state === "saved" ? (
         <>
@@ -225,7 +243,7 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
           Zapisano
         </>
       ) : (
-        "—"
+        "Czeka na uzupełnienie danych"
       )}
     </span>
   );
@@ -233,7 +251,7 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
 
 function Chip({ text }: { text: string }) {
   return (
-    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-stone-100 px-2 py-0.5 text-[10px] opacity-80 dark:border-neutral-700 dark:bg-neutral-800">
+    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
       {text}
     </span>
   );
@@ -261,8 +279,10 @@ function CountryCombobox({
             type="button"
             aria-expanded={open}
             className={cn(
-              "relative flex w-full items-center justify-between rounded border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
-              error ? "border-red-500" : "border-gray-300 dark:border-neutral-700",
+              "relative flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
+              error
+                ? "border-red-500"
+                : "border-gray-300 dark:border-neutral-700",
               chip ? "pr-24" : ""
             )}
           >
@@ -274,7 +294,9 @@ function CountryCombobox({
             >
               {selected ? (
                 <>
-                  <span className="text-base leading-none">{selected.flag}</span>
+                  <span className="text-base leading-none">
+                    {selected.flag}
+                  </span>
                   <span className="truncate">{selected.name}</span>
                 </>
               ) : (
@@ -329,7 +351,6 @@ function CountryCombobox({
 }
 
 /* ============================== Types / ObsRec ============================== */
-type Pos = Player["pos"];
 type ObsRec = Omit<Observation, "player"> & {
   player?: string;
   players?: string[];
@@ -373,7 +394,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     // Tab 1 – Profil boiskowy
     height: "",
     weight: "",
-    dominantFoot: "", // "R" | "L" | "Both"
+    dominantFoot: "",
     mainPos: "" as DetailedPos | "",
     altPositions: [] as DetailedPos[],
 
@@ -404,18 +425,51 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     tiktok: "",
   }));
 
-  // Ratings config
+  /* ---------- Ratings config z Supabase (jak AddPlayerPage) ---------- */
   const [ratingCfg, setRatingCfg] = useState<RatingsConfig>(() =>
     loadRatings()
   );
-  const enabledAspects = useMemo(
-    () => ratingCfg.filter((a) => a.enabled),
+
+  const enabledRatingAspects = useMemo<RatingAspect[]>(
+    () => ratingCfg.filter((a) => a.enabled !== false),
     [ratingCfg]
   );
+
+  // pobierz konfigurację z Supabase przy starcie (raz)
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const cfg = await syncRatingsFromSupabase();
+      if (!cancelled) {
+        setRatingCfg(cfg);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Grade state
   const [ratings, setRatings] = useState<RatingMap>({});
   const [grade, setGrade] = useState({ notes: "", finalComment: "" });
+
+  // --- Grupy aspektów wg groupKey z Supabase ---
+  const baseAspects = enabledRatingAspects.filter(
+    (a) => (a.groupKey ?? "GEN") === "GEN"
+  );
+  const gkAspects = enabledRatingAspects.filter((a) => a.groupKey === "GK");
+  const defAspects = enabledRatingAspects.filter((a) => a.groupKey === "DEF");
+  const midAspects = enabledRatingAspects.filter((a) => a.groupKey === "MID");
+  const attAspects = enabledRatingAspects.filter((a) => a.groupKey === "FW");
+
+  // Pozycja główna dla oceny (sterowana przez Główną pozycję w Ext)
+  const effectiveMainPos: DetailedPos | "" =
+    (ext.mainPos as DetailedPos | "") || "";
+  const effectiveBucket: Pos | null = effectiveMainPos
+    ? toBucket(effectiveMainPos)
+    : null;
 
   /* ------------------------------ Observations ------------------------------ */
   const [observations, setObservations] = useState<ObsRec[]>([]);
@@ -448,20 +502,10 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       return { ...o, players: unique };
     });
 
-  // sync rating config on storage change
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "s4s.playerRatings.v1") {
-        setRatingCfg(loadRatings());
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
+  /* ------------------------------ Load observations ------------------------------ */
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("s4s.observations");
+      const raw = localStorage.getItem(OBS_KEY);
       const arr: ObsRec[] = raw ? JSON.parse(raw) : [];
       setObservations(normalize(arr));
     } catch {
@@ -474,7 +518,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     const norm = normalize(next);
     setObservations(norm);
     try {
-      localStorage.setItem("s4s.observations", JSON.stringify(norm));
+      localStorage.setItem(OBS_KEY, JSON.stringify(norm));
     } catch {}
   };
 
@@ -502,9 +546,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     return arr.filter(
       (o) =>
         (o.match || "").toLowerCase().includes(q) ||
-        (o.players || []).some((n) =>
-          (n || "").toLowerCase().includes(q)
-        ) ||
+        (o.players || []).some((n) => (n || "").toLowerCase().includes(q)) ||
         (o.date || "").includes(q)
     );
   }, [observations, obsQuery]);
@@ -558,13 +600,13 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     persistObservations(next);
   }
 
-  /* ------------------------------ Player persistence ------------------------------ */
+  /* ------------------------------ Player persistence (local) ------------------------------ */
   function overwritePlayer(next: Player) {
     setP(next);
     const arr = players.map((x) => (x.id === next.id ? next : x));
     setPlayers(arr);
     try {
-      localStorage.setItem("s4s.players", JSON.stringify(arr));
+      localStorage.setItem(PLAYERS_KEY, JSON.stringify(arr));
     } catch {}
   }
 
@@ -613,10 +655,10 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     return metaPos ?? detailedFromBucket(p.pos);
   }, [p]);
 
-  /* ------------------------------ Load player ------------------------------ */
+  /* ------------------------------ Load player (z localStorage) ------------------------------ */
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("s4s.players");
+      const raw = localStorage.getItem(PLAYERS_KEY);
       const arr: Player[] = raw ? JSON.parse(raw) : [];
       setPlayers(arr);
       const found = arr.find((x) => String(x.id) === id) || null;
@@ -743,7 +785,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     ext.unknownNote,
   ]);
   const cntBasic = isKnown ? cntBasicKnown : cntBasicUnknown;
-  const basicMax = isKnown ? 5 : 4; // przy nieznanym notatka jest opcjonalna, ale liczona w progresie
+  const basicMax = isKnown ? 5 : 4;
 
   // Tab 1 – Profil boiskowy
   const cntProfile = countTruthy([
@@ -789,13 +831,83 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const totalExt = cntProfile + cntEligibility + cntStats365 + cntContact;
   const totalExtMax = 5 + 10 + 5 + 5;
 
+  // 6. Ocena
   const cntNotes = countTruthy([grade.notes]);
   const cntAspects = countTruthy(
-    enabledAspects.map((a) => ratings[a.key] ?? 0)
+    enabledRatingAspects.map((a) => ratings[a.key] ?? 0)
   );
   const cntFinal = countTruthy([grade.finalComment]);
   const totalGrade = cntNotes + cntAspects + cntFinal;
-  const totalGradeMax = 1 + enabledAspects.length + 1;
+  const totalGradeMax = 1 + enabledRatingAspects.length + 1;
+
+  /* ---------- Ocena helpery: Tooltip + grupy (jak w AddPlayerPage) ---------- */
+  function RatingRow({ aspect }: { aspect: RatingAspect }) {
+    const val = ratings[aspect.key] ?? 0;
+    const hasTooltip = !!aspect.tooltip;
+    return (
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="max-w-[65%]">
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{aspect.label}</span>
+            {hasTooltip && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-600 hover:bg-slate-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    >
+                      i
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs leading-snug">
+                    {aspect.tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        </div>
+        <div className="mt-1 sm:mt-0">
+          <StarRating
+            max={5}
+            value={val}
+            onChange={(v) => {
+              const next = {
+                ...ratings,
+                [aspect.key]: v,
+              };
+              setRatings(next);
+              saveMetaPatch({ ratings: next });
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  function RatingGroup({
+    title,
+    aspects,
+  }: {
+    title: string;
+    aspects: RatingAspect[];
+  }) {
+    if (!aspects.length) return null;
+    return (
+      <div className="space-y-3">
+        <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
+          <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
+          {title}
+        </div>
+        <div className="space-y-3">
+          {aspects.map((aspect) => (
+            <RatingRow key={aspect.id} aspect={aspect} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   /* ------------------------------ ExtContent (tabs) ------------------------------ */
   function ExtContent({ view }: { view: ExtKey }) {
@@ -890,7 +1002,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       <label
                         key={opt.value}
                         className={cn(
-                          "flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs",
+                          "flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs",
                           checked
                             ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-950/40"
                             : "border-slate-200 bg-white dark:border-neutral-700 dark:bg-neutral-950"
@@ -927,7 +1039,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <div>
-                <Label className="text-sm">Znajomość języka angielskiego</Label>
+                <Label className="text-sm">
+                  Znajomość języka angielskiego
+                </Label>
                 <div className="mt-2 flex gap-2">
                   <button
                     type="button"
@@ -936,7 +1050,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       saveExtPatch({ english: true });
                     }}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
                       ext.english === true
                         ? "bg-emerald-600 text-white hover:bg-emerald-700"
                         : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -951,7 +1065,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       saveExtPatch({ english: false });
                     }}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
                       ext.english === false
                         ? "bg-rose-600 text-white hover:bg-rose-700"
                         : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -971,7 +1085,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       saveExtPatch({ euPassport: true });
                     }}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
                       ext.euPassport === true
                         ? "bg-emerald-600 text-white hover:bg-emerald-700"
                         : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -986,7 +1100,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       saveExtPatch({ euPassport: false });
                     }}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
                       ext.euPassport === false
                         ? "bg-rose-600 text-white hover:bg-rose-700"
                         : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1262,7 +1376,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
             <div className="ml-auto md:ml-0 flex items-center gap-2">
               <Button
                 variant="outline"
-                className="h-10 border-amber-300 dark:border-amber-800"
+                className="h-10 border-gray-300 dark:border-amber-800"
                 onClick={cancelToOriginal}
               >
                 Cofnij zmiany
@@ -1279,18 +1393,21 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       />
 
       {isUnknown && (
-        <div className="mb-4 mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
+        <div className="mb-4 mt-2 rounded-md-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-1 items-start gap-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
-                <div className="font-medium">Edytujesz nieznanego zawodnika</div>
+                <div className="font-medium">
+                  Edytujesz nieznanego zawodnika
+                </div>
                 <div className="opacity-90">
                   Aby zapisać profil jako <b>nieznany</b>, wystarczy numer na
-                  koszulce, aktualny klub, kraj klubu i krótka notatka (opcjonalnie).
-                  Jeśli uzupełnisz <b>imię</b> lub <b>nazwisko</b>, profil zostanie
-                  traktowany jako <b>znany</b> (wtedy kluczowe są: imię, nazwisko,
-                  rok urodzenia, klub i kraj klubu).
+                  koszulce, aktualny klub, kraj klubu i krótka notatka
+                  (opcjonalnie). Jeśli uzupełnisz <b>imię</b> lub{" "}
+                  <b>nazwisko</b>, profil zostanie traktowany jako{" "}
+                  <b>znany</b> (wtedy kluczowe są: imię, nazwisko, rok
+                  urodzenia, klub i kraj klubu).
                 </div>
               </div>
             </div>
@@ -1328,7 +1445,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                 Podstawowe informacje
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
                   {cntBasic}/{basicMax}
                 </span>
                 <ChevronDown
@@ -1351,7 +1468,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               <AccordionItem value="basic" className="border-0">
                 <AccordionContent id="basic-panel" className="pt-4">
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    {/* Imię / Nazwisko – kluczowe tylko dla znanych */}
+                    {/* Imię / Nazwisko */}
                     <div>
                       <Label className="text-sm">Imię</Label>
                       <div className="relative">
@@ -1397,7 +1514,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                             setExt((s) => ({ ...s, birthYear: v }));
                             saveExtPatch({ birthYear: v });
                           }}
-                          className={isKnown && !ext.birthYear ? "pr-24" : undefined}
+                          className={
+                            isKnown && !ext.birthYear ? "pr-24" : undefined
+                          }
                         />
                         {isKnown && !ext.birthYear && <Chip text="Wymagane" />}
                       </div>
@@ -1412,21 +1531,23 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                             setExt((s) => ({ ...s, jerseyNumber: v }));
                             saveExtPatch({ jerseyNumber: v });
                           }}
-                          className={!isKnown && !ext.jerseyNumber ? "pr-24" : undefined}
+                          className={
+                            !isKnown && !ext.jerseyNumber ? "pr-24" : undefined
+                          }
                         />
-                        {!isKnown && !ext.jerseyNumber && <Chip text="Wymagane" />}
+                        {!isKnown && !ext.jerseyNumber && (
+                          <Chip text="Wymagane" />
+                        )}
                       </div>
                     </div>
 
-                    {/* Klub / Kraj klubu – wymagane w obu przypadkach */}
+                    {/* Klub / kraj klubu */}
                     <div>
                       <Label className="text-sm">Aktualny klub</Label>
                       <div className="relative">
                         <Input
                           value={p.club}
-                          onChange={(e) =>
-                            saveBasic({ club: e.target.value })
-                          }
+                          onChange={(e) => saveBasic({ club: e.target.value })}
                           className={!p.club ? "pr-24" : undefined}
                         />
                         {!p.club && <Chip text="Wymagane" />}
@@ -1434,19 +1555,17 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                     </div>
                     <div>
                       <Label className="text-sm">Kraj aktualnego klubu</Label>
-                      <div className="relative">
-                        <CountryCombobox
-                          value={ext.clubCountry}
-                          onChange={(val) => {
-                            setExt((s) => ({ ...s, clubCountry: val }));
-                            saveExtPatch({ clubCountry: val });
-                          }}
-                        />
-                        {!ext.clubCountry && <Chip text="Wymagane" />}
-                      </div>
+                      <CountryCombobox
+                        value={ext.clubCountry}
+                        onChange={(val) => {
+                          setExt((s) => ({ ...s, clubCountry: val }));
+                          saveExtPatch({ clubCountry: val });
+                        }}
+                        chip={!ext.clubCountry ? "Wymagane" : undefined}
+                      />
                     </div>
 
-                    {/* Notatka własna – tylko dla nieznanych, ale można używać też dla znanych */}
+                    {/* Notatka */}
                     <div className="md:col-span-2">
                       <Label className="text-sm">
                         Notatka własna (dla nieznanego profilu)
@@ -1483,7 +1602,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                 Rozszerzone informacje
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
                   {totalExt}/{totalExtMax}
                 </span>
                 <ChevronDown
@@ -1510,10 +1629,8 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                     <Label className="mb-1 block text-sm">Sekcja</Label>
                     <select
                       value={extView}
-                      onChange={(e) =>
-                        setExtView(e.target.value as ExtKey)
-                      }
-                      className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                      onChange={(e) => setExtView(e.target.value as ExtKey)}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                     >
                       <option value="profile">Profil boiskowy</option>
                       <option value="eligibility">Status &amp; scouting</option>
@@ -1580,7 +1697,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                 Ocena
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
                   {totalGrade}/{totalGradeMax}
                 </span>
                 <ChevronDown
@@ -1603,70 +1720,95 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               <AccordionItem value="grade" className="border-0">
                 <AccordionContent id="grade-panel" className="pt-4">
                   <Tabs defaultValue="notes" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="notes">Notatki</TabsTrigger>
-                      <TabsTrigger value="aspects">Oceny</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-3 md:max-w-md">
+                      <TabsTrigger value="notes">Poziom docelowy</TabsTrigger>
+                      <TabsTrigger value="aspects">Oceny 1–5</TabsTrigger>
+                      <TabsTrigger value="final">Podsumowanie</TabsTrigger>
                     </TabsList>
 
+                    {/* 6a. Poziom docelowy */}
                     <TabsContent value="notes" className="mt-4 space-y-3">
+                      <Label className="text-sm">
+                        Poziom docelowy – gdzie mógłby grać zawodnik
+                      </Label>
                       <Textarea
-                        placeholder="Krótki komentarz…"
+                        placeholder='Np. "Ekstraklasa top 8", "CLJ U19 czołowy zespół", "II liga – górna połowa"…'
                         value={grade.notes}
                         onChange={(e) => {
                           const v = e.target.value;
                           setGrade((s) => ({ ...s, notes: v }));
-                          saveMetaPatch({ notes: v });
+                          // zapis w meta (local)
+                          saveMetaPatch({ targetLevel: v, notes: v });
                         }}
                       />
                     </TabsContent>
 
+                    {/* Oceny 1–5 – jak w AddPlayerPage: grupy + bucket */}
                     <TabsContent value="aspects" className="mt-4">
-                      {enabledAspects.length === 0 ? (
+                      {enabledRatingAspects.length === 0 ? (
                         <p className="text-xs text-slate-500 dark:text-neutral-400">
                           Brak skonfigurowanych kategorii ocen. Dodaj je w
-                          zakładce „Konfiguracja ocen zawodnika” w panelu
-                          Zarządzanie użytkownikami.
+                          panelu <b>„Konfiguracja ocen zawodnika”</b>.
                         </p>
                       ) : (
-                        <div className="space-y-3">
-                          {enabledAspects.map((a) => (
-                            <div
-                              key={a.id}
-                              className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                              <div>
-                                <Label className="text-sm">{a.label}</Label>
-                                {a.tooltip && (
-                                  <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                                    {a.tooltip}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="mt-1 sm:mt-0">
-                                <StarRating
-                                  max={5}
-                                  value={ratings[a.key] ?? 0}
-                                  onChange={(v) => {
-                                    const next = { ...ratings, [a.key]: v };
-                                    setRatings(next);
-                                    saveMetaPatch({ ratings: next });
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ))}
+                        <div className="space-y-5">
+                          {/* Zawsze: podstawowe */}
+                          <RatingGroup
+                            title="Podstawowe"
+                            aspects={baseAspects}
+                          />
+
+                          {/* Dodatkowe grupy dopiero po ustawieniu Głównej pozycji */}
+                          {effectiveBucket === "GK" && (
+                            <RatingGroup
+                              title="Bramkarz (GK)"
+                              aspects={gkAspects}
+                            />
+                          )}
+                          {effectiveBucket === "DF" && (
+                            <RatingGroup
+                              title="Obrońca (DEF)"
+                              aspects={defAspects}
+                            />
+                          )}
+                          {effectiveBucket === "MF" && (
+                            <RatingGroup
+                              title="Pomocnik (MID)"
+                              aspects={midAspects}
+                            />
+                          )}
+                          {effectiveBucket === "FW" && (
+                            <RatingGroup
+                              title="Napastnik (ATT)"
+                              aspects={attAspects}
+                            />
+                          )}
+
+                          {!effectiveBucket &&
+                            enabledRatingAspects.length > 0 && (
+                              <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                Ustaw <b>Główną pozycję</b> w sekcji „Rozszerzone
+                                informacje”, aby zobaczyć dodatkowe kategorie
+                                oceny (GK/DEF/MID/ATT).
+                              </p>
+                            )}
                         </div>
                       )}
                     </TabsContent>
 
+                    {/* 6b. Podsumowanie */}
                     <TabsContent value="final" className="mt-4 space-y-3">
+                      <Label className="text-sm">
+                        Podsumowanie – opis zawodnika, mocne/słabe strony,
+                        ryzyka, rekomendacja
+                      </Label>
                       <Textarea
-                        placeholder="Podsumowanie obserwacji…"
+                        placeholder="Swobodny opis zawodnika, mocne / słabe strony, kluczowe ryzyka, rekomendacja (TAK / NIE / OBSERWOWAĆ)…"
                         value={grade.finalComment}
                         onChange={(e) => {
                           const v = e.target.value;
                           setGrade((s) => ({ ...s, finalComment: v }));
-                          saveMetaPatch({ finalComment: v });
+                          saveMetaPatch({ finalSummary: v, finalComment: v });
                         }}
                       />
                     </TabsContent>
@@ -1691,7 +1833,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                 Obserwacje
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
                   {playerObs.length}
                 </span>
                 <ChevronDown
@@ -1714,17 +1856,17 @@ export default function PlayerEditorPage({ id }: { id: string }) {
               <AccordionItem value="obs" className="border-0">
                 <AccordionContent id="obs-panel" className="pt-4">
                   <Tabs defaultValue="new" className="w-full">
-                    {/* segmented control – jak w Twojej wersji */}
-                    <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
+                    {/* segmented control */}
+                    <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded-md bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
                       <TabsTrigger
                         value="new"
-                        className="flex-1 rounded px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                        className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
                       >
                         Nowa obserwacja
                       </TabsTrigger>
                       <TabsTrigger
                         value="existing"
-                        className="flex-1 rounded px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                        className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
                       >
                         Istniejące
                       </TabsTrigger>
@@ -1740,7 +1882,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                         <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
                           Mecz
                         </div>
-                        <div className="mb-3 text-xs text-dark dark:text-neutral-400">
+                        <div className="mb-3 text-xs text-slate-700 dark:text-neutral-400">
                           Wpisz drużyny — pole „Mecz” składa się automatycznie.
                         </div>
 
@@ -1761,15 +1903,13 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               className="mt-1"
                             />
                           </div>
-                          <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">
+                          <div className="hidden select-none items-end justify-center pb-2 text-sm text-slate-800 dark:text-neutral-200 sm:flex">
                             vs
                           </div>
                           <div>
                             <Label>Drużyna B</Label>
                             <Input
-                              value={
-                                (qaMatch.split(/ *vs */i)[1] || "").trim()
-                              }
+                              value={(qaMatch.split(/ *vs */i)[1] || "").trim()}
                               onChange={(e) => {
                                 const a =
                                   (qaMatch.split(/ *vs */i)[0] || "").trim();
@@ -1782,7 +1922,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               className="mt-1"
                             />
                           </div>
-                          <div className="sm:hidden text-center text-sm text-dark">
+                          <div className="sm:hidden text-center text-sm text-slate-800 dark:text-neutral-200">
                             vs
                           </div>
                         </div>
@@ -1826,7 +1966,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               <button
                                 onClick={() => setQaMode("live")}
                                 className={cn(
-                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaMode === "live"
                                     ? "bg-indigo-600 text-white hover:bg-indigo-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1839,7 +1979,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               <button
                                 onClick={() => setQaMode("tv")}
                                 className={cn(
-                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaMode === "tv"
                                     ? "bg-violet-600 text-white hover:bg-violet-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1858,7 +1998,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               <button
                                 onClick={() => setQaStatus("draft")}
                                 className={cn(
-                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaStatus === "draft"
                                     ? "bg-amber-600 text-white hover:bg-amber-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1871,7 +2011,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               <button
                                 onClick={() => setQaStatus("final")}
                                 className={cn(
-                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaStatus === "final"
                                     ? "bg-emerald-600 text-white hover:bg-emerald-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1885,13 +2025,13 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                           </div>
                         </div>
 
-                        <div className="mt-4 space-y-1 text-xs text-dark dark:text-neutral-300">
+                        <div className="mt-4 space-y-1 text-xs text-slate-800 dark:text-neutral-300">
                           <div>
                             Mecz:{" "}
                             <span className="font-medium">
                               {qaMatch || "—"}
                             </span>
-                            <span className="ml-2 inline-flex items-center rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                            <span className="ml-2 inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
                               {qaMode === "tv" ? "TV" : "Live"}
                             </span>
                           </div>
@@ -1921,14 +2061,12 @@ export default function PlayerEditorPage({ id }: { id: string }) {
 
                     {/* EXISTING */}
                     <TabsContent value="existing" className="mt-2 space-y-3">
-                      <div className="flex flex-col gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
+                      <div className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
                         <div className="flex items-center gap-2">
                           <Search className="h-4 w-4 opacity-70" />
                           <Input
                             value={obsQuery}
-                            onChange={(e) =>
-                              setObsQuery(e.target.value)
-                            }
+                            onChange={(e) => setObsQuery(e.target.value)}
                             placeholder="Szukaj po meczu, zawodniku, dacie…"
                             className="flex-1 border-0 focus-visible:ring-0"
                           />
@@ -1939,9 +2077,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                         </p>
                       </div>
 
-                      <div className="max-h-80 overflow-auto rounded border border-gray-200 dark:border-neutral-700">
+                      <div className="max-h-80 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
                         <table className="w-full text-sm">
-                          <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                          <thead className="sticky top-0 bg-stone-100 text-slate-900 dark:bg-neutral-900 dark:text-neutral-300">
                             <tr>
                               <th className="p-2 text-left font-medium">#</th>
                               <th className="p-2 text-left font-medium">
@@ -1984,27 +2122,21 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                                     type="radio"
                                     name="obsPick"
                                     checked={obsSelectedId === o.id}
-                                    onChange={() =>
-                                      setObsSelectedId(o.id)
-                                    }
+                                    onChange={() => setObsSelectedId(o.id)}
                                   />
                                 </td>
-                                <td className="p-2">
-                                  {o.match || "—"}
-                                </td>
+                                <td className="p-2">{o.match || "—"}</td>
                                 <td className="p-2">
                                   {(o.players ?? []).length > 0 ? (
                                     <div className="flex flex-wrap gap-1">
-                                      {(o.players ?? []).map(
-                                        (n, i) => (
-                                          <span
-                                            key={`${o.id}-pl-${i}`}
-                                            className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
-                                          >
-                                            {n}
-                                          </span>
-                                        )
-                                      )}
+                                      {(o.players ?? []).map((n, i) => (
+                                        <span
+                                          key={`${o.id}-pl-${i}`}
+                                          className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+                                        >
+                                          {n}
+                                        </span>
+                                      ))}
                                     </div>
                                   ) : (
                                     "—"
@@ -2017,29 +2149,25 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                                 </td>
                                 <td className="p-2 text-xs">
                                   {o.opponentLevel || (
-                                    <span className="text-slate-400">
-                                      —
-                                    </span>
+                                    <span className="text-slate-400">—</span>
                                   )}
                                 </td>
                                 <td className="p-2">
                                   <span
                                     className={cn(
-                                      "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium",
+                                      "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
                                       (o as any).mode === "tv"
                                         ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
                                         : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
                                     )}
                                   >
-                                    {(o as any).mode === "tv"
-                                      ? "TV"
-                                      : "Live"}
+                                    {(o as any).mode === "tv" ? "TV" : "Live"}
                                   </span>
                                 </td>
                                 <td className="p-2">
                                   <span
                                     className={cn(
-                                      "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium",
+                                      "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
                                       o.status === "final"
                                         ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                                         : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
@@ -2056,10 +2184,9 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                               <tr>
                                 <td
                                   colSpan={7}
-                                  className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                                  className="p-6 text-center text-sm text-slate-900 dark:text-neutral-400"
                                 >
-                                  Brak obserwacji dla podanych
-                                  kryteriów.
+                                  Brak obserwacji dla podanych kryteriów.
                                 </td>
                               </tr>
                             )}
@@ -2068,7 +2195,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
                       </div>
 
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-[11px] text-dark dark:text-neutral-400">
+                        <div className="text-[11px] text-slate-800 dark:text-neutral-400">
                           Wybierz rekord i wybierz akcję.
                         </div>
                         <div className="flex items-center gap-2">

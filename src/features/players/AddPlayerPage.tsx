@@ -1,8 +1,9 @@
 // src/app/(players)/players/add/AddPlayerPage.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+
 import { Toolbar } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,12 +51,21 @@ import { cn } from "@/lib/utils";
 import StarRating from "@/shared/ui/StarRating";
 import { KnownPlayerIcon, UnknownPlayerIcon } from "@/components/icons";
 
-// 🔥 konfiguracja ocen – ta sama, co w ManagePage / PlayerEditor
 import {
   loadRatings,
+  syncRatingsFromSupabase,
   type RatingsConfig,
   type RatingAspect,
 } from "@/shared/ratings";
+
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+
+import { getSupabase } from "@/lib/supabaseClient";
 
 /* ===== Positions ===== */
 type BucketPos = "GK" | "DF" | "MF" | "FW";
@@ -196,7 +206,7 @@ const COUNTRIES: Country[] = [
 /* ===== Small UI ===== */
 function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
   const base =
-    "inline-flex h-10 items-center rounded border px-3 text-sm leading-none";
+    "inline-flex h-10 items-center rounded-md border px-3 text-sm leading-none";
   const map = {
     saving:
       "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
@@ -210,7 +220,7 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
       {state === "saving" ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Zapisywanie…
+          Autozapis…
         </>
       ) : state === "saved" ? (
         <>
@@ -218,7 +228,7 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
           Zapisano
         </>
       ) : (
-        "—"
+        "Czeka na uzupełnienie danych"
       )}
     </span>
   );
@@ -226,100 +236,93 @@ function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
 
 function Chip({ text }: { text: string }) {
   return (
-    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-stone-100 px-2 py-0.5 text-[10px] opacity-80 dark:border-neutral-700 dark:bg-neutral-800">
+    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
       {text}
     </span>
   );
 }
 
-/* Country combobox with optional chip inside the trigger */
+/* Country combobox (bez komunikatu “Uzupełnij to pole”) */
 function CountryCombobox({
   value,
   onChange,
-  error,
   chip,
 }: {
   value: string;
   onChange: (next: string) => void;
-  error?: string;
   chip?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
   return (
-    <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-expanded={open}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-expanded={open}
+          className={cn(
+            "relative flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
+            "border-gray-300 dark:border-neutral-700",
+            chip ? "pr-24" : ""
+          )}
+        >
+          <span
             className={cn(
-              "relative flex w-full items-center justify-between rounded border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
-              error
-                ? "border-red-500"
-                : "border-gray-300 dark:border-neutral-700",
-              chip ? "pr-24" : ""
+              "flex min-w-0 items-center gap-2",
+              !selected && "text-muted-foreground"
             )}
           >
-            <span
-              className={cn(
-                "flex min-w-0 items-center gap-2",
-                !selected && "text-muted-foreground"
-              )}
-            >
-              {selected ? (
-                <>
-                  <span className="text-base leading-none">{selected.flag}</span>
-                  <span className="truncate">{selected.name}</span>
-                </>
-              ) : (
-                "Wybierz kraj"
-              )}
-            </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            {chip ? <Chip text={chip} /> : null}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[--radix-popover-trigger-width] p-0"
-          align="start"
-        >
-          <Command shouldFilter>
-            <CommandInput placeholder="Szukaj kraju…" />
-            <CommandList>
-              <CommandEmpty>Brak wyników.</CommandEmpty>
-              <CommandGroup>
-                {COUNTRIES.map((c) => {
-                  const active = c.name === value;
-                  return (
-                    <CommandItem
-                      key={c.code}
-                      value={`${c.name} ${c.code}`}
-                      onSelect={() => {
-                        onChange(c.name);
-                        setOpen(false);
-                      }}
+            {selected ? (
+              <>
+                <span className="text-base leading-none">{selected.flag}</span>
+                <span className="truncate">{selected.name}</span>
+              </>
+            ) : (
+              "Wybierz kraj"
+            )}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {chip ? <Chip text={chip} /> : null}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] p-0"
+        align="start"
+      >
+        <Command shouldFilter>
+          <CommandInput placeholder="Szukaj kraju…" />
+          <CommandList>
+            <CommandEmpty>Brak wyników.</CommandEmpty>
+            <CommandGroup>
+              {COUNTRIES.map((c) => {
+                const active = c.name === value;
+                return (
+                  <CommandItem
+                    key={c.code}
+                    value={`${c.name} ${c.code}`}
+                    onSelect={() => {
+                      onChange(c.name);
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="mr-2 text-base">{c.flag}</span>
+                    <span className="mr-2">{c.name}</span>
+                    <span
+                      className={cn(
+                        "ml-auto",
+                        active ? "opacity-100" : "opacity-0"
+                      )}
                     >
-                      <span className="mr-2 text-base">{c.flag}</span>
-                      <span className="mr-2">{c.name}</span>
-                      <span
-                        className={cn(
-                          "ml-auto",
-                          active ? "opacity-100" : "opacity-0"
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                      </span>
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </>
+                      <Check className="h-4 w-4" />
+                    </span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -340,52 +343,9 @@ type ObsRec = {
 // oceny zawodnika w formularzu: key z rCfg -> wartość 0–5
 type PlayerRatings = Record<string, number>;
 
-export default function AddPlayerPage() {
-  const router = useRouter();
-
-  /* Choice (switcher) */
-  const [choice, setChoice] = useState<Choice>("known");
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("s4s.addPlayer.choice");
-      if (saved === "known" || saved === "unknown") setChoice(saved);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    if (choice) {
-      try {
-        localStorage.setItem("s4s.addPlayer.choice", choice);
-      } catch {}
-    }
-  }, [choice]);
-
-  /* Accordions */
-  const [basicOpen, setBasicOpen] = useState(true);
-  const [extOpen, setExtOpen] = useState(false);
-  const [gradeOpen, setGradeOpen] = useState(false);
-  const [obsOpen, setObsOpen] = useState(false);
-
-  /* Known basic */
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [birthYear, setBirthYear] = useState("");
-  const [club, setClub] = useState("");
-  const [clubCountry, setClubCountry] = useState("");
-
-  /* Unknown basic */
-  const [jerseyNumber, setJerseyNumber] = useState("");
-  const [uClub, setUClub] = useState("");
-  const [uClubCountry, setUClubCountry] = useState("");
-  const [uNote, setUNote] = useState("");
-
-  /* Positions */
-  const [posDet, setPosDet] = useState<DetailedPos>("CM");
-  const [uPosDet, setUPosDet] = useState<DetailedPos>("CM");
-
-  /* Extended (jak w PlayerEditor) */
-  const [ext, setExt] = useState({
+// domyślny stan dla rozszerzonych danych
+function getDefaultExt() {
+  return {
     // Tab 1 – Profil boiskowy
     height: "",
     weight: "",
@@ -418,7 +378,40 @@ export default function AddPlayerPage() {
     fb: "",
     ig: "",
     tiktok: "",
-  });
+  };
+}
+
+export default function AddPlayerPage() {
+  const router = useRouter();
+
+  /* Choice (switcher) */
+  const [choice, setChoice] = useState<Choice>("known");
+
+  /* Accordions */
+  const [basicOpen, setBasicOpen] = useState(true);
+  const [extOpen, setExtOpen] = useState(false);
+  const [gradeOpen, setGradeOpen] = useState(false);
+  const [obsOpen, setObsOpen] = useState(false);
+
+  /* Known basic */
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+  const [club, setClub] = useState("");
+  const [clubCountry, setClubCountry] = useState("");
+
+  /* Unknown basic */
+  const [jerseyNumber, setJerseyNumber] = useState("");
+  const [uClub, setUClub] = useState("");
+  const [uClubCountry, setUClubCountry] = useState("");
+  const [uNote, setUNote] = useState("");
+
+  /* Positions */
+  const [posDet, setPosDet] = useState<DetailedPos>("CM");
+  const [uPosDet, setUPosDet] = useState<DetailedPos>("CM");
+
+  /* Extended (jak w PlayerEditor) */
+  const [ext, setExt] = useState(getDefaultExt);
 
   /* Grade (opcjonalne) – oceny z konfiguracji */
   const [ratingConfig, setRatingConfig] = useState<RatingsConfig>(() =>
@@ -427,15 +420,16 @@ export default function AddPlayerPage() {
   const [ratings, setRatings] = useState<PlayerRatings>({});
   const [notes, setNotes] = useState("");
 
-  // nasłuch zmian konfiguracji ocen (ManagePage)
+  // 🔁 wczytujemy konfigurację ocen z Supabase
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "s4s.playerRatings.v1") {
-        setRatingConfig(loadRatings());
-      }
+    let cancelled = false;
+    (async () => {
+      const cfg = await syncRatingsFromSupabase();
+      if (!cancelled) setRatingConfig(cfg);
+    })();
+    return () => {
+      cancelled = true;
     };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const enabledRatingAspects = useMemo<RatingAspect[]>(
@@ -443,73 +437,11 @@ export default function AddPlayerPage() {
     [ratingConfig]
   );
 
-  /* Save pill (draft autosave) */
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
-    "idle"
-  );
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!choice) {
-      setSaveStatus("idle");
-      return;
-    }
-
-    setSaveStatus("saving");
-    const draft = {
-      choice,
-      known: {
-        firstName,
-        lastName,
-        birthYear,
-        club,
-        clubCountry,
-        posDet,
-      },
-      unknown: {
-        jerseyNumber,
-        uClub,
-        uClubCountry,
-        uPosDet,
-        uNote,
-      },
-      meta: { ext, ratings, notes },
-    };
-    try {
-      localStorage.setItem(
-        "s4s.addPlayerDraft.v3",
-        JSON.stringify(draft)
-      );
-    } catch {}
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
-  }, [
-    choice,
-    firstName,
-    lastName,
-    birthYear,
-    club,
-    clubCountry,
-    jerseyNumber,
-    uClub,
-    uClubCountry,
-    uPosDet,
-    uNote,
-    posDet,
-    ext,
-    ratings,
-    notes,
-  ]);
-
   /* Counters for badges (jak editor) */
   const countTruthy = (vals: Array<unknown>) =>
     vals.filter((v) => {
       if (typeof v === "number") return v > 0;
-      return !!(
-        v !== null &&
-        v !== undefined &&
-        String(v).trim() !== ""
-      );
+      return !!(v !== null && v !== undefined && String(v).trim() !== "");
     }).length;
 
   // Basic
@@ -568,14 +500,32 @@ export default function AddPlayerPage() {
   ]);
 
   const totalExt = cntProfile + cntEligibility + cntStats365 + cntContact;
-  const totalExtMax = 5 + 10 + 5 + 5;
+  const totalExtMax = 5 + 10 + 5 + 5; // 25
 
   // Grade
   const cntRatingsFilled = countTruthy(Object.values(ratings));
   const cntGradeBadge = Number(Boolean(notes)) + cntRatingsFilled;
   const cntGradeMax = 1 + enabledRatingAspects.length;
 
-  /* Observations (local) */
+  // --- Grupy aspektów wg groupKey z Supabase ---
+  const baseAspects = enabledRatingAspects.filter(
+    (a) => (a.groupKey ?? "GEN") === "GEN"
+  );
+  const gkAspects = enabledRatingAspects.filter((a) => a.groupKey === "GK");
+  const defAspects = enabledRatingAspects.filter((a) => a.groupKey === "DEF");
+  const midAspects = enabledRatingAspects.filter((a) => a.groupKey === "MID");
+  const attAspects = enabledRatingAspects.filter((a) => a.groupKey === "FW");
+
+  // Pozycja główna dla oceny:
+  // ✅ domyślnie POKAZUJEMY TYLKO "Podstawowe"
+  // ✅ dopiero gdy w "Rozszerzone informacje" ustawisz Główną pozycję -> pojawia się GK/DEF/MID/ATT
+  const effectiveMainPos: DetailedPos | "" =
+    (ext.mainPos as DetailedPos | "") || "";
+  const effectiveBucket: BucketPos | null = effectiveMainPos
+    ? toBucket(effectiveMainPos)
+    : null;
+
+  /* Observations (meta -> players.meta.observationsMeta) */
   const [observations, setObservations] = useState<ObsRec[]>([]);
   const [obsQuery, setObsQuery] = useState("");
   const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
@@ -586,28 +536,6 @@ export default function AddPlayerPage() {
   const [qaStatus, setQaStatus] = useState<"draft" | "final">("draft");
   const [qaOpponentLevel, setQaOpponentLevel] = useState("");
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("s4s.observations");
-      const arr: ObsRec[] = raw ? JSON.parse(raw) : [];
-      setObservations(Array.isArray(arr) ? arr : []);
-    } catch {
-      setObservations([]);
-    }
-  }, []);
-
-  function bumpSaving() {
-    setSaveStatus("saving");
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
-  }
-  function persistObservations(next: ObsRec[]) {
-    bumpSaving();
-    setObservations(next);
-    try {
-      localStorage.setItem("s4s.observations", JSON.stringify(next));
-    } catch {}
-  }
   function addObservation() {
     const next: ObsRec = {
       id: Date.now(),
@@ -619,7 +547,7 @@ export default function AddPlayerPage() {
       opponentLevel: qaOpponentLevel.trim() || "",
       players: [],
     };
-    persistObservations([next, ...observations]);
+    setObservations((prev) => [next, ...prev]);
     setQaMatch("");
     setQaDate("");
     setQaTime("");
@@ -657,13 +585,26 @@ export default function AddPlayerPage() {
     const next = observations.map((o) =>
       o.id === editingObs.id ? editingObs : o
     );
-    persistObservations(next);
+    setObservations(next);
     setEditOpen(false);
   }
 
   /* Ext tabs – jak w PlayerEditor */
   type ExtKey = "profile" | "eligibility" | "stats365" | "contact";
   const [extView, setExtView] = useState<ExtKey>("profile");
+
+
+  //  podświetlenie selecta „Główna pozycja”
+  const [highlightMainPos, setHighlightMainPos] = useState(false);
+
+  useEffect(() => {
+    // jak tylko wybierzesz Główną pozycję – zdejmij highlight
+    if (ext.mainPos) {
+      setHighlightMainPos(false);
+    }
+  }, [ext.mainPos]);
+
+
 
   function ExtContent({ view }: { view: ExtKey }) {
     switch (view) {
@@ -712,39 +653,43 @@ export default function AddPlayerPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div>
-                <Label className="text-sm">Główna pozycja</Label>
-                <Select
-                  value={ext.mainPos || (choice === "unknown" ? uPosDet : posDet)}
-                  onValueChange={(v) => {
-                    const val = v as DetailedPos;
-                    setExt((s) => ({ ...s, mainPos: val }));
-                    if (choice === "unknown") {
-                      setUPosDet(val);
-                    } else {
-                      setPosDet(val);
-                    }
-                  }}
-                >
-                  <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
-                    <SelectValue placeholder="Wybierz pozycję" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {POS_DATA.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        <div className="text-left">
-                          <div className="font-medium">
-                            {opt.code}: {opt.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {opt.desc}
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
+<div
+  className={cn(
+    highlightMainPos &&
+      "rounded-md bg-indigo-50/60 p-2 ring-2 ring-indigo-500/80 dark:bg-indigo-950/30"
+  )}
+>
+  <Label className="text-sm">Główna pozycja</Label>
+  <Select
+    value={ext.mainPos || ""}
+    onValueChange={(v) => {
+      const val = v as DetailedPos;
+      setExt((s) => ({ ...s, mainPos: val }));
+    }}
+  >
+    <SelectTrigger className="mt-1 w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
+      <SelectValue placeholder="Wybierz pozycję" />
+    </SelectTrigger>
+    <SelectContent>
+      {POS_DATA.map((opt) => (
+        <SelectItem key={opt.value} value={opt.value}>
+          <div className="text-left">
+            <div className="font-medium">
+              {opt.code}: {opt.name}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {opt.desc}
+            </div>
+          </div>
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+  <p className="mt-1 text-[11px] text-slate-600 dark:text-neutral-400">
+    Ta pozycja steruje dodatkowymi kategoriami oceny (GK/DEF/MID/ATT).
+  </p>
+</div>
 
               <div>
                 <Label className="text-sm">Pozycje alternatywne</Label>
@@ -755,7 +700,7 @@ export default function AddPlayerPage() {
                       <label
                         key={opt.value}
                         className={cn(
-                          "flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs",
+                          "flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs",
                           checked
                             ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-950/40"
                             : "border-slate-200 bg-white dark:border-neutral-700 dark:bg-neutral-950"
@@ -798,7 +743,7 @@ export default function AddPlayerPage() {
                       setExt((s) => ({ ...s, english: true }))
                     }
                     className={cn(
-                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
                       ext.english === true
                         ? "bg-emerald-600 text-white hover:bg-emerald-700"
                         : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -812,7 +757,7 @@ export default function AddPlayerPage() {
                       setExt((s) => ({ ...s, english: false }))
                     }
                     className={cn(
-                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
                       ext.english === false
                         ? "bg-rose-600 text-white hover:bg-rose-700"
                         : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -831,7 +776,7 @@ export default function AddPlayerPage() {
                       setExt((s) => ({ ...s, euPassport: true }))
                     }
                     className={cn(
-                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
                       ext.euPassport === true
                         ? "bg-emerald-600 text-white hover:bg-emerald-700"
                         : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -845,7 +790,7 @@ export default function AddPlayerPage() {
                       setExt((s) => ({ ...s, euPassport: false }))
                     }
                     className={cn(
-                      "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
                       ext.euPassport === false
                         ? "bg-rose-600 text-white hover:bg-rose-700"
                         : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1101,6 +1046,286 @@ export default function AddPlayerPage() {
     }
   }
 
+  /* ---------- Ocena helpery: Tooltip + grupy ---------- */
+  function RatingRow({ aspect }: { aspect: RatingAspect }) {
+    const val = ratings[aspect.key] ?? 0;
+    const hasTooltip = !!aspect.tooltip;
+    return (
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="max-w-[65%]">
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{aspect.label}</span>
+            {hasTooltip && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-600 hover:bg-slate-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                    >
+                      i
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs leading-snug">
+                    {aspect.tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        </div>
+        <div className="mt-1 sm:mt-0">
+          <StarRating
+            max={5}
+            value={val}
+            onChange={(v) =>
+              setRatings((prev) => ({
+                ...prev,
+                [aspect.key]: v,
+              }))
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
+  function RatingGroup({
+    title,
+    aspects,
+  }: {
+    title: string;
+    aspects: RatingAspect[];
+  }) {
+    if (!aspects.length) return null;
+    return (
+      <div className="space-y-3">
+        <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
+          <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
+          {title}
+        </div>
+        <div className="space-y-3">
+          {aspects.map((aspect) => (
+            <RatingRow key={aspect.id} aspect={aspect} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- Autozapis do Supabase (players) ---------- */
+  const [playerId, setPlayerId] = useState<number | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
+    "idle"
+  );
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!choice) {
+      setSaveState("idle");
+      return;
+    }
+
+    const isKnown = choice === "known";
+    const knownValid =
+      isKnown &&
+      !!firstName.trim() &&
+      !!lastName.trim() &&
+      !!birthYear.trim() &&
+      !!club.trim() &&
+      !!clubCountry.trim();
+
+    const unknownValid =
+      !isKnown &&
+      !!jerseyNumber.trim() &&
+      !!uClub.trim() &&
+      !!uClubCountry.trim();
+
+    if (!knownValid && !unknownValid) {
+      setSaveState("idle");
+      return;
+    }
+
+    // mamy komplet minimalnych danych -> odpal autozapis
+    setSaveError(null);
+    setSaveState("saving");
+
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+
+    saveTimer.current = setTimeout(() => {
+      (async () => {
+        try {
+          const supabase = getSupabase();
+          const currentYear = new Date().getFullYear();
+
+          const isKnownX = choice === "known";
+          let name: string;
+          let clubFinal: string;
+          let posBucket: BucketPos;
+          let clubCountryFinal: string;
+          let age = 0;
+
+          if (isKnownX) {
+            const fn = firstName.trim();
+            const ln = lastName.trim();
+            name = `${fn} ${ln}`.trim() || "Bez imienia";
+            clubFinal = club.trim();
+            posBucket = toBucket(posDet);
+            clubCountryFinal = clubCountry.trim();
+            if (birthYear.trim()) {
+              const by = parseInt(birthYear.trim(), 10);
+              if (!Number.isNaN(by)) {
+                age = Math.max(0, currentYear - by);
+              }
+            }
+          } else {
+            const num = jerseyNumber.trim();
+            const c = uClub.trim();
+            name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
+            clubFinal = c;
+            posBucket = toBucket(uPosDet);
+            clubCountryFinal = uClubCountry.trim();
+          }
+
+          const nationalityVal =
+            ext.birthCountry.trim() || clubCountryFinal || null;
+
+          const meta = {
+            mode: choice,
+            extended: ext,
+            ratings,
+            notes,
+            unknownNote: uNote || null,
+            basic: {
+              firstName: firstName.trim() || null,
+              lastName: lastName.trim() || null,
+              birthYear: birthYear.trim() || null,
+              club: clubFinal,
+              clubCountry: clubCountryFinal || null,
+              jerseyNumber: jerseyNumber.trim() || null,
+              posDet,
+              uPosDet,
+            },
+            observationsMeta: {
+              selectedId: obsSelectedId,
+              list: observations,
+            },
+          };
+
+          if (!playerId) {
+            // INSERT
+            const insertPayload: any = {
+              name,
+              pos: posBucket,
+              club: clubFinal,
+              age,
+              status: "active",
+              firstName: isKnownX ? firstName.trim() || null : null,
+              lastName: isKnownX ? lastName.trim() || null : null,
+              birthDate: isKnownX ? birthYear.trim() || null : null,
+              nationality: nationalityVal,
+              photo: null,
+              meta,
+              // user_id -> DEFAULT auth.uid()
+            };
+
+            const { data, error } = await supabase
+              .from("players")
+              .insert(insertPayload)
+              .select("id")
+              .single();
+
+            if (error) {
+              console.error("[AddPlayerPage] Supabase insert error:", error);
+              if (!cancelled) {
+                setSaveState("idle");
+                setSaveError(
+                  "Nie udało się zapisać zawodnika do Supabase (insert)."
+                );
+              }
+              return;
+            }
+
+            if (!cancelled && data?.id) {
+              setPlayerId(data.id);
+              setSaveState("saved");
+            }
+          } else {
+            // UPDATE
+            const updatePayload: any = {
+              name,
+              pos: posBucket,
+              club: clubFinal,
+              age,
+              status: "active",
+              firstName: isKnownX ? firstName.trim() || null : null,
+              lastName: isKnownX ? lastName.trim() || null : null,
+              birthDate: isKnownX ? birthYear.trim() || null : null,
+              nationality: nationalityVal,
+              photo: null,
+              meta,
+            };
+
+            const { error } = await supabase
+              .from("players")
+              .update(updatePayload)
+              .eq("id", playerId);
+
+            if (error) {
+              console.error("[AddPlayerPage] Supabase update error:", error);
+              if (!cancelled) {
+                setSaveState("idle");
+                setSaveError(
+                  "Nie udało się zaktualizować zawodnika w Supabase (update)."
+                );
+              }
+              return;
+            }
+
+            if (!cancelled) {
+              setSaveState("saved");
+            }
+          }
+        } catch (err) {
+          console.error("[AddPlayerPage] Supabase save exception:", err);
+          if (!cancelled) {
+            setSaveState("idle");
+            setSaveError(
+              "Wystąpił błąd podczas zapisu zawodnika do Supabase."
+            );
+          }
+        }
+      })();
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [
+    choice,
+    firstName,
+    lastName,
+    birthYear,
+    club,
+    clubCountry,
+    jerseyNumber,
+    uClub,
+    uClubCountry,
+    posDet,
+    uPosDet,
+    ext,
+    ratings,
+    notes,
+    observations,
+    obsSelectedId,
+    playerId,
+    uNote,
+  ]);
+
   /* ========================================= UI ========================================= */
   return (
     <div className="w-full">
@@ -1108,10 +1333,11 @@ export default function AddPlayerPage() {
         title="Dodaj zawodnika"
         right={
           <div className="mb-4 flex w-full items-center gap-2 sm:gap-3 md:flex-nowrap justify-end">
-            <SavePill state={saveStatus} />
+            <SavePill state={saveState} />
             <div className="ml-auto md:ml-0">
               <Button
-                className="h-10 bg-gray-900 text-white hover:bg-gray-800"
+                variant="outline"
+                className="h-10"
                 onClick={() => router.push("/players")}
               >
                 Wróć do listy
@@ -1122,7 +1348,7 @@ export default function AddPlayerPage() {
       />
 
       {/* Switcher: Zawodnik znany / nieznany */}
-      <div className="mb-4 mt-2 rounded-lg border border-slate-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
+      <div className="mb-4 mt-2 rounded-md-lg border border-slate-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
         <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
           Tryb dodawania zawodnika
         </div>
@@ -1132,14 +1358,14 @@ export default function AddPlayerPage() {
             type="button"
             onClick={() => setChoice("known")}
             className={cn(
-              "w-full rounded p-4 text-left shadow-sm transition bg-white dark:bg-neutral-950 ring-1",
+              "w-full rounded-md p-4 text-left shadow-sm transition bg-white dark:bg-neutral-950 ring-1",
               choice === "known"
                 ? "ring-green-800"
                 : "ring-gray-200 hover:ring-green-600/70 dark:ring-neutral-800 dark:hover:ring-green-600/50"
             )}
           >
             <div className="flex items-start gap-4">
-              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded bg-transparent">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-transparent">
                 <KnownPlayerIcon
                   className={cn(
                     "h-8 w-8",
@@ -1181,14 +1407,14 @@ export default function AddPlayerPage() {
             type="button"
             onClick={() => setChoice("unknown")}
             className={cn(
-              "w-full rounded p-4 text-left shadow-sm transition bg-white dark:bg-neutral-950 ring-1",
+              "w-full rounded-md p-4 text-left shadow-sm transition bg-white dark:bg-neutral-950 ring-1",
               choice === "unknown"
                 ? "ring-red-800"
                 : "ring-gray-200 hover:ring-red-600/70 dark:ring-neutral-800 dark:hover:ring-red-600/50"
             )}
           >
             <div className="flex items-start gap-4">
-              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded bg-transparent">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-transparent">
                 <UnknownPlayerIcon
                   className={cn(
                     "h-8 w-8",
@@ -1243,7 +1469,7 @@ export default function AddPlayerPage() {
                 Podstawowe informacje
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
                   {badgeBasic}/{basicMax}
                 </span>
                 <ChevronDown
@@ -1279,37 +1505,7 @@ export default function AddPlayerPage() {
                           {!jerseyNumber && <Chip text="Wymagane" />}
                         </div>
                       </div>
-                      <div>
-                        <Label className="text-sm">Pozycja</Label>
-                        <Select
-                          value={uPosDet}
-                          onValueChange={(v) =>
-                            setUPosDet(v as DetailedPos)
-                          }
-                        >
-                          <SelectTrigger className="w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
-                            <SelectValue placeholder="Wybierz pozycję" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {POS_DATA.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                <div className="text-left">
-                                  <div className="font-medium">
-                                    {opt.code}: {opt.name}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {opt.desc}
-                                  </div>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="mt-1 text-[11px] text-dark">
-                          Zapisze się jako <b>{toBucket(uPosDet)}</b> w polu{" "}
-                          <code>pos</code>.
-                        </p>
-                      </div>
+
                       <div>
                         <Label className="text-sm">Aktualny klub</Label>
                         <div className="relative">
@@ -1371,9 +1567,7 @@ export default function AddPlayerPage() {
                           <Input
                             type="number"
                             value={birthYear}
-                            onChange={(e) =>
-                              setBirthYear(e.target.value)
-                            }
+                            onChange={(e) => setBirthYear(e.target.value)}
                             className={cn(!birthYear && "pr-24")}
                           />
                           {!birthYear && <Chip text="Wymagane" />}
@@ -1428,7 +1622,12 @@ export default function AddPlayerPage() {
                 Rozszerzone informacje
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                {choice === "unknown" && (
+                  <span className="hidden text-[11px] text-slate-500 sm:inline">
+                    Nieznany zawodnik
+                  </span>
+                )}
+                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
                   {totalExt}/{totalExtMax}
                 </span>
                 <ChevronDown
@@ -1450,6 +1649,11 @@ export default function AddPlayerPage() {
             >
               <AccordionItem value="ext" className="border-0">
                 <AccordionContent id="ext-panel" className="pt-4">
+                  {choice === "unknown" && (
+                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                      Opcjonalnie. Można wypełnić po dodaniu zawodnika.
+                    </p>
+                  )}
                   {/* Mobile: Select; Desktop: Tabs */}
                   <div className="md:hidden">
                     <Label className="mb-1 block text-sm">Sekcja</Label>
@@ -1458,7 +1662,7 @@ export default function AddPlayerPage() {
                       onChange={(e) =>
                         setExtView(e.target.value as ExtKey)
                       }
-                      className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                     >
                       <option value="profile">Profil boiskowy</option>
                       <option value="eligibility">Status &amp; scouting</option>
@@ -1511,7 +1715,7 @@ export default function AddPlayerPage() {
           </CardContent>
         </Card>
 
-        {/* --- Ocena (opcjonalne) – bez tabsów, notes + oceny --- */}
+        {/* --- Ocena (opcjonalne) --- */}
         <Card className="mt-3">
           <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
             <button
@@ -1525,7 +1729,12 @@ export default function AddPlayerPage() {
                 Ocena
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                {choice === "unknown" && (
+                  <span className="hidden text-[11px] text-slate-500 sm:inline">
+                    Nieznany zawodnik
+                  </span>
+                )}
+                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
                   {cntGradeBadge}/{cntGradeMax}
                 </span>
                 <ChevronDown
@@ -1546,67 +1755,98 @@ export default function AddPlayerPage() {
               className="w-full"
             >
               <AccordionItem value="grade" className="border-0">
-                <AccordionContent id="grade-panel" className="pt-4">
-                  <div className="space-y-5">
-                    {/* Notatki na górze */}
-                    <div>
-                      <Label className="text-sm">Notatki ogólne</Label>
-                      <Input
-                        placeholder="Krótki komentarz o zawodniku…"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
+<AccordionContent id="grade-panel" className="pt-4">
+  {choice === "unknown" && (
+    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+      Opcjonalnie. Można wypełnić po dodaniu zawodnika.
+    </p>
+  )}
 
-                    {/* Oceny poniżej – dynamicznie z konfiguracji */}
-                    <div className="space-y-3">
-                      {enabledRatingAspects.length === 0 && (
-                        <p className="text-xs text-slate-500 dark:text-neutral-400">
-                          Brak skonfigurowanych kategorii ocen. Dodaj je w
-                          panelu „Zarządzanie użytkownikami → Konfiguracja ocen
-                          zawodnika”.
-                        </p>
-                      )}
+  <div className="relative">
+    {/* Właściwe oceny – przy braku Głównej pozycji są przygaszone + nieklikalne */}
+    <div
+      className={cn(
+        "space-y-5",
+        !effectiveMainPos && "pointer-events-none opacity-40"
+      )}
+    >
+      {/* Notatki na górze */}
+      <div>
+        <Label className="text-sm">Notatki ogólne</Label>
+        <Input
+          placeholder="Krótki komentarz o zawodniku…"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className="mt-1"
+        />
+      </div>
 
-                      {enabledRatingAspects.map((aspect) => (
-                        <div
-                          key={aspect.id}
-                          className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="max-w-[65%]">
-                            <Label className="text-sm">
-                              {aspect.label}
-                            </Label>
-                            {aspect.tooltip && (
-                              <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                                {aspect.tooltip}
-                              </p>
-                            )}
-                          </div>
-                          <div className="mt-1 sm:mt-0">
-                            <StarRating
-                              max={5}
-                              value={ratings[aspect.key] ?? 0}
-                              onChange={(v) =>
-                                setRatings((prev) => ({
-                                  ...prev,
-                                  [aspect.key]: v,
-                                }))
-                              }
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </AccordionContent>
+      {/* Oceny – grupy wg pozycji */}
+      <div className="space-y-5">
+        {enabledRatingAspects.length === 0 && (
+          <p className="text-xs text-slate-500 dark:text-neutral-400">
+            Brak skonfigurowanych kategorii ocen. Dodaj je w panelu
+            „Konfiguracja ocen zawodnika”.
+          </p>
+        )}
+
+        {/* Zawsze: podstawowe */}
+        <RatingGroup title="Podstawowe" aspects={baseAspects} />
+
+        {/* Dodatkowe grupy dopiero po ustawieniu Głównej pozycji w rozszerzonych */}
+        {effectiveBucket === "GK" && (
+          <RatingGroup title="Bramkarz (GK)" aspects={gkAspects} />
+        )}
+        {effectiveBucket === "DF" && (
+          <RatingGroup title="Obrońca (DEF)" aspects={defAspects} />
+        )}
+        {effectiveBucket === "MF" && (
+          <RatingGroup title="Pomocnik (MID)" aspects={midAspects} />
+        )}
+        {effectiveBucket === "FW" && (
+          <RatingGroup title="Napastnik (ATT)" aspects={attAspects} />
+        )}
+
+        {!effectiveBucket && enabledRatingAspects.length > 0 && (
+          <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+            Ustaw <b>Główną pozycję</b> w sekcji „Rozszerzone informacje”,
+            aby zobaczyć dodatkowe kategorie oceny (GK/DEF/MID/ATT).
+          </p>
+        )}
+      </div>
+    </div>
+
+    {/* Overlay blokujący, jeśli nie wybrano Głównej pozycji */}
+    {!effectiveMainPos && (
+      <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
+        <p className="mb-3 text-xs sm:text-sm text-slate-700 dark:text-neutral-200">
+          Aby wprowadzić oceny, najpierw uzupełnij{" "}
+          <b>Główną pozycję</b> w sekcji „Rozszerzone informacje”.
+        </p>
+        <Button
+          size="sm"
+          type="button"
+          className="bg-gray-900 text-white hover:bg-gray-800"
+          onClick={() => {
+            // otwórz kartę „Rozszerzone informacje” + tab Profil
+            setExtOpen(true);
+            setExtView("profile");
+            setHighlightMainPos(true);
+          }}
+        >
+          Uzupełnij Główną pozycję
+        </Button>
+      </div>
+    )}
+  </div>
+</AccordionContent>
+
               </AccordionItem>
             </Accordion>
           </CardContent>
         </Card>
 
-        {/* --- Obserwacje (FULL module) --- */}
+        {/* --- Obserwacje (bez localStorage; meta idzie do Supabase) --- */}
         <Card className="mt-3">
           <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
             <button
@@ -1620,7 +1860,12 @@ export default function AddPlayerPage() {
                 Obserwacje
               </div>
               <div className="flex items-center gap-3">
-                <span className="rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                {choice === "unknown" && (
+                  <span className="hidden text-[11px] text-slate-500 sm:inline">
+                    Nieznany zawodnik
+                  </span>
+                )}
+                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
                   {observations.length}
                 </span>
                 <ChevronDown
@@ -1641,25 +1886,30 @@ export default function AddPlayerPage() {
             >
               <AccordionItem value="obs" className="border-0">
                 <AccordionContent id="obs-panel" className="pt-4">
+                  {choice === "unknown" && (
+                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                      Opcjonalnie. Można wypełnić po dodaniu zawodnika.
+                    </p>
+                  )}
                   <Tabs defaultValue="new" className="w-full">
-                    {/* poprawiony segmented control */}
-                    <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
+                    <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded-md bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
                       <TabsTrigger
                         value="new"
-                        className="flex-1 rounded px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                        className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
                       >
                         Nowa obserwacja
                       </TabsTrigger>
                       <TabsTrigger
                         value="existing"
-                        className="flex-1 rounded px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                        className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
                       >
                         Istniejące
                       </TabsTrigger>
                     </TabsList>
                     <p className="mb-4 text-xs text-slate-500 dark:text-neutral-400">
                       Dodaj nową obserwację tego zawodnika lub przypisz
-                      istniejącą z Twojego dziennika.
+                      istniejącą z Twojego dziennika (tu przechowywane w meta
+                      zawodnika).
                     </p>
 
                     {/* NEW */}
@@ -1754,7 +2004,7 @@ export default function AddPlayerPage() {
                               <button
                                 onClick={() => setQaMode("live")}
                                 className={cn(
-                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaMode === "live"
                                     ? "bg-indigo-600 text-white hover:bg-indigo-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1767,7 +2017,7 @@ export default function AddPlayerPage() {
                               <button
                                 onClick={() => setQaMode("tv")}
                                 className={cn(
-                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaMode === "tv"
                                     ? "bg-violet-600 text-white hover:bg-violet-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1786,7 +2036,7 @@ export default function AddPlayerPage() {
                               <button
                                 onClick={() => setQaStatus("draft")}
                                 className={cn(
-                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaStatus === "draft"
                                     ? "bg-amber-600 text-white hover:bg-amber-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1799,7 +2049,7 @@ export default function AddPlayerPage() {
                               <button
                                 onClick={() => setQaStatus("final")}
                                 className={cn(
-                                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
                                   qaStatus === "final"
                                     ? "bg-emerald-600 text-white hover:bg-emerald-700"
                                     : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1819,7 +2069,7 @@ export default function AddPlayerPage() {
                             <span className="font-medium">
                               {qaMatch || "—"}
                             </span>
-                            <span className="ml-2 inline-flex items-center rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                            <span className="ml-2 inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
                               {qaMode === "tv" ? "TV" : "Live"}
                             </span>
                           </div>
@@ -1849,7 +2099,7 @@ export default function AddPlayerPage() {
 
                     {/* EXISTING */}
                     <TabsContent value="existing" className="mt-2 space-y-3">
-                      <div className="flex flex-col gap-2 rounded border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
+                      <div className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
                         <div className="flex items-center gap-2">
                           <Search className="h-4 w-4 opacity-70" />
                           <Input
@@ -1865,11 +2115,13 @@ export default function AddPlayerPage() {
                         </p>
                       </div>
 
-                      <div className="max-h-80 overflow-auto rounded border border-gray-200 dark:border-neutral-700">
+                      <div className="max-h-80 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
                         <table className="w-full text-sm">
                           <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                             <tr>
-                              <th className="p-2 text-left font-medium">#</th>
+                              <th className="w-10 p-2 text-left font-medium">
+                                #
+                              </th>
                               <th className="p-2 text-left font-medium">
                                 Mecz
                               </th>
@@ -1891,92 +2143,98 @@ export default function AddPlayerPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {existingFiltered.map((o, idx) => (
-                              <tr
-                                key={o.id}
-                                className={cn(
-                                  "border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
-                                  idx % 2
-                                    ? "bg-stone-100/40 dark:bg-neutral-900/30"
-                                    : ""
-                                )}
-                                onClick={() => setObsSelectedId(o.id)}
-                              >
-                                <td className="p-2">
-                                  <input
-                                    type="radio"
-                                    name="obsPick"
-                                    checked={obsSelectedId === o.id}
-                                    onChange={() => setObsSelectedId(o.id)}
-                                  />
-                                </td>
-                                <td className="p-2">
-                                  {o.match || "—"}
-                                </td>
-                                <td className="p-2">
-                                  {[o.date || "—", o.time || ""]
-                                    .filter(Boolean)
-                                    .join(" ")}
-                                </td>
-                                <td className="p-2 text-xs">
-                                  {o.opponentLevel || (
-                                    <span className="text-slate-400">
-                                      —
-                                    </span>
+                            {(() => {
+                              const list = existingFiltered;
+                              if (list.length === 0) {
+                                return (
+                                  <tr>
+                                    <td
+                                      colSpan={7}
+                                      className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                                    >
+                                      Brak obserwacji dla podanych kryteriów.
+                                    </td>
+                                  </tr>
+                                );
+                              }
+
+                              return list.map((o, idx) => (
+                                <tr
+                                  key={o.id}
+                                  className={cn(
+                                    "border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+                                    idx % 2
+                                      ? "bg-stone-100/40 dark:bg-neutral-900/30"
+                                      : ""
                                   )}
-                                </td>
-                                <td className="p-2">
-                                  <span
-                                    className={cn(
-                                      "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium",
-                                      o.mode === "tv"
-                                        ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
-                                        : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                    )}
-                                  >
-                                    {o.mode === "tv" ? "TV" : "Live"}
-                                  </span>
-                                </td>
-                                <td className="p-2">
-                                  <span
-                                    className={cn(
-                                      "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium",
-                                      o.status === "final"
-                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                                    )}
-                                  >
-                                    {o.status === "final"
-                                      ? "Finalna"
-                                      : "Szkic"}
-                                  </span>
-                                </td>
-                                <td className="p-2 text-right">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 px-2 text-xs"
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openEditModal(o);
-                                    }}
-                                  >
-                                    Edytuj
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                            {existingFiltered.length === 0 && (
-                              <tr>
-                                <td
-                                  colSpan={7}
-                                  className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                                  onClick={() => setObsSelectedId(o.id)}
                                 >
-                                  Brak obserwacji dla podanych kryteriów.
-                                </td>
-                              </tr>
-                            )}
+                                  <td className="p-2">
+                                    <input
+                                      type="radio"
+                                      name="obsPick"
+                                      checked={obsSelectedId === o.id}
+                                      onChange={() => setObsSelectedId(o.id)}
+                                    />
+                                  </td>
+                                  <td className="p-2">
+                                    {o.match || "—"}
+                                  </td>
+                                  <td className="p-2">
+                                    {[o.date || "—", o.time || ""]
+                                      .filter(Boolean)
+                                      .join(" ")}
+                                  </td>
+                                  <td className="p-2 text-xs">
+                                    {o.opponentLevel || (
+                                      <span className="text-slate-400">
+                                        —
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="p-2">
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+                                        o.mode === "tv"
+                                          ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                                          : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                                      )}
+                                    >
+                                      {o.mode === "tv" ? "TV" : "Live"}
+                                    </span>
+                                  </td>
+                                  <td className="p-2">
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+                                        o.status === "final"
+                                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                      )}
+                                    >
+                                      {o.status === "final"
+                                        ? "Finalna"
+                                        : "Szkic"}
+                                    </span>
+                                  </td>
+                                  <td className="p-2 text-right">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 px-2 text-xs"
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openEditModal(o);
+                                      }}
+                                    >
+                                      Edytuj
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ));
+                            })()}
                           </tbody>
                         </table>
                       </div>
@@ -2149,6 +2407,11 @@ export default function AddPlayerPage() {
             </Accordion>
           </CardContent>
         </Card>
+
+        {/* --- Error z Supabase --- */}
+        {saveError && (
+          <p className="mt-3 text-sm text-red-600">{saveError}</p>
+        )}
       </div>
     </div>
   );

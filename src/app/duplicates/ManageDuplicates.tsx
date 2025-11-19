@@ -1,46 +1,102 @@
 // app/duplicates/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import {
-  Search, RefreshCw, Lock, UserCircle2, Info, CheckCircle2, XCircle, Eye
+  Search,
+  RefreshCw,
+  Lock,
+  UserCircle2,
+  Info as InfoIcon,
+  CheckCircle2,
+  XCircle,
+  Eye,
 } from "lucide-react";
+import { getSupabase } from "@/lib/supabaseClient";
 
 /* ======================== Types ======================== */
 type Role = "admin" | "scout" | "scout-agent";
 
 type BasePlayer = {
-  id: number;
+  id: number | string;
   name: string;
   firstName?: string;
   lastName?: string;
   birthDate?: string; // YYYY-MM-DD
   pos: "GK" | "DF" | "MF" | "FW";
   age?: number;
+  nationality?: string;
   status?: "active" | "trash";
   photo?: string;
 };
 
 type AllPlayer = BasePlayer & {
-  scoutId: string;              // who added it
-  scoutName?: string;           // optional display
-  duplicateOf?: number | null;  // if marked as duplicate -> points to keeper id
-  globalId?: number | null;     // canonical id in global DB (if linked/merged)
+  scoutId: string; // who added it
+  scoutName?: string; // optional display
+  duplicateOf?: number | string | null; // if marked as duplicate -> keeper id
+  globalId?: number | null; // canonical id in global DB (if linked/merged)
 };
 
 type GlobalPlayer = {
   id: number;
-  key: string;                  // normalized name + birthDate (see dupKey)
+  key: string; // normalized name (see dupKey)
   name: string;
   firstName?: string;
   lastName?: string;
   birthDate?: string;
   pos: "GK" | "DF" | "MF" | "FW";
   age?: number;
+  nationality?: string;
   photo?: string;
   createdAt: string;
-  sources: { playerId: number; scoutId: string }[];
+  sources: { playerId: AllPlayer["id"]; scoutId: string }[];
+};
+
+/** Dane kanoniczne, które Admin widzi/edytuje w panelu „Dane końcowe” */
+type CanonicalData = {
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  birthDate?: string;
+  pos: "GK" | "DF" | "MF" | "FW";
+  age?: number;
+  nationality?: string;
+  photo?: string;
+};
+
+/** Raw row shape from Supabase view: players_admin_view */
+type DbAllPlayerRow = {
+  id: number | string;
+  name: string;
+  first_name: string | null;
+  last_name: string | null;
+  birth_date: string | null;
+  pos: "GK" | "DF" | "MF" | "FW" | null;
+  age: number | null;
+  nationality: string | null;
+  status: "active" | "trash" | null;
+  photo: string | null;
+  scout_id: string;
+  scout_name: string | null;
+  duplicate_of: number | string | null;
+  global_id: number | null;
+};
+
+/** Raw row shape from Supabase: global_players */
+type DbGlobalPlayerRow = {
+  id: number;
+  key: string;
+  name: string;
+  first_name: string | null;
+  last_name: string | null;
+  birth_date: string | null;
+  pos: "GK" | "DF" | "MF" | "FW" | null;
+  age: number | null;
+  nationality: string | null;
+  photo: string | null;
+  created_at: string;
+  sources: { playerId: AllPlayer["id"]; scoutId: string }[] | null;
 };
 
 /* ======================== Utils ======================== */
@@ -53,10 +109,12 @@ function normalizeName(s: string) {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** Klucz duplikatu – *tylko* nazwa, bez daty urodzenia */
 function dupKey(p: { name: string; birthDate?: string }) {
-  const base = normalizeName(p.name);
-  return [base, p.birthDate || ""].join("|");
+  return normalizeName(p.name);
 }
+
 function completenessScore(p: AllPlayer) {
   let s = 0;
   if (p.firstName) s += 1;
@@ -65,15 +123,24 @@ function completenessScore(p: AllPlayer) {
   if (p.photo) s += 1;
   return s; // 0–4
 }
+
 function prettyDate(d?: string) {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" });
-  } catch { return d; }
+    return new Date(d).toLocaleDateString("pl-PL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return d;
+  }
 }
+
 function nowIso() {
   return new Date().toISOString();
 }
+
 function fmtTime(ts?: string) {
   if (!ts) return "—";
   const d = new Date(ts);
@@ -81,127 +148,181 @@ function fmtTime(ts?: string) {
   return d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
 }
 
-/* ======================== Demo Seeder ======================== */
-function demoAllPlayers(): AllPlayer[] {
-  return [
-    // ===== Group A: Jan Kowalski (3 entries)
-    { id: 101, name: "Jan Kowalski", firstName: "Jan", lastName: "Kowalski", birthDate: "2006-03-12", pos: "MF", age: 19, scoutId: "s1", scoutName: "Scout A", status: "active", photo: "" },
-    { id: 205, name: "Kowalski Jan", firstName: "Jan", lastName: "Kowalski", birthDate: "2006-03-12", pos: "MF", age: 19, scoutId: "s2", scoutName: "Scout B", status: "active" },
-    { id: 309, name: "Jan K.",        firstName: "Jan", lastName: "Kowalski", birthDate: "2006-03-12", pos: "MF", age: 19, scoutId: "s3", scoutName: "Scout C", status: "active" },
-
-    // ===== Group B: Marco Rossi (4 entries)
-    { id: 402, name: "Marco Rossi",     firstName: "Marco", lastName: "Rossi", birthDate: "2005-09-01", pos: "FW", age: 20, scoutId: "s2", scoutName: "Scout B", status: "active", photo: "" },
-    { id: 518, name: "Rossi, Marco",    firstName: "Marco", lastName: "Rossi", birthDate: "2005-09-01", pos: "FW", age: 20, scoutId: "s4", scoutName: "Scout D", status: "active" },
-    { id: 519, name: "M. Rossi",        firstName: "Marco", lastName: "Rossi", birthDate: "2005-09-01", pos: "FW", age: 20, scoutId: "s5", scoutName: "Scout E", status: "active" },
-    { id: 520, name: "Marco R",         firstName: "Marco", lastName: "Rossi", birthDate: "2005-09-01", pos: "FW", age: 20, scoutId: "s3", scoutName: "Scout C", status: "active" },
-
-    // ===== Group C: João Silva (2 entries; diacritics)
-    { id: 610, name: "João Silva",      firstName: "João", lastName: "Silva",  birthDate: "2006-12-11", pos: "FW", age: 18, scoutId: "s1", scoutName: "Scout A", status: "active" },
-    { id: 611, name: "Joao Silva",      firstName: "Joao", lastName: "Silva",  birthDate: "2006-12-11", pos: "FW", age: 18, scoutId: "s4", scoutName: "Scout D", status: "active" },
-
-    // ===== Group D: Adam Nowak (2 entries; one trashed)
-    { id: 700, name: "Adam Nowak",      firstName: "Adam", lastName: "Nowak",  birthDate: "2007-01-20", pos: "DF", age: 18, scoutId: "s1", scoutName: "Scout A", status: "active" },
-    { id: 701, name: "Nowak Adam",      firstName: "Adam", lastName: "Nowak",  birthDate: "2007-01-20", pos: "DF", age: 18, scoutId: "s2", scoutName: "Scout B", status: "trash" },
-
-    // ===== Group E: Luka Modric (2 entries)
-    { id: 800, name: "Luka Modrić",     firstName: "Luka", lastName: "Modrić", birthDate: "1985-09-09", pos: "MF", age: 39, scoutId: "s3", scoutName: "Scout C", status: "active" },
-    { id: 801, name: "Luka Modric",     firstName: "Luka", lastName: "Modric", birthDate: "1985-09-09", pos: "MF", age: 39, scoutId: "s5", scoutName: "Scout E", status: "active" },
-
-    // Singles (won’t appear as dupes)
-    { id: 900, name: "Piotr Zieliński", firstName: "Piotr", lastName: "Zieliński", birthDate: "1994-05-20", pos: "MF", age: 31, scoutId: "s2", scoutName: "Scout B", status: "active" },
-    { id: 901, name: "David Müller",    firstName: "David", lastName: "Müller",    birthDate: "2004-02-10", pos: "DF", age: 21, scoutId: "s3", scoutName: "Scout C", status: "active" },
-    { id: 902, name: "Oleksii Bondar",  firstName: "Oleksii", lastName: "Bondar",  birthDate: "2006-04-05", pos: "GK", age: 19, scoutId: "s1", scoutName: "Scout A", status: "active" },
-    { id: 903, name: "Nicolas Dupont",  firstName: "Nicolas", lastName: "Dupont",  birthDate: "2007-07-07", pos: "DF", age: 18, scoutId: "s4", scoutName: "Scout D", status: "active" },
-    { id: 904, name: "Marek Hamsik",    firstName: "Marek", lastName: "Hamsik",    birthDate: "1987-07-27", pos: "MF", age: 37, scoutId: "s5", scoutName: "Scout E", status: "active" },
-  ];
+/* Mapping helpers */
+function mapAllRow(r: DbAllPlayerRow): AllPlayer {
+  return {
+    id: r.id,
+    name: r.name,
+    firstName: r.first_name || undefined,
+    lastName: r.last_name || undefined,
+    birthDate: r.birth_date || undefined,
+    pos: (r.pos as any) || "MF",
+    age: r.age ?? undefined,
+    nationality: r.nationality || undefined,
+    status: (r.status as any) ?? "active",
+    photo: r.photo || undefined,
+    scoutId: r.scout_id,
+    scoutName: r.scout_name || undefined,
+    duplicateOf: r.duplicate_of ?? null,
+    globalId: r.global_id ?? null,
+  };
 }
 
-/* ======================== Global DB helpers ======================== */
-function readAllPlayers(): AllPlayer[] {
-  try {
-    const raw = localStorage.getItem("s4s.allPlayers");
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-function writeAllPlayers(arr: AllPlayer[]) {
-  try { localStorage.setItem("s4s.allPlayers", JSON.stringify(arr)); } catch {}
-}
-
-function readGlobal(): GlobalPlayer[] {
-  try {
-    const raw = localStorage.getItem("s4s.globalPlayers");
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-function writeGlobal(arr: GlobalPlayer[]) {
-  try { localStorage.setItem("s4s.globalPlayers", JSON.stringify(arr)); } catch {}
-}
-function nextGlobalId(list: GlobalPlayer[]) {
-  return Math.max(0, ...list.map((g) => g.id)) + 1;
+function mapGlobalRow(r: DbGlobalPlayerRow): GlobalPlayer {
+  return {
+    id: r.id,
+    key: r.key,
+    name: r.name,
+    firstName: r.first_name || undefined,
+    lastName: r.last_name || undefined,
+    birthDate: r.birth_date || undefined,
+    pos: (r.pos as any) || "MF",
+    age: r.age ?? undefined,
+    nationality: r.nationality || undefined,
+    photo: r.photo || undefined,
+    createdAt: r.created_at,
+    sources: Array.isArray(r.sources) ? r.sources : [],
+  };
 }
 
 /* ======================== Page ======================== */
 export default function DuplicatesPage() {
-  // ---- hooks (keep order stable) ----
-  const [role, setRole] = useState<Role>("scout");
+  const [role, setRole] = useState<Role | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [rows, setRows] = useState<AllPlayer[]>([]);
   const [globals, setGlobals] = useState<GlobalPlayer[]>([]);
   const [q, setQ] = useState("");
-  const [refreshTick, setRefreshTick] = useState(0);
-  const [keeperByKey, setKeeperByKey] = useState<Record<string, number | null>>({});
+  const [keeperByKey, setKeeperByKey] = useState<
+    Record<string, AllPlayer["id"] | null>
+  >({});
+  const [canonicalByKey, setCanonicalByKey] = useState<
+    Record<string, CanonicalData>
+  >({});
   const [includeTrashed, setIncludeTrashed] = useState(false);
   const [showOnlyUnresolved, setShowOnlyUnresolved] = useState(true);
   const [details, setDetails] = useState<AllPlayer | null>(null);
-  const [lastRefreshAt, setLastRefreshAt] = useState<string | undefined>(undefined);
+  const [lastRefreshAt, setLastRefreshAt] = useState<string | undefined>(
+    undefined
+  );
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // load role
+  const isAdmin = role === "admin";
+
+  /* ---------- Auth + rola z Supabase ---------- */
   useEffect(() => {
-    try {
-      const r = localStorage.getItem("s4s.role");
-      if (r === "admin" || r === "scout" || r === "scout-agent") setRole(r);
-    } catch {}
-  }, []);
+    const run = async () => {
+      setAuthLoading(true);
+      try {
+        const supabase = getSupabase();
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-  // initial seed + load
-  useEffect(() => {
-    function initAll() {
-      let all = readAllPlayers();
-      if (!Array.isArray(all) || all.length === 0) {
-        all = demoAllPlayers();
-        writeAllPlayers(all);
-      }
-      setRows(all);
-      setGlobals(readGlobal());
-    }
-    initAll();
-
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "s4s.allPlayers" || e.key === "s4s.globalPlayers" || e.key === "s4s.role") {
-        if (e.key === "s4s.role") {
-          const r = localStorage.getItem("s4s.role");
-          if (r === "admin" || r === "scout" || r === "scout-agent") setRole(r);
+        if (userError || !user) {
+          setRole("scout");
+          return;
         }
-        setRows(readAllPlayers());
-        setGlobals(readGlobal());
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (profileError || !profile?.role) {
+          setRole("scout");
+          return;
+        }
+
+        const r = profile.role as Role;
+        if (r === "admin" || r === "scout" || r === "scout-agent") {
+          setRole(r);
+        } else {
+          setRole("scout");
+        }
+      } catch (e) {
+        console.error("Error resolving role from Supabase:", e);
+        setRole("scout");
+      } finally {
+        setAuthLoading(false);
       }
     };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [refreshTick]);
+    run();
+  }, []);
+
+  /* ---------- loader z Supabase (tylko dla admina) ---------- */
+  const loadData = useCallback(async () => {
+    if (!isAdmin) return; // nie męcz Supabase jeśli user nie jest adminem
+
+    setLoading(true);
+    setError(null);
+    try {
+      const supabase = getSupabase();
+
+      // 1) all players across scouts
+      const { data: allData, error: allError } = await supabase
+        .from("players_admin_view")
+        .select("*");
+
+      if (allError) throw allError;
+
+      const allPlayers: AllPlayer[] = (allData || []).map((r: any) =>
+        mapAllRow(r as DbAllPlayerRow)
+      );
+      setRows(allPlayers);
+
+      // 2) global canonical players
+      const { data: gData, error: gError } = await supabase
+        .from("global_players")
+        .select("*");
+
+      if (gError) throw gError;
+
+      const glob: GlobalPlayer[] = (gData || []).map((r: any) =>
+        mapGlobalRow(r as DbGlobalPlayerRow)
+      );
+      setGlobals(glob);
+
+      setLastRefreshAt(nowIso());
+      // reset helper state – odświeżone dane = nowe grupy
+      setKeeperByKey({});
+      setCanonicalByKey({});
+    } catch (e: any) {
+      console.error("Error loading duplicates data:", e);
+      setError(
+        e?.message ||
+          "Nie udało się pobrać danych duplikatów z Supabase (players_admin_view / global_players)."
+      );
+      setRows([]);
+      setGlobals([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAdmin]);
+
+  // initial load – dopiero po rozpoznaniu roli
+  useEffect(() => {
+    if (isAdmin && !authLoading) {
+      loadData();
+    }
+  }, [isAdmin, authLoading, loadData]);
 
   // recompute groups
   const groups = useMemo(() => {
-    const pool = rows.filter((p) => (includeTrashed ? true : (p.status ?? "active") === "active"));
+    const pool = rows.filter((p) =>
+      includeTrashed ? true : (p.status ?? "active") === "active"
+    );
     const map = new Map<string, AllPlayer[]>();
     for (const p of pool) {
       const key = dupKey(p);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(p);
     }
+
     let arr = Array.from(map.entries())
       .map(([key, list]) => ({ key, list }))
       .filter((g) => g.list.length >= 2);
@@ -237,13 +358,15 @@ export default function DuplicatesPage() {
     return arr;
   }, [rows, q, includeTrashed, showOnlyUnresolved]);
 
-  // default keeper per group
+  // default keeper per group based on completeness
   useEffect(() => {
     setKeeperByKey((prev) => {
-      const next = { ...prev };
+      const next: Record<string, AllPlayer["id"] | null> = { ...prev };
       for (const g of groups) {
         if (!(g.key in next)) {
-          const best = [...g.list].sort((a, b) => completenessScore(b) - completenessScore(a))[0];
+          const best = [...g.list].sort(
+            (a, b) => completenessScore(b) - completenessScore(a)
+          )[0];
           next[g.key] = best?.id ?? null;
         }
       }
@@ -251,136 +374,404 @@ export default function DuplicatesPage() {
     });
   }, [groups]);
 
-  const isAdmin = role === "admin";
+  // inicjalne „Dane końcowe” per grupa – bazujemy na keeperze (lub najlepszym rekordzie)
+  useEffect(() => {
+    setCanonicalByKey((prev) => {
+      const next: Record<string, CanonicalData> = { ...prev };
+      for (const g of groups) {
+        if (!next[g.key]) {
+          const keeperId = keeperByKey[g.key];
+          const base =
+            g.list.find((p) => p.id === keeperId) ??
+            [...g.list].sort(
+              (a, b) => completenessScore(b) - completenessScore(a)
+            )[0];
+          if (base) {
+            next[g.key] = {
+              name: base.name,
+              firstName: base.firstName,
+              lastName: base.lastName,
+              birthDate: base.birthDate,
+              pos: base.pos,
+              age: base.age,
+              nationality: base.nationality,
+              photo: base.photo,
+            };
+          }
+        }
+      }
+      return next;
+    });
+  }, [groups, keeperByKey]);
 
-  function runRefresh() {
-    // just reload from storage and stamp time
-    setRows(readAllPlayers());
-    setGlobals(readGlobal());
-    setRefreshTick((t) => t + 1);
-    setLastRefreshAt(nowIso());
+  async function runRefresh() {
+    await loadData();
   }
 
-  function markDuplicatesToKeeper(key: string) {
+  function selectKeeper(groupKey: string, player: AllPlayer) {
+    setKeeperByKey((prev) => ({ ...prev, [groupKey]: player.id }));
+    setCanonicalByKey((prev) => ({
+      ...prev,
+      [groupKey]: {
+        name: player.name,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        birthDate: player.birthDate,
+        pos: player.pos,
+        age: player.age,
+        nationality: player.nationality,
+        photo: player.photo,
+      },
+    }));
+  }
+
+  async function markDuplicatesToKeeper(key: string) {
     const g = groups.find((x) => x.key === key);
     if (!g) return;
     const keeperId = keeperByKey[key];
     if (!keeperId) return;
 
-    const next = rows.map((p) =>
-      g.list.some((x) => x.id === p.id)
-        ? (p.id === keeperId ? { ...p, duplicateOf: null } : { ...p, duplicateOf: keeperId })
-        : p
-    );
-    setRows(next);
-    writeAllPlayers(next);
-    runRefresh();
-  }
+    const supabase = getSupabase();
+    setSaving(true);
+    setError(null);
 
-  function mergeGroupToGlobal(key: string) {
-    const g = groups.find((x) => x.key === key);
-    if (!g) return;
+    try {
+      const otherIds = g.list
+        .filter((p) => p.id !== keeperId)
+        .map((p) => p.id);
 
-    const keeperId = keeperByKey[key];
-    const keeper = g.list.find((p) => p.id === keeperId) ?? g.list[0];
+      // 1) others -> duplicate_of = keeperId
+      if (otherIds.length > 0) {
+        const { error: upd1 } = await supabase
+          .from("players")
+          .update({ duplicate_of: keeperId as any })
+          .in("id", otherIds as any[]);
+        if (upd1) throw upd1;
+      }
 
-    const existingGlobal = globals.find((gp) => gp.key === key);
-    let globalId = existingGlobal?.id;
+      // 2) keeper -> duplicate_of = null
+      const { error: upd2 } = await supabase
+        .from("players")
+        .update({ duplicate_of: null })
+        .eq("id", keeperId as any);
+      if (upd2) throw upd2;
 
-    if (!existingGlobal) {
-      // create new canonical
-      const newGlobal: GlobalPlayer = {
-        id: nextGlobalId(globals),
-        key,
-        name: keeper.name,
-        firstName: keeper.firstName,
-        lastName: keeper.lastName,
-        birthDate: keeper.birthDate,
-        pos: keeper.pos,
-        age: keeper.age,
-        photo: keeper.photo,
-        createdAt: nowIso(),
-        sources: g.list.map((p) => ({ playerId: p.id, scoutId: p.scoutId })),
-      };
-      const nextGlobal = [...globals, newGlobal];
-      writeGlobal(nextGlobal);
-      setGlobals(nextGlobal);
-      globalId = newGlobal.id;
-    } else {
-      // update sources (idempotent)
-      const srcIds = new Set(existingGlobal.sources.map((s) => s.playerId));
-      const merged = {
-        ...existingGlobal,
-        // prefer richer keeper fields
-        name: keeper.name || existingGlobal.name,
-        firstName: keeper.firstName ?? existingGlobal.firstName,
-        lastName: keeper.lastName ?? existingGlobal.lastName,
-        birthDate: keeper.birthDate ?? existingGlobal.birthDate,
-        pos: keeper.pos ?? existingGlobal.pos,
-        age: keeper.age ?? existingGlobal.age,
-        photo: keeper.photo ?? existingGlobal.photo,
-        sources: [
-          ...existingGlobal.sources,
-          ...g.list.filter((p) => !srcIds.has(p.id)).map((p) => ({ playerId: p.id, scoutId: p.scoutId })),
-        ],
-      } as GlobalPlayer;
-      const nextGlobal = globals.map((gp) => (gp.id === merged.id ? merged : gp));
-      writeGlobal(nextGlobal);
-      setGlobals(nextGlobal);
-      globalId = merged.id;
+      await loadData();
+    } catch (e: any) {
+      console.error("Error marking duplicates:", e);
+      setError("Nie udało się oznaczyć duplikatów w Supabase.");
+    } finally {
+      setSaving(false);
     }
-
-    // link group members to canonical and set duplicateOf to keeper
-    const nextRows = rows.map((p) =>
-      g.list.some((x) => x.id === p.id)
-        ? {
-            ...p,
-            globalId: globalId!,
-            duplicateOf: p.id === keeper.id ? null : keeper.id,
-          }
-        : p
-    );
-    setRows(nextRows);
-    writeAllPlayers(nextRows);
-    runRefresh();
   }
 
-  function linkGroupToExistingGlobal(key: string, globalId: number) {
-    const g = groups.find((x) => x.key === key);
-    if (!g) return;
-    const keeperId = keeperByKey[key] ?? g.list[0]?.id ?? null;
+  // helper budujący dane kanoniczne (połączone z keeperem, jeśli czegoś brakuje)
+  function buildCanonicalForGroup(key: string, g: { list: AllPlayer[] }) {
+    const keeperId = keeperByKey[key] ?? g.list[0].id;
+    const keeper =
+      g.list.find((p) => p.id === keeperId) ??
+      [...g.list].sort(
+        (a, b) => completenessScore(b) - completenessScore(a)
+      )[0];
 
-    const nextRows = rows.map((p) =>
-      g.list.some((x) => x.id === p.id)
-        ? { ...p, globalId, duplicateOf: keeperId && p.id !== keeperId ? keeperId : null }
-        : p
+    const canon = canonicalByKey[key];
+
+    const merged: CanonicalData & { name: string } = {
+      name: (canon?.name || keeper.name || "").trim(),
+      firstName: canon?.firstName ?? keeper.firstName,
+      lastName: canon?.lastName ?? keeper.lastName,
+      birthDate: canon?.birthDate ?? keeper.birthDate,
+      pos: (canon?.pos ?? keeper.pos) as "GK" | "DF" | "MF" | "FW",
+      age: canon?.age ?? keeper.age,
+      nationality: canon?.nationality ?? keeper.nationality,
+      photo: canon?.photo ?? keeper.photo,
+    };
+
+    return { keeper, merged };
+  }
+
+  async function mergeGroupToGlobal(key: string) {
+    const g = groups.find((x) => x.key === key);
+    if (!g || g.list.length === 0) return;
+
+    const { keeper, merged } = buildCanonicalForGroup(key, g);
+
+    const supabase = getSupabase();
+    setSaving(true);
+    setError(null);
+
+    try {
+      // check existing global by key
+      let existingGlobal = globals.find((gp) => gp.key === key);
+      let globalId = existingGlobal?.id;
+
+      const newSources = g.list.map((p) => ({
+        playerId: p.id,
+        scoutId: p.scoutId,
+      }));
+
+      if (!existingGlobal) {
+        // create new global row
+        const insertPayload = {
+          key,
+          name: merged.name,
+          first_name: merged.firstName ?? null,
+          last_name: merged.lastName ?? null,
+          birth_date: merged.birthDate ?? null,
+          pos: merged.pos,
+          age: merged.age ?? null,
+          nationality: merged.nationality ?? null,
+          photo: merged.photo ?? null,
+          created_at: nowIso(),
+          sources: newSources,
+        };
+
+        const { data, error } = await supabase
+          .from("global_players")
+          .insert(insertPayload)
+          .select("*")
+          .single();
+
+        if (error) throw error;
+        const mapped = mapGlobalRow(data as DbGlobalPlayerRow);
+        globalId = mapped.id;
+      } else {
+        // update existing global: merge sources + keep richest fields
+        const srcIds = new Set(
+          (existingGlobal.sources || []).map((s) => s.playerId)
+        );
+        const mergedSources = [
+          ...existingGlobal.sources,
+          ...newSources.filter((s) => !srcIds.has(s.playerId)),
+        ];
+
+        const updatePayload = {
+          name: merged.name || existingGlobal.name,
+          first_name:
+            merged.firstName ?? existingGlobal.firstName ?? null,
+          last_name: merged.lastName ?? existingGlobal.lastName ?? null,
+          birth_date:
+            merged.birthDate ?? existingGlobal.birthDate ?? null,
+          pos: merged.pos ?? existingGlobal.pos,
+          age: merged.age ?? existingGlobal.age ?? null,
+          nationality:
+            merged.nationality ?? existingGlobal.nationality ?? null,
+          photo: merged.photo ?? existingGlobal.photo ?? null,
+          sources: mergedSources,
+        };
+
+        const { error } = await supabase
+          .from("global_players")
+          .update(updatePayload)
+          .eq("id", existingGlobal.id);
+
+        if (error) throw error;
+        globalId = existingGlobal.id;
+      }
+
+      if (!globalId)
+        throw new Error("Brak ID globalnego zawodnika po scaleniu.");
+
+      // update all players in this group: set global_id & duplicate_of
+      const allIds = g.list.map((p) => p.id);
+      const otherIds = g.list
+        .filter((p) => p.id !== keeper.id)
+        .map((p) => p.id);
+
+      if (allIds.length) {
+        const { error: updGlobal } = await supabase
+          .from("players")
+          .update({ global_id: globalId as any })
+          .in("id", allIds as any[]);
+        if (updGlobal) throw updGlobal;
+      }
+
+      if (otherIds.length) {
+        const { error: updDup } = await supabase
+          .from("players")
+          .update({ duplicate_of: keeper.id as any })
+          .in("id", otherIds as any[]);
+        if (updDup) throw updDup;
+      }
+
+      // keeper -> duplicate_of null (for sure)
+      const { error: updKeeper } = await supabase
+        .from("players")
+        .update({ duplicate_of: null })
+        .eq("id", keeper.id as any);
+      if (updKeeper) throw updKeeper;
+
+      // 🔴 NAJWAŻNIEJSZE: nadpisz dane osobowe we wszystkich rekordach players wg "Danych końcowych"
+      const keeperDetails = {
+        name: merged.name,
+        firstName: merged.firstName ?? null,
+        lastName: merged.lastName ?? null,
+        birthDate: merged.birthDate ?? null,
+        pos: merged.pos,
+        age: merged.age ?? null,
+        nationality: merged.nationality ?? null,
+        photo: merged.photo ?? null,
+      };
+
+      const { error: updDetails } = await supabase
+        .from("players")
+        .update(keeperDetails)
+        .in("id", allIds as any[]);
+      if (updDetails) throw updDetails;
+
+      await loadData();
+    } catch (e: any) {
+      console.error("Error merging group to global:", e);
+      setError("Nie udało się scalić grupy do globalnej bazy w Supabase.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function linkGroupToExistingGlobal(key: string, globalId: number) {
+    const g = groups.find((x) => x.key === key);
+    if (!g || g.list.length === 0) return;
+
+    const { keeper, merged } = buildCanonicalForGroup(key, g);
+
+    const supabase = getSupabase();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const existingGlobal = globals.find((gp) => gp.id === globalId);
+      if (!existingGlobal)
+        throw new Error("Docelowy globalny rekord nie istnieje.");
+
+      // update sources in global row
+      const srcIds = new Set(
+        (existingGlobal.sources || []).map((s) => s.playerId)
+      );
+      const extraSources = g.list
+        .filter((p) => !srcIds.has(p.id))
+        .map((p) => ({ playerId: p.id, scoutId: p.scoutId }));
+      const mergedSources = [...existingGlobal.sources, ...extraSources];
+
+      const { error: updGlobal } = await supabase
+        .from("global_players")
+        .update({
+          name: merged.name || existingGlobal.name,
+          first_name:
+            merged.firstName ?? existingGlobal.firstName ?? null,
+          last_name:
+            merged.lastName ?? existingGlobal.lastName ?? null,
+          birth_date:
+            merged.birthDate ?? existingGlobal.birthDate ?? null,
+          pos: merged.pos ?? existingGlobal.pos,
+          age: merged.age ?? existingGlobal.age ?? null,
+          nationality:
+            merged.nationality ?? existingGlobal.nationality ?? null,
+          photo: merged.photo ?? existingGlobal.photo ?? null,
+          sources: mergedSources,
+        })
+        .eq("id", globalId);
+      if (updGlobal) throw updGlobal;
+
+      // link all in group to this global and set duplicate_of relative to keeper
+      const allIds = g.list.map((p) => p.id);
+      const otherIds = g.list
+        .filter((p) => p.id !== keeper.id)
+        .map((p) => p.id);
+
+      if (allIds.length) {
+        const { error: updPlayers } = await supabase
+          .from("players")
+          .update({ global_id: globalId as any })
+          .in("id", allIds as any[]);
+        if (updPlayers) throw updPlayers;
+      }
+
+      if (otherIds.length) {
+        const { error: updDup } = await supabase
+          .from("players")
+          .update({ duplicate_of: keeper.id as any })
+          .in("id", otherIds as any[]);
+        if (updDup) throw updDup;
+      }
+
+      const { error: updKeeper } = await supabase
+        .from("players")
+        .update({ duplicate_of: null })
+        .eq("id", keeper.id as any);
+      if (updKeeper) throw updKeeper;
+
+      // 🔴 Nadpisz dane osobowe wg "Danych końcowych"
+      const keeperDetails = {
+        name: merged.name,
+        firstName: merged.firstName ?? null,
+        lastName: merged.lastName ?? null,
+        birthDate: merged.birthDate ?? null,
+        pos: merged.pos,
+        age: merged.age ?? null,
+        nationality: merged.nationality ?? null,
+        photo: merged.photo ?? null,
+      };
+
+      const { error: updDetails } = await supabase
+        .from("players")
+        .update(keeperDetails)
+        .in("id", allIds as any[]);
+      if (updDetails) throw updDetails;
+
+      await loadData();
+    } catch (e: any) {
+      console.error("Error linking group to existing global:", e);
+      setError("Nie udało się powiązać grupy z istniejącym globalnym rekordem.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* ======================== Render ======================== */
+
+  // najpierw stan ładowania roli – nie pokazujemy błędnego "Dostęp tylko dla Administratora"
+  if (authLoading) {
+    return (
+      <div className="w-full p-4 text-sm text-dark dark:text-neutral-300">
+        Ładowanie uprawnień użytkownika…
+      </div>
     );
-    setRows(nextRows);
-    writeAllPlayers(nextRows);
-    runRefresh();
   }
 
   return (
     <div className="w-full p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Duplikaty (wszyscy skauci)</h1>
+          <h1 className="text-lg font-semibold">Duplikaty</h1>
           <p className="text-sm text-dark">
-            Wykrywa tych samych zawodników dodanych przez różnych scoutów. Tylko dla Administratora.
+            Wykrywa tych samych zawodników dodanych przez różnych scoutów. Tylko
+            dla Administratora. Dane pochodzą z{" "}
+            <code className="text-[11px]">players_admin_view</code> i{" "}
+            <code className="text-[11px]">global_players</code> w Supabase.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
-            className="inline-flex flex-wrap items-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            className="inline-flex flex-wrap items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
             onClick={runRefresh}
-            title={lastRefreshAt ? `Ostatnie odświeżenie: ${fmtTime(lastRefreshAt)}` : "Odśwież teraz"}
+            title={
+              lastRefreshAt
+                ? `Ostatnie odświeżenie: ${fmtTime(lastRefreshAt)}`
+                : "Odśwież teraz"
+            }
+            disabled={loading || saving || !isAdmin}
           >
-            <RefreshCw className="h-4 w-4" />
-            Odśwież{lastRefreshAt ? ` (${fmtTime(lastRefreshAt)})` : ""}
+            <RefreshCw
+              className={`h-4 w-4 ${
+                loading || saving ? "animate-spin" : ""
+              }`}
+            />
+            {loading ? "Ładuję…" : "Odśwież"}
+            {lastRefreshAt ? ` (${fmtTime(lastRefreshAt)})` : ""}
           </button>
           <Link
             href="/scouts"
-            className="inline-flex flex-wrap items-center gap-2 rounded bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800"
+            className="inline-flex flex-wrap items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800"
             title="Lista scoutów"
           >
             <UserCircle2 className="h-4 w-4" />
@@ -389,19 +780,67 @@ export default function DuplicatesPage() {
         </div>
       </div>
 
+      {isAdmin && groups.length > 0 && (
+        <div className="mb-3 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-100">
+          <div className="flex items-start gap-2">
+            <InfoIcon className="mt-[2px] h-4 w-4" />
+            <div>
+              <div className="font-medium text-[12px]">
+                Jak używać widoku duplikatów?
+              </div>
+              <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                <li>
+                  W pierwszej kolumnie wybierz <b>keepera</b> – rekord, który
+                  traktujesz jako bazowy.
+                </li>
+                <li>
+                  W panelu <b>„Dane końcowe”</b> nad tabelą możesz poprawić
+                  nazwę, imię, nazwisko, datę urodzenia, pozycję itp. Te dane
+                  zostaną:
+                  <br />
+                  • zapisane w <code>global_players</code>,<br />
+                  • <b>nadpisane</b> we wszystkich rekordach{" "}
+                  <code>players</code> tej grupy (u wszystkich scoutów).
+                </li>
+                <li>
+                  Kliknij <b>„Scal i dodaj do Globalnej bazy”</b> albo{" "}
+                  <b>„Powiąż z globalnym”</b>, aby zapisać zmiany.
+                </li>
+              </ol>
+              <p className="mt-1 text-[11px] text-indigo-900/70 dark:text-indigo-200/80">
+                Zmiany w polach „Dane końcowe” nie zapisują się od razu w
+                bazie – dopiero w momencie scalania/powiązania.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {lastRefreshAt && (
         <div className="mb-2 text-xs text-dark">
           Ostatnie odświeżenie: <b>{fmtTime(lastRefreshAt)}</b>
         </div>
       )}
 
+      {error && (
+        <div className="mb-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+          {error}
+        </div>
+      )}
+
       {!isAdmin ? (
-        <div className="rounded border border-dashed border-gray-300 p-6 text-center dark:border-neutral-700">
-          <div className="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+        <div className="rounded-md border border-dashed border-gray-300 p-6 text-center dark:border-neutral-700">
+          <div className="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
             <Lock className="h-5 w-5" />
           </div>
-          <div className="text-sm font-medium">Dostęp tylko dla Administratora</div>
-          <div className="mt-1 text-xs text-dark">Zmień rolę na <b>Admin</b> w menu „Konto”.</div>
+          <div className="text-sm font-medium">
+            Dostęp tylko dla Administratora
+          </div>
+          <div className="mt-1 text-xs text-dark">
+            Upewnij się, że w tabeli{" "}
+            <code className="text-[11px]">profiles</code> Twoja rola to{" "}
+            <b>admin</b>.
+          </div>
         </div>
       ) : (
         <>
@@ -412,7 +851,7 @@ export default function DuplicatesPage() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Szukaj po nazwisku lub skaucie…"
-                className="w-72 rounded border border-gray-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                className="w-72 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
               />
               <Search className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             </div>
@@ -437,38 +876,48 @@ export default function DuplicatesPage() {
             </div>
           </div>
 
-          {groups.length === 0 ? (
-            <div className="rounded border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
+          {groups.length === 0 && !loading ? (
+            <div className="rounded-md border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
               <div className="flex flex-wrap items-center gap-2">
-                <Info className="h-4 w-4 text-dark" />
-                Brak potencjalnych duplikatów.
-              </div>
-              <div className="mt-2 text-xs text-dark">
-                Wyczyść <code>localStorage:s4s.allPlayers</code>, aby ponownie załadować przykładowe dane.
+                <InfoIcon className="h-4 w-4 text-dark" />
+                Brak potencjalnych duplikatów na podstawie danych w{" "}
+                <code className="text-[11px]">players_admin_view</code>.
               </div>
             </div>
           ) : (
             <div className="space-y-4">
               {groups.map((g, idx) => {
                 const keeperId = keeperByKey[g.key] ?? null;
-                const rep = [...g.list].sort((a, b) => completenessScore(b) - completenessScore(a))[0];
-                const existingGlobal = globals.find((gp) => gp.key === g.key);
-                const allLinkedToGlobal = g.list.every((p) => !!p.globalId);
+                const rep = [...g.list].sort(
+                  (a, b) => completenessScore(b) - completenessScore(a)
+                )[0];
+                const existingGlobal = globals.find(
+                  (gp) => gp.key === g.key
+                );
+                const allLinkedToGlobal = g.list.every(
+                  (p) => !!p.globalId
+                );
+                const canonical = canonicalByKey[g.key];
 
                 return (
                   <div
                     key={g.key}
-                    className="overflow-hidden rounded border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
+                    className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-3 py-2 dark:border-neutral-800">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold">
-                          {rep?.name || "Nieznany"} • ur. {prettyDate(rep?.birthDate)} • {g.list.length} wpis(y)
+                          {rep?.name || "Nieznany"} • ur.{" "}
+                          {prettyDate(rep?.birthDate)} • {g.list.length}{" "}
+                          wpis(y)
                         </div>
                         <div className="mt-0.5 text-[12px] text-dark">
-                          Klucz grupy: <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-neutral-900">{g.key}</code>{" "}
+                          Klucz grupy:{" "}
+                          <code className="rounded-md bg-stone-100 px-1 py-0.5 dark:bg-neutral-900">
+                            {g.key}
+                          </code>{" "}
                           {existingGlobal && (
-                            <span className="ml-2 inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                            <span className="ml-2 inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
                               Ma globalny wpis #{existingGlobal.id}
                             </span>
                           )}
@@ -478,19 +927,25 @@ export default function DuplicatesPage() {
                         {/* merge / link to global */}
                         {existingGlobal ? (
                           <button
-                            className="inline-flex items-center gap-1 rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                            onClick={() => linkGroupToExistingGlobal(g.key, existingGlobal.id)}
-                            disabled={allLinkedToGlobal}
-                            title="Powiąż wszystkie rekordy z istniejącym wpisem globalnym"
+                            className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                            onClick={() =>
+                              linkGroupToExistingGlobal(
+                                g.key,
+                                existingGlobal.id
+                              )
+                            }
+                            disabled={allLinkedToGlobal || saving}
+                            title="Powiąż wszystkie rekordy z istniejącym wpisem globalnym (z nadpisaniem danych wg „Danych końcowych”)"
                           >
                             <CheckCircle2 className="h-4 w-4" />
                             Powiąż z globalnym #{existingGlobal.id}
                           </button>
                         ) : (
                           <button
-                            className="inline-flex items-center gap-1 rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+                            className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                             onClick={() => mergeGroupToGlobal(g.key)}
-                            title="Scal i dodaj do Globalnej bazy"
+                            disabled={saving}
+                            title="Scal i dodaj do Globalnej bazy (z nadpisaniem danych wg „Danych końcowych”)"
                           >
                             <CheckCircle2 className="h-4 w-4" />
                             Scal i dodaj do Globalnej bazy
@@ -499,17 +954,27 @@ export default function DuplicatesPage() {
 
                         {/* classic duplicate marking to keeper */}
                         <button
-                          className="inline-flex items-center gap-1 rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
                           onClick={() => markDuplicatesToKeeper(g.key)}
-                          disabled={!keeperId}
-                          title="Ustaw wskazaną pozycję jako główną, resztę oznacz jako duplikat"
+                          disabled={!keeperId || saving}
+                          title="Ustaw wskazaną pozycję jako główną, resztę oznacz jako duplikat (bez global)"
                         >
                           Oznacz duplikaty (keeper)
                         </button>
                         <button
-                          className="inline-flex items-center gap-1 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                          onClick={() => setKeeperByKey((prev) => ({ ...prev, [g.key]: null }))}
-                          title="Wyczyść wybór keepera"
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                          onClick={() => {
+                            setKeeperByKey((prev) => ({
+                              ...prev,
+                              [g.key]: null,
+                            }));
+                            setCanonicalByKey((prev) => {
+                              const copy = { ...prev };
+                              delete copy[g.key];
+                              return copy;
+                            });
+                          }}
+                          title="Wyczyść wybór keepera i dane końcowe"
                         >
                           <XCircle className="h-4 w-4" />
                           Wyczyść keepera
@@ -517,19 +982,206 @@ export default function DuplicatesPage() {
                       </div>
                     </div>
 
+                    {/* Panel „Dane końcowe” */}
+                    {canonical && (
+                      <div className="border-b border-dashed border-gray-200 bg-slate-50/70 px-3 py-3 text-xs dark:border-neutral-800 dark:bg-neutral-900/60">
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <div className="font-medium text-[12px]">
+                            Dane końcowe dla tej grupy
+                          </div>
+                          <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+                            Te wartości trafią do{" "}
+                            <code>global_players</code> i nadpiszą{" "}
+                            <code>players</code> u wszystkich scoutów
+                            w tej grupie.
+                          </div>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-4">
+                          <div>
+                            <div className="mb-1 text-[11px] font-medium">
+                              Nazwa w systemie
+                            </div>
+                            <input
+                              value={canonical.name}
+                              onChange={(e) =>
+                                setCanonicalByKey((prev) => ({
+                                  ...prev,
+                                  [g.key]: {
+                                    ...prev[g.key],
+                                    name: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[11px] font-medium">
+                              Imię
+                            </div>
+                            <input
+                              value={canonical.firstName || ""}
+                              onChange={(e) =>
+                                setCanonicalByKey((prev) => ({
+                                  ...prev,
+                                  [g.key]: {
+                                    ...prev[g.key],
+                                    firstName: e.target.value || undefined,
+                                  },
+                                }))
+                              }
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[11px] font-medium">
+                              Nazwisko
+                            </div>
+                            <input
+                              value={canonical.lastName || ""}
+                              onChange={(e) =>
+                                setCanonicalByKey((prev) => ({
+                                  ...prev,
+                                  [g.key]: {
+                                    ...prev[g.key],
+                                    lastName: e.target.value || undefined,
+                                  },
+                                }))
+                              }
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[11px] font-medium">
+                              Data ur. (YYYY-MM-DD)
+                            </div>
+                            <input
+                              value={canonical.birthDate || ""}
+                              onChange={(e) =>
+                                setCanonicalByKey((prev) => ({
+                                  ...prev,
+                                  [g.key]: {
+                                    ...prev[g.key],
+                                    birthDate: e.target.value || undefined,
+                                  },
+                                }))
+                              }
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[11px] font-medium">
+                              Pozycja (GK/DF/MF/FW)
+                            </div>
+                            <input
+                              value={canonical.pos}
+                              onChange={(e) =>
+                                setCanonicalByKey((prev) => ({
+                                  ...prev,
+                                  [g.key]: {
+                                    ...prev[g.key],
+                                    pos:
+                                      (e.target.value as
+                                        | "GK"
+                                        | "DF"
+                                        | "MF"
+                                        | "FW") || "MF",
+                                  },
+                                }))
+                              }
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs uppercase tracking-wide dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[11px] font-medium">
+                              Wiek
+                            </div>
+                            <input
+                              type="number"
+                              value={canonical.age ?? ""}
+                              onChange={(e) =>
+                                setCanonicalByKey((prev) => ({
+                                  ...prev,
+                                  [g.key]: {
+                                    ...prev[g.key],
+                                    age:
+                                      e.target.value === ""
+                                        ? undefined
+                                        : Number(e.target.value),
+                                  },
+                                }))
+                              }
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[11px] font-medium">
+                              Narodowość
+                            </div>
+                            <input
+                              value={canonical.nationality || ""}
+                              onChange={(e) =>
+                                setCanonicalByKey((prev) => ({
+                                  ...prev,
+                                  [g.key]: {
+                                    ...prev[g.key],
+                                    nationality: e.target.value || undefined,
+                                  },
+                                }))
+                              }
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[11px] font-medium">
+                              URL zdjęcia (opcjonalnie)
+                            </div>
+                            <input
+                              value={canonical.photo || ""}
+                              onChange={(e) =>
+                                setCanonicalByKey((prev) => ({
+                                  ...prev,
+                                  [g.key]: {
+                                    ...prev[g.key],
+                                    photo: e.target.value || undefined,
+                                  },
+                                }))
+                              }
+                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tabela z rekordami scoutów */}
                     <div className="w-full overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                           <tr>
-                            <th className="p-3 text-left font-medium">Keeper</th>
+                            <th className="p-3 text-left font-medium">
+                              Keeper
+                            </th>
                             <th className="p-3 text-left font-medium">Scout</th>
-                            <th className="p-3 text-left font-medium">Nazwisko i imię</th>
-                            <th className="p-3 text-left font-medium">Data ur.</th>
+                            <th className="p-3 text-left font-medium">
+                              Nazwisko i imię
+                            </th>
+                            <th className="p-3 text-left font-medium">
+                              Data ur.
+                            </th>
                             <th className="p-3 text-left font-medium">Poz.</th>
-                            <th className="p-3 text-left font-medium">Status</th>
-                            <th className="p-3 text-left font-medium">Kompletność</th>
-                            <th className="p-3 text-left font-medium">Global</th>
-                            <th className="p-3 text-right font-medium">Akcje</th>
+                            <th className="p-3 text-left font-medium">
+                              Status
+                            </th>
+                            <th className="p-3 text-left font-medium">
+                              Kompletność
+                            </th>
+                            <th className="p-3 text-left font-medium">
+                              Global
+                            </th>
+                            <th className="p-3 text-right font-medium">
+                              Akcje
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -538,20 +1190,29 @@ export default function DuplicatesPage() {
                             .sort((a, b) => {
                               if (a.id === keeperId) return -1;
                               if (b.id === keeperId) return 1;
-                              return completenessScore(b) - completenessScore(a);
+                              return (
+                                completenessScore(b) - completenessScore(a)
+                              );
                             })
                             .map((p) => {
                               const comp = completenessScore(p);
                               const isKeeper = p.id === keeperId;
                               return (
-                                <tr key={p.id} className="border-t border-gray-200 dark:border-neutral-800">
+                                <tr
+                                  key={String(p.id)}
+                                  className={`border-t border-gray-200 dark:border-neutral-800 ${
+                                    isKeeper
+                                      ? "bg-emerald-50/60 dark:bg-emerald-900/20"
+                                      : ""
+                                  }`}
+                                >
                                   <td className="p-3 align-middle">
                                     <input
                                       type="radio"
                                       name={`keeper-${idx}`}
                                       checked={isKeeper}
                                       onChange={() =>
-                                        setKeeperByKey((prev) => ({ ...prev, [g.key]: p.id }))
+                                        selectKeeper(g.key, p)
                                       }
                                     />
                                   </td>
@@ -559,43 +1220,61 @@ export default function DuplicatesPage() {
                                     <div className="font-medium text-gray-900 dark:text-neutral-100">
                                       {p.scoutName || p.scoutId}
                                     </div>
-                                    <div className="text-xs text-dark">{p.scoutId}</div>
+                                    <div className="text-xs text-dark">
+                                      {p.scoutId}
+                                    </div>
                                   </td>
                                   <td className="p-3 align-middle">
                                     <div className="font-medium text-gray-900 dark:text-neutral-100">
                                       {p.name}
                                     </div>
                                     <div className="text-xs text-dark">
-                                      {(p.firstName || "—") + " " + (p.lastName || "")}
+                                      {(p.firstName || "—") +
+                                        " " +
+                                        (p.lastName || "")}
                                     </div>
                                   </td>
-                                  <td className="p-3 align-middle">{prettyDate(p.birthDate)}</td>
                                   <td className="p-3 align-middle">
-                                    <span className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                                    {prettyDate(p.birthDate)}
+                                  </td>
+                                  <td className="p-3 align-middle">
+                                    <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
                                       {p.pos}
                                     </span>
                                   </td>
                                   <td className="p-3 align-middle">
-                                    <span className={`inline-flex rounded px-2 py-0.5 text-[11px] font-medium ${
-                                      (p.status ?? "active") === "active"
-                                        ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200"
-                                        : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"
-                                    }`}>
-                                      {(p.status ?? "active") === "active" ? "aktywny" : "kosz"}
+                                    <span
+                                      className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                                        (p.status ?? "active") === "active"
+                                          ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200"
+                                          : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"
+                                      }`}
+                                    >
+                                      {(p.status ?? "active") === "active"
+                                        ? "aktywny"
+                                        : "kosz"}
                                     </span>
                                   </td>
                                   <td className="p-3 align-middle">
-                                    <div className="w-40 rounded bg-gray-100 dark:bg-neutral-800">
+                                    <div className="w-40 rounded-md bg-gray-100 dark:bg-neutral-800">
                                       <div
-                                        className={`h-2 rounded ${isKeeper ? "bg-emerald-500" : "bg-gray-400"}`}
-                                        style={{ width: `${(comp / 4) * 100}%` }}
+                                        className={`h-2 rounded-md ${
+                                          isKeeper
+                                            ? "bg-emerald-500"
+                                            : "bg-gray-400"
+                                        }`}
+                                        style={{
+                                          width: `${(comp / 4) * 100}%`,
+                                        }}
                                       />
                                     </div>
-                                    <div className="mt-1 text-xs text-dark">{comp}/4</div>
+                                    <div className="mt-1 text-xs text-dark">
+                                      {comp}/4
+                                    </div>
                                   </td>
                                   <td className="p-3 align-middle text-xs">
                                     {p.globalId ? (
-                                      <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                                      <span className="inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
                                         #{p.globalId}
                                       </span>
                                     ) : (
@@ -604,7 +1283,7 @@ export default function DuplicatesPage() {
                                   </td>
                                   <td className="p-3 align-middle text-right">
                                     <button
-                                      className="inline-flex items-center gap-1 rounded border border-gray-300 px-2.5 py-1.5 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                       onClick={() => setDetails(p)}
                                       title="Podgląd szczegółów rekordu skauta"
                                     >
@@ -633,11 +1312,13 @@ export default function DuplicatesPage() {
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-2xl overflow-hidden rounded border border-gray-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950">
+          <div className="w-full max-w-2xl overflow-hidden rounded-md border border-gray-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950">
             <div className="flex flex-wrap items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-neutral-800">
-              <div className="text-sm font-semibold">Szczegóły zawodnika skauta</div>
+              <div className="text-sm font-semibold">
+                Szczegóły zawodnika skauta
+              </div>
               <button
-                className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                className="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                 onClick={() => setDetails(null)}
               >
                 Zamknij
@@ -647,11 +1328,15 @@ export default function DuplicatesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="text-xs text-dark">Scout</div>
-                  <div className="font-medium">{details.scoutName || details.scoutId}</div>
+                  <div className="font-medium">
+                    {details.scoutName || details.scoutId}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-dark">ID rekordu</div>
-                  <div className="font-medium">#{details.id}</div>
+                  <div className="font-medium">
+                    #{String(details.id)}
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-xs text-dark">Nazwa</div>
@@ -679,19 +1364,28 @@ export default function DuplicatesPage() {
                 </div>
                 <div>
                   <div className="text-xs text-dark">Global</div>
-                  <div>{details.globalId ? `#${details.globalId}` : "—"}</div>
+                  <div>
+                    {details.globalId ? `#${details.globalId}` : "—"}
+                  </div>
                 </div>
               </div>
-              <div className="mt-4 rounded bg-stone-100 p-3 text-xs leading-relaxed dark:bg-neutral-900">
-                <div className="font-medium mb-1">Uwaga dot. scalania i przyszłych duplikatów</div>
-                Po scaleniu do globalnej bazy, kolejne wpisy scoutów o tym samym zawodniku zostaną
-                wykryte jako grupa o tym samym kluczu. Wystarczy użyć akcji
-                <b> „Powiąż z globalnym”</b>, aby dopiąć nowy wpis do istn. rekordu globalnego.
+              <div className="mt-4 rounded-md bg-stone-100 p-3 text-xs leading-relaxed dark:bg-neutral-900">
+                <div className="mb-1 font-medium">
+                  Uwaga dot. scalania i przyszłych duplikatów
+                </div>
+                Po scaleniu do globalnej bazy, kolejne wpisy scoutów o tym samym
+                zawodniku zostaną wykryte jako grupa o tym samym kluczu. Wystarczy
+                użyć akcji <b>„Powiąż z globalnym”</b>, aby dopiąć nowy wpis do
+                istniejącego rekordu globalnego.
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between border-t border-gray-200 bg-stone-100 px-4 py-2 text-xs dark:border-neutral-800 dark:bg-neutral-900">
-              <span className="text-gray-500">Klucz: <code>{dupKey(details)}</code></span>
-              <div className="text-gray-500">Kompletność: {completenessScore(details)}/4</div>
+              <span className="text-gray-500">
+                Klucz: <code>{dupKey(details)}</code>
+              </span>
+              <div className="text-gray-500">
+                Kompletność: {completenessScore(details)}/4
+              </div>
             </div>
           </div>
         </div>

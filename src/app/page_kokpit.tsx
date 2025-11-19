@@ -240,7 +240,7 @@ export default function Page() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Tryb</label>
-                <div className="inline-flex overflow-hidden rounded border dark:border-neutral-700">
+                <div className="inline-flex overflow-hidden rounded-md border dark:border-neutral-700">
                   {(["live", "tv"] as const).map((m) => (
                     <button
                       key={m}
@@ -256,7 +256,7 @@ export default function Page() {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-dark dark:text-neutral-400">Status</label>
-                <div className="inline-flex overflow-hidden rounded border dark:border-neutral-700">
+                <div className="inline-flex overflow-hidden rounded-md border dark:border-neutral-700">
                   {(["draft", "final"] as const).map((s) => (
                     <button
                       key={s}
@@ -329,7 +329,7 @@ export default function Page() {
             <ActiveFilterChip label={`Status: ${obsStatusFilter === "final" ? "Finalne" : "Szkice"}`} onClear={() => setObsStatusFilter("")} />
           )}
           <button
-            className="rounded bg-gray-100 px-3 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+            className="rounded-md bg-gray-100 px-3 py-1 text-xs text-gray-700 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
             onClick={() => {
               setQuery("");
               setObsModeFilter("");
@@ -384,7 +384,7 @@ export default function Page() {
                     return (
                       <li key={p.id} className="flex items-center gap-3 py-2">
                         {/* Avatar / image placeholder */}
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-gray-200 bg-stone-100 text-xs font-medium dark:border-neutral-800 dark:bg-neutral-900">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200 bg-stone-100 text-xs font-medium dark:border-neutral-800 dark:bg-neutral-900">
                           {initials(p.name)}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -394,7 +394,7 @@ export default function Page() {
                             </Link>
                             <span
                               className={
-                                "inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium " +
+                                "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium " +
                                 (known
                                   ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200"
                                   : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200")
@@ -437,7 +437,7 @@ export default function Page() {
                   const mode = (o as any).mode ?? "live";
                   return (
                     <li key={o.id} className="flex items-center gap-3 py-2">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                         <Star className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -445,7 +445,7 @@ export default function Page() {
                           <span className="truncate font-medium">{o.match || "—"}</span>
                           {/* status */}
                           <span
-                            className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ${
+                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${
                               o.status === "final"
                                 ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200"
                                 : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
@@ -455,7 +455,7 @@ export default function Page() {
                           </span>
                           {/* mode */}
                           <span
-                            className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ${
+                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${
                               mode === "live"
                                 ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
                                 : "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200"
@@ -504,7 +504,7 @@ export default function Page() {
           <ul className="space-y-3 text-sm">
             {buildActivityTimeline(players, obs).map((item) => (
               <li key={item.id} className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                   {item.type === "player" ? <Users className="h-4 w-4" /> : <NotebookPen className="h-4 w-4" />}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -517,7 +517,7 @@ export default function Page() {
               </li>
             ))}
             {buildActivityTimeline(players, obs).length === 0 && (
-              <div className="flex flex-wrap items-center justify-between rounded border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
+              <div className="flex flex-wrap items-center justify-between rounded-md border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
                 <span className="text-gray-500 dark:text-neutral-400">Brak aktywności — dodaj zawodnika lub obserwację.</span>
                 <Link href="/players/new">
                   <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
@@ -594,7 +594,7 @@ function KpiCard({
 
 function EmptyRow({ text, actionHref, actionText }: { text: string; actionHref: string; actionText: string }) {
   return (
-    <div className="flex flex-wrap items-center justify-between rounded border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
+    <div className="flex flex-wrap items-center justify-between rounded-md border border-dashed border-gray-200 p-4 text-sm dark:border-neutral-800">
       <span className="text-gray-500 dark:text-neutral-400">{text}</span>
       <Link href={actionHref}>
         <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
@@ -635,7 +635,7 @@ function ChipToggle({
   color?: "amber" | "green";
   icon?: React.ReactNode;
 }) {
-  const base = "inline-flex items-center gap-1 rounded px-3 py-1 text-xs font-medium transition";
+  const base = "inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium transition";
   const off = "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700";
   theOnColor: {
   }
@@ -654,9 +654,9 @@ function ChipToggle({
 
 function ActiveFilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="inline-flex flex-wrap items-center gap-2 rounded bg-gray-100 px-3 py-1 text-xs text-gray-700 dark:bg-neutral-800 dark:text-neutral-300">
+    <span className="inline-flex flex-wrap items-center gap-2 rounded-md bg-gray-100 px-3 py-1 text-xs text-gray-700 dark:bg-neutral-800 dark:text-neutral-300">
       {label}
-      <button onClick={onClear} aria-label="Usuń filtr" className="rounded p-0.5 hover:bg-gray-200 dark:hover:bg-neutral-700">
+      <button onClick={onClear} aria-label="Usuń filtr" className="rounded-md p-0.5 hover:bg-gray-200 dark:hover:bg-neutral-700">
         <X className="h-3.5 w-3.5" />
       </button>
     </span>

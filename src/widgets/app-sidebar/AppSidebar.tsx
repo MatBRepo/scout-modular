@@ -1,32 +1,49 @@
+// src/widgets/app-sidebar/AppSidebar.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Users, NotebookPen, Sun, Moon, Globe,
-  Settings, Map, Trophy, RefreshCw, ChevronDown,
-  TrendingUp, TriangleAlert, LogOut, X
+  Users,
+  NotebookPen,
+  Sun,
+  Moon,
+  Globe,
+  Settings,
+  Map,
+  Trophy,
+  RefreshCw,
+  ChevronDown,
+  TrendingUp,
+  TriangleAlert,
+  LogOut,
+  X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { MyPlayersIconDefault } from "@/components/icons";
+import { supabase } from "@/shared/supabase-client"; // <--- UPEWNIJ SIĘ, ŻE ŚCIEŻKA SIĘ ZGADZA
 
-/* ========= Types & keys ========= */
+/* ========= Types ========= */
 type Role = "admin" | "scout" | "scout-agent";
 type Rank = "bronze" | "silver" | "gold" | "platinum";
 type SidebarVariant = "desktop" | "mobile";
 
-const AUTH_KEY = "s4s.auth";
-const ROLE_KEY = "s4s.role";
-
 /* ========= Rank helpers ========= */
-const RANK_THRESHOLDS: Record<Rank, number> = { bronze: 0, silver: 20, gold: 50, platinum: 100 };
-const calcScore = (players: number, observations: number) => players * 2 + observations;
+const RANK_THRESHOLDS: Record<Rank, number> = {
+  bronze: 0,
+  silver: 20,
+  gold: 50,
+  platinum: 100,
+};
+const calcScore = (players: number, observations: number) =>
+  players * 2 + observations;
 function calcRank(players: number, observations: number) {
   const score = calcScore(players, observations);
-  if (score >= RANK_THRESHOLDS.platinum) return { rank: "platinum" as Rank, score };
+  if (score >= RANK_THRESHOLDS.platinum)
+    return { rank: "platinum" as Rank, score };
   if (score >= RANK_THRESHOLDS.gold) return { rank: "gold" as Rank, score };
   if (score >= RANK_THRESHOLDS.silver) return { rank: "silver" as Rank, score };
   return { rank: "bronze" as Rank, score };
@@ -44,40 +61,46 @@ function nextRankInfo(rank: Rank, score: number) {
   return { next, pct, remaining };
 }
 const rankLabel = (r: Rank) =>
-  r === "platinum" ? "Platinum" : r === "gold" ? "Gold" : r === "silver" ? "Silver" : "Bronze";
+  r === "platinum"
+    ? "Platinum"
+    : r === "gold"
+    ? "Gold"
+    : r === "silver"
+    ? "Silver"
+    : "Bronze";
 function rankClass(r: Rank) {
   switch (r) {
-    case "platinum": return "bg-indigo-100 text-indigo-800 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-800/70";
-    case "gold": return "bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/70";
-    case "silver": return "bg-stone-100 text-slate-800 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-200 dark:ring-slate-700/70";
-    default: return "bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-200 dark:ring-orange-800/70";
+    case "platinum":
+      return "bg-indigo-100 text-indigo-800 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200 dark:ring-indigo-800/70";
+    case "gold":
+      return "bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/70";
+    case "silver":
+      return "bg-stone-100 text-slate-800 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-200 dark:ring-slate-700/70";
+    default:
+      return "bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-200 dark:ring-orange-800/70";
   }
 }
 function rankTrophyColor(r: Rank) {
   switch (r) {
-    case "platinum": return "text-indigo-500";
-    case "gold": return "text-amber-500";
-    case "silver": return "text-slate-400";
-    default: return "text-orange-500";
+    case "platinum":
+      return "text-indigo-500";
+    case "gold":
+      return "text-amber-500";
+    case "silver":
+      return "text-slate-400";
+    default:
+      return "text-orange-500";
   }
 }
 const formatNum = (n: number) => new Intl.NumberFormat("pl-PL").format(n);
 
-/* ========= Helpers ========= */
-const parseRole = (v: any): Role =>
-  v === "admin" || v === "scout" || v === "scout-agent" ? v : "scout";
+function labelForRole(r: Role) {
+  if (r === "admin") return "Admin";
+  if (r === "scout-agent") return "Scout Agent";
+  return "Scout";
+}
 
-const readAuthed = () => {
-  try {
-    const raw = localStorage.getItem(AUTH_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    return Boolean(parsed?.ok);
-  } catch {
-    return false;
-  }
-};
-
+/* ========= Sidebar ========= */
 export default function AppSidebar({
   variant = "desktop",
   open = false,
@@ -94,55 +117,108 @@ export default function AppSidebar({
   const prefersReduced = useReducedMotion();
 
   const [mounted, setMounted] = useState(false);
-  const [isAuthed, setIsAuthed] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  // auth + role
+  const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState<Role>("scout");
-  const syncAuth = () => setIsAuthed(readAuthed());
-  const pullRole = () => {
+
+  // stats
+  const [playersCount, setPlayersCount] = useState(0);
+  const [obsCount, setObsCount] = useState(0);
+  const { rank, score } = calcRank(playersCount, obsCount);
+  const { next, pct, remaining } = nextRankInfo(rank, score);
+
+  /* ===== Mount ===== */
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  /* ===== Load current user from Supabase ===== */
+  useEffect(() => {
+    if (!mounted) return;
+    let cancelled = false;
+
+    (async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (error || !data.user) {
+        setUserId(null);
+        return;
+      }
+      setUserId(data.user.id);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted]);
+
+  /* ===== Load profile (role) from Supabase ===== */
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (!error && data?.role) {
+        const r = String(data.role) as Role;
+        if (r === "admin" || r === "scout" || r === "scout-agent") {
+          setRole(r);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  /* ===== Load counts (players & observations) from Supabase ===== */
+  const readCounts = async () => {
+    if (!userId) return;
+
     try {
-      const r = parseRole(localStorage.getItem(ROLE_KEY));
-      setRole(r);
-    } catch {}
+      const [playersRes, obsRes] = await Promise.all([
+        supabase
+          .from("players")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId),
+        supabase
+          .from("observations")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId),
+      ]);
+
+      setPlayersCount(playersRes.count ?? 0);
+      setObsCount(obsRes.count ?? 0);
+    } catch {
+      setPlayersCount(0);
+      setObsCount(0);
+    }
   };
 
   useEffect(() => {
-    if (!mounted) return;
-    syncAuth();
-    pullRole();
-  }, [mounted]);
+    if (!userId) return;
+    readCounts();
+  }, [userId]);
 
-  // react to storage/custom events
+  /* ===== Shortcuts ===== */
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === AUTH_KEY) syncAuth();
-      if (e.key === ROLE_KEY) pullRole();
-    };
-    const onAuth = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      setIsAuthed(Boolean(detail?.ok));
-    };
-    const onCustomRole = (e: Event) => {
-      const detail = (e as CustomEvent).detail as Role | null;
-      if (detail) setRole(detail); else pullRole();
-    };
-    const onFocus = () => { syncAuth(); pullRole(); };
-    const onVis = () => { if (document.visibilityState === "visible") { syncAuth(); pullRole(); } };
-
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("s4s:auth", onAuth as EventListener);
-    window.addEventListener("s4s:role", onCustomRole as EventListener);
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("s4s:auth", onAuth as EventListener);
-      window.removeEventListener("s4s:role", onCustomRole as EventListener);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, []);
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag && /INPUT|TEXTAREA|SELECT/i.test(tag)) return;
+      const k = e.key.toLowerCase();
+      if (k === "t") setTheme(theme === "dark" ? "light" : "dark");
+      if (k === "g") router.push("/players/global/search");
+      if (k === "o") router.push("/observations");
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [theme, setTheme, router]);
 
   /* ===== Account popover ===== */
   const [accountOpen, setAccountOpen] = useState(false);
@@ -157,86 +233,41 @@ export default function AppSidebar({
   }, []);
   useEffect(() => setAccountOpen(false), [pathname]);
 
-  /* ===== Counters & rank ===== */
-  const [playersCount, setPlayersCount] = useState(0);
-  const [obsCount, setObsCount] = useState(0);
-  const { rank, score } = calcRank(playersCount, obsCount);
-  const { next, pct, remaining } = nextRankInfo(rank, score);
-
-  const readCounts = () => {
-    try {
-      const pRaw = localStorage.getItem("s4s.players");
-      const oRaw = localStorage.getItem("s4s.observations");
-      const pArr = pRaw ? JSON.parse(pRaw) : [];
-      const oArr = oRaw ? JSON.parse(oRaw) : [];
-      setPlayersCount(Array.isArray(pArr) ? pArr.filter((p: any) => p?.status === "active").length : 0);
-      setObsCount(Array.isArray(oArr) ? oArr.length : 0);
-    } catch {
-      setPlayersCount(0); setObsCount(0);
-    }
-  };
-  useEffect(() => {
-    if (!mounted || !isAuthed) return;
-    readCounts();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "s4s.players" || e.key === "s4s.observations") readCounts();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [mounted, isAuthed]);
-
-  /* ===== Shortcuts ===== */
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag && /INPUT|TEXTAREA|SELECT/i.test(tag)) return;
-      if (e.key.toLowerCase() === "t") setTheme(theme === "dark" ? "light" : "dark");
-      if (e.key.toLowerCase() === "g") router.push("/players/global/search");
-      if (e.key.toLowerCase() === "o") router.push("/observations");
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [theme, setTheme, router]);
-
   /* ===== Active flags ===== */
   const isGlobalSection = pathname?.startsWith("/players/global");
   const isPlayersSection = pathname?.startsWith("/players") && !isGlobalSection;
-  const globalBaseActive = isGlobalSection && (pathname === "/players/global" || pathname === "/players/global/");
-  const globalSearchActive = isGlobalSection && pathname?.startsWith("/players/global/search");
-  const playersBadge = mounted && isAuthed && playersCount > 0 ? String(playersCount) : undefined;
-  const obsBadge = mounted && isAuthed && obsCount > 0 ? String(obsCount) : undefined;
 
-  /* ===== Logout ===== */
-  function handleLogout() {
+  const globalBaseActive =
+    isGlobalSection &&
+    (pathname === "/players/global" || pathname === "/players/global/");
+  const globalSearchActive =
+    isGlobalSection && pathname?.startsWith("/players/global/search");
+
+  // NEW – aktywne flagi dla Zarządzanie + jego podstrony
+  const isManageSection = pathname?.startsWith("/admin/manage");
+  const manageBaseActive =
+    isManageSection &&
+    (pathname === "/admin/manage" || pathname === "/admin/manage/");
+  const manageMetricsActive = pathname?.startsWith("/admin/manage/metrics");
+  const manageRatingsActive = pathname?.startsWith("/admin/manage/ratings");
+
+  const playersBadge = playersCount > 0 ? String(playersCount) : undefined;
+  const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
+
+  /* ===== Logout via Supabase ===== */
+  async function handleLogout() {
     try {
-      localStorage.removeItem(AUTH_KEY);
-      localStorage.removeItem(ROLE_KEY);
-      window.dispatchEvent(new StorageEvent("storage", { key: AUTH_KEY }));
-      window.dispatchEvent(new StorageEvent("storage", { key: ROLE_KEY }));
-      window.dispatchEvent(new CustomEvent("s4s:auth", { detail: { ok: false } }));
-      window.dispatchEvent(new CustomEvent("s4s:role", { detail: null }));
+      await supabase.auth.signOut();
     } finally {
-      window.location.href = "/";
+      router.push("/"); // AuthGate wywali usera z panelu
     }
   }
 
   /* ===== Early return ===== */
-  const hidden = !mounted || !isAuthed;
+  const hidden = !mounted || !userId;
   if (hidden) return null;
 
-  /* ===== Role switcher ===== */
-  function setRoleAndClose(v: Role) {
-    try {
-      localStorage.setItem(ROLE_KEY, v);
-      window.dispatchEvent(new StorageEvent("storage", { key: ROLE_KEY, newValue: v }));
-      window.dispatchEvent(new CustomEvent("s4s:role", { detail: v }));
-    } catch {}
-    setRole(v);
-    setAccountOpen(false);
-    onClose?.();
-  }
-
-  /* ===== Components ===== */
+  /* ===== Nav ===== */
   const InnerNav = () => (
     <nav className="space-y-1 text-sm" onClick={() => onClose?.()}>
       {(role === "scout" || role === "scout-agent" || role === "admin") && (
@@ -245,7 +276,6 @@ export default function AppSidebar({
             Zawodnicy
           </div>
 
-          {/* Simplified: plain link, no dropdown, no chevron */}
           <NavItem
             href="/players"
             icon={<MyPlayersIconDefault />}
@@ -261,17 +291,20 @@ export default function AppSidebar({
         href="/observations"
         icon={<NotebookPen className="h-4 w-4" />}
         label="Obserwacje"
-        active={pathname === "/observations" || pathname?.startsWith("/observations/")}
+        active={
+          pathname === "/observations" ||
+          pathname?.startsWith("/observations/")
+        }
         badge={obsBadge}
         badgeTitle="Liczba obserwacji"
       />
 
       {role === "admin" && (
         <>
-          {/* ===== Better highlighted ADMIN section ===== */}
-          <div className="mt-4 rounded border border-slate-200 bg-stone-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+          {/* ADMIN section */}
+          <div className="mt-4 rounded-md border border-slate-200 bg-stone-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
             <div className="mb-2 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-800">
+              <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-800">
                 <Settings className="h-3.5 w-3.5" />
                 Administracja
               </span>
@@ -279,6 +312,7 @@ export default function AppSidebar({
             </div>
 
             <div className="space-y-0.5">
+              {/* Global players + submenu */}
               <div>
                 <NavItem
                   href="/players/global"
@@ -287,23 +321,53 @@ export default function AppSidebar({
                   active={isGlobalSection}
                 />
                 <div className="mt-0.5 space-y-0.5 pl-9">
-                  <SubNavItem href="/players/global"        label="Globalna baza" active={globalBaseActive} />
-                  <SubNavItem href="/players/global/search" label="Wyszukaj"      active={globalSearchActive} />
+                  <SubNavItem
+                    href="/players/global"
+                    label="Globalna baza"
+                    active={globalBaseActive}
+                  />
+                  <SubNavItem
+                    href="/players/global/search"
+                    label="Wyszukaj"
+                    active={globalSearchActive}
+                  />
                 </div>
               </div>
 
-              <NavItem
-                href="/admin/manage"
-                icon={<Settings className="h-4 w-4" />}
-                label="Zarządzanie"
-                active={pathname?.startsWith("/admin/manage")}
-              />
+              {/* Zarządzanie + NOWE submenu: Metryki & Oceny */}
+              <div>
+                <NavItem
+                  href="/admin/manage"
+                  icon={<Settings className="h-4 w-4" />}
+                  label="Zarządzanie"
+                  active={isManageSection}
+                />
+                <div className="mt-0.5 space-y-0.5 pl-9">
+                  <SubNavItem
+                    href="/admin/manage"
+                    label="Użytkownicy & zaproszenia"
+                    active={manageBaseActive}
+                  />
+                  <SubNavItem
+                    href="/admin/manage/metrics"
+                    label="Metryki obserwacji"
+                    active={manageMetricsActive}
+                  />
+                  <SubNavItem
+                    href="/admin/manage/ratings"
+                    label="Oceny zawodnika"
+                    active={manageRatingsActive}
+                  />
+                </div>
+              </div>
 
               <NavItem
                 href="/scouts"
                 icon={<Users className="h-4 w-4" />}
                 label="Lista scoutów"
-                active={pathname === "/scouts" || pathname?.startsWith("/scouts/")}
+                active={
+                  pathname === "/scouts" || pathname?.startsWith("/scouts/")
+                }
               />
 
               <NavItem
@@ -321,8 +385,12 @@ export default function AppSidebar({
 
   function BrandMark({ showName }: { showName: boolean }) {
     return (
-      <a href="/" className="group flex items-center gap-2" aria-label="entrisoScouting - Start">
-        <div className="grid h-8 w-8 place-items-center rounded bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
+      <a
+        href="/"
+        className="group flex items-center gap-2"
+        aria-label="entrisoScouting - Start"
+      >
+        <div className="grid h-8 w-8 place-items-center rounded-md bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
           <span className="text-[13px] font-bold leading-none">S</span>
         </div>
         {showName && (
@@ -334,34 +402,31 @@ export default function AppSidebar({
     );
   }
 
-  /* ===== Inner layout: 3-row grid =====
-     rows: [header][scrollable middle][bottom fixed]
-     This guarantees bottom is visually pinned, and only middle scrolls. */
   const inner = (
     <div className="grid h-full grid-rows-[auto,1fr,auto]">
-      {/* Header (row 1) */}
+      {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between">
         <Link
           href="/"
-          className="flex gap-2 rounded font-semibold tracking-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 place-items-center"
+          className="flex gap-2 rounded-md font-semibold tracking-tight rounded-md focus:ring-indigo-500 place-items-center"
           title="Wróć na kokpit"
           onClick={onClose}
         >
-          <BrandMark showName={!isAuthed} /> entrisoScouting
+          <BrandMark showName={true} />
         </Link>
       </div>
 
-      {/* Middle scrollable content (row 2) */}
+      {/* Middle scrollable */}
       <div className="min-h-0 overflow-y-auto pr-1">
         <InnerNav />
       </div>
 
-      {/* Bottom fixed panel (row 3) */}
+      {/* Bottom fixed panel */}
       <div className="-mx-3 mt-6 border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/90">
         <div ref={accountRef} className="relative">
           <button
-            onClick={() => setAccountOpen(v => !v)}
-            className="flex w-full items-center justify-between rounded py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900"
+            onClick={() => setAccountOpen((v) => !v)}
+            className="flex w-full items-center justify-between rounded-md py-2 text-sm text-gray-800 transition hover:bg-stone-100 rounded-md focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900"
             aria-haspopup="menu"
             aria-expanded={accountOpen}
           >
@@ -371,7 +436,10 @@ export default function AppSidebar({
             <motion.span
               aria-hidden
               animate={{ rotate: accountOpen ? 180 : 0 }}
-              transition={{ duration: prefersReduced ? 0 : 0.16, ease: [0.2, 0.7, 0.2, 1] }}
+              transition={{
+                duration: prefersReduced ? 0 : 0.16,
+                ease: [0.2, 0.7, 0.2, 1],
+              }}
               className="inline-flex"
             >
               <ChevronDown className="h-4 w-4" />
@@ -385,65 +453,92 @@ export default function AppSidebar({
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: prefersReduced ? 0 : 0.14, ease: "easeOut" }}
-                className="absolute bottom-12 left-0 right-0 z-40 w-auto max-w-full overflow-x-hidden rounded border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
+                transition={{
+                  duration: prefersReduced ? 0 : 0.14,
+                  ease: "easeOut",
+                }}
+                className="absolute bottom-12 left-0 right-0 z-40 w-auto max-w-full overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
               >
-                {/* START rank quick card */}
-                {role === "scout" && (
-                  <div className="mx-1 mb-2 rounded bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
-                    <div className="mb-1 flex flex-wrap items-center justify-between">
-                      <span className="font-semibold whitespace-normal break-words">Twój poziom</span>
-                      <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(rank)}`}>
-                        <Trophy className="h-3.5 w-3.5" />
-                        {rankLabel(rank)}
+                {/* Rank card */}
+                <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
+                  <div className="mb-1 flex flex-wrap items-center justify-between">
+                    <span className="font-semibold whitespace-normal break-words">
+                      Twój poziom
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(
+                        rank
+                      )}`}
+                    >
+                      <Trophy className="h-3.5 w-3.5" />
+                      {rankLabel(rank)}
+                    </span>
+                  </div>
+
+                  <div className="mt-1">
+                    <div className="mb-1 flex flex-wrap items-center justify-between whitespace-normal break-words">
+                      <span className="opacity-70">
+                        Postęp do {rankLabel(next as Rank)}
                       </span>
+                      <span className="opacity-70">{pct}%</span>
                     </div>
-
-                    <div className="mt-1">
-                      <div className="mb-1 flex flex-wrap items-center justify-between whitespace-normal break-words">
-                        <span className="opacity-70">Postęp do {rankLabel(next as Rank)}</span>
-                        <span className="opacity-70">{pct}%</span>
-                      </div>
-                      <div className="h-2 w-full rounded bg-gray-200 dark:bg-neutral-800">
-                        <div className="h-2 rounded bg-indigo-500 transition-[width]" style={{ width: `${pct}%` }} />
-                      </div>
-                      <div className="mt-1 text-[10px] opacity-70 whitespace-normal break-words">
-                        Brakuje {remaining} pkt (np. {Math.ceil(remaining / 2)} aktywnych zawodników lub {remaining} obserwacji).
-                      </div>
+                    <div className="h-2 w-full rounded-md bg-gray-200 dark:bg-neutral-800">
+                      <div
+                        className="h-2 rounded-md bg-indigo-500 transition-[width]"
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
-
-                    <div className="mt-2 grid grid-cols-2 gap-1 text-[11px]">
-                      <div className="rounded p-2">
-                        <div className="opacity-60">Zawodnicy</div>
-                        <div className="text-sm font-semibold">{formatNum(playersCount)}</div>
-                      </div>
-                      <div className="rounded p-2">
-                        <div className="opacity-60">Obserwacje</div>
-                        <div className="text-sm font-semibold">{formatNum(obsCount)}</div>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <button
-                        className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                        onClick={readCounts}
-                        title="Odśwież liczniki (LocalStorage)"
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        Odśwież
-                      </button>
+                    <div className="mt-1 text-[10px] opacity-70 whitespace-normal break-words">
+                      Brakuje {remaining} pkt (np.{" "}
+                      {Math.ceil(remaining / 2)} aktywnych zawodników lub{" "}
+                      {remaining} obserwacji).
                     </div>
                   </div>
-                )}
-                {/* END rank quick card */}
+
+                  <div className="mt-2 grid grid-cols-2 gap-1 text-[11px]">
+                    <div className="rounded-md p-2">
+                      <div className="opacity-60">Zawodnicy</div>
+                      <div className="text-sm font-semibold">
+                        {formatNum(playersCount)}
+                      </div>
+                    </div>
+                    <div className="rounded-md p-2">
+                      <div className="opacity-60">Obserwacje</div>
+                      <div className="text-sm font-semibold">
+                        {formatNum(obsCount)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 rounded-md focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                      onClick={readCounts}
+                      title="Odśwież liczniki"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Odśwież
+                    </button>
+                  </div>
+                </div>
 
                 <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
                   Szybkie akcje
                 </div>
-                <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings" onClick={onClose}>
+                <Link
+                  role="menuitem"
+                  className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 rounded-md focus:ring-indigo-500 dark:hover:bg-neutral-900"
+                  href="/settings"
+                  onClick={onClose}
+                >
                   <Settings className="h-4 w-4" /> Ustawienia
                 </Link>
-                <Link role="menuitem" className="flex flex-wrap items-center gap-2 rounded px-2 py-2 text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900" href="/settings/navigation" onClick={onClose}>
+                <Link
+                  role="menuitem"
+                  className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 rounded-md focus:ring-indigo-500 dark:hover:bg-neutral-900"
+                  href="/settings/navigation"
+                  onClick={onClose}
+                >
                   <Map className="h-4 w-4" /> Nawigacja
                 </Link>
 
@@ -452,16 +547,16 @@ export default function AppSidebar({
                 <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
                   Rola
                 </div>
-                <RoleOption current={role} value="admin"       label="Admin"       onChange={setRoleAndClose} />
-                <RoleOption current={role} value="scout-agent" label="Scout Agent" onChange={setRoleAndClose} />
-                <RoleOption current={role} value="scout"       label="Scout"       onChange={setRoleAndClose} />
+                <div className="px-2 pb-2 text-sm text-dark dark:text-neutral-200">
+                  {labelForRole(role)}
+                </div>
 
                 <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
 
                 <button
                   role="menuitem"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-md focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
                   title="Wyloguj się"
                 >
                   <LogOut className="h-4 w-4" />
@@ -477,19 +572,27 @@ export default function AppSidebar({
             </div>
             <div className="flex items-center gap-1.5">
               <div
-                className="hidden min-w-0 shrink items-center gap-1 rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 sm:flex dark:border-neutral-800 dark:text-neutral-300"
+                className="hidden min-w-0 shrink items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-[11px] text-gray-700 sm:flex dark:border-neutral-800 dark:text-neutral-300"
                 title={`Aktywni: ${playersCount} • Obserwacje: ${obsCount} • Score: ${score}`}
               >
                 <TrendingUp className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                <span className="truncate">{formatNum(playersCount)} / {formatNum(obsCount)}</span>
+                <span className="truncate">
+                  {formatNum(playersCount)} / {formatNum(obsCount)}
+                </span>
               </div>
               <button
-                className="rounded border border-gray-300 p-1.5 text-xs transition hover:bg-stone-100 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="rounded-md border border-gray-300 p-1.5 text-xs transition hover:bg-stone-100 active:scale-[0.98] rounded-md focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                onClick={() =>
+                  setTheme(theme === "dark" ? "light" : "dark")
+                }
                 aria-label="Przełącz motyw (T)"
                 title="Przełącz motyw (T)"
               >
-                {theme === "dark" ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+                {theme === "dark" ? (
+                  <Sun className="h-3 w-3" />
+                ) : (
+                  <Moon className="h-3 w-3" />
+                )}
               </button>
             </div>
           </div>
@@ -498,8 +601,7 @@ export default function AppSidebar({
     </div>
   );
 
-  /* ====== PANEL STYLES (shadcn-ish) ======
-     NOTE: remove overflow-y from aside and keep it on middle row (inner) */
+  /* ====== PANEL STYLES ====== */
   const asideDesktop =
     "h-screen w-64 overflow-hidden border-r border-slate-200 bg-white p-3 shadow-sm ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
 
@@ -537,13 +639,17 @@ export default function AppSidebar({
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: prefersReduced ? "tween" : "spring", stiffness: 420, damping: 34, mass: 0.9 }}
+              transition={{
+                type: prefersReduced ? "tween" : "spring",
+                stiffness: 420,
+                damping: 34,
+                mass: 0.9,
+              }}
             >
-              {/* Close ("X") */}
               <button
                 onClick={onClose}
                 aria-label="Zamknij panel"
-                className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md-md border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-stone-50 rounded-md focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -557,7 +663,10 @@ export default function AppSidebar({
   }
 
   return (
-    <aside className={`fixed left-0 top-0 z-40 ${asideDesktop}`} aria-label="Główna nawigacja">
+    <aside
+      className={`fixed left-0 top-0 z-40 ${asideDesktop}`}
+      aria-label="Główna nawigacja"
+    >
       {inner}
     </aside>
   );
@@ -565,7 +674,12 @@ export default function AppSidebar({
 
 /* ========= Small components ========= */
 function NavItem({
-  href, icon, label, active, badge, badgeTitle,
+  href,
+  icon,
+  label,
+  active,
+  badge,
+  badgeTitle,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -578,7 +692,7 @@ function NavItem({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`group relative flex min-w-0 items-center gap-2 rounded px-3 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+      className={`group relative flex min-w-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition rounded-md focus:ring-indigo-500 ${
         active
           ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
           : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
@@ -587,7 +701,7 @@ function NavItem({
     >
       <span
         aria-hidden
-        className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-sm transition-all ${
+        className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-md-r-sm transition-all ${
           active
             ? "w-1 bg-indigo-500"
             : "w-0 bg-transparent group-hover:w-1 group-hover:bg-slate-300 dark:group-hover:bg-neutral-700"
@@ -597,7 +711,7 @@ function NavItem({
       <span className="truncate">{label}</span>
       {badge && (
         <span
-          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
           title={badgeTitle}
         >
           <span className="truncate">{badge}</span>
@@ -607,48 +721,32 @@ function NavItem({
   );
 }
 
-function SubNavItem({ href, label, active }: { href: string; label: string; active?: boolean }) {
+function SubNavItem({
+  href,
+  label,
+  active,
+}: {
+  href: string;
+  label: string;
+  active?: boolean;
+}) {
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-w-0 items-center gap-2 rounded px-3 py-1.5 text-[14px] transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-        active ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-               : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+      className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition rounded-md focus:ring-indigo-500 ${
+        active
+          ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+          : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
     >
-      <span aria-hidden className={`h-1.5 w-1.5 rounded ${active ? "bg-indigo-500" : "bg-slate-300 dark:bg-neutral-700"}`} />
+      <span
+        aria-hidden
+        className={`h-1.5 w-1.5 rounded-md ${
+          active ? "bg-indigo-500" : "bg-slate-300 dark:bg-neutral-700"
+        }`}
+      />
       <span className="truncate">{label}</span>
     </Link>
   );
-}
-
-function RoleOption({
-  current, value, label, onChange,
-}: {
-  current: Role;
-  value: Role;
-  label: string;
-  onChange: (v: Role) => void;
-}) {
-  const selected = current === value;
-  return (
-    <button
-      role="menuitemradio"
-      aria-checked={selected}
-      onClick={() => onChange(value)}
-      className={`mb-1 flex w-full items-center justify-between rounded px-2 py-2 text-left text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:bg-neutral-900 ${
-        selected ? "bg-stone-100 dark:bg-neutral-900" : ""
-      }`}
-    >
-      <span className="whitespace-normal break-words">{label}</span>
-      <span className={`h-2.5 w-2.5 rounded ${selected ? "bg-gray-900 dark:bg-neutral-200" : "border border-gray-300 dark:border-neutral-700"}`} />
-    </button>
-  );
-}
-
-function labelForRole(r: Role) {
-  if (r === "admin") return "Admin";
-  if (r === "scout-agent") return "Scout Agent";
-  return "Scout";
 }

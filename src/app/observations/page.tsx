@@ -1,29 +1,78 @@
 // src/app/observations/page.tsx
 "use client";
 
-import { Suspense, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import ObservationsFeature from "@/features/observations/Observations";
 import type { Observation } from "@/shared/types";
+import { getSupabase } from "@/lib/supabaseClient";
 
-// If you want to skip SSG for this page (quick unblock):
-export const dynamic = "force-dynamic"; // or: export const revalidate = 0
+export const dynamic = "force-dynamic";
 
-const initial: Observation[] = [
-  { id: 1, player: "Jan Kowalski", match: "U19 Liga",   date: "2025-05-02", time: "17:30", status: "final" },
-  { id: 2, player: "Marco Rossi",  match: "Sparing A",  date: "2025-05-10", time: "12:00", status: "draft" },
-];
+export default function ObservationsPage() {
+  const [observations, setObservations] = useState<Observation[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default function Page() {
-  const [data, setData] = useState<Observation[]>(initial);
+  // 1) Ładowanie z Supabase
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = getSupabase();
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("observations")
+          .select("*")
+          .order("id", { ascending: true });
+
+        if (error) throw error;
+        if (cancelled) return;
+
+        setObservations((data ?? []) as Observation[]);
+      } catch (err) {
+        console.error("[observations/page] Błąd ładowania z Supabase:", err);
+        if (!cancelled) {
+          // w razie błędu pokaż pustą listę
+          setObservations([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 2) Zapis do Supabase (bez localStorage)
+  const handleChange = async (next: Observation[]) => {
+    // optymistycznie aktualizujemy UI
+    setObservations(next);
+
+    try {
+      const supabase = getSupabase();
+
+      // next to tak naprawdę XO[] z ObservationsFeature (ma dodatkowe pola),
+      // więc traktujemy je jako any – Supabase upsertuje pełne rekordy.
+      const { error } = await supabase
+        .from("observations")
+        .upsert(next as any[], { onConflict: "id" }); // wymagany PRIMARY KEY (id)
+
+      if (error) throw error;
+    } catch (err) {
+      console.error("[observations/page] Błąd zapisu do Supabase:", err);
+      // w przyszłości można tu dorzucić toast / baner
+    }
+  };
+
+  if (loading) {
+    // możesz tu wrzucić skeleton / spinner, na razie prosto:
+    return null;
+  }
 
   return (
     <Suspense fallback={null}>
-      <ObservationsFeature
-        data={data}
-        onChange={(next) =>
-          setData(typeof next === "function" ? (next as (p: Observation[]) => Observation[])(data) : next)
-        }
-      />
+      <ObservationsFeature data={observations} onChange={handleChange} />
     </Suspense>
   );
 }
