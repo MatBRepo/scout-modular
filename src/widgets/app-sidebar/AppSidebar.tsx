@@ -20,46 +20,70 @@ import {
   X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { MyPlayersIconDefault } from "@/components/icons";
-import { supabase } from "@/shared/supabase-client"; // <--- UPEWNIJ SIĘ, ŻE ŚCIEŻKA SIĘ ZGADZA
+import { supabase } from "@/shared/supabase-client";
 
 /* ========= Types ========= */
 type Role = "admin" | "scout" | "scout-agent";
 type Rank = "bronze" | "silver" | "gold" | "platinum";
 type SidebarVariant = "desktop" | "mobile";
 
-/* ========= Rank helpers ========= */
-const RANK_THRESHOLDS: Record<Rank, number> = {
+/* ========= Default rank thresholds (fallback if DB empty) ========= */
+const DEFAULT_RANK_THRESHOLDS: Record<Rank, number> = {
   bronze: 0,
   silver: 20,
   gold: 50,
   platinum: 100,
 };
+
+/* ========= Rank helpers ========= */
 const calcScore = (players: number, observations: number) =>
   players * 2 + observations;
-function calcRank(players: number, observations: number) {
+
+function calcRank(
+  players: number,
+  observations: number,
+  thresholds: Record<Rank, number>
+) {
   const score = calcScore(players, observations);
-  if (score >= RANK_THRESHOLDS.platinum)
+
+  if (score >= thresholds.platinum)
     return { rank: "platinum" as Rank, score };
-  if (score >= RANK_THRESHOLDS.gold) return { rank: "gold" as Rank, score };
-  if (score >= RANK_THRESHOLDS.silver) return { rank: "silver" as Rank, score };
+  if (score >= thresholds.gold)
+    return { rank: "gold" as Rank, score };
+  if (score >= thresholds.silver)
+    return { rank: "silver" as Rank, score };
   return { rank: "bronze" as Rank, score };
 }
-function nextRankInfo(rank: Rank, score: number) {
+
+function nextRankInfo(
+  rank: Rank,
+  score: number,
+  thresholds: Record<Rank, number>
+) {
   const order: Rank[] = ["bronze", "silver", "gold", "platinum"];
   const idx = order.indexOf(rank);
   const next = order[idx + 1] ?? "platinum";
-  const currentMin = RANK_THRESHOLDS[rank];
-  const nextMin = RANK_THRESHOLDS[next];
+
+  const currentMin = thresholds[rank];
+  const nextMin = thresholds[next];
+
   const span = Math.max(1, nextMin - currentMin);
   const progressed = Math.max(0, score - currentMin);
   const pct = Math.min(100, Math.round((progressed / span) * 100));
   const remaining = Math.max(0, nextMin - score);
+
   return { next, pct, remaining };
 }
+
 const rankLabel = (r: Rank) =>
   r === "platinum"
     ? "Platinum"
@@ -68,6 +92,7 @@ const rankLabel = (r: Rank) =>
     : r === "silver"
     ? "Silver"
     : "Bronze";
+
 function rankClass(r: Rank) {
   switch (r) {
     case "platinum":
@@ -120,11 +145,21 @@ export default function AppSidebar({
   const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState<Role>("scout");
 
+  // dynamic rank thresholds (managed in Supabase)
+  const [rankThresholds, setRankThresholds] = useState<
+    Record<Rank, number>
+  >(DEFAULT_RANK_THRESHOLDS);
+
   // stats
   const [playersCount, setPlayersCount] = useState(0);
   const [obsCount, setObsCount] = useState(0);
-  const { rank, score } = calcRank(playersCount, obsCount);
-  const { next, pct, remaining } = nextRankInfo(rank, score);
+
+  const { rank, score } = calcRank(playersCount, obsCount, rankThresholds);
+  const { next, pct, remaining } = nextRankInfo(
+    rank,
+    score,
+    rankThresholds
+  );
 
   /* ===== Mount ===== */
   useEffect(() => {
@@ -177,7 +212,41 @@ export default function AppSidebar({
     };
   }, [userId]);
 
-  /* ===== Load counts (players & observations) from Supabase ===== */
+  /* ===== Load rank thresholds from Supabase (admin managed) ===== */
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("rank_thresholds")
+        .select("rank, min_score");
+
+      if (cancelled || error || !data) return;
+
+      const nextMap: Record<Rank, number> = {
+        ...DEFAULT_RANK_THRESHOLDS,
+      };
+
+      for (const row of data as { rank: string; min_score: number }[]) {
+        const r = row.rank as Rank;
+        if (r in nextMap) {
+          nextMap[r] = row.min_score;
+        }
+      }
+      setRankThresholds(nextMap);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /* ===== Load counts (players & observations) from Supabase =====
+   * Only "fully filled":
+   *  - players: status = 'active'
+   *  - observations: status = 'final'
+   * Adjust filters here if your definition changes.
+   */
   const readCounts = async () => {
     if (!userId) return;
 
@@ -186,11 +255,13 @@ export default function AppSidebar({
         supabase
           .from("players")
           .select("*", { count: "exact", head: true })
-          .eq("user_id", userId),
+          .eq("user_id", userId)
+          .eq("status", "active"),
         supabase
           .from("observations")
           .select("*", { count: "exact", head: true })
-          .eq("user_id", userId),
+          .eq("user_id", userId)
+          .eq("status", "final"),
       ]);
 
       setPlayersCount(playersRes.count ?? 0);
@@ -204,6 +275,7 @@ export default function AppSidebar({
   useEffect(() => {
     if (!userId) return;
     readCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   /* ===== Shortcuts ===== */
@@ -243,13 +315,14 @@ export default function AppSidebar({
   const globalSearchActive =
     isGlobalSection && pathname?.startsWith("/players/global/search");
 
-  // NEW – aktywne flagi dla Zarządzanie + jego podstrony
+  // Zarządzanie + podstrony
   const isManageSection = pathname?.startsWith("/admin/manage");
   const manageBaseActive =
     isManageSection &&
     (pathname === "/admin/manage" || pathname === "/admin/manage/");
   const manageMetricsActive = pathname?.startsWith("/admin/manage/metrics");
   const manageRatingsActive = pathname?.startsWith("/admin/manage/ratings");
+  const manageRanksActive = pathname?.startsWith("/admin/manage/ranks");
 
   const playersBadge = playersCount > 0 ? String(playersCount) : undefined;
   const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
@@ -282,7 +355,7 @@ export default function AppSidebar({
             label="Moi zawodnicy"
             active={isPlayersSection}
             badge={playersBadge}
-            badgeTitle="Aktywni zawodnicy"
+            badgeTitle="Aktywni zawodnicy (pełne profile)"
           />
         </div>
       )}
@@ -296,7 +369,7 @@ export default function AppSidebar({
           pathname?.startsWith("/observations/")
         }
         badge={obsBadge}
-        badgeTitle="Liczba obserwacji"
+        badgeTitle="Wypełnione obserwacje (final)"
       />
 
       {role === "admin" && (
@@ -334,7 +407,7 @@ export default function AppSidebar({
                 </div>
               </div>
 
-              {/* Zarządzanie + NOWE submenu: Metryki & Oceny */}
+              {/* Zarządzanie + submenu: Metryki & Oceny & Ranki */}
               <div>
                 <NavItem
                   href="/admin/manage"
@@ -357,6 +430,11 @@ export default function AppSidebar({
                     href="/admin/manage/ratings"
                     label="Oceny zawodnika"
                     active={manageRatingsActive}
+                  />
+                  <SubNavItem
+                    href="/admin/manage/ranks"
+                    label="Ranking użytkowników"
+                    active={manageRanksActive}
                   />
                 </div>
               </div>
@@ -408,7 +486,7 @@ export default function AppSidebar({
       <div className="mb-4 flex flex-wrap items-center justify-between">
         <Link
           href="/"
-          className="flex gap-2 rounded-md font-semibold tracking-tight rounded-md focus:ring-indigo-500 place-items-center"
+          className="flex gap-2 rounded-md font-semibold tracking-tight focus:ring-indigo-500 place-items-center"
           title="Wróć na kokpit"
           onClick={onClose}
         >
@@ -426,7 +504,7 @@ export default function AppSidebar({
         <div ref={accountRef} className="relative">
           <button
             onClick={() => setAccountOpen((v) => !v)}
-            className="flex w-full items-center justify-between rounded-md py-2 text-sm text-gray-800 transition hover:bg-stone-100 rounded-md focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900"
+            className="flex w-full items-center justify-between rounded-md py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900"
             aria-haspopup="menu"
             aria-expanded={accountOpen}
           >
@@ -512,7 +590,7 @@ export default function AppSidebar({
 
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <button
-                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 rounded-md focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
                       onClick={readCounts}
                       title="Odśwież liczniki"
                     >
@@ -527,7 +605,7 @@ export default function AppSidebar({
                 </div>
                 <Link
                   role="menuitem"
-                  className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 rounded-md focus:ring-indigo-500 dark:hover:bg-neutral-900"
+                  className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 focus:ring-indigo-500 dark:hover:bg-neutral-900"
                   href="/settings"
                   onClick={onClose}
                 >
@@ -535,7 +613,7 @@ export default function AppSidebar({
                 </Link>
                 <Link
                   role="menuitem"
-                  className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 rounded-md focus:ring-indigo-500 dark:hover:bg-neutral-900"
+                  className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 focus:ring-indigo-500 dark:hover:bg-neutral-900"
                   href="/settings/navigation"
                   onClick={onClose}
                 >
@@ -556,7 +634,7 @@ export default function AppSidebar({
                 <button
                   role="menuitem"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-md focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
                   title="Wyloguj się"
                 >
                   <LogOut className="h-4 w-4" />
@@ -581,7 +659,7 @@ export default function AppSidebar({
                 </span>
               </div>
               <button
-                className="rounded-md border border-gray-300 p-1.5 text-xs transition hover:bg-stone-100 active:scale-[0.98] rounded-md focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                className="rounded-md border border-gray-300 p-1.5 text-xs transition hover:bg-stone-100 active:scale-[0.98] focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
                 onClick={() =>
                   setTheme(theme === "dark" ? "light" : "dark")
                 }
@@ -649,7 +727,7 @@ export default function AppSidebar({
               <button
                 onClick={onClose}
                 aria-label="Zamknij panel"
-                className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md-md border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-stone-50 rounded-md focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-stone-50 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -682,7 +760,7 @@ function NavItem({
   badgeTitle,
 }: {
   href: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   active?: boolean;
   badge?: string;
@@ -692,7 +770,7 @@ function NavItem({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`group relative flex min-w-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition rounded-md focus:ring-indigo-500 ${
+      className={`group relative flex min-w-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
         active
           ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
           : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
@@ -701,7 +779,7 @@ function NavItem({
     >
       <span
         aria-hidden
-        className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-md-r-sm transition-all ${
+        className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-md transition-all ${
           active
             ? "w-1 bg-indigo-500"
             : "w-0 bg-transparent group-hover:w-1 group-hover:bg-slate-300 dark:group-hover:bg-neutral-700"
@@ -734,7 +812,7 @@ function SubNavItem({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition rounded-md focus:ring-indigo-500 ${
+      className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition focus:ring-indigo-500 ${
         active
           ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
           : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
