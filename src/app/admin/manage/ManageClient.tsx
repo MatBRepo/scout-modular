@@ -33,10 +33,12 @@ import {
 import {
   loadMetrics,
   saveMetrics,
+  syncMetricsFromSupabase,
   type MetricsConfig,
   type MetricGroupKey,
   type Metric,
 } from "@/shared/metrics";
+
 import {
   loadRatings,
   saveRatings,
@@ -195,6 +197,31 @@ export default function ManagePage() {
   const [errorInvites, setErrorInvites] = useState<string | null>(null);
   const [savingUser, setSavingUser] = useState(false);
   const [creatingInvite, setCreatingInvite] = useState(false);
+
+
+const [metricsLoading, setMetricsLoading] = useState(false);
+// opcjonalnie: const [metricsError, setMetricsError] = useState<string | null>(null);
+
+useEffect(() => {
+  let active = true;
+
+  (async () => {
+    setMetricsLoading(true);
+    try {
+      const cfg = await syncMetricsFromSupabase();
+      if (!active) return;
+      setMCfg(cfg);
+    } finally {
+      if (active) setMetricsLoading(false);
+    }
+  })();
+
+  return () => {
+    active = false;
+  };
+}, []);
+
+
 
   /* --------------------------- Loaders -------------------------- */
   // Accounts from Supabase
@@ -623,10 +650,17 @@ export default function ManagePage() {
   }
 
   /* ------- Ratings helpers (Konfiguracja ocen zawodnika) ------- */
-  function setAndSaveRatings(next: RatingsConfig) {
-    setRCfg(next);
-    saveRatings(next);
-  }
+function setAndSaveRatings(next: RatingsConfig) {
+  // gwarantujemy spójny sort_order
+  const withOrder = next.map((r, idx) => ({
+    ...r,
+    sort_order: idx,
+  })) as RatingsConfig;
+
+  setRCfg(withOrder);
+  saveRatings(withOrder);
+}
+
 
   function updateRatingLabel(id: string, label: string) {
     const next = rCfg.map((r) => (r.id === id ? { ...r, label } : r));
@@ -651,18 +685,26 @@ export default function ManagePage() {
     setAndSaveRatings(next);
   }
 
-  function addRating() {
-    const label = "Nowa ocena";
-    const item: RatingAspect = {
-      id: safeRatingId(),
-      key: slugRatingKey(label),
-      label,
-      tooltip: "",
-      enabled: true,
-    };
-    const next = [...rCfg, item];
-    setAndSaveRatings(next);
-  }
+function addRating() {
+  const label = "Nowa ocena";
+
+  const item: RatingAspect = {
+    id: safeRatingId(),
+    key: slugRatingKey(label),
+    label,
+    tooltip: "",
+    enabled: true,
+    // nowe pola wymagane przez typ
+    sort_order: rCfg.length,
+    // domyślna grupa – dopasuj nazwę do swojego uniona w ratings.ts,
+    // "GENERAL" jest rzutowane na any, żeby TS nie blokował kompilacji
+    groupKey: "GENERAL" as any,
+  };
+
+  const next = [...rCfg, item];
+  setAndSaveRatings(next);
+}
+
 
   function removeRating(id: string) {
     const next = rCfg.filter((r) => r.id !== id);

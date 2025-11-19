@@ -261,26 +261,40 @@ export default function GlobalDatabasePage() {
 
   // deduplikacja + filtrowanie
   const filtered = useMemo(() => {
-    // 1) deduplikacja po znormalizowanej nazwie (świadomie ignorujemy key z bazy)
+    // 1) deduplikacja po znormalizowanej nazwie, ale z MERGOWANIEM sources
     const map = new Map<string, GlobalPlayer>();
 
     for (const r of rows) {
-      const k = normalizeName(r.name || "");
-      if (!k) continue;
+      const normalized = normalizeName(r.name || "");
+      const key = normalized || `id:${r.id}`;
 
-      const existing = map.get(k);
+      const existing = map.get(key);
       if (!existing) {
-        map.set(k, r);
-      } else {
-        // wybierz nowszy rekord po addedAt
-        const tNew = r.addedAt ? new Date(r.addedAt).getTime() : 0;
-        const tOld = existing.addedAt
-          ? new Date(existing.addedAt).getTime()
-          : 0;
-        if (tNew > tOld) {
-          map.set(k, r);
-        }
+        map.set(key, r);
+        continue;
       }
+
+      // scal źródła
+      const mergedSourcesRaw = [
+        ...(existing.sources || []),
+        ...(r.sources || []),
+      ];
+      const seen = new Set<string>();
+      const mergedSources: GlobalSource[] = mergedSourcesRaw.filter((s) => {
+        const marker = `${s.scoutId}|${s.playerId}`;
+        if (seen.has(marker)) return false;
+        seen.add(marker);
+        return true;
+      });
+
+      // wybierz nowszy rekord jako bazowy
+      const tNew = r.addedAt ? new Date(r.addedAt).getTime() : 0;
+      const tOld = existing.addedAt
+        ? new Date(existing.addedAt).getTime()
+        : 0;
+      const winner = tNew > tOld ? r : existing;
+
+      map.set(key, { ...winner, sources: mergedSources });
     }
 
     const base = Array.from(map.values());
@@ -528,7 +542,7 @@ export default function GlobalDatabasePage() {
         }
       />
 
-      {/* Lekki hint jak korzystać z widoku */}
+      {/* Hint */}
       <Card className="border-dashed border-slate-300 bg-slate-50/70 text-xs dark:border-neutral-700 dark:bg-neutral-900/40">
         <CardContent className="flex flex-wrap items-start gap-2 px-3 py-2">
           <InfoIcon className="mt-0.5 h-3.5 w-3.5 text-slate-500 dark:text-neutral-400" />
@@ -537,15 +551,19 @@ export default function GlobalDatabasePage() {
               Globalna baza = końcowy, bezduplikatowy katalog zawodników
             </div>
             <p className="text-slate-600 dark:text-neutral-300">
-              Rekordy trafiają tutaj z widoku{" "}
+              W tej tabeli widzisz po <b>jednym wierszu na zawodnika</b>{" "}
+              (deduplikacja po znormalizowanej nazwie). Rekordy trafiają z
+              widoku{" "}
               <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] dark:bg-neutral-800">
                 Duplikaty
               </code>{" "}
               po akcji <b>„Scal i dodaj do Globalnej bazy”</b> /{" "}
-              <b>„Powiąż z globalnym”</b>. Jeden zawodnik może być dodany przez
-              wielu scoutów – w takim przypadku w tej tabeli zobaczysz go tylko
-              raz, z licznikiem{" "}
-              <b>„ile kont scoutów ma tego zawodnika w swojej bazie”</b>.
+              <b>„Powiąż z globalnym”</b> lub z zewnętrznych źródeł (TM/Wyscout).
+              Jeśli zawodnik ma przypisanych scoutów w polu{" "}
+              <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] dark:bg-neutral-800">
+                sources
+              </code>
+              , zobaczysz badge z liczbą kont scoutów i listę po kliknięciu.
             </p>
           </div>
         </CardContent>

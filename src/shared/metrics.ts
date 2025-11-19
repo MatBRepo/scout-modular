@@ -107,3 +107,69 @@ export async function deleteMetric(id: string) {
   const supabase = getSupabase();
   return supabase.from("obs_metrics").delete().eq("id", id);
 }
+
+/**
+ * saveMetrics – kompatybilne z dotychczasowym kodem:
+ * przyjmuje cały config i synchronizuje go z tabelą obs_metrics w Supabase.
+ * 
+ * Wywołania w UI (setAndSave) zostają bez zmian – tylko backend się zmienił.
+ */
+export async function saveMetrics(cfg: MetricsConfig): Promise<void> {
+  try {
+    const supabase = getSupabase();
+
+    // 1. Pobierz obecne ID z bazy
+    const { data: existing, error: existingError } = await supabase
+      .from("obs_metrics")
+      .select("id");
+
+    if (existingError) {
+      console.error("[metrics] saveMetrics – load existing error:", existingError);
+      return;
+    }
+
+    const existingIds = new Set<string>(
+      (existing ?? []).map((row: any) => row.id as string)
+    );
+
+    // 2. Zflattenuj nową konfigurację do listy wierszy
+    const rows: {
+      id: string;
+      group_key: MetricGroupKey;
+      key: string;
+      label: string;
+      enabled: boolean;
+      sort_order: number;
+    }[] = [];
+
+    (Object.keys(cfg) as MetricGroupKey[]).forEach((groupKey) => {
+      cfg[groupKey].forEach((m, index) => {
+        rows.push({
+          id: m.id,
+          group_key: groupKey,
+          key: m.key,
+          label: m.label,
+          enabled: m.enabled,
+          sort_order: index,
+        });
+      });
+    });
+
+    const newIds = new Set<string>(rows.map((r) => r.id).filter(Boolean));
+
+    // 3. Usuń metryki, których już nie ma w configu
+    const idsToDelete = [...existingIds].filter((id) => !newIds.has(id));
+    if (idsToDelete.length) {
+      await supabase.from("obs_metrics").delete().in("id", idsToDelete);
+    }
+
+    // 4. Upsert całej listy (nowe + istniejące)
+    if (rows.length) {
+      await supabase
+        .from("obs_metrics")
+        .upsert(rows, { onConflict: "id" });
+    }
+  } catch (e) {
+    console.error("[metrics] saveMetrics exception:", e);
+  }
+}
