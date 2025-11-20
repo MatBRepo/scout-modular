@@ -29,6 +29,8 @@ import {
   CheckCircle2,
   ChevronDown,
   Search,
+  AlertTriangle,
+  Lock,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -207,7 +209,6 @@ const COUNTRIES: Country[] = [
 
 function SavePill({
   state,
-  mode,
 }: {
   state: "idle" | "saving" | "saved";
   mode?: "known" | "unknown" | null;
@@ -222,6 +223,12 @@ function SavePill({
     idle:
       "border-gray-300 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200",
   } as const;
+
+  // Domyślnie (idle) nic nie pokazujemy
+  if (state === "idle") {
+    return null;
+  }
+
   return (
     <span className={`${base} ${map[state]}`} aria-live="polite">
       {state === "saving" ? (
@@ -229,17 +236,11 @@ function SavePill({
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Autozapis…
         </>
-      ) : state === "saved" ? (
+      ) : (
         <>
           <CheckCircle2 className="mr-2 h-4 w-4" />
           Zapisano
         </>
-      ) : mode === "known" ? (
-        "Uzupełnij: imię, nazwisko, rok ur., klub i kraj klubu"
-      ) : mode === "unknown" ? (
-        "Uzupełnij: numer, klub i kraj klubu"
-      ) : (
-        "Wybierz tryb i uzupełnij podstawowe dane"
       )}
     </span>
   );
@@ -400,7 +401,8 @@ function getDefaultExt() {
 export default function AddPlayerPage() {
   const router = useRouter();
 
-  const [choice, setChoice] = useState<Choice>("known");
+  // Domyślnie brak wyboru trybu
+  const [choice, setChoice] = useState<Choice>(null);
 
   const [basicOpen, setBasicOpen] = useState(true);
   const [extOpen, setExtOpen] = useState(false);
@@ -464,8 +466,14 @@ export default function AddPlayerPage() {
     uClubCountry,
     uNote,
   ]);
-  const badgeBasic = choice === "unknown" ? cntBasicUnknown : cntBasicKnown;
-  const basicMax = choice === "unknown" ? 4 : 5;
+  const badgeBasic =
+    choice === "unknown"
+      ? cntBasicUnknown
+      : choice === "known"
+      ? cntBasicKnown
+      : 0;
+  const basicMax =
+    choice === "unknown" ? 4 : choice === "known" ? 5 : 0;
 
   const cntProfile = countTruthy([
     ext.height,
@@ -1377,6 +1385,8 @@ export default function AddPlayerPage() {
   const stepPillClass =
     "inline-flex h-6 items-center rounded-md bg-slate-100 px-2.5 text-[11px]   tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
 
+  const hasChoice = !!choice;
+
   /* ========================================= UI ========================================= */
   return (
     <div className="w-full space-y-4">
@@ -1384,6 +1394,7 @@ export default function AddPlayerPage() {
         title="Dodaj zawodnika"
         right={
           <div className="flex w-full items-center justify-end gap-2 sm:gap-3 md:flex-nowrap">
+            {/* SavePill pokazuje się dopiero, gdy zapis faktycznie się odpala */}
             <SavePill state={saveState} mode={choice} />
             <Button
               variant="outline"
@@ -1396,1147 +1407,1172 @@ export default function AddPlayerPage() {
         }
       />
 
-      {/* Główna kolumna – wszystkie kroki */}
-      <div className="space-y-4">
-        {/* Tryb dodawania */}
-        <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
-          <CardHeader className="border-b border-slate-200 px-4 py-4 md:px-6 dark:border-neutral-800">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className={stepPillClass}>Krok 0 · Tryb</div>
-                <h2 className="mt-1 text-base font-semibold tracking-tight">
-                  Wybierz sposób dodania zawodnika
-                </h2>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
-                  Najpierw zdecyduj, czy znasz dane osobowe zawodnika, czy
-                  zapisujesz go roboczo jako anonimowego.
-                </p>
-              </div>
+      {/* KROK 0 – tryb dodawania */}
+      <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
+        <CardHeader className="border-b border-slate-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className={stepPillClass}>Krok 0 · Tryb</div>
+              <h2 className="mt-1 text-base font-semibold tracking-tight">
+                Wybierz sposób dodania zawodnika
+              </h2>
+              <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                Najpierw zdecyduj, czy znasz dane osobowe zawodnika, czy
+                zapisujesz go roboczo jako anonimowego.
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="px-4 py-4 md:px-6">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setChoice("known")}
-                className={cn(
-                  "w-full rounded-lg p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md bg-white dark:bg-neutral-950 ring-1",
-                  choice === "known"
-                    ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
-                    : "ring-gray-200 hover:ring-emerald-600/70 dark:ring-neutral-800 dark:hover:ring-emerald-600/60"
-                )}
-              >
-                <div className="flex items-start gap-4">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
-                    <KnownPlayerIcon
-                      className={cn(
-                        "h-7 w-7",
-                        choice === "known"
-                          ? "text-emerald-800"
-                          : "text-black dark:text-neutral-100"
-                      )}
-                      strokeWidth={1.0}
-                    />
-                  </span>
-                  <div className="min-w-0">
-                    <div
-                      className={cn(
-                        "mb-1 text-sm font-semibold",
-                        choice === "known"
-                          ? "text-emerald-900"
-                          : "text-black dark:text-neutral-100"
-                      )}
-                    >
-                      Znam zawodnika
-                    </div>
-                    <div
-                      className={cn(
-                        "text-xs leading-relaxed",
-                        choice === "known"
-                          ? "text-emerald-900/80"
-                          : "text-black/70 dark:text-neutral-300"
-                      )}
-                    >
-                      Imię, nazwisko, rok urodzenia, klub i kraj klubu. To
-                      baza pod pełny profil i raporty.
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setChoice("unknown")}
-                className={cn(
-                  "w-full rounded-lg p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md bg-white dark:bg-neutral-950 ring-1",
-                  choice === "unknown"
-                    ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
-                    : "ring-gray-200 hover:ring-rose-600/70 dark:ring-neutral-800 dark:hover:ring-rose-600/60"
-                )}
-              >
-                <div className="flex items-start gap-4">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
-                    <UnknownPlayerIcon
-                      className={cn(
-                        "h-7 w-7",
-                        choice === "unknown"
-                          ? "text-rose-900"
-                          : "text-black dark:text-neutral-100"
-                      )}
-                      strokeWidth={1.0}
-                    />
-                  </span>
-                  <div className="min-w-0">
-                    <div
-                      className={cn(
-                        "mb-1 text-sm font-semibold",
-                        choice === "unknown"
-                          ? "text-rose-900"
-                          : "text-black dark:text-neutral-100"
-                      )}
-                    >
-                      Nie znam zawodnika
-                    </div>
-                    <div
-                      className={cn(
-                        "text-xs leading-relaxed",
-                        choice === "unknown"
-                          ? "text-rose-900/80"
-                          : "text-black/70 dark:text-neutral-300"
-                      )}
-                    >
-                      Szybki zapis: numer, klub, kraj klubu. Idealne, gdy
-                      dopiero „łapiesz” zawodnika w trakcie meczu.
-                    </div>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* KROK 1 – Podstawowe informacje */}
-        <Card className="mt-1">
-          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 py-4 md:px-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button
               type="button"
-              aria-expanded={basicOpen}
-              aria-controls="basic-panel"
-              onClick={() => setBasicOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
+              onClick={() => setChoice("known")}
+              className={cn(
+                "w-full rounded-lg p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md bg-white dark:bg-neutral-950 ring-1",
+                choice === "known"
+                  ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
+                  : "ring-gray-200 hover:ring-emerald-600/70 dark:ring-neutral-800 dark:hover:ring-emerald-600/60"
+              )}
             >
-              <div>
-                <div className={stepPillClass}>Krok 1 · Dane bazowe</div>
-                <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Podstawowe informacje
-                </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
-                  Minimum, które uruchamia autozapis do Twojej bazy zawodników.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pl-4">
-                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                  {badgeBasic}/{basicMax}
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
+                  <KnownPlayerIcon
+                    className={cn(
+                      "h-7 w-7",
+                      choice === "known"
+                        ? "text-emerald-800"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                    strokeWidth={1.0}
+                  />
                 </span>
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    basicOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
+                <div className="min-w-0">
+                  <div
+                    className={cn(
+                      "mb-1 text-sm font-semibold",
+                      choice === "known"
+                        ? "text-emerald-900"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                  >
+                    Znam zawodnika
+                  </div>
+                  <div
+                    className={cn(
+                      "text-xs leading-relaxed",
+                      choice === "known"
+                        ? "text-emerald-900/80"
+                        : "text-black/70 dark:text-neutral-300"
+                    )}
+                  >
+                    Imię, nazwisko, rok urodzenia, klub i kraj klubu. To baza
+                    pod pełny profil i raporty.
+                  </div>
+                </div>
               </div>
             </button>
-          </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
-            <Accordion
-              type="single"
-              collapsible
-              value={basicOpen ? "basic" : undefined}
-              onValueChange={(v) => setBasicOpen(v === "basic")}
-              className="w-full"
+
+            <button
+              type="button"
+              onClick={() => setChoice("unknown")}
+              className={cn(
+                "w-full rounded-lg p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md bg-white dark:bg-neutral-950 ring-1",
+                choice === "unknown"
+                  ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
+                  : "ring-gray-200 hover:ring-rose-600/70 dark:ring-neutral-800 dark:hover:ring-rose-600/60"
+              )}
             >
-              <AccordionItem value="basic" className="border-0">
-                <AccordionContent id="basic-panel" className="pt-4 pb-5">
-                  {choice === "unknown" ? (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <div>
-                        <Label className="text-sm">Numer na koszulce</Label>
-                        <div className="relative">
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
+                  <UnknownPlayerIcon
+                    className={cn(
+                      "h-7 w-7",
+                      choice === "unknown"
+                        ? "text-rose-900"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                    strokeWidth={1.0}
+                  />
+                </span>
+                <div className="min-w-0">
+                  <div
+                    className={cn(
+                      "mb-1 text-sm font-semibold",
+                      choice === "unknown"
+                        ? "text-rose-900"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                  >
+                    Nie znam zawodnika
+                  </div>
+                  <div
+                    className={cn(
+                      "text-xs leading-relaxed",
+                      choice === "unknown"
+                        ? "text-rose-900/80"
+                        : "text-black/70 dark:text-neutral-300"
+                    )}
+                  >
+                    Szybki zapis: numer, klub, kraj klubu. Idealne, gdy
+                    dopiero „łapiesz” zawodnika w trakcie meczu.
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Wrapper na kroki 1–4 z blokadą, gdy brak wyboru trybu */}
+      <div className="relative">
+        <div
+          className={cn(
+            "space-y-4",
+            !hasChoice && "pointer-events-none opacity-40 blur-[5px]"
+          )}
+        >
+          {/* KROK 1 – Podstawowe informacje */}
+          <Card className="mt-1">
+            <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+              <button
+                type="button"
+                aria-expanded={basicOpen}
+                aria-controls="basic-panel"
+                onClick={() => setBasicOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div>
+                  <div className={stepPillClass}>Krok 1 · Dane bazowe</div>
+                  <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
+                    Podstawowe informacje
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                    Minimum, które uruchamia autozapis do Twojej bazy
+                    zawodników.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pl-4">
+                  <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                    {badgeBasic}/{basicMax}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 transition-transform",
+                      basicOpen ? "rotate-180" : "rotate-0"
+                    )}
+                  />
+                </div>
+              </button>
+            </CardHeader>
+            <CardContent className="px-4 py-0 md:px-6">
+              <Accordion
+                type="single"
+                collapsible
+                value={basicOpen ? "basic" : undefined}
+                onValueChange={(v) => setBasicOpen(v === "basic")}
+                className="w-full"
+              >
+                <AccordionItem value="basic" className="border-0">
+                  <AccordionContent id="basic-panel" className="pt-4 pb-5">
+                    {choice === "unknown" ? (
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                          <Label className="text-sm">Numer na koszulce</Label>
+                          <div className="relative">
+                            <Input
+                              className={cn(!jerseyNumber && "pr-24")}
+                              value={jerseyNumber}
+                              onChange={(e) => setJerseyNumber(e.target.value)}
+                              placeholder="np. 27"
+                            />
+                            {!jerseyNumber && <Chip text="Wymagane" />}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="text-sm">Aktualny klub</Label>
+                          <div className="relative">
+                            <Input
+                              value={uClub}
+                              onChange={(e) => setUClub(e.target.value)}
+                              className={cn(!uClub && "pr-24")}
+                            />
+                            {!uClub && <Chip text="Wymagane" />}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm pb-2">
+                            Kraj aktualnego klubu
+                          </Label>
+                          <CountryCombobox
+                            value={uClubCountry}
+                            onChange={(val) => setUClubCountry(val)}
+                            chip={!uClubCountry ? "Wymagane" : undefined}
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label className="text-sm">
+                            Notatka własna (opcjonalne)
+                          </Label>
+                          <Textarea
+                            value={uNote}
+                            onChange={(e) => setUNote(e.target.value)}
+                            placeholder="Krótka notatka z meczu, charakterystyka…"
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                          <Label className="text-sm">Imię</Label>
+                          <div className="relative">
+                            <Input
+                              value={firstName}
+                              onChange={(e) => setFirstName(e.target.value)}
+                              className={cn(!firstName && "pr-24")}
+                            />
+                            {!firstName && <Chip text="Wymagane" />}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm">Nazwisko</Label>
+                          <div className="relative">
+                            <Input
+                              value={lastName}
+                              onChange={(e) => setLastName(e.target.value)}
+                              className={cn(!lastName && "pr-24")}
+                            />
+                            {!lastName && <Chip text="Wymagane" />}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm">Rok urodzenia</Label>
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              value={birthYear}
+                              onChange={(e) => setBirthYear(e.target.value)}
+                              className={cn(!birthYear && "pr-24")}
+                            />
+                            {!birthYear && <Chip text="Wymagane" />}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm">Numer na koszulce</Label>
                           <Input
-                            className={cn(!jerseyNumber && "pr-24")}
                             value={jerseyNumber}
                             onChange={(e) => setJerseyNumber(e.target.value)}
-                            placeholder="np. 27"
+                            placeholder="opcjonalne"
                           />
-                          {!jerseyNumber && <Chip text="Wymagane" />}
                         </div>
-                      </div>
-
-                      <div>
-                        <Label className="text-sm">Aktualny klub</Label>
-                        <div className="relative">
-                          <Input
-                            value={uClub}
-                            onChange={(e) => setUClub(e.target.value)}
-                            className={cn(!uClub && "pr-24")}
-                          />
-                          {!uClub && <Chip text="Wymagane" />}
+                        <div>
+                          <Label className="text-sm">Aktualny klub</Label>
+                          <div className="relative">
+                            <Input
+                              value={club}
+                              onChange={(e) => setClub(e.target.value)}
+                              className={cn(!club && "pr-24")}
+                            />
+                            {!club && <Chip text="Wymagane" />}
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm pb-2">
-                          Kraj aktualnego klubu
-                        </Label>
-                        <CountryCombobox
-                          value={uClubCountry}
-                          onChange={(val) => setUClubCountry(val)}
-                          chip={!uClubCountry ? "Wymagane" : undefined}
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label className="text-sm">
-                          Notatka własna (opcjonalne)
-                        </Label>
-                        <Textarea
-                          value={uNote}
-                          onChange={(e) => setUNote(e.target.value)}
-                          placeholder="Krótka notatka z meczu, charakterystyka…"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <div>
-                        <Label className="text-sm">Imię</Label>
-                        <div className="relative">
-                          <Input
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            className={cn(!firstName && "pr-24")}
+                        <div>
+                          <Label className="text-sm pb-2">
+                            Kraj aktualnego klubu
+                          </Label>
+                          <CountryCombobox
+                            value={clubCountry}
+                            onChange={(val) => setClubCountry(val)}
+                            chip={!clubCountry ? "Wymagane" : undefined}
                           />
-                          {!firstName && <Chip text="Wymagane" />}
                         </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Nazwisko</Label>
-                        <div className="relative">
-                          <Input
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            className={cn(!lastName && "pr-24")}
-                          />
-                          {!lastName && <Chip text="Wymagane" />}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Rok urodzenia</Label>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            value={birthYear}
-                            onChange={(e) => setBirthYear(e.target.value)}
-                            className={cn(!birthYear && "pr-24")}
-                          />
-                          {!birthYear && <Chip text="Wymagane" />}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Numer na koszulce</Label>
-                        <Input
-                          value={jerseyNumber}
-                          onChange={(e) => setJerseyNumber(e.target.value)}
-                          placeholder="opcjonalne"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm">Aktualny klub</Label>
-                        <div className="relative">
-                          <Input
-                            value={club}
-                            onChange={(e) => setClub(e.target.value)}
-                            className={cn(!club && "pr-24")}
-                          />
-                          {!club && <Chip text="Wymagane" />}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm pb-2">
-                          Kraj aktualnego klubu
-                        </Label>
-                        <CountryCombobox
-                          value={clubCountry}
-                          onChange={(val) => setClubCountry(val)}
-                          chip={!clubCountry ? "Wymagane" : undefined}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* KROK 2 – Rozszerzone informacje */}
-        <Card className="mt-1">
-          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
-            <button
-              type="button"
-              aria-expanded={extOpen}
-              aria-controls="ext-panel"
-              onClick={() => setExtOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
-            >
-              <div>
-                <div className={stepPillClass}>Krok 2 · Profil boiskowy</div>
-                <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Rozszerzone informacje
-                </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
-                  Opcjonalne, ale bardzo pomocne przy analizie potencjału
-                  i raportach długoterminowych.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pl-4">
-                {choice === "unknown" && (
-                  <span className="hidden text-[11px] text-slate-500 sm:inline">
-                    Nieznany zawodnik
-                  </span>
-                )}
-                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                  {totalExt}/{totalExtMax}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    extOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
-              </div>
-            </button>
-          </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
-            <Accordion
-              type="single"
-              collapsible
-              value={extOpen ? "ext" : undefined}
-              onValueChange={(v) => setExtOpen(v === "ext")}
-              className="w-full"
-            >
-              <AccordionItem value="ext" className="border-0">
-                <AccordionContent id="ext-panel" className="pt-4 pb-5">
-                  {choice === "unknown" && (
-                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
-                      Możesz wrócić do tego kroku po dodaniu zawodnika. Teraz
-                      skup się na podstawowych danych.
-                    </p>
-                  )}
-                  {/* Mobile: Select; Desktop: Tabs */}
-                  <div className="md:hidden">
-                    <Label className="mb-1 block text-sm">Sekcja</Label>
-                    <select
-                      value={extView}
-                      onChange={(e) =>
-                        setExtView(e.target.value as ExtKey)
-                      }
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-                    >
-                      <option value="profile">Profil boiskowy</option>
-                      <option value="eligibility">Status &amp; scouting</option>
-                      <option value="stats365">Zdrowie i statystyki</option>
-                      <option value="contact">Kontakt &amp; social</option>
-                    </select>
-                    <div className="mt-4">
-                      <ExtContent view={extView} />
-                    </div>
-                  </div>
-
-                  <div className="hidden md:block">
-                    <Tabs
-                      value={extView}
-                      onValueChange={(v: any) => setExtView(v)}
-                      className="w-full"
-                    >
-                      <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="profile">
-                          Profil boiskowy
-                        </TabsTrigger>
-                        <TabsTrigger value="eligibility">
-                          Status &amp; scouting
-                        </TabsTrigger>
-                        <TabsTrigger value="stats365">
-                          Zdrowie i statystyki
-                        </TabsTrigger>
-                        <TabsTrigger value="contact">
-                          Kontakt &amp; social
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="profile" className="mt-4">
-                        <ExtContent view="profile" />
-                      </TabsContent>
-                      <TabsContent value="eligibility" className="mt-4">
-                        <ExtContent view="eligibility" />
-                      </TabsContent>
-                      <TabsContent value="stats365" className="mt-4">
-                        <ExtContent view="stats365" />
-                      </TabsContent>
-                      <TabsContent value="contact" className="mt-4">
-                        <ExtContent view="contact" />
-                      </TabsContent>
-                    </Tabs>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* KROK 3 – Ocena */}
-        <Card className="mt-1">
-          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
-            <button
-              type="button"
-              aria-expanded={gradeOpen}
-              aria-controls="grade-panel"
-              onClick={() => setGradeOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
-            >
-              <div>
-                <div className={stepPillClass}>Krok 3 · Ocena</div>
-                <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Ocena zawodnika
-                </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
-                  Wypełnij oceny dopiero, gdy masz ustawioną Główną pozycję
-                  w profilu boiskowym.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pl-4">
-                {choice === "unknown" && (
-                  <span className="hidden text-[11px] text-slate-500 sm:inline">
-                    Nieznany zawodnik
-                  </span>
-                )}
-                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                  {cntGradeBadge}/{cntGradeMax}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    gradeOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
-              </div>
-            </button>
-          </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
-            <Accordion
-              type="single"
-              collapsible
-              value={gradeOpen ? "grade" : undefined}
-              onValueChange={(v) => setGradeOpen(v === "grade")}
-              className="w-full"
-            >
-              <AccordionItem value="grade" className="border-0">
-                <AccordionContent id="grade-panel" className="pt-4 pb-5">
-                  {choice === "unknown" && (
-                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
-                      Możesz wypełnić oceny, gdy będziesz mieć więcej danych
-                      o zawodniku (np. po kilku meczach).
-                    </p>
-                  )}
-
-                  <div className="relative">
-                    <div
-                      className={cn(
-                        "space-y-5",
-                        !effectiveMainPos && "pointer-events-none opacity-40"
-                      )}
-                    >
-                      <div>
-                        <Label className="text-sm">Notatki ogólne</Label>
-                        <Input
-                          placeholder="Krótki komentarz o zawodniku…"
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          className="mt-1"
-                        />
-                      </div>
-
-                      <div className="space-y-5">
-                        {enabledRatingAspects.length === 0 && (
-                          <p className="text-xs text-slate-500 dark:text-neutral-400">
-                            Brak skonfigurowanych kategorii ocen. Dodaj je w
-                            panelu „Konfiguracja ocen zawodnika”.
-                          </p>
-                        )}
-
-                        <RatingGroup title="Podstawowe" aspects={baseAspects} />
-
-                        {effectiveBucket === "GK" && (
-                          <RatingGroup
-                            title="Bramkarz (GK)"
-                            aspects={gkAspects}
-                          />
-                        )}
-                        {effectiveBucket === "DF" && (
-                          <RatingGroup
-                            title="Obrońca (DEF)"
-                            aspects={defAspects}
-                          />
-                        )}
-                        {effectiveBucket === "MF" && (
-                          <RatingGroup
-                            title="Pomocnik (MID)"
-                            aspects={midAspects}
-                          />
-                        )}
-                        {effectiveBucket === "FW" && (
-                          <RatingGroup
-                            title="Napastnik (ATT)"
-                            aspects={attAspects}
-                          />
-                        )}
-
-                        {!effectiveBucket &&
-                          enabledRatingAspects.length > 0 && (
-                            <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                              Ustaw <b>Główną pozycję</b> w sekcji „Rozszerzone
-                              informacje”, aby zobaczyć dodatkowe kategorie
-                              oceny (GK/DEF/MID/ATT).
-                            </p>
-                          )}
-                      </div>
-                    </div>
-
-                    {!effectiveMainPos && (
-                      <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
-                        <p className="mb-3 text-xs sm:text-sm text-slate-700 dark:text-neutral-200">
-                          Aby wprowadzić oceny, najpierw uzupełnij{" "}
-                          <b>Główną pozycję</b> w sekcji „Rozszerzone
-                          informacje”.
-                        </p>
-                        <Button
-                          size="sm"
-                          type="button"
-                          className="bg-gray-900 text-white hover:bg-gray-800"
-                          onClick={() => {
-                            setExtOpen(true);
-                            setExtView("profile");
-                            setHighlightMainPos(true);
-                          }}
-                        >
-                          Uzupełnij Główną pozycję
-                        </Button>
                       </div>
                     )}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+
+          {/* KROK 2 – Rozszerzone informacje */}
+          <Card className="mt-1">
+            <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+              <button
+                type="button"
+                aria-expanded={extOpen}
+                aria-controls="ext-panel"
+                onClick={() => setExtOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div>
+                  <div className={stepPillClass}>Krok 2 · Profil boiskowy</div>
+                  <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
+                    Rozszerzone informacje
                   </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* KROK 4 – Obserwacje */}
-        <Card className="mt-1">
-          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
-            <button
-              type="button"
-              aria-expanded={obsOpen}
-              aria-controls="obs-panel"
-              onClick={() => setObsOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
-            >
-              <div>
-                <div className={stepPillClass}>Krok 4 · Obserwacje</div>
-                <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Obserwacje
+                  <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                    Opcjonalne, ale bardzo pomocne przy analizie potencjału
+                    i raportach długoterminowych.
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
-                  Dodawaj mecze, w których zawodnik był obserwowany, oraz
-                  przypisuj je do profilu.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pl-4">
-                {choice === "unknown" && (
-                  <span className="hidden text-[11px] text-slate-500 sm:inline">
-                    Nieznany zawodnik
-                  </span>
-                )}
-                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                  {normalizedObservations.length}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    obsOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
-              </div>
-            </button>
-          </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
-            <Accordion
-              type="single"
-              collapsible
-              value={obsOpen ? "obs" : undefined}
-              onValueChange={(v) => setObsOpen(v === "obs")}
-            >
-              <AccordionItem value="obs" className="border-0">
-                <AccordionContent id="obs-panel" className="pt-4 pb-5">
+                <div className="flex items-center gap-3 pl-4">
                   {choice === "unknown" && (
-                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
-                      Możesz zacząć od zapisania meczu, w którym zauważyłeś
-                      zawodnika. Obserwacje zawsze da się rozbudować później.
-                    </p>
+                    <span className="hidden text-[11px] text-slate-500 sm:inline">
+                      Nieznany zawodnik
+                    </span>
                   )}
-                  <Tabs
-                    value={obsTab}
-                    onValueChange={(v) => setObsTab(v as "new" | "existing")}
-                    className="w-full"
-                  >
-                    <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded-md bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
-                      <TabsTrigger
-                        value="new"
-                        className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                  <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                    {totalExt}/{totalExtMax}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 transition-transform",
+                      extOpen ? "rotate-180" : "rotate-0"
+                    )}
+                  />
+                </div>
+              </button>
+            </CardHeader>
+            <CardContent className="px-4 py-0 md:px-6">
+              <Accordion
+                type="single"
+                collapsible
+                value={extOpen ? "ext" : undefined}
+                onValueChange={(v) => setExtOpen(v === "ext")}
+                className="w-full"
+              >
+                <AccordionItem value="ext" className="border-0">
+                  <AccordionContent id="ext-panel" className="pt-4 pb-5">
+                    {choice === "unknown" && (
+                      <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                        Możesz wrócić do tego kroku po dodaniu zawodnika. Teraz
+                        skup się na podstawowych danych.
+                      </p>
+                    )}
+                    {/* Mobile: Select; Desktop: Tabs */}
+                    <div className="md:hidden">
+                      <Label className="mb-1 block text-sm">Sekcja</Label>
+                      <select
+                        value={extView}
+                        onChange={(e) =>
+                          setExtView(e.target.value as ExtKey)
+                        }
+                        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                       >
-                        Nowa obserwacja
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="existing"
-                        className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                        <option value="profile">Profil boiskowy</option>
+                        <option value="eligibility">
+                          Status &amp; scouting
+                        </option>
+                        <option value="stats365">Zdrowie i statystyki</option>
+                        <option value="contact">
+                          Kontakt &amp; social
+                        </option>
+                      </select>
+                      <div className="mt-4">
+                        <ExtContent view={extView} />
+                      </div>
+                    </div>
+
+                    <div className="hidden md:block">
+                      <Tabs
+                        value={extView}
+                        onValueChange={(v: any) => setExtView(v)}
+                        className="w-full"
                       >
-                        Istniejące
-                      </TabsTrigger>
-                    </TabsList>
-                    <p className="mb-4 text-xs text-slate-500 dark:text-neutral-400">
-                      Dodaj nową obserwację tego zawodnika lub przypisz
-                      istniejącą z Twojego dziennika (tu przechowywane w meta
-                      zawodnika).
-                    </p>
+                        <TabsList className="grid w-full grid-cols-4">
+                          <TabsTrigger value="profile">
+                            Profil boiskowy
+                          </TabsTrigger>
+                          <TabsTrigger value="eligibility">
+                            Status &amp; scouting
+                          </TabsTrigger>
+                          <TabsTrigger value="stats365">
+                            Zdrowie i statystyki
+                          </TabsTrigger>
+                          <TabsTrigger value="contact">
+                            Kontakt &amp; social
+                          </TabsTrigger>
+                        </TabsList>
 
-                    {/* NEW */}
-                    <TabsContent value="new" className="mt-2 space-y-4">
-                      <div>
-                        <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
-                          Mecz
-                        </div>
-                        <div className="mb-3 text-xs text-dark dark:text-neutral-400">
-                          Wpisz drużyny — pole „Mecz” składa się automatycznie.
-                        </div>
+                        <TabsContent value="profile" className="mt-4">
+                          <ExtContent view="profile" />
+                        </TabsContent>
+                        <TabsContent value="eligibility" className="mt-4">
+                          <ExtContent view="eligibility" />
+                        </TabsContent>
+                        <TabsContent value="stats365" className="mt-4">
+                          <ExtContent view="stats365" />
+                        </TabsContent>
+                        <TabsContent value="contact" className="mt-4">
+                          <ExtContent view="contact" />
+                        </TabsContent>
+                      </Tabs>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
 
-                        <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
-                          <div>
-                            <Label>Drużyna A</Label>
-                            <Input
-                              value={qaMatch.split(/ *vs */i)[0] || ""}
-                              onChange={(e) => {
-                                const b =
-                                  (qaMatch.split(/ *vs */i)[1] || "").trim();
-                                const a = e.target.value;
-                                setQaMatch(
-                                  a && b
-                                    ? `${a} vs ${b}`
-                                    : (a + " " + b).trim()
-                                );
-                              }}
-                              placeholder="np. Lech U19"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">
-                            vs
-                          </div>
-                          <div>
-                            <Label>Drużyna B</Label>
-                            <Input
-                              value={
-                                (qaMatch.split(/ *vs */i)[1] || "").trim()
-                              }
-                              onChange={(e) => {
-                                const a =
-                                  (qaMatch.split(/ *vs */i)[0] || "").trim();
-                                const b = e.target.value;
-                                setQaMatch(
-                                  a && b
-                                    ? `${a} vs ${b}`
-                                    : (a + " " + b).trim()
-                                );
-                              }}
-                              placeholder="np. Wisła U19"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div className="sm:hidden text-center text-sm text-dark">
-                            vs
-                          </div>
-                        </div>
+          {/* KROK 3 – Ocena */}
+          <Card className="mt-1">
+            <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+              <button
+                type="button"
+                aria-expanded={gradeOpen}
+                aria-controls="grade-panel"
+                onClick={() => setGradeOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div>
+                  <div className={stepPillClass}>Krok 3 · Ocena</div>
+                  <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
+                    Ocena zawodnika
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                    Wypełnij oceny dopiero, gdy masz ustawioną Główną pozycję
+                    w profilu boiskowym.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pl-4">
+                  {choice === "unknown" && (
+                    <span className="hidden text-[11px] text-slate-500 sm:inline">
+                      Nieznany zawodnik
+                    </span>
+                  )}
+                  <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                    {cntGradeBadge}/{cntGradeMax}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 transition-transform",
+                      gradeOpen ? "rotate-180" : "rotate-0"
+                    )}
+                  />
+                </div>
+              </button>
+            </CardHeader>
+            <CardContent className="px-4 py-0 md:px-6">
+              <Accordion
+                type="single"
+                collapsible
+                value={gradeOpen ? "grade" : undefined}
+                onValueChange={(v) => setGradeOpen(v === "grade")}
+                className="w-full"
+              >
+                <AccordionItem value="grade" className="border-0">
+                  <AccordionContent id="grade-panel" className="pt-4 pb-5">
+                    {choice === "unknown" && (
+                      <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                        Możesz wypełnić oceny, gdy będziesz mieć więcej danych
+                        o zawodniku (np. po kilku meczach).
+                      </p>
+                    )}
 
-                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          <div>
-                            <Label>Data meczu</Label>
-                            <Input
-                              type="date"
-                              value={qaDate}
-                              onChange={(e) => setQaDate(e.target.value)}
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Godzina meczu</Label>
-                            <Input
-                              type="time"
-                              value={qaTime}
-                              onChange={(e) => setQaTime(e.target.value)}
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Poziom przeciwnika</Label>
-                            <Input
-                              value={qaOpponentLevel}
-                              onChange={(e) =>
-                                setQaOpponentLevel(e.target.value)
-                              }
-                              placeholder="np. CLJ U17, 3 liga, top akademia…"
-                              className="mt-1"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <div>
-                            <Label className="text-sm">Tryb</Label>
-                            <div className="mt-2 flex gap-2">
-                              <button
-                                onClick={() => setQaMode("live")}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                  qaMode === "live"
-                                    ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                )}
-                                type="button"
-                                aria-pressed={qaMode === "live"}
-                              >
-                                Live
-                              </button>
-                              <button
-                                onClick={() => setQaMode("tv")}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                  qaMode === "tv"
-                                    ? "bg-violet-600 text-white hover:bg-violet-700"
-                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                )}
-                                type="button"
-                                aria-pressed={qaMode === "tv"}
-                              >
-                                TV
-                              </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label className="text-sm">Status</Label>
-                            <div className="mt-2 flex gap-2">
-                              <button
-                                onClick={() => setQaStatus("draft")}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                  qaStatus === "draft"
-                                    ? "bg-amber-600 text-white hover:bg-amber-700"
-                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                )}
-                                type="button"
-                                aria-pressed={qaStatus === "draft"}
-                              >
-                                Szkic
-                              </button>
-                              <button
-                                onClick={() => setQaStatus("final")}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                  qaStatus === "final"
-                                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                )}
-                                type="button"
-                                aria-pressed={qaStatus === "final"}
-                              >
-                                Finalna
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 space-y-1 text-xs text-dark dark:text-neutral-300">
-                          <div>
-                            Mecz:{" "}
-                            <span className="font-medium">
-                              {qaMatch || "—"}
-                            </span>
-                            <span className="ml-2 inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-                              {qaMode === "tv" ? "TV" : "Live"}
-                            </span>
-                          </div>
-                          {qaOpponentLevel && (
-                            <div className="text-[11px] text-slate-600 dark:text-neutral-400">
-                              Poziom przeciwnika:{" "}
-                              <span className="font-medium">
-                                {qaOpponentLevel}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="sticky bottom-0 mt-1 -mx-4 border-t border-gray-200 bg-white/90 px-4 py-5 backdrop-blur supports-[backdrop-filter]:bg-white/70 md:-mx-6 md:px-6 dark:border-neutral-800 dark:bg-neutral-950/80">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            className="bg-gray-900 text-white hover:bg-gray-800"
-                            onClick={addObservation}
-                            disabled={!qaMatch.trim() || !qaDate.trim()}
-                          >
-                            Dodaj obserwację tego zawodnika
-                          </Button>
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    {/* EXISTING */}
-                    <TabsContent value="existing" className="mt-2 space-y-3">
-                      <div className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
-                        <div className="flex items-center gap-2">
-                          <Search className="h-4 w-4 opacity-70" />
+                    <div className="relative">
+                      <div
+                        className={cn(
+                          "space-y-5",
+                          !effectiveMainPos && "pointer-events-none opacity-40"
+                        )}
+                      >
+                        <div>
+                          <Label className="text-sm">Notatki ogólne</Label>
                           <Input
-                            value={obsQuery}
-                            onChange={(e) => setObsQuery(e.target.value)}
-                            placeholder="Szukaj po meczu lub dacie…"
-                            className="flex-1 border-0 focus-visible:ring-0"
+                            placeholder="Krótki komentarz o zawodniku…"
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            className="mt-1"
                           />
                         </div>
-                        <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                          Wybierz obserwację z listy, aby podejrzeć szczegóły
-                          lub ją edytować.
-                        </p>
-                      </div>
 
-                      <div className="max-h-80 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
-                        <table className="w-full text-sm">
-                          <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-                            <tr>
-                              <th className="w-10 p-2 text-left font-medium">
-                                #
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Mecz
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Data
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Poziom
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Tryb
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Status
-                              </th>
-                              <th className="p-2 text-right font-medium">
-                                Akcje
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(() => {
-                              const list = existingFiltered;
-                              if (list.length === 0) {
-                                return (
-                                  <tr>
-                                    <td
-                                      colSpan={7}
-                                      className="p-6 text-center text-sm text-dark dark:text-neutral-400"
-                                    >
-                                      Brak obserwacji dla podanych
-                                      kryteriów.
-                                    </td>
-                                  </tr>
-                                );
-                              }
+                        <div className="space-y-5">
+                          {enabledRatingAspects.length === 0 && (
+                            <p className="text-xs text-slate-500 dark:text-neutral-400">
+                              Brak skonfigurowanych kategorii ocen. Dodaj je w
+                              panelu „Konfiguracja ocen zawodnika”.
+                            </p>
+                          )}
 
-                              return list.map((o, idx) => (
-                                <tr
-                                  key={o.id}
-                                  className={cn(
-                                    "border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
-                                    idx % 2
-                                      ? "bg-stone-100/40 dark:bg-neutral-900/30"
-                                      : ""
-                                  )}
-                                  onClick={() => setObsSelectedId(o.id)}
-                                >
-                                  <td className="p-2">
-                                    <input
-                                      type="radio"
-                                      name="obsPick"
-                                      checked={obsSelectedId === o.id}
-                                      onChange={() => setObsSelectedId(o.id)}
-                                    />
-                                  </td>
-                                  <td className="p-2">
-                                    {o.match || "—"}
-                                  </td>
-                                  <td className="p-2">
-                                    {[o.date || "—", o.time || ""]
-                                      .filter(Boolean)
-                                      .join(" ")}
-                                  </td>
-                                  <td className="p-2 text-xs">
-                                    {o.opponentLevel || (
-                                      <span className="text-slate-400">
-                                        —
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="p-2">
-                                    <span
-                                      className={cn(
-                                        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-                                        o.mode === "tv"
-                                          ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
-                                          : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                      )}
-                                    >
-                                      {o.mode === "tv" ? "TV" : "Live"}
-                                    </span>
-                                  </td>
-                                  <td className="p-2">
-                                    <span
-                                      className={cn(
-                                        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-                                        o.status === "final"
-                                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                                      )}
-                                    >
-                                      {o.status === "final"
-                                        ? "Finalna"
-                                        : "Szkic"}
-                                    </span>
-                                  </td>
-                                  <td className="p-2 text-right">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 px-2 text-xs"
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openEditModal(o);
-                                      }}
-                                    >
-                                      Edytuj
-                                    </Button>
-                                  </td>
-                                </tr>
-                              ));
-                            })()}
-                          </tbody>
-                        </table>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
+                          <RatingGroup title="Podstawowe" aspects={baseAspects} />
 
-                  {/* EDIT MODAL */}
-                  <Dialog open={editOpen} onOpenChange={setEditOpen}>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Edytuj obserwację</DialogTitle>
-                      </DialogHeader>
-                      {editingObs && (
-                        <div className="space-y-3">
-                          <div>
-                            <Label>Mecz</Label>
-                            <Input
-                              value={safeText(editingObs.match) || ""}
-                              onChange={(e) =>
-                                setEditingObs((prev) =>
-                                  prev
-                                    ? { ...prev, match: e.target.value }
-                                    : prev
-                                )
-                              }
-                              className="mt-1"
+                          {effectiveBucket === "GK" && (
+                            <RatingGroup
+                              title="Bramkarz (GK)"
+                              aspects={gkAspects}
                             />
+                          )}
+                          {effectiveBucket === "DF" && (
+                            <RatingGroup
+                              title="Obrońca (DEF)"
+                              aspects={defAspects}
+                            />
+                          )}
+                          {effectiveBucket === "MF" && (
+                            <RatingGroup
+                              title="Pomocnik (MID)"
+                              aspects={midAspects}
+                            />
+                          )}
+                          {effectiveBucket === "FW" && (
+                            <RatingGroup
+                              title="Napastnik (ATT)"
+                              aspects={attAspects}
+                            />
+                          )}
+
+                          {!effectiveBucket &&
+                            enabledRatingAspects.length > 0 && (
+                              <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                Ustaw <b>Główną pozycję</b> w sekcji
+                                „Rozszerzone informacje”, aby zobaczyć
+                                dodatkowe kategorie oceny (GK/DEF/MID/ATT).
+                              </p>
+                            )}
+                        </div>
+                      </div>
+
+                      {!effectiveMainPos && (
+                        <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
+                          <p className="mb-3 text-xs sm:text-sm text-slate-700 dark:text-neutral-200">
+                            Aby wprowadzić oceny, najpierw uzupełnij{" "}
+                            <b>Główną pozycję</b> w sekcji „Rozszerzone
+                            informacje”.
+                          </p>
+                          <Button
+                            size="sm"
+                            type="button"
+                            className="bg-gray-900 text-white hover:bg-gray-800"
+                            onClick={() => {
+                              setExtOpen(true);
+                              setExtView("profile");
+                              setHighlightMainPos(true);
+                            }}
+                          >
+                            Uzupełnij Główną pozycję
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+
+          {/* KROK 4 – Obserwacje */}
+          <Card className="mt-1">
+            <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+              <button
+                type="button"
+                aria-expanded={obsOpen}
+                aria-controls="obs-panel"
+                onClick={() => setObsOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div>
+                  <div className={stepPillClass}>Krok 4 · Obserwacje</div>
+                  <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
+                    Obserwacje
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                    Dodawaj mecze, w których zawodnik był obserwowany, oraz
+                    przypisuj je do profilu.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pl-4">
+                  {choice === "unknown" && (
+                    <span className="hidden text-[11px] text-slate-500 sm:inline">
+                      Nieznany zawodnik
+                    </span>
+                  )}
+                  <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                    {normalizedObservations.length}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 transition-transform",
+                      obsOpen ? "rotate-180" : "rotate-0"
+                    )}
+                  />
+                </div>
+              </button>
+            </CardHeader>
+            <CardContent className="px-4 py-0 md:px-6">
+              <Accordion
+                type="single"
+                collapsible
+                value={obsOpen ? "obs" : undefined}
+                onValueChange={(v) => setObsOpen(v === "obs")}
+              >
+                <AccordionItem value="obs" className="border-0">
+                  <AccordionContent id="obs-panel" className="pt-4 pb-5">
+                    {choice === "unknown" && (
+                      <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                        Możesz zacząć od zapisania meczu, w którym zauważyłeś
+                        zawodnika. Obserwacje zawsze da się rozbudować później.
+                      </p>
+                    )}
+                    <Tabs
+                      value={obsTab}
+                      onValueChange={(v) => setObsTab(v as "new" | "existing")}
+                      className="w-full"
+                    >
+                      <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded-md bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
+                        <TabsTrigger
+                          value="new"
+                          className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                        >
+                          Nowa obserwacja
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="existing"
+                          className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                        >
+                          Istniejące
+                        </TabsTrigger>
+                      </TabsList>
+                      <p className="mb-4 text-xs text-slate-500 dark:text-neutral-400">
+                        Dodaj nową obserwację tego zawodnika lub przypisz
+                        istniejącą z Twojego dziennika (tu przechowywane w meta
+                        zawodnika).
+                      </p>
+
+                      {/* NEW */}
+                      <TabsContent value="new" className="mt-2 space-y-4">
+                        <div>
+                          <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
+                            Mecz
                           </div>
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <div className="mb-3 text-xs text-dark dark:text-neutral-400">
+                            Wpisz drużyny — pole „Mecz” składa się automatycznie.
+                          </div>
+
+                          <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
                             <div>
-                              <Label>Data</Label>
+                              <Label>Drużyna A</Label>
+                              <Input
+                                value={qaMatch.split(/ *vs */i)[0] || ""}
+                                onChange={(e) => {
+                                  const b =
+                                    (qaMatch.split(/ *vs */i)[1] || "").trim();
+                                  const a = e.target.value;
+                                  setQaMatch(
+                                    a && b
+                                      ? `${a} vs ${b}`
+                                      : (a + " " + b).trim()
+                                  );
+                                }}
+                                placeholder="np. Lech U19"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">
+                              vs
+                            </div>
+                            <div>
+                              <Label>Drużyna B</Label>
+                              <Input
+                                value={
+                                  (qaMatch.split(/ *vs */i)[1] || "").trim()
+                                }
+                                onChange={(e) => {
+                                  const a =
+                                    (qaMatch.split(/ *vs */i)[0] || "").trim();
+                                  const b = e.target.value;
+                                  setQaMatch(
+                                    a && b
+                                      ? `${a} vs ${b}`
+                                      : (a + " " + b).trim()
+                                  );
+                                }}
+                                placeholder="np. Wisła U19"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div className="sm:hidden text-center text-sm text-dark">
+                              vs
+                            </div>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div>
+                              <Label>Data meczu</Label>
                               <Input
                                 type="date"
-                                value={safeText(editingObs.date) || ""}
-                                onChange={(e) =>
-                                  setEditingObs((prev) =>
-                                    prev
-                                      ? { ...prev, date: e.target.value }
-                                      : prev
-                                  )
-                                }
+                                value={qaDate}
+                                onChange={(e) => setQaDate(e.target.value)}
                                 className="mt-1"
                               />
                             </div>
                             <div>
-                              <Label>Godzina</Label>
+                              <Label>Godzina meczu</Label>
                               <Input
                                 type="time"
-                                value={safeText(editingObs.time) || ""}
-                                onChange={(e) =>
-                                  setEditingObs((prev) =>
-                                    prev
-                                      ? { ...prev, time: e.target.value }
-                                      : prev
-                                  )
-                                }
+                                value={qaTime}
+                                onChange={(e) => setQaTime(e.target.value)}
                                 className="mt-1"
                               />
                             </div>
                             <div>
                               <Label>Poziom przeciwnika</Label>
                               <Input
-                                value={safeText(
-                                  editingObs.opponentLevel
-                                ) || ""}
+                                value={qaOpponentLevel}
+                                onChange={(e) =>
+                                  setQaOpponentLevel(e.target.value)
+                                }
+                                placeholder="np. CLJ U17, 3 liga, top akademia…"
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                              <Label className="text-sm">Tryb</Label>
+                              <div className="mt-2 flex gap-2">
+                                <button
+                                  onClick={() => setQaMode("live")}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                    qaMode === "live"
+                                      ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                                      : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                  )}
+                                  type="button"
+                                  aria-pressed={qaMode === "live"}
+                                >
+                                  Live
+                                </button>
+                                <button
+                                  onClick={() => setQaMode("tv")}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                    qaMode === "tv"
+                                      ? "bg-violet-600 text-white hover:bg-violet-700"
+                                      : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                  )}
+                                  type="button"
+                                  aria-pressed={qaMode === "tv"}
+                                >
+                                  TV
+                                </button>
+                              </div>
+                            </div>
+
+                            <div>
+                              <Label className="text-sm">Status</Label>
+                              <div className="mt-2 flex gap-2">
+                                <button
+                                  onClick={() => setQaStatus("draft")}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                    qaStatus === "draft"
+                                      ? "bg-amber-600 text-white hover:bg-amber-700"
+                                      : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                  )}
+                                  type="button"
+                                  aria-pressed={qaStatus === "draft"}
+                                >
+                                  Szkic
+                                </button>
+                                <button
+                                  onClick={() => setQaStatus("final")}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
+                                    qaStatus === "final"
+                                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                      : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                                  )}
+                                  type="button"
+                                  aria-pressed={qaStatus === "final"}
+                                >
+                                  Finalna
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 space-y-1 text-xs text-dark dark:text-neutral-300">
+                            <div>
+                              Mecz:{" "}
+                              <span className="font-medium">
+                                {qaMatch || "—"}
+                              </span>
+                              <span className="ml-2 inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                                {qaMode === "tv" ? "TV" : "Live"}
+                              </span>
+                            </div>
+                            {qaOpponentLevel && (
+                              <div className="text-[11px] text-slate-600 dark:text-neutral-400">
+                                Poziom przeciwnika:{" "}
+                                <span className="font-medium">
+                                  {qaOpponentLevel}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="sticky bottom-0 mt-1 -mx-4 border-t border-gray-200 bg-white/90 px-4 py-5 backdrop-blur supports-[backdrop-filter]:bg-white/70 md:-mx-6 md:px-6 dark:border-neutral-800 dark:bg-neutral-950/80">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              className="bg-gray-900 text-white hover:bg-gray-800"
+                              onClick={addObservation}
+                              disabled={!qaMatch.trim() || !qaDate.trim()}
+                            >
+                              Dodaj obserwację tego zawodnika
+                            </Button>
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      {/* EXISTING */}
+                      <TabsContent value="existing" className="mt-2 space-y-3">
+                        <div className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
+                          <div className="flex items-center gap-2">
+                            <Search className="h-4 w-4 opacity-70" />
+                            <Input
+                              value={obsQuery}
+                              onChange={(e) => setObsQuery(e.target.value)}
+                              placeholder="Szukaj po meczu lub dacie…"
+                              className="flex-1 border-0 focus-visible:ring-0"
+                            />
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                            Wybierz obserwację z listy, aby podejrzeć szczegóły
+                            lub ją edytować.
+                          </p>
+                        </div>
+
+                        <div className="max-h-80 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
+                          <table className="w-full text-sm">
+                            <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                              <tr>
+                                <th className="w-10 p-2 text-left font-medium">
+                                  #
+                                </th>
+                                <th className="p-2 text-left font-medium">
+                                  Mecz
+                                </th>
+                                <th className="p-2 text-left font-medium">
+                                  Data
+                                </th>
+                                <th className="p-2 text-left font-medium">
+                                  Poziom
+                                </th>
+                                <th className="p-2 text-left font-medium">
+                                  Tryb
+                                </th>
+                                <th className="p-2 text-left font-medium">
+                                  Status
+                                </th>
+                                <th className="p-2 text-right font-medium">
+                                  Akcje
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(() => {
+                                const list = existingFiltered;
+                                if (list.length === 0) {
+                                  return (
+                                    <tr>
+                                      <td
+                                        colSpan={7}
+                                        className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                                      >
+                                        Brak obserwacji dla podanych
+                                        kryteriów.
+                                      </td>
+                                    </tr>
+                                  );
+                                }
+
+                                return list.map((o, idx) => (
+                                  <tr
+                                    key={o.id}
+                                    className={cn(
+                                      "border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+                                      idx % 2
+                                        ? "bg-stone-100/40 dark:bg-neutral-900/30"
+                                        : ""
+                                    )}
+                                    onClick={() => setObsSelectedId(o.id)}
+                                  >
+                                    <td className="p-2">
+                                      <input
+                                        type="radio"
+                                        name="obsPick"
+                                        checked={obsSelectedId === o.id}
+                                        onChange={() => setObsSelectedId(o.id)}
+                                      />
+                                    </td>
+                                    <td className="p-2">
+                                      {o.match || "—"}
+                                    </td>
+                                    <td className="p-2">
+                                      {[o.date || "—", o.time || ""]
+                                        .filter(Boolean)
+                                        .join(" ")}
+                                    </td>
+                                    <td className="p-2 text-xs">
+                                      {o.opponentLevel || (
+                                        <span className="text-slate-400">
+                                          —
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-2">
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+                                          o.mode === "tv"
+                                            ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                                            : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                                        )}
+                                      >
+                                        {o.mode === "tv" ? "TV" : "Live"}
+                                      </span>
+                                    </td>
+                                    <td className="p-2">
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+                                          o.status === "final"
+                                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                        )}
+                                      >
+                                        {o.status === "final"
+                                          ? "Finalna"
+                                          : "Szkic"}
+                                      </span>
+                                    </td>
+                                    <td className="p-2 text-right">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 px-2 text-xs"
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openEditModal(o);
+                                        }}
+                                      >
+                                        Edytuj
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ));
+                              })()}
+                            </tbody>
+                          </table>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+
+                    {/* EDIT MODAL */}
+                    <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Edytuj obserwację</DialogTitle>
+                        </DialogHeader>
+                        {editingObs && (
+                          <div className="space-y-3">
+                            <div>
+                              <Label>Mecz</Label>
+                              <Input
+                                value={safeText(editingObs.match) || ""}
                                 onChange={(e) =>
                                   setEditingObs((prev) =>
                                     prev
-                                      ? {
-                                          ...prev,
-                                          opponentLevel: e.target.value,
-                                        }
+                                      ? { ...prev, match: e.target.value }
                                       : prev
                                   )
                                 }
                                 className="mt-1"
                               />
                             </div>
-                          </div>
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div>
-                              <Label className="text-sm">Tryb</Label>
-                              <div className="mt-2 flex gap-2">
-                                <Button
-                                  type="button"
-                                  variant={
-                                    editingObs.mode === "live"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  size="sm"
-                                  onClick={() =>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                              <div>
+                                <Label>Data</Label>
+                                <Input
+                                  type="date"
+                                  value={safeText(editingObs.date) || ""}
+                                  onChange={(e) =>
                                     setEditingObs((prev) =>
                                       prev
-                                        ? { ...prev, mode: "live" }
+                                        ? { ...prev, date: e.target.value }
                                         : prev
                                     )
                                   }
-                                >
-                                  Live
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant={
-                                    editingObs.mode === "tv"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  size="sm"
-                                  onClick={() =>
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label>Godzina</Label>
+                                <Input
+                                  type="time"
+                                  value={safeText(editingObs.time) || ""}
+                                  onChange={(e) =>
                                     setEditingObs((prev) =>
                                       prev
-                                        ? { ...prev, mode: "tv" }
+                                        ? { ...prev, time: e.target.value }
                                         : prev
                                     )
                                   }
-                                >
-                                  TV
-                                </Button>
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label>Poziom przeciwnika</Label>
+                                <Input
+                                  value={
+                                    safeText(editingObs.opponentLevel) || ""
+                                  }
+                                  onChange={(e) =>
+                                    setEditingObs((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            opponentLevel: e.target.value,
+                                          }
+                                        : prev
+                                    )
+                                  }
+                                  className="mt-1"
+                                />
                               </div>
                             </div>
-                            <div>
-                              <Label className="text-sm">Status</Label>
-                              <div className="mt-2 flex gap-2">
-                                <Button
-                                  type="button"
-                                  variant={
-                                    editingObs.status === "draft"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  size="sm"
-                                  onClick={() =>
-                                    setEditingObs((prev) =>
-                                      prev ? { ...prev, status: "draft" } : prev
-                                    )
-                                  }
-                                >
-                                  Szkic
-                                </Button>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              <div>
+                                <Label className="text-sm">Tryb</Label>
+                                <div className="mt-2 flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant={
+                                      editingObs.mode === "live"
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, mode: "live" }
+                                          : prev
+                                      )
+                                    }
+                                  >
+                                    Live
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={
+                                      editingObs.mode === "tv"
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, mode: "tv" }
+                                          : prev
+                                      )
+                                    }
+                                  >
+                                    TV
+                                  </Button>
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-sm">Status</Label>
+                                <div className="mt-2 flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant={
+                                      editingObs.status === "draft"
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, status: "draft" }
+                                          : prev
+                                      )
+                                    }
+                                  >
+                                    Szkic
+                                  </Button>
 
-                                <Button
-                                  type="button"
-                                  variant={
-                                    editingObs.status === "final"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  size="sm"
-                                  onClick={() =>
-                                    setEditingObs((prev) =>
-                                      prev
-                                        ? { ...prev, status: "final" }
-                                        : prev
-                                    )
-                                  }
-                                >
-                                  Finalna
-                                </Button>
+                                  <Button
+                                    type="button"
+                                    variant={
+                                      editingObs.status === "final"
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, status: "final" }
+                                          : prev
+                                      )
+                                    }
+                                  >
+                                    Finalna
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      )}
-                      <DialogFooter className="mt-4">
-                        <Button
-                          variant="outline"
-                          type="button"
-                          onClick={() => setEditOpen(false)}
-                        >
-                          Anuluj
-                        </Button>
-                        <Button
-                          type="button"
-                          className="bg-gray-900 text-white hover:bg-gray-800"
-                          onClick={saveEditedObservation}
-                        >
-                          Zapisz zmiany
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+                        )}
+                        <DialogFooter className="mt-4">
+                          <Button
+                            variant="outline"
+                            type="button"
+                            onClick={() => setEditOpen(false)}
+                          >
+                            Anuluj
+                          </Button>
+                          <Button
+                            type="button"
+                            className="bg-gray-900 text-white hover:bg-gray-800"
+                            onClick={saveEditedObservation}
+                          >
+                            Zapisz zmiany
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        </div>
 
-        {saveError && (
-          <p className="mt-3 text-sm text-red-600">{saveError}</p>
+        {!hasChoice && (
+         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+    <div className="flex max-w-xs flex-col items-center gap-2 rounded-md  bg-none px-4 py-3 text-center  dark:border-neutral-700 dark:bg-neutral-950/95">
+      <Lock className="h-6 w-6 text-slate-900 dark:text-neutral-50" />
+      <p className="text-sm font-medium text-slate-900 dark:text-neutral-50 leading-snug">
+        Wybierz sposób dodania zawodnika w <b>Kroku 0</b>, aby odblokować kolejne kroki.
+      </p>
+    </div>
+  </div>
         )}
       </div>
+
+      {saveError && (
+        <p className="mt-3 text-sm text-red-600">{saveError}</p>
+      )}
     </div>
   );
 }
