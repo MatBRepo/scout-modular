@@ -32,25 +32,6 @@ const colVariants: Variants = {
   },
 };
 
-/* ===== Simple breadcrumb builder ===== */
-function buildBreadcrumb(pathname: string) {
-  const parts = pathname
-    .split("?")[0]
-    .split("#")[0]
-    .split("/")
-    .filter(Boolean);
-  const items = [{ label: "Home", href: "/" }];
-  let acc = "";
-  for (const p of parts) {
-    acc += "/" + p;
-    items.push({
-      label: decodeURIComponent(p).replace(/-/g, " "),
-      href: acc,
-    });
-  }
-  return items;
-}
-
 // ---- helpers (module-scope): available to all components ----
 export const titleCaseAll = (input: string) =>
   String(input ?? "")
@@ -59,6 +40,79 @@ export const titleCaseAll = (input: string) =>
     .split(/\s+/) // split on spaces
     .map((w) => (w ? w[0].toLocaleUpperCase() + w.slice(1) : ""))
     .join(" ");
+
+/**
+ * Mapa pełnych ścieżek na polskie etykiety breadcrumbów
+ * (gdy chcemy mieć pełną kontrolę per URL).
+ */
+const PATH_LABELS: Record<string, string> = {
+  "/players": "Zawodnicy",
+  "/players/new": "Dodaj zawodnika",
+  "/observations": "Obserwacje",
+  "/observations/new": "Nowa obserwacja",
+  "/global-players": "Globalna baza zawodników",
+  "/settings": "Ustawienia",
+  "/admin": "Panel administracyjny",
+  // dodawaj kolejne ścieżki według potrzeb
+};
+
+/**
+ * Mapa pojedynczych segmentów (slugów) na polskie etykiety,
+ * gdy nie zdefiniowaliśmy konkretnej pełnej ścieżki.
+ */
+const SEGMENT_LABELS: Record<string, string> = {
+  players: "Zawodnicy",
+  observations: "Obserwacje",
+  "global-players": "Globalna baza",
+  settings: "Ustawienia",
+  admin: "Panel",
+  new: "Nowy",
+  edit: "Edycja",
+  // itd.
+};
+
+function getCrumbLabel(fullPath: string, segment: string, index: number) {
+  // pierwszy crumb zawsze: Strona główna
+  if (index === 0) return "Strona główna";
+
+  const segmentKey = segment.toLowerCase();
+
+  // 1) priorytet: konkretna pełna ścieżka
+  if (PATH_LABELS[fullPath]) return PATH_LABELS[fullPath];
+
+  // 2) fallback: etykieta po samym segmencie
+  if (SEGMENT_LABELS[segmentKey]) return SEGMENT_LABELS[segmentKey];
+
+  // 3) ostateczny fallback: ładne Title Case z oryginalnego segmentu
+  return titleCaseAll(segment);
+}
+
+/* ===== Simple breadcrumb builder ===== */
+function buildBreadcrumb(pathname: string) {
+  const parts = pathname
+    .split("?")[0]
+    .split("#")[0]
+    .split("/")
+    .filter(Boolean);
+
+  const items: { label: string; href: string }[] = [];
+
+  // Zawsze pierwszy element: Strona główna
+  items.push({ label: "Strona główna", href: "/" });
+
+  let acc = "";
+  parts.forEach((p, index) => {
+    acc += "/" + p;
+    const decoded = decodeURIComponent(p);
+    const label = getCrumbLabel(acc, decoded, index + 1);
+    items.push({
+      label,
+      href: acc,
+    });
+  });
+
+  return items;
+}
 
 /* ===== Shell with Sidebar & Topbar ===== */
 function AppShell({
@@ -92,7 +146,7 @@ function AppShell({
 
   return (
     <>
-      <div className="pl-64 max-lg:pl-0">
+      <div className="pl-80 max-lg:pl-0">
         {/* Sticky top bar */}
         <header
           className="sticky top-0 z-40 border-b border-transparent bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent dark:bg-transparent"
@@ -118,8 +172,7 @@ function AppShell({
               <ol className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300">
                 {crumbs.map((c, i) => {
                   const last = i === crumbs.length - 1;
-                  const raw = c.label || "Home";
-                  const label = titleCaseAll(raw);
+                  const label = c.label || "Strona główna";
 
                   return (
                     <li key={c.href} className="flex min-w-0 items-center">
@@ -220,7 +273,7 @@ function AppShell({
           </div>
         </header>
 
- {/* Content */}
+        {/* Content */}
         <main
           id="content"
           className="min-h-screen px-3 py-4 md:px-6 md:py-6"

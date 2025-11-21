@@ -1,7 +1,12 @@
 // src/app/(players)/players/add/AddPlayerPage.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import { Toolbar } from "@/shared/ui/atoms";
@@ -31,8 +36,16 @@ import {
   Search,
   AlertTriangle,
   Lock,
+  PlayCircle,
+  Monitor,
 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -68,6 +81,14 @@ import {
 } from "@/components/ui/tooltip";
 
 import { getSupabase } from "@/lib/supabaseClient";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
+import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { RadioChipGroup } from "@/components/ui/RadioChipGroup";
+
+/* ===== ENV / defaults ===== */
+const SCOUT_DEFAULT_COUNTRY =
+  process.env.NEXT_PUBLIC_SCOUT_DEFAULT_COUNTRY || "";
 
 /* ===== Positions ===== */
 type BucketPos = "GK" | "DF" | "MF" | "FW";
@@ -151,6 +172,34 @@ const POS_DATA: Array<{
   },
 ];
 
+const POS_LAYOUT: Record<DetailedPos, { top: string; left: string }> = {
+  // Bramkarz – przy lewej bramce, w środku wysokości
+  GK: { top: "50%", left: "8%" },
+
+  // Obrona – przed bramkarzem
+  LB: { top: "30%", left: "24%" }, // lewy obrońca
+  CB: { top: "50%", left: "26%" }, // środkowy
+  RB: { top: "70%", left: "24%" }, // prawy obrońca
+
+  // Defensywny pomocnik – między obroną a środkiem
+  CDM: { top: "50%", left: "40%" },
+
+  // Środkowy pomocnik – środek boiska
+  CM: { top: "50%", left: "55%" },
+
+  // Ofensywny pomocnik – między pomocą a atakiem
+  CAM: { top: "50%", left: "68%" },
+
+  // Skrzydłowi – szeroko, na wysokości CAM
+  LW: { top: "30%", left: "68%" },
+  RW: { top: "70%", left: "68%" },
+
+  // Napastnik – blisko prawej bramki, centralnie
+  ST: { top: "50%", left: "86%" },
+};
+
+
+
 const toBucket = (p: DetailedPos): BucketPos => {
   switch (p) {
     case "GK":
@@ -209,28 +258,29 @@ const COUNTRIES: Country[] = [
 
 function SavePill({
   state,
+  size = "default",
 }: {
   state: "idle" | "saving" | "saved";
+  size?: "default" | "compact";
   mode?: "known" | "unknown" | null;
 }) {
   const base =
-    "inline-flex h-10 items-center rounded-md border px-3 text-sm leading-none";
+    size === "compact"
+      ? "inline-flex h-8 items-center rounded-md px-2 text-xs leading-none"
+      : "inline-flex h-10 items-center rounded-md px-3 text-sm leading-none";
+
   const map = {
-    saving:
-      "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
-    saved:
-      "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-100",
-    idle:
-      "border-gray-300 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200",
+    saving: "text-amber-700 dark:text-amber-200",
+    saved: "text-emerald-700 dark:text-emerald-200",
+    idle: "text-gray-600 dark:text-neutral-300",
   } as const;
 
-  // Domyślnie (idle) nic nie pokazujemy
   if (state === "idle") {
     return null;
   }
 
   return (
-    <span className={`${base} ${map[state]}`} aria-live="polite">
+    <span className={cn(base, map[state])} aria-live="polite">
       {state === "saving" ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -302,7 +352,10 @@ function CountryCombobox({
         align="start"
       >
         <Command shouldFilter>
-          <CommandInput placeholder="Szukaj kraju…" />
+          <CommandInput
+            placeholder="Szukaj kraju…"
+            className="border-0 bg-transparent px-3 py-2 text-sm shadow-none focus:border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
           <CommandList>
             <CommandEmpty>Brak wyników.</CommandEmpty>
             <CommandGroup>
@@ -348,6 +401,278 @@ function safeText(val: any): string {
   }
   return "";
 }
+
+/* DateTime picker 24h – używany do daty/godziny meczu */
+type DateTimeValue = {
+  date: string;
+  time: string;
+};
+
+function DateTimePicker24h({
+  value,
+  onChange,
+  placeholder = "Data i godzina meczu",
+}: {
+  value: DateTimeValue;
+  onChange: (value: DateTimeValue) => void;
+  placeholder?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [dateObj, setDateObj] = useState<Date | undefined>(() => {
+    if (value.date) {
+      const d = new Date(`${value.date}T${value.time || "12:00"}:00`);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    }
+    return undefined;
+  });
+
+  useEffect(() => {
+    if (!value.date) {
+      setDateObj(undefined);
+      return;
+    }
+    const d = new Date(`${value.date}T${value.time || "12:00"}:00`);
+    if (!Number.isNaN(d.getTime())) {
+      setDateObj(d);
+    }
+  }, [value.date, value.time]);
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const minutes = Array.from({ length: 12 }, (_, i) => i * 5);
+
+  const handleCombinedChange = (next: Date | undefined) => {
+    if (!next) {
+      setDateObj(undefined);
+      onChange({ date: "", time: "" });
+      return;
+    }
+    setDateObj(next);
+    const iso = next.toISOString();
+    const dateStr = iso.slice(0, 10);
+    const timeStr = iso.slice(11, 16);
+    onChange({ date: dateStr, time: timeStr });
+  };
+
+  const handleDateSelect = (selected: Date | undefined) => {
+    if (!selected) {
+      handleCombinedChange(undefined);
+      return;
+    }
+    const base = dateObj ?? new Date();
+    const next = new Date(selected);
+    next.setHours(base.getHours());
+    next.setMinutes(base.getMinutes());
+    handleCombinedChange(next);
+  };
+
+  const handleTimeChange = (type: "hour" | "minute", raw: string) => {
+    const base = dateObj ?? new Date();
+    const next = new Date(base);
+    const val = parseInt(raw, 10);
+    if (Number.isNaN(val)) return;
+    if (type === "hour") {
+      next.setHours(val);
+    } else {
+      next.setMinutes(val);
+    }
+    handleCombinedChange(next);
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-full justify-start text-left font-normal border-gray-300 dark:border-neutral-700",
+            !dateObj && "text-muted-foreground"
+          )}
+        >
+          <CalendarDaysIcon className="mr-2 h-4 w-4" />
+          {dateObj ? (
+            format(dateObj, "dd.MM.yyyy HH:mm")
+          ) : (
+            <span>{placeholder}</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <div className="sm:flex">
+          <Calendar
+            mode="single"
+            selected={dateObj}
+            onSelect={handleDateSelect}
+            initialFocus
+          />
+          <div className="flex flex-col divide-y sm:h-[300px] sm:flex-row sm:divide-y-0 sm:divide-x">
+            <ScrollArea className="w-64 sm:w-auto">
+              <div className="flex p-2 sm:flex-col">
+                {hours.map((hour) => (
+                  <Button
+                    key={hour}
+                    size="icon"
+                    variant={
+                      dateObj && dateObj.getHours() === hour
+                        ? "default"
+                        : "ghost"
+                    }
+                    className="aspect-square shrink-0 sm:w-full"
+                    onClick={() => handleTimeChange("hour", hour.toString())}
+                  >
+                    {hour.toString().padStart(2, "0")}
+                  </Button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" className="sm:hidden" />
+            </ScrollArea>
+            <ScrollArea className="w-64 sm:w-auto">
+              <div className="flex p-2 sm:flex-col">
+                {minutes.map((minute) => (
+                  <Button
+                    key={minute}
+                    size="icon"
+                    variant={
+                      dateObj && dateObj.getMinutes() === minute
+                        ? "default"
+                        : "ghost"
+                    }
+                    className="aspect-square shrink-0 sm:w-full"
+                    onClick={() => handleTimeChange("minute", minute.toString())}
+                  >
+                    {minute.toString().padStart(2, "0")}
+                  </Button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" className="sm:hidden" />
+            </ScrollArea>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* Boisko – główna pozycja */
+/* Boisko – główna pozycja */
+function MainPositionPitch({
+  value,
+  onChange,
+}: {
+  value: DetailedPos | "";
+  onChange: (next: DetailedPos) => void;
+}) {
+  const [hovered, setHovered] = useState<DetailedPos | null>(null);
+
+  const activeKey = (hovered || value || null) as DetailedPos | null;
+  const activeMeta = activeKey
+    ? POS_DATA.find((p) => p.value === activeKey) ?? null
+    : null;
+
+  return (
+    <section className="mt-5 rounded-xl bg-white px-3 py-3 shadow-sm ring-1 ring-slate-200/70 dark:bg-neutral-950 dark:ring-neutral-800">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+            Boisko – główna pozycja
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
+            Kliknij na znacznik na boisku, aby ustawić główną pozycję zawodnika.
+          </p>
+        </div>
+        {activeMeta && (
+          <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
+            {activeMeta.code} · {activeMeta.name}
+          </span>
+        )}
+      </div>
+
+      <div className="mx-auto max-h-[300px] max-w-[560px] overflow-hidden rounded-xl border border-emerald-500/40 bg-[radial-gradient(circle_at_0%_50%,#14532d_0,#166534_35%,#052e16_90%)] p-3">
+        <TooltipProvider delayDuration={0}>
+          <div className="relative h-[220px] w-full rounded-[20px] border border-white/40">
+            {/* Środkowa linia – poziomo */}
+            <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/40" />
+
+            {/* Koło środkowe */}
+            <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
+
+            {/* Pole karne LEWE */}
+            <div className="absolute left-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-r border-white/40" />
+            {/* Małe pole bramkowe LEWE */}
+            <div className="absolute left-0 top-1/2 h-20 w-14 -translate-y-1/2 border-y border-r border-white/40" />
+
+            {/* Pole karne PRAWE */}
+            <div className="absolute right-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-l border-white/40" />
+            {/* Małe pole bramkowe PRAWE */}
+            <div className="absolute right-0 top-1/2 h-20 w-14 -translate-y-1/2 border-y border-l border-white/40" />
+
+            {/* Znaczniki pozycji */}
+            {POS_DATA.map((pos) => {
+              const layout = POS_LAYOUT[pos.value];
+              if (!layout) return null;
+              const isSelected = value === pos.value;
+
+              return (
+                <Tooltip key={pos.value}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "group absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-xs font-semibold text-white shadow-sm transition-transform",
+                        isSelected
+                          ? "border-emerald-300 bg-emerald-500/90 shadow-[0_0_0_4px_rgba(16,185,129,0.45)]"
+                          : "border-white/70 bg-white/10 hover:scale-[1.03] hover:bg-white/25"
+                      )}
+                      style={{ top: layout.top, left: layout.left }}
+                      onClick={() => onChange(pos.value)}
+                      onMouseEnter={() => setHovered(pos.value)}
+                      onMouseLeave={() =>
+                        setHovered((prev) => (prev === pos.value ? null : prev))
+                      }
+                    >
+                      <span className="pointer-events-none">{pos.code}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    align="center"
+                    className="max-w-xs border-none bg-slate-900/95 px-3 py-2 text-left text-[11px] text-slate-100 shadow-lg"
+                  >
+                    <div className="text-xs font-semibold">
+                      {pos.code} · {pos.name}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-slate-300">
+                      {pos.desc}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
+      </div>
+
+
+      <div className="mt-3 text-[11px] leading-relaxed text-slate-600 dark:text-neutral-300">
+        {activeMeta ? (
+          <>
+            <span className="font-semibold">
+              {activeMeta.code} – {activeMeta.name}
+            </span>
+            <span className="ml-1.5 text-slate-600 dark:text-neutral-300">
+              {activeMeta.desc}
+            </span>
+          </>
+        ) : (
+          <span>
+            Najedź na znacznik, aby zobaczyć szczegółowy opis pozycji i kliknij,
+            aby ją wybrać jako główną.
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
 
 /* ===== Add page ===== */
 type Choice = "known" | "unknown" | null;
@@ -401,7 +726,6 @@ function getDefaultExt() {
 export default function AddPlayerPage() {
   const router = useRouter();
 
-  // Domyślnie brak wyboru trybu
   const [choice, setChoice] = useState<Choice>(null);
 
   const [basicOpen, setBasicOpen] = useState(true);
@@ -430,6 +754,44 @@ export default function AddPlayerPage() {
   );
   const [ratings, setRatings] = useState<PlayerRatings>({});
   const [notes, setNotes] = useState("");
+
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const basicRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('header[role="banner"]');
+    if (header) {
+      setHeaderHeight(header.offsetHeight);
+    }
+
+    const handleResize = () => {
+      const h = document.querySelector<HTMLElement>('header[role="banner"]');
+      if (h) setHeaderHeight(h.offsetHeight);
+    };
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 80);
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  // domyślny kraj scouta (jeśli ustawiony w env)
+  useEffect(() => {
+    if (!SCOUT_DEFAULT_COUNTRY) return;
+    setExt((prev) => {
+      if (prev.birthCountry) return prev;
+      return { ...prev, birthCountry: SCOUT_DEFAULT_COUNTRY };
+    });
+    setClubCountry((prev) => prev || SCOUT_DEFAULT_COUNTRY);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -543,6 +905,20 @@ export default function AddPlayerPage() {
   const [qaStatus, setQaStatus] = useState<"draft" | "final">("draft");
   const [qaOpponentLevel, setQaOpponentLevel] = useState("");
 
+  const [qaTeamA, setQaTeamA] = useState("");
+  const [qaTeamB, setQaTeamB] = useState("");
+  const QA_CONDITIONS: ("live" | "tv")[] = ["live", "tv"];
+
+  function updateQaMatchFromTeams(a: string, b: string) {
+    setQaTeamA(a);
+    setQaTeamB(b);
+    const composed =
+      a.trim() && b.trim()
+        ? `${a.trim()} vs ${b.trim()}`
+        : (a + " " + b).trim();
+    setQaMatch(composed);
+  }
+
   // Ładowanie obserwacji z Supabase (globalny dziennik obserwacji)
   useEffect(() => {
     let cancelled = false;
@@ -611,6 +987,8 @@ export default function AddPlayerPage() {
     setQaMode("live");
     setQaStatus("draft");
     setQaOpponentLevel("");
+    setQaTeamA("");
+    setQaTeamB("");
   }
 
   // Normalizujemy obserwacje tak, żeby pola tekstowe na pewno były stringami
@@ -659,24 +1037,17 @@ export default function AddPlayerPage() {
   type ExtKey = "profile" | "eligibility" | "stats365" | "contact";
   const [extView, setExtView] = useState<ExtKey>("profile");
 
-  const [highlightMainPos, setHighlightMainPos] = useState(false);
-
-  useEffect(() => {
-    if (ext.mainPos) {
-      setHighlightMainPos(false);
-    }
-  }, [ext.mainPos]);
-
   function ExtContent({ view }: { view: ExtKey }) {
     switch (view) {
       case "profile":
         return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
                 <Label className="text-sm">Wzrost (cm)</Label>
                 <Input
-                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={ext.height}
                   onChange={(e) =>
                     setExt((s) => ({ ...s, height: e.target.value }))
@@ -686,7 +1057,8 @@ export default function AddPlayerPage() {
               <div>
                 <Label className="text-sm">Waga (kg)</Label>
                 <Input
-                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={ext.weight}
                   onChange={(e) =>
                     setExt((s) => ({ ...s, weight: e.target.value }))
@@ -713,47 +1085,10 @@ export default function AddPlayerPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div
-                className={cn(
-                  highlightMainPos &&
-                    "rounded-md bg-indigo-50/60 p-2 ring-2 ring-indigo-500/80 dark:bg-indigo-950/30"
-                )}
-              >
-                <Label className="text-sm">Główna pozycja</Label>
-                <Select
-                  value={ext.mainPos || ""}
-                  onValueChange={(v) => {
-                    const val = v as DetailedPos;
-                    setExt((s) => ({ ...s, mainPos: val }));
-                  }}
-                >
-                  <SelectTrigger className="mt-1 w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
-                    <SelectValue placeholder="Wybierz pozycję" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {POS_DATA.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        <div className="text-left">
-                          <div className="font-medium">
-                            {opt.code}: {opt.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {opt.desc}
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="mt-1 text-[11px] text-slate-600 dark:text-neutral-400">
-                  Ta pozycja steruje dodatkowymi kategoriami oceny (GK/DEF/MID/ATT).
-                </p>
-              </div>
-
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <Label className="text-sm">Pozycje alternatywne</Label>
-                <div className="mt-1 grid grid-cols-2 gap-1 sm:grid-cols-3">
+                <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                   {POS_DATA.map((opt) => {
                     const checked = ext.altPositions.includes(opt.value);
                     return (
@@ -792,73 +1127,55 @@ export default function AddPlayerPage() {
 
       case "eligibility":
         return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
-                <Label className="text-sm">Znajomość języka angielskiego</Label>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExt((s) => ({ ...s, english: true }))
-                    }
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
-                      ext.english === true
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    )}
-                  >
-                    Tak
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExt((s) => ({ ...s, english: false }))
-                    }
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
-                      ext.english === false
-                        ? "bg-rose-600 text-white hover:bg-rose-700"
-                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    )}
-                  >
-                    Nie
-                  </button>
-                </div>
+                <RadioChipGroup
+                  legend="Znajomość języka angielskiego"
+                  layout="grid-2"
+                  value={
+                    ext.english === true
+                      ? "yes"
+                      : ext.english === false
+                      ? "no"
+                      : ""
+                  }
+                  options={[
+                    { value: "yes", label: "Tak" },
+                    { value: "no", label: "Nie" },
+                  ]}
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      english:
+                        val === "yes" ? true : val === "no" ? false : null,
+                    }))
+                  }
+                />
               </div>
               <div>
-                <Label className="text-sm">Paszport UE</Label>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExt((s) => ({ ...s, euPassport: true }))
-                    }
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
-                      ext.euPassport === true
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    )}
-                  >
-                    Tak
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExt((s) => ({ ...s, euPassport: false }))
-                    }
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
-                      ext.euPassport === false
-                        ? "bg-rose-600 text-white hover:bg-rose-700"
-                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    )}
-                  >
-                    Nie
-                  </button>
-                </div>
+                <RadioChipGroup
+                  legend="Paszport UE"
+                  layout="grid-2"
+                  value={
+                    ext.euPassport === true
+                      ? "yes"
+                      : ext.euPassport === false
+                      ? "no"
+                      : ""
+                  }
+                  options={[
+                    { value: "yes", label: "Tak" },
+                    { value: "no", label: "Nie" },
+                  ]}
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      euPassport:
+                        val === "yes" ? true : val === "no" ? false : null,
+                    }))
+                  }
+                />
               </div>
               <div>
                 <Label className="text-sm">Kraj urodzenia</Label>
@@ -871,7 +1188,7 @@ export default function AddPlayerPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <Label className="text-sm">Status kontraktu</Label>
                 <Input
@@ -922,7 +1239,7 @@ export default function AddPlayerPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <Label className="text-sm">Linki do klipów / time-codes</Label>
                 <Textarea
@@ -934,7 +1251,7 @@ export default function AddPlayerPage() {
                   className="mt-1"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <Label className="text-sm">Link do Transfermarkt</Label>
                   <Input
@@ -965,7 +1282,7 @@ export default function AddPlayerPage() {
 
       case "stats365":
         return (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <Label className="text-sm">
                 Historia urazów (jeśli dostępna)
@@ -982,13 +1299,14 @@ export default function AddPlayerPage() {
                 className="mt-1"
               />
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
               <div>
                 <Label className="text-sm">
                   Minuty w ostatnich 365 dniach
                 </Label>
                 <Input
-                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={ext.minutes365}
                   onChange={(e) =>
                     setExt((s) => ({
@@ -1001,7 +1319,8 @@ export default function AddPlayerPage() {
               <div>
                 <Label className="text-sm">Mecze jako starter</Label>
                 <Input
-                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={ext.starts365}
                   onChange={(e) =>
                     setExt((s) => ({
@@ -1014,7 +1333,8 @@ export default function AddPlayerPage() {
               <div>
                 <Label className="text-sm">Mecze jako rezerwowy</Label>
                 <Input
-                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={ext.subs365}
                   onChange={(e) =>
                     setExt((s) => ({
@@ -1029,7 +1349,8 @@ export default function AddPlayerPage() {
                   Gole w ostatnich 365 dniach
                 </Label>
                 <Input
-                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={ext.goals365}
                   onChange={(e) =>
                     setExt((s) => ({
@@ -1045,8 +1366,8 @@ export default function AddPlayerPage() {
 
       case "contact":
         return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <Label className="text-sm">Telefon kontaktowy</Label>
                 <Input
@@ -1069,7 +1390,7 @@ export default function AddPlayerPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
                 <Label className="text-sm">Link FB</Label>
                 <Input
@@ -1109,31 +1430,41 @@ export default function AddPlayerPage() {
   function RatingRow({ aspect }: { aspect: RatingAspect }) {
     const val = ratings[aspect.key] ?? 0;
     const hasTooltip = !!aspect.tooltip;
+
     return (
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="max-w-[65%]">
-          <div className="flex items-center gap-1">
-            <span className="text-sm">{aspect.label}</span>
-            {hasTooltip && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-600 hover:bg-slate-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    >
-                      i
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs leading-snug">
-                    {aspect.tooltip}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+      <div className="flex w-full max-w-[320px] flex-col justify-between rounded-md border border-slate-200 bg-white/90 p-3 text-xs shadow-sm transition-shadow dark:border-neutral-700 dark:bg-neutral-950/80">
+        <div className="mb-2 flex items-start gap-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-1">
+              <span className="text-[13px] font-medium">
+                {aspect.label}
+              </span>
+              {hasTooltip && (
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-600 hover:bg-slate-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                      >
+                        i
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-xs leading-snug">
+                      {aspect.tooltip}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            {aspect.tooltip && (
+              <p className="mt-1 line-clamp-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                {aspect.tooltip}
+              </p>
             )}
           </div>
         </div>
-        <div className="mt-1 sm:mt-0">
+        <div className="mt-1">
           <StarRating
             max={5}
             value={val}
@@ -1163,7 +1494,7 @@ export default function AddPlayerPage() {
           <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
           {title}
         </div>
-        <div className="space-y-3">
+        <div className="flex flex-wrap gap-3">
           {aspects.map((aspect) => (
             <RatingRow key={aspect.id} aspect={aspect} />
           ))}
@@ -1173,7 +1504,6 @@ export default function AddPlayerPage() {
   }
 
   const [playerId, setPlayerId] = useState<number | null>(null);
-  const [obsTab, setObsTab] = useState<"new" | "existing">("new");
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle"
@@ -1383,19 +1713,39 @@ export default function AddPlayerPage() {
   ]);
 
   const stepPillClass =
-    "inline-flex h-6 items-center rounded-md bg-slate-100 px-2.5 text-[11px]   tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
+    "inline-flex h-6 items-center rounded-md bg-slate-100 px-2.5 text-[11px] tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
 
   const hasChoice = !!choice;
 
   /* ========================================= UI ========================================= */
   return (
     <div className="w-full space-y-4">
+      {/* Sticky mini actions under header when scroll */}
+      <div
+        className={cn(
+          "pointer-events-none sticky z-30 flex justify-end transition-all duration-200",
+          isScrolled ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
+        )}
+        style={{ top: headerHeight || 64 }}
+      >
+        <div className="pointer-events-auto mr-2 mt-2 border-none flex items-center gap-2 rounded-full bg-none px-2 py-1   dark:bg-neutral-950/90 dark:ring-neutral-800">
+          <SavePill state={saveState} size="compact" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => router.push("/players")}
+          >
+            Wróć do listy
+          </Button>
+        </div>
+      </div>
+
       <Toolbar
         title="Dodaj zawodnika"
         right={
           <div className="flex w-full items-center justify-end gap-2 sm:gap-3 md:flex-nowrap">
-            {/* SavePill pokazuje się dopiero, gdy zapis faktycznie się odpala */}
-            <SavePill state={saveState} mode={choice} />
+            <SavePill state={saveState} />
             <Button
               variant="outline"
               className="h-10"
@@ -1409,8 +1759,8 @@ export default function AddPlayerPage() {
 
       {/* KROK 0 – tryb dodawania */}
       <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
-        <CardHeader className="border-b border-slate-200 px-4 py-4 md:px-6 dark:border-neutral-800">
-          <div className="flex items-center justify-between gap-3">
+        <CardHeader className="group flex items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+          <div className="flex w-full items-center justify-between gap-3">
             <div>
               <div className={stepPillClass}>Krok 0 · Tryb</div>
               <h2 className="mt-1 text-base font-semibold tracking-tight">
@@ -1533,8 +1883,8 @@ export default function AddPlayerPage() {
           )}
         >
           {/* KROK 1 – Podstawowe informacje */}
-          <Card className="mt-1">
-            <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+          <Card ref={basicRef} className="mt-1">
+            <CardHeader className="group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
               <button
                 type="button"
                 aria-expanded={basicOpen}
@@ -1576,118 +1926,155 @@ export default function AddPlayerPage() {
                 <AccordionItem value="basic" className="border-0">
                   <AccordionContent id="basic-panel" className="pt-4 pb-5">
                     {choice === "unknown" ? (
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div>
-                          <Label className="text-sm">Numer na koszulce</Label>
-                          <div className="relative">
-                            <Input
-                              className={cn(!jerseyNumber && "pr-24")}
-                              value={jerseyNumber}
-                              onChange={(e) => setJerseyNumber(e.target.value)}
-                              placeholder="np. 27"
+                      <div className="space-y-5">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div>
+                            <Label className="text-sm">
+                              Numer na koszulce
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                className={cn(!jerseyNumber && "pr-24")}
+                                value={jerseyNumber}
+                                onChange={(e) =>
+                                  setJerseyNumber(e.target.value)
+                                }
+                                placeholder="np. 27"
+                              />
+                              {!jerseyNumber && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm">Aktualny klub</Label>
+                            <div className="relative">
+                              <Input
+                                value={uClub}
+                                onChange={(e) => setUClub(e.target.value)}
+                                className={cn(!uClub && "pr-24")}
+                              />
+                              {!uClub && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm pb-2">
+                              Kraj aktualnego klubu
+                            </Label>
+                            <CountryCombobox
+                              value={uClubCountry}
+                              onChange={(val) => setUClubCountry(val)}
+                              chip={!uClubCountry ? "Wymagane" : undefined}
                             />
-                            {!jerseyNumber && <Chip text="Wymagane" />}
+                          </div>
+                          <div className="md:col-span-2">
+                            <Label className="text-sm">
+                              Notatka własna (opcjonalne)
+                            </Label>
+                            <Textarea
+                              value={uNote}
+                              onChange={(e) => setUNote(e.target.value)}
+                              placeholder="Krótka notatka z meczu, charakterystyka…"
+                              className="mt-1"
+                            />
                           </div>
                         </div>
 
-                        <div>
-                          <Label className="text-sm">Aktualny klub</Label>
-                          <div className="relative">
-                            <Input
-                              value={uClub}
-                              onChange={(e) => setUClub(e.target.value)}
-                              className={cn(!uClub && "pr-24")}
-                            />
-                            {!uClub && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm pb-2">
-                            Kraj aktualnego klubu
-                          </Label>
-                          <CountryCombobox
-                            value={uClubCountry}
-                            onChange={(val) => setUClubCountry(val)}
-                            chip={!uClubCountry ? "Wymagane" : undefined}
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label className="text-sm">
-                            Notatka własna (opcjonalne)
-                          </Label>
-                          <Textarea
-                            value={uNote}
-                            onChange={(e) => setUNote(e.target.value)}
-                            placeholder="Krótka notatka z meczu, charakterystyka…"
-                            className="mt-1"
-                          />
-                        </div>
+                        <MainPositionPitch
+                          value={(ext.mainPos as DetailedPos | "") || ""}
+                          onChange={(pos) => {
+                            setExt((s) => ({ ...s, mainPos: pos }));
+                            setUPosDet(pos);
+                            setPosDet(pos);
+                          }}
+                        />
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div>
-                          <Label className="text-sm">Imię</Label>
-                          <div className="relative">
+                      <div className="space-y-5">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div>
+                            <Label className="text-sm">Imię</Label>
+                            <div className="relative">
+                              <Input
+                                value={firstName}
+                                onChange={(e) =>
+                                  setFirstName(e.target.value)
+                                }
+                                className={cn(!firstName && "pr-24")}
+                              />
+                              {!firstName && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm">Nazwisko</Label>
+                            <div className="relative">
+                              <Input
+                                value={lastName}
+                                onChange={(e) =>
+                                  setLastName(e.target.value)
+                                }
+                                className={cn(!lastName && "pr-24")}
+                              />
+                              {!lastName && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm">Rok urodzenia</Label>
+                            <div className="relative">
+                              <Input
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={birthYear}
+                                onChange={(e) =>
+                                  setBirthYear(e.target.value)
+                                }
+                                className={cn(!birthYear && "pr-24")}
+                              />
+                              {!birthYear && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm">
+                              Numer na koszulce
+                            </Label>
                             <Input
-                              value={firstName}
-                              onChange={(e) => setFirstName(e.target.value)}
-                              className={cn(!firstName && "pr-24")}
+                              value={jerseyNumber}
+                              onChange={(e) =>
+                                setJerseyNumber(e.target.value)
+                              }
+                              placeholder="opcjonalne"
                             />
-                            {!firstName && <Chip text="Wymagane" />}
+                          </div>
+                          <div>
+                            <Label className="text-sm">Aktualny klub</Label>
+                            <div className="relative">
+                              <Input
+                                value={club}
+                                onChange={(e) => setClub(e.target.value)}
+                                className={cn(!club && "pr-24")}
+                              />
+                              {!club && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm pb-2">
+                              Kraj aktualnego klubu
+                            </Label>
+                            <CountryCombobox
+                              value={clubCountry}
+                              onChange={(val) => setClubCountry(val)}
+                              chip={!clubCountry ? "Wymagane" : undefined}
+                            />
                           </div>
                         </div>
-                        <div>
-                          <Label className="text-sm">Nazwisko</Label>
-                          <div className="relative">
-                            <Input
-                              value={lastName}
-                              onChange={(e) => setLastName(e.target.value)}
-                              className={cn(!lastName && "pr-24")}
-                            />
-                            {!lastName && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm">Rok urodzenia</Label>
-                          <div className="relative">
-                            <Input
-                              type="number"
-                              value={birthYear}
-                              onChange={(e) => setBirthYear(e.target.value)}
-                              className={cn(!birthYear && "pr-24")}
-                            />
-                            {!birthYear && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm">Numer na koszulce</Label>
-                          <Input
-                            value={jerseyNumber}
-                            onChange={(e) => setJerseyNumber(e.target.value)}
-                            placeholder="opcjonalne"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Aktualny klub</Label>
-                          <div className="relative">
-                            <Input
-                              value={club}
-                              onChange={(e) => setClub(e.target.value)}
-                              className={cn(!club && "pr-24")}
-                            />
-                            {!club && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm pb-2">
-                            Kraj aktualnego klubu
-                          </Label>
-                          <CountryCombobox
-                            value={clubCountry}
-                            onChange={(val) => setClubCountry(val)}
-                            chip={!clubCountry ? "Wymagane" : undefined}
-                          />
-                        </div>
+
+                        <MainPositionPitch
+                          value={(ext.mainPos as DetailedPos | "") || ""}
+                          onChange={(pos) => {
+                            setExt((s) => ({ ...s, mainPos: pos }));
+                            setPosDet(pos);
+                            setUPosDet(pos);
+                          }}
+                        />
                       </div>
                     )}
                   </AccordionContent>
@@ -1698,7 +2085,7 @@ export default function AddPlayerPage() {
 
           {/* KROK 2 – Rozszerzone informacje */}
           <Card className="mt-1">
-            <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+            <CardHeader className="group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
               <button
                 type="button"
                 aria-expanded={extOpen}
@@ -1750,6 +2137,7 @@ export default function AddPlayerPage() {
                         skup się na podstawowych danych.
                       </p>
                     )}
+
                     {/* Mobile: Select; Desktop: Tabs */}
                     <div className="md:hidden">
                       <Label className="mb-1 block text-sm">Sekcja</Label>
@@ -1780,7 +2168,7 @@ export default function AddPlayerPage() {
                         onValueChange={(v: any) => setExtView(v)}
                         className="w-full"
                       >
-                        <TabsList className="grid w-full grid-cols-4">
+                        <TabsList className="inline-flex w-auto gap-1 rounded-md bg-slate-100 p-1 dark:bg-neutral-900">
                           <TabsTrigger value="profile">
                             Profil boiskowy
                           </TabsTrigger>
@@ -1817,7 +2205,7 @@ export default function AddPlayerPage() {
 
           {/* KROK 3 – Ocena */}
           <Card className="mt-1">
-            <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+            <CardHeader className="group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
               <button
                 type="button"
                 aria-expanded={gradeOpen}
@@ -1832,7 +2220,7 @@ export default function AddPlayerPage() {
                   </div>
                   <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
                     Wypełnij oceny dopiero, gdy masz ustawioną Główną pozycję
-                    w profilu boiskowym.
+                    w kroku 1.
                   </p>
                 </div>
                 <div className="flex items-center gap-3 pl-4">
@@ -1873,7 +2261,7 @@ export default function AddPlayerPage() {
                     <div className="relative">
                       <div
                         className={cn(
-                          "space-y-5",
+                          "space-y-6",
                           !effectiveMainPos && "pointer-events-none opacity-40"
                         )}
                       >
@@ -1887,7 +2275,7 @@ export default function AddPlayerPage() {
                           />
                         </div>
 
-                        <div className="space-y-5">
+                        <div className="space-y-6">
                           {enabledRatingAspects.length === 0 && (
                             <p className="text-xs text-slate-500 dark:text-neutral-400">
                               Brak skonfigurowanych kategorii ocen. Dodaj je w
@@ -1925,9 +2313,9 @@ export default function AddPlayerPage() {
                           {!effectiveBucket &&
                             enabledRatingAspects.length > 0 && (
                               <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                                Ustaw <b>Główną pozycję</b> w sekcji
-                                „Rozszerzone informacje”, aby zobaczyć
-                                dodatkowe kategorie oceny (GK/DEF/MID/ATT).
+                                Ustaw <b>Główną pozycję</b> w kroku 1, aby
+                                zobaczyć dodatkowe kategorie oceny
+                                (GK/DEF/MID/ATT).
                               </p>
                             )}
                         </div>
@@ -1935,22 +2323,23 @@ export default function AddPlayerPage() {
 
                       {!effectiveMainPos && (
                         <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
-                          <p className="mb-3 text-xs sm:text-sm text-slate-700 dark:text-neutral-200">
+                          <p className="mb-3 text-xs text-slate-700 dark:text-neutral-200 sm:text-sm">
                             Aby wprowadzić oceny, najpierw uzupełnij{" "}
-                            <b>Główną pozycję</b> w sekcji „Rozszerzone
-                            informacje”.
+                            <b>Główną pozycję</b> zawodnika w kroku 1.
                           </p>
                           <Button
                             size="sm"
                             type="button"
                             className="bg-gray-900 text-white hover:bg-gray-800"
                             onClick={() => {
-                              setExtOpen(true);
-                              setExtView("profile");
-                              setHighlightMainPos(true);
+                              setBasicOpen(true);
+                              basicRef.current?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "start",
+                              });
                             }}
                           >
-                            Uzupełnij Główną pozycję
+                            Przejdź do kroku 1
                           </Button>
                         </div>
                       )}
@@ -1963,7 +2352,7 @@ export default function AddPlayerPage() {
 
           {/* KROK 4 – Obserwacje */}
           <Card className="mt-1">
-            <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-4 md:px-6 dark:border-neutral-800">
+            <CardHeader className="group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
               <button
                 type="button"
                 aria-expanded={obsOpen}
@@ -2014,222 +2403,213 @@ export default function AddPlayerPage() {
                         zawodnika. Obserwacje zawsze da się rozbudować później.
                       </p>
                     )}
-                    <Tabs
-                      value={obsTab}
-                      onValueChange={(v) => setObsTab(v as "new" | "existing")}
-                      className="w-full"
-                    >
-                      <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded-md bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
-                        <TabsTrigger
-                          value="new"
-                          className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
-                        >
-                          Nowa obserwacja
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="existing"
-                          className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
-                        >
-                          Istniejące
-                        </TabsTrigger>
-                      </TabsList>
-                      <p className="mb-4 text-xs text-slate-500 dark:text-neutral-400">
-                        Dodaj nową obserwację tego zawodnika lub przypisz
-                        istniejącą z Twojego dziennika (tu przechowywane w meta
-                        zawodnika).
-                      </p>
 
-                      {/* NEW */}
-                      <TabsContent value="new" className="mt-2 space-y-4">
-                        <div>
-                          <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
-                            Mecz
-                          </div>
-                          <div className="mb-3 text-xs text-dark dark:text-neutral-400">
-                            Wpisz drużyny — pole „Mecz” składa się automatycznie.
-                          </div>
+                    <div className="space-y-8">
+                     {/* Nowa obserwacja */}
+<section className="space-y-4 rounded-md border border-gray-200 bg-white/90 px-3 py-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
+  <div className="flex items-center justify-between gap-2">
+    <div className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700 dark:bg-neutral-900 dark:text-neutral-200">
+      <span className="h-1.5 w-1.5 rounded-md bg-slate-500" />
+      Nowa obserwacja
+    </div>
+    <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+      Ustaw drużyny, datę, tryb i poziom przeciwnika – poniższy „scoreboard”
+      złoży mecz automatycznie.
+    </span>
+  </div>
 
-                          <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
-                            <div>
-                              <Label>Drużyna A</Label>
-                              <Input
-                                value={qaMatch.split(/ *vs */i)[0] || ""}
-                                onChange={(e) => {
-                                  const b =
-                                    (qaMatch.split(/ *vs */i)[1] || "").trim();
-                                  const a = e.target.value;
-                                  setQaMatch(
-                                    a && b
-                                      ? `${a} vs ${b}`
-                                      : (a + " " + b).trim()
-                                  );
-                                }}
-                                placeholder="np. Lech U19"
-                                className="mt-1"
-                              />
-                            </div>
-                            <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">
-                              vs
-                            </div>
-                            <div>
-                              <Label>Drużyna B</Label>
-                              <Input
-                                value={
-                                  (qaMatch.split(/ *vs */i)[1] || "").trim()
-                                }
-                                onChange={(e) => {
-                                  const a =
-                                    (qaMatch.split(/ *vs */i)[0] || "").trim();
-                                  const b = e.target.value;
-                                  setQaMatch(
-                                    a && b
-                                      ? `${a} vs ${b}`
-                                      : (a + " " + b).trim()
-                                  );
-                                }}
-                                placeholder="np. Wisła U19"
-                                className="mt-1"
-                              />
-                            </div>
-                            <div className="sm:hidden text-center text-sm text-dark">
-                              vs
-                            </div>
-                          </div>
+  {/* SCOREBOARD PREVIEW */}
+  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
+    <div className="flex flex-col items-center gap-3 md:flex-row md:justify-between">
+      <div className="flex items-center gap-4 text-center md:text-left">
+        <div className="min-w-[120px]">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Drużyna A
+          </p>
+          <p className="mt-0.5 truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
+            {qaTeamA || "Nie ustawiono"}
+          </p>
+        </div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[11px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 dark:bg-neutral-950 dark:text-neutral-100 dark:ring-neutral-700">
+          VS
+        </div>
+        <div className="min-w-[120px]">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Drużyna B
+          </p>
+          <p className="mt-0.5 truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
+            {qaTeamB || "Nie ustawiono"}
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600 dark:text-neutral-300">
+        {qaDate && (
+          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+            {qaDate}
+          </span>
+        )}
+        {qaTime && (
+          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+            {qaTime}
+          </span>
+        )}
+        <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+          {qaMode === "live" ? "Live (boisko)" : "TV / wideo"}
+        </span>
+        {qaOpponentLevel && (
+          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+            Poziom: {qaOpponentLevel}
+          </span>
+        )}
+      </div>
+    </div>
+    <p className="mt-2 text-[11px] text-slate-500 dark:text-neutral-400">
+      Nazwa meczu do zapisu:{" "}
+      <span className="font-medium text-slate-800 dark:text-neutral-50">
+        {qaMatch || "uzupełni się automatycznie po wpisaniu obu drużyn"}
+      </span>
+      .
+    </p>
+  </div>
 
-                          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            <div>
-                              <Label>Data meczu</Label>
-                              <Input
-                                type="date"
-                                value={qaDate}
-                                onChange={(e) => setQaDate(e.target.value)}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label>Godzina meczu</Label>
-                              <Input
-                                type="time"
-                                value={qaTime}
-                                onChange={(e) => setQaTime(e.target.value)}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label>Poziom przeciwnika</Label>
-                              <Input
-                                value={qaOpponentLevel}
-                                onChange={(e) =>
-                                  setQaOpponentLevel(e.target.value)
-                                }
-                                placeholder="np. CLJ U17, 3 liga, top akademia…"
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
+  {/* Drużyny – wejścia */}
+  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950">
+      <Label className="text-sm">Drużyna A</Label>
+      <Input
+        className="mt-1"
+        value={qaTeamA}
+        onChange={(e) => updateQaMatchFromTeams(e.target.value, qaTeamB)}
+        placeholder="np. Lech U19"
+      />
+      <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
+        Wpisz nazwę gospodarzy lub drużyny, którą obserwujesz „bliżej”.
+      </p>
+    </div>
 
-                          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div>
-                              <Label className="text-sm">Tryb</Label>
-                              <div className="mt-2 flex gap-2">
-                                <button
-                                  onClick={() => setQaMode("live")}
-                                  className={cn(
-                                    "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                    qaMode === "live"
-                                      ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                      : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                  )}
-                                  type="button"
-                                  aria-pressed={qaMode === "live"}
-                                >
-                                  Live
-                                </button>
-                                <button
-                                  onClick={() => setQaMode("tv")}
-                                  className={cn(
-                                    "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                    qaMode === "tv"
-                                      ? "bg-violet-600 text-white hover:bg-violet-700"
-                                      : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                  )}
-                                  type="button"
-                                  aria-pressed={qaMode === "tv"}
-                                >
-                                  TV
-                                </button>
-                              </div>
-                            </div>
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950">
+      <Label className="text-sm">Drużyna B</Label>
+      <Input
+        className="mt-1"
+        value={qaTeamB}
+        onChange={(e) => updateQaMatchFromTeams(qaTeamA, e.target.value)}
+        placeholder="np. Wisła U19"
+      />
+      <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
+        Wpisz nazwę rywala – vs wyświetli się w „scoreboardzie” powyżej.
+      </p>
+    </div>
+  </div>
 
-                            <div>
-                              <Label className="text-sm">Status</Label>
-                              <div className="mt-2 flex gap-2">
-                                <button
-                                  onClick={() => setQaStatus("draft")}
-                                  className={cn(
-                                    "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                    qaStatus === "draft"
-                                      ? "bg-amber-600 text-white hover:bg-amber-700"
-                                      : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                  )}
-                                  type="button"
-                                  aria-pressed={qaStatus === "draft"}
-                                >
-                                  Szkic
-                                </button>
-                                <button
-                                  onClick={() => setQaStatus("final")}
-                                  className={cn(
-                                    "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                    qaStatus === "final"
-                                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                      : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                  )}
-                                  type="button"
-                                  aria-pressed={qaStatus === "final"}
-                                >
-                                  Finalna
-                                </button>
-                              </div>
-                            </div>
-                          </div>
+  {/* Data + godzina – DateTimePicker */}
+  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="md:col-span-2">
+      <Label className="text-sm">Data i godzina meczu</Label>
+      <div className="mt-1">
+        <DateTimePicker24h
+          value={{ date: qaDate, time: qaTime }}
+          onChange={({ date, time }) => {
+            setQaDate(date);
+            setQaTime(time);
+          }}
+        />
+      </div>
+      <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
+        Ustaw precyzyjnie dzień i godzinę meczu. To pomaga później filtrować
+        obserwacje.
+      </p>
+    </div>
+  </div>
 
-                          <div className="mt-4 space-y-1 text-xs text-dark dark:text-neutral-300">
-                            <div>
-                              Mecz:{" "}
-                              <span className="font-medium">
-                                {qaMatch || "—"}
-                              </span>
-                              <span className="ml-2 inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-                                {qaMode === "tv" ? "TV" : "Live"}
-                              </span>
-                            </div>
-                            {qaOpponentLevel && (
-                              <div className="text-[11px] text-slate-600 dark:text-neutral-400">
-                                Poziom przeciwnika:{" "}
-                                <span className="font-medium">
-                                  {qaOpponentLevel}
-                                </span>
-                              </div>
-                            )}
+  {/* Tryb meczu */}
+  <div>
+    <Label className="text-sm">Tryb meczu</Label>
+    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+      {QA_CONDITIONS.map((mode) => {
+        const isActive = qaMode === mode;
+        const isLive = mode === "live";
+        return (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setQaMode(mode)}
+            className={cn(
+              "flex w-full items-center justify-between rounded border px-3 py-2 text-left text-xs transition",
+              isActive
+                ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200 dark:border-indigo-400 dark:bg-indigo-900/30 dark:ring-indigo-500/60"
+                : "border-gray-200 bg-white hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {isLive ? (
+                <PlayCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+              ) : (
+                <Monitor className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+              )}
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-800 dark:text-neutral-50">
+                  {isLive ? "Live" : "TV"}
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-neutral-400">
+                  {isLive ? "Na żywo z boiska" : "Transmisja / wideo"}
+                </div>
+              </div>
+            </div>
+            {isActive && (
+              <span className="ml-2 h-2 w-2 rounded bg-indigo-500 shadow-[0_0_0_4px_rgba(79,70,229,0.25)] dark:bg-indigo-300" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+
+  {/* Poziom przeciwnika */}
+  <div>
+    <Label className="text-sm">Poziom przeciwnika</Label>
+    <Input
+      value={qaOpponentLevel}
+      onChange={(e) => setQaOpponentLevel(e.target.value)}
+      placeholder="np. CLJ U17, 3 liga, top akademia…"
+      className="mt-1"
+    />
+    <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
+      Krótka informacja o poziomie rywala – pomaga w późniejszej analizie.
+    </p>
+  </div>
+
+  {/* Sticky przycisk dodawania */}
+  <div className="sticky bottom-0 mt-1 -mx-3 border-t border-gray-200 bg-white/90 px-3 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
+    <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+        Do zapisu wymagane są: dwie drużyny i data meczu.
+      </p>
+      <Button
+        className="bg-gray-900 text-white hover:bg-gray-800"
+        onClick={addObservation}
+        disabled={
+          !qaTeamA.trim() || !qaTeamB.trim() || !qaDate.trim()
+        }
+      >
+        Dodaj obserwację tego zawodnika
+      </Button>
+    </div>
+  </div>
+</section>
+
+
+                      {/* Istniejące obserwacje */}
+                      <section className="space-y-3 rounded-md border border-gray-200 bg-white/90 px-3 py-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700 dark:bg-neutral-900 dark:text-neutral-200">
+                            <span className="h-1.5 w-1.5 rounded-md bg-slate-500" />
+                            Istniejące obserwacje
                           </div>
+                          <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                            Wyszukaj i przypisz obserwację z dziennika.
+                          </span>
                         </div>
 
-                        <div className="sticky bottom-0 mt-1 -mx-4 border-t border-gray-200 bg-white/90 px-4 py-5 backdrop-blur supports-[backdrop-filter]:bg-white/70 md:-mx-6 md:px-6 dark:border-neutral-800 dark:bg-neutral-950/80">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              className="bg-gray-900 text-white hover:bg-gray-800"
-                              onClick={addObservation}
-                              disabled={!qaMatch.trim() || !qaDate.trim()}
-                            >
-                              Dodaj obserwację tego zawodnika
-                            </Button>
-                          </div>
-                        </div>
-                      </TabsContent>
-
-                      {/* EXISTING */}
-                      <TabsContent value="existing" className="mt-2 space-y-3">
                         <div className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
                           <div className="flex items-center gap-2">
                             <Search className="h-4 w-4 opacity-70" />
@@ -2246,132 +2626,117 @@ export default function AddPlayerPage() {
                           </p>
                         </div>
 
-                        <div className="max-h-80 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
-                          <table className="w-full text-sm">
-                            <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-                              <tr>
-                                <th className="w-10 p-2 text-left font-medium">
-                                  #
-                                </th>
-                                <th className="p-2 text-left font-medium">
-                                  Mecz
-                                </th>
-                                <th className="p-2 text-left font-medium">
-                                  Data
-                                </th>
-                                <th className="p-2 text-left font-medium">
-                                  Poziom
-                                </th>
-                                <th className="p-2 text-left font-medium">
-                                  Tryb
-                                </th>
-                                <th className="p-2 text-left font-medium">
-                                  Status
-                                </th>
-                                <th className="p-2 text-right font-medium">
-                                  Akcje
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(() => {
-                                const list = existingFiltered;
-                                if (list.length === 0) {
-                                  return (
-                                    <tr>
-                                      <td
-                                        colSpan={7}
-                                        className="p-6 text-center text-sm text-dark dark:text-neutral-400"
-                                      >
-                                        Brak obserwacji dla podanych
-                                        kryteriów.
-                                      </td>
-                                    </tr>
-                                  );
-                                }
+                     <div className="max-h-80 space-y-2 overflow-auto">
+  {(() => {
+    const list = existingFiltered;
+    if (list.length === 0) {
+      return (
+        <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50/60 text-center text-sm text-slate-500 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-400">
+          Brak obserwacji dla podanych kryteriów. Zapisz nową lub zmień
+          filtr wyszukiwania.
+        </div>
+      );
+    }
 
-                                return list.map((o, idx) => (
-                                  <tr
-                                    key={o.id}
-                                    className={cn(
-                                      "border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
-                                      idx % 2
-                                        ? "bg-stone-100/40 dark:bg-neutral-900/30"
-                                        : ""
-                                    )}
-                                    onClick={() => setObsSelectedId(o.id)}
-                                  >
-                                    <td className="p-2">
-                                      <input
-                                        type="radio"
-                                        name="obsPick"
-                                        checked={obsSelectedId === o.id}
-                                        onChange={() => setObsSelectedId(o.id)}
-                                      />
-                                    </td>
-                                    <td className="p-2">
-                                      {o.match || "—"}
-                                    </td>
-                                    <td className="p-2">
-                                      {[o.date || "—", o.time || ""]
-                                        .filter(Boolean)
-                                        .join(" ")}
-                                    </td>
-                                    <td className="p-2 text-xs">
-                                      {o.opponentLevel || (
-                                        <span className="text-slate-400">
-                                          —
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-2">
-                                      <span
-                                        className={cn(
-                                          "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-                                          o.mode === "tv"
-                                            ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
-                                            : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                        )}
-                                      >
-                                        {o.mode === "tv" ? "TV" : "Live"}
-                                      </span>
-                                    </td>
-                                    <td className="p-2">
-                                      <span
-                                        className={cn(
-                                          "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-                                          o.status === "final"
-                                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                                        )}
-                                      >
-                                        {o.status === "final"
-                                          ? "Finalna"
-                                          : "Szkic"}
-                                      </span>
-                                    </td>
-                                    <td className="p-2 text-right">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 px-2 text-xs"
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openEditModal(o);
-                                        }}
-                                      >
-                                        Edytuj
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                ));
-                              })()}
-                            </tbody>
-                          </table>
-                        </div>
-                      </TabsContent>
-                    </Tabs>
+    return list.map((o) => {
+      const selected = obsSelectedId === o.id;
+      const matchLabel = o.match || "Bez nazwy meczu";
+
+      const dateTime = [o.date || "—", o.time || ""]
+        .filter(Boolean)
+        .join(" · ");
+
+      return (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => setObsSelectedId(o.id)}
+          className={cn(
+            "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition",
+            selected
+              ? "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-200 dark:border-emerald-500/80 dark:bg-emerald-900/20 dark:ring-emerald-700/70"
+              : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
+          )}
+        >
+          {/* pseudo-radio */}
+          <div className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center">
+            <span
+              className={cn(
+                "flex h-4 w-4 items-center justify-center rounded-full border",
+                selected
+                  ? "border-emerald-500 bg-emerald-500/10"
+                  : "border-slate-300 bg-white dark:border-neutral-700 dark:bg-neutral-900"
+              )}
+            >
+              {selected && (
+                <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300" />
+              )}
+            </span>
+          </div>
+
+          {/* main content */}
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <p className="truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                {matchLabel}
+              </p>
+              <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                {dateTime || "Brak daty"}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1 text-[11px]">
+              {o.opponentLevel && (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
+                  Poziom: {o.opponentLevel}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  o.mode === "tv"
+                    ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                    : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                )}
+              >
+                {o.mode === "tv" ? "TV" : "Live"}
+              </span>
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  o.status === "final"
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                )}
+              >
+                {o.status === "final" ? "Finalna" : "Szkic"}
+              </span>
+            </div>
+          </div>
+
+          {/* action */}
+          <div className="ml-2 flex flex-shrink-0 items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openEditModal(o);
+              }}
+            >
+              Edytuj
+            </Button>
+          </div>
+        </button>
+      );
+    });
+  })()}
+</div>
+
+                      </section>
+                    </div>
 
                     {/* EDIT MODAL */}
                     <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -2380,7 +2745,7 @@ export default function AddPlayerPage() {
                           <DialogTitle>Edytuj obserwację</DialogTitle>
                         </DialogHeader>
                         {editingObs && (
-                          <div className="space-y-3">
+                          <div className="space-y-4">
                             <div>
                               <Label>Mecz</Label>
                               <Input
@@ -2395,36 +2760,27 @@ export default function AddPlayerPage() {
                                 className="mt-1"
                               />
                             </div>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                               <div>
-                                <Label>Data</Label>
-                                <Input
-                                  type="date"
-                                  value={safeText(editingObs.date) || ""}
-                                  onChange={(e) =>
-                                    setEditingObs((prev) =>
-                                      prev
-                                        ? { ...prev, date: e.target.value }
-                                        : prev
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
-                              </div>
-                              <div>
-                                <Label>Godzina</Label>
-                                <Input
-                                  type="time"
-                                  value={safeText(editingObs.time) || ""}
-                                  onChange={(e) =>
-                                    setEditingObs((prev) =>
-                                      prev
-                                        ? { ...prev, time: e.target.value }
-                                        : prev
-                                    )
-                                  }
-                                  className="mt-1"
-                                />
+                                <Label>Data i godzina meczu</Label>
+                                <div className="mt-1">
+                                  <DateTimePicker24h
+                                    value={{
+                                      date:
+                                        safeText(editingObs.date) || "",
+                                      time:
+                                        safeText(editingObs.time) || "",
+                                    }}
+                                    onChange={({ date, time }) =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, date, time }
+                                          : prev
+                                      )
+                                    }
+                                    placeholder="Data i godzina meczu"
+                                  />
+                                </div>
                               </div>
                               <div>
                                 <Label>Poziom przeciwnika</Label>
@@ -2446,7 +2802,7 @@ export default function AddPlayerPage() {
                                 />
                               </div>
                             </div>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                               <div>
                                 <Label className="text-sm">Tryb</Label>
                                 <div className="mt-2 flex gap-2">
@@ -2559,14 +2915,15 @@ export default function AddPlayerPage() {
         </div>
 
         {!hasChoice && (
-         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-    <div className="flex max-w-xs flex-col items-center gap-2 rounded-md  bg-none px-4 py-3 text-center  dark:border-neutral-700 dark:bg-neutral-950/95">
-      <Lock className="h-6 w-6 text-slate-900 dark:text-neutral-50" />
-      <p className="text-sm font-medium text-slate-900 dark:text-neutral-50 leading-snug">
-        Wybierz sposób dodania zawodnika w <b>Kroku 0</b>, aby odblokować kolejne kroki.
-      </p>
-    </div>
-  </div>
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="flex max-w-xs flex-col items-center gap-2 rounded-md bg-none px-4 py-3 text-center dark:border-neutral-700 dark:bg-neutral-950/95">
+              <Lock className="h-6 w-6 text-slate-900 dark:text-neutral-50" />
+              <p className="leading-snug text-sm text-slate-900 dark:text-neutral-50">
+                Wybierz sposób dodania zawodnika w <b>Kroku 0</b>, aby
+                odblokować kolejne kroki.
+              </p>
+            </div>
+          </div>
         )}
       </div>
 
