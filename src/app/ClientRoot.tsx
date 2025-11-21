@@ -46,14 +46,33 @@ export const titleCaseAll = (input: string) =>
  * (gdy chcemy mieć pełną kontrolę per URL).
  */
 const PATH_LABELS: Record<string, string> = {
-  "/players": "Zawodnicy",
+  "/": "Strona główna",
+
+  // Zawodnicy
+  "/players": "Moi zawodnicy",
   "/players/new": "Dodaj zawodnika",
+
+  // Obserwacje
   "/observations": "Obserwacje",
   "/observations/new": "Nowa obserwacja",
-  "/global-players": "Globalna baza zawodników",
-  "/settings": "Ustawienia",
+
+  // Globalni zawodnicy (admin)
+  "/players/global": "Zawodnicy (global)",
+  "/players/global/search": "Wyszukaj w globalnej bazie",
+
+  // Administracja / zarządzanie
   "/admin": "Panel administracyjny",
-  // dodawaj kolejne ścieżki według potrzeb
+  "/admin/manage": "Zarządzanie użytkownikami",
+  "/admin/manage/metrics": "Metryki obserwacji",
+  "/admin/manage/ratings": "Oceny zawodnika",
+  "/admin/manage/ranks": "Rangi użytkowników",
+  "/admin/manage/required-fields": "Wymagane pola",
+
+  // Inne
+  "/scouts": "Lista scoutów",
+  "/duplicates": "Duplikaty",
+  "/settings": "Ustawienia",
+  "/settings/navigation": "Nawigacja",
 };
 
 /**
@@ -64,11 +83,20 @@ const SEGMENT_LABELS: Record<string, string> = {
   players: "Zawodnicy",
   observations: "Obserwacje",
   "global-players": "Globalna baza",
+  global: "Global",
+  search: "Wyszukaj",
+  admin: "Administracja",
+  manage: "Zarządzanie",
+  metrics: "Metryki",
+  ratings: "Oceny",
+  ranks: "Rangi",
+  "required-fields": "Wymagane pola",
+  scouts: "Lista scoutów",
+  duplicates: "Duplikaty",
   settings: "Ustawienia",
-  admin: "Panel",
+  navigation: "Nawigacja",
   new: "Nowy",
   edit: "Edycja",
-  // itd.
 };
 
 function getCrumbLabel(fullPath: string, segment: string, index: number) {
@@ -88,14 +116,16 @@ function getCrumbLabel(fullPath: string, segment: string, index: number) {
 }
 
 /* ===== Simple breadcrumb builder ===== */
-function buildBreadcrumb(pathname: string) {
+type Crumb = { label: string; href: string; isEllipsis?: boolean };
+
+function buildBreadcrumb(pathname: string): Crumb[] {
   const parts = pathname
     .split("?")[0]
     .split("#")[0]
     .split("/")
     .filter(Boolean);
 
-  const items: { label: string; href: string }[] = [];
+  const items: Crumb[] = [];
 
   // Zawsze pierwszy element: Strona główna
   items.push({ label: "Strona główna", href: "/" });
@@ -134,6 +164,13 @@ function AppShell({
   const search = useSearchParams();
   const prefersReduced = useReducedMotion();
 
+  const [breadcrumbsExpanded, setBreadcrumbsExpanded] = useState(false);
+
+  useEffect(() => {
+    // przy zmianie ścieżki zwin breadcrumbs z powrotem
+    setBreadcrumbsExpanded(false);
+  }, [pathname]);
+
   const isObsCreateQuery =
     pathname.startsWith("/observations") && search.get("create") === "1";
 
@@ -143,6 +180,22 @@ function AppShell({
     /^\/observations\/new(?:\/|$)/.test(pathname) || // add observation
     /^\/observations\/\d+(?:\/|$)/.test(pathname) || // observation details
     isObsCreateQuery;
+
+  const totalCrumbs = crumbs.length;
+  const canCollapse = totalCrumbs > 4;
+  const shouldCollapse = canCollapse && !breadcrumbsExpanded;
+
+  let displayedCrumbs: Crumb[] = crumbs;
+
+  // Wzór: First > Second > [...] > Last (gdy łańcuch jest długi i nie jest rozwinięty)
+  if (shouldCollapse) {
+    displayedCrumbs = [
+      crumbs[0],
+      crumbs[1],
+      { label: "[...]", href: "#", isEllipsis: true },
+      crumbs[totalCrumbs - 1],
+    ];
+  }
 
   return (
     <>
@@ -170,9 +223,33 @@ function AppShell({
               className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
             >
               <ol className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300">
-                {crumbs.map((c, i) => {
-                  const last = i === crumbs.length - 1;
+                {displayedCrumbs.map((c, i) => {
+                  const last = i === displayedCrumbs.length - 1;
                   const label = c.label || "Strona główna";
+
+                  // Specjalne renderowanie ellipsis
+                  if (c.isEllipsis) {
+                    return (
+                      <li
+                        key="breadcrumb-ellipsis"
+                        className="flex min-w-0 items-center"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setBreadcrumbsExpanded(true)}
+                          className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-neutral-300 dark:ring-neutral-700 dark:hover:bg-neutral-900"
+                          aria-label="Pokaż pełną ścieżkę nawigacji"
+                          title="Pokaż pełną ścieżkę nawigacji"
+                        >
+                          [...]
+                        </button>
+                        <ChevronRight
+                          className="mx-1 h-4 w-4 opacity-60"
+                          aria-hidden="true"
+                        />
+                      </li>
+                    );
+                  }
 
                   return (
                     <li key={c.href} className="flex min-w-0 items-center">
