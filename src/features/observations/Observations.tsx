@@ -257,6 +257,7 @@ function splitMatch(match?: string): { teamA?: string; teamB?: string } {
 /* ---------------------------- Adapters (safe) --------------------------- */
 function toEditorXO(row: XO): EditorXO {
   const { teamA, teamB } = splitMatch(row.match);
+
   const players = (row.players ?? []).map((p) => ({
     id: p.id,
     type: p.type,
@@ -267,9 +268,13 @@ function toEditorXO(row: XO): EditorXO {
     overall: p.overall,
     note: p.note,
   }));
+
   const editorObj: any = {
+    // 🔴 KLUCZOWE: przenosimy ID na top-level
+    id: row.id,
+
     reportDate: row.date || "",
-    competition: "",
+    competition: "", // jak będziesz miał pole w tabeli, możesz tu podstawić row.competition
     teamA: teamA || "",
     teamB: teamB || "",
     conditions: row.mode ?? "live",
@@ -284,8 +289,10 @@ function toEditorXO(row: XO): EditorXO {
       player: row.player ?? "",
     },
   };
+
   return editorObj as EditorXO;
 }
+
 
 function fromEditorXO(e: EditorXO, prev?: XO): XO {
   const anyE: any = e;

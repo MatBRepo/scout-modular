@@ -25,6 +25,8 @@ import {
   PlayCircle,
   Monitor,
   Search,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import StarRating from "@/shared/ui/StarRating";
 import {
@@ -37,7 +39,7 @@ import { cn } from "@/lib/utils";
 import { DateTimePicker24h } from "@/shared/ui/DateTimePicker24h";
 
 /* ------------ Types ------------ */
-type Mode = "live" | "tv";
+type Mode = "live" | "tv" | "mix";
 type PositionKey =
   | "GK"
   | "CB"
@@ -120,7 +122,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="w-full rounded border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 sm:p-6">
+    <section className="w-full rounded-md border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 sm:p-6">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3 sm:mb-4">
         <div className="min-w-0">
           <h2 className="text-2xl font-semibold leading-none tracking-tight text-gray-900 dark:text-neutral-50">
@@ -183,7 +185,7 @@ function SavePill({
 /* Znacznik “Wymagane” przy polu */
 function ReqChip({ text = "Wymagane" }: { text?: string }) {
   return (
-    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
+    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
       {text}
     </span>
   );
@@ -201,7 +203,7 @@ function MetricItem({
 }) {
   return (
     <div
-      className="group flex flex-wrap items-center justify-between gap-3 rounded border border-stone-200 bg-stone-50/90 px-3 py-2 text-xs shadow-sm transition hover:bg-stone-100 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+      className="group flex flex-wrap items-center justify-between gap-3 rounded-md border border-stone-200 bg-stone-50/90 px-3 py-2 text-xs shadow-sm transition hover:bg-stone-100 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
       title={label}
     >
       <div className="w-full break-words pr-2 text-[12px] text-gray-700 dark:text-neutral-300">
@@ -230,7 +232,17 @@ export function ObservationEditor({
   onClose: () => void;
 }) {
   /** Freeze initial, żeby nie nadpisywać w trakcie edycji */
-  const frozenInitialRef = useRef<XO>(initial);
+const frozenInitialRef = useRef<XO>(initial);
+
+// wyciągamy ID z initial (top-level lub z __listMeta)
+const initialIdRef =
+  (frozenInitialRef.current as any)?.id ??
+  (frozenInitialRef.current as any)?.__listMeta?.id ??
+  0;
+
+// Czy ta instancja edytora startowała jako "nowa" czy "istniejąca"?
+const isNewObservation = !initialIdRef || initialIdRef === 0;
+
 
   const [o, setO] = useState<XO>(() => {
     const base = frozenInitialRef.current;
@@ -532,9 +544,11 @@ export function ObservationEditor({
     setQuickInput("");
   }
 
-  /** Accordion */
+  /** Accordion / delete-confirm */
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const CONDITIONS: Mode[] = ["live", "tv"];
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const CONDITIONS: Mode[] = ["live", "tv", "mix"];
 
   /* Modal: nowy zawodnik do bazy (players) */
   const [promotePlayer, setPromotePlayer] = useState<ObsPlayer | null>(null);
@@ -631,7 +645,7 @@ export function ObservationEditor({
     if (isRequired("competition") && !hasCompetition)
       items.push("uzupełnij ligę / turniej");
     if (isRequired("conditions") && !hasConditions)
-      items.push("wybierz tryb meczu (Live / TV)");
+      items.push("wybierz tryb meczu (Live / TV / MIX)");
     if (isRequired("players") && playerCount === 0)
       items.push("dodaj przynajmniej jednego zawodnika");
     if (isRequired("note") && !hasNote)
@@ -675,20 +689,26 @@ export function ObservationEditor({
     }
 
     // 1) UPEWNIJ SIĘ, ŻE MAMY ID (dla nowych – generujemy)
-    let id = o.id as number | undefined;
-    if (!id || id === 0) {
-      id = Date.now();
-    }
 
-    const baseMeta =
-      o.__listMeta ??
-      ({
-        id,
-        status: (o as any).status ?? "draft",
-        bucket: "active",
-        time: (o as any).time ?? "",
-        player: (o as any).player ?? "",
-      } as XO["__listMeta"]);
+// najpierw próbujemy: stan edytora -> meta -> initial
+let id =
+  (o.id as number | undefined) ??
+  ((o.__listMeta as any)?.id as number | undefined) ??
+  initialIdRef;
+
+if (!id || id === 0) {
+  id = Date.now();
+}
+
+const baseMeta =
+  o.__listMeta ??
+  ({
+    id,
+    status: (o as any).status ?? "draft",
+    bucket: "active",
+    time: (o as any).time ?? "",
+    player: (o as any).player ?? "",
+  } as XO["__listMeta"]);
 
     // Główny zawodnik – wymagany przez Supabase (player)
     const primaryPlayerName =
@@ -723,38 +743,48 @@ export function ObservationEditor({
     const rowTeamB = payload.teamB ?? null;
     const rowCompetition = payload.competition ?? null;
 
-    // 2) SPRAWDŹ, czy jest już taka sama obserwacja
-    try {
-      const { count, error: dupError } = await supabase
-        .from("observations")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("date", rowDate)
-        .eq("time", rowTime)
-        .eq("team_a", rowTeamA)
-        .eq("team_b", rowTeamB)
-        .eq("competition", rowCompetition)
-        .neq("id", id);
+// 2) SPRAWDŹ, czy jest już taka sama obserwacja
+try {
+  // osobno zapytanie dla "nowej" i dla "edytowanej"
+  const baseQuery = supabase
+    .from("observations")
+    .select("id", { count: "exact" })
+    .eq("user_id", user.id)
+    .eq("date", rowDate)
+    .eq("time", rowTime)
+    .eq("team_a", rowTeamA)
+    .eq("team_b", rowTeamB)
+    .eq("competition", rowCompetition);
 
-      if (dupError) {
-        console.error(
-          "[ObservationEditor] Błąd przy sprawdzaniu duplikatu:",
-          dupError
-        );
-      } else if ((count ?? 0) > 0) {
-        setDuplicateError(
-          "Masz już obserwację dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Edytuj istniejącą, zamiast dodawać kolejną."
-        );
-        setSaveState("idle");
-        return;
-      }
-    } catch (err) {
-      console.error(
-        "[ObservationEditor] Wyjątek przy sprawdzaniu duplikatu:",
-        err
-      );
-      // Można tu przerwać zapis, ale na razie pozwalamy kontynuować
-    }
+  const { data: dupRows, count, error: dupError } = isNewObservation
+    ? await baseQuery
+    : await baseQuery.neq("id", id); // przy edycji pomijamy bieżący rekord
+
+  if (dupError) {
+    console.error(
+      "[ObservationEditor] Błąd przy sprawdzaniu duplikatu:",
+      dupError
+    );
+  } else if ((count ?? 0) > 0) {
+    // tu już WIEMY, czy to:
+    // - nowa obserwacja (kopiowanie meczu)
+    // - edycja, która zderzyła się z inną obserwacją
+    setDuplicateError(
+      isNewObservation
+        ? "Masz już obserwację dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Edytuj istniejącą, zamiast dodawać kolejną."
+        : "Istnieje już inna obserwacja dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Zmień dane meczu lub wróć do tamtej obserwacji."
+    );
+    setSaveState("idle");
+    return;
+  }
+} catch (err) {
+  console.error(
+    "[ObservationEditor] Wyjątek przy sprawdzaniu duplikatu:",
+    err
+  );
+  // opcjonalnie: możesz tutaj przerwać zapis, jeśli chcesz być super-ostrożny
+}
+
 
     // 3) Upsert
     const row: any = {
@@ -842,7 +872,7 @@ export function ObservationEditor({
         )}
         style={{ top: headerHeight || 64 }}
       >
-        <div className="pointer-events-auto mr-2 mt-2 flex items-center gap-2  bg-white/90 px-2 py-1   dark:bg-neutral-950/90 dark:ring-neutral-800">
+        <div className="pointer-events-auto mr-2 mt-2 flex items-center gap-2 rounded-md bg-white/90 px-2 py-1 dark:bg-neutral-950/90 dark:ring-neutral-800">
           <SavePill state={saveState} size="compact" />
           <Button
             variant="outline"
@@ -870,12 +900,12 @@ export function ObservationEditor({
         right={
           <div className="mb-4 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 md:flex-nowrap">
             {/* Szkic / Finalna – mobile: 50/50, desktop: kompakt */}
-            <div className="inline-flex w-full rounded border border-slate-300 bg-white p-0.5 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-900 sm:w-auto">
+            <div className="inline-flex w-full rounded-md border border-slate-300 bg-white p-0.5 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-900 sm:w-auto">
               <button
                 type="button"
                 onClick={() => setMeta("status", "draft")}
                 className={cn(
-                  "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
+                  "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded-md px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
                   status === "draft"
                     ? "bg-amber-500 text-white shadow-sm"
                     : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -887,7 +917,7 @@ export function ObservationEditor({
                 type="button"
                 onClick={() => setMeta("status", "final")}
                 className={cn(
-                  "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
+                  "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded-md px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
                   status === "final"
                     ? "bg-emerald-600 text-white shadow-sm"
                     : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -909,7 +939,7 @@ export function ObservationEditor({
               {/* Zapisz */}
               <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
                 <Button
-                  className="h-10 w-full bg-gray-900 text-white hover:bg-gray-800 sm:w-auto"
+                  className="h-10 w-full rounded-md bg-gray-900 text-white hover:bg-gray-800 sm:w-auto"
                   onClick={handleSaveToSupabase}
                   disabled={
                     saveState === "saving" ||
@@ -932,7 +962,7 @@ export function ObservationEditor({
       {!requiredLoading &&
         !canSaveObservation &&
         missingRequirements.length > 0 && (
-          <div className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
+          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
             <div className="font-semibold">
               Uzupełnij wymagane pola, aby zapisać obserwację:
             </div>
@@ -946,7 +976,7 @@ export function ObservationEditor({
 
       {/* Komunikat o duplikacie */}
       {duplicateError && (
-        <div className="mt-2 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
+        <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
           {duplicateError}
         </div>
       )}
@@ -963,7 +993,7 @@ export function ObservationEditor({
             <Input
               value={o.match || ""}
               readOnly
-              className="mt-1 h-9 cursor-not-allowed bg-gray-50/80 text-sm dark:bg-neutral-900"
+              className="mt-1 h-9 cursor-not-allowed rounded-md bg-gray-50/80 text-sm dark:bg-neutral-900"
               placeholder="Wpisz drużyny — pole „Mecz” składa się automatycznie."
             />
             <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
@@ -980,6 +1010,7 @@ export function ObservationEditor({
                   onChange={(e) => updateMatchFromTeams(e.target.value, teamB)}
                   placeholder="np. U19 Liga"
                   className={cn(
+                    "rounded-md",
                     isRequired("teamA") && !teamA.trim() ? "pr-24" : ""
                   )}
                 />
@@ -989,7 +1020,7 @@ export function ObservationEditor({
 
             <div className="relative flex items-center justify-center md:h-full">
               <div className="h-px w-10/12 bg-slate-200 md:h-full md:w-px" />
-              <div className="absolute rounded bg-slate-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm dark:bg-neutral-900 dark:text-neutral-200">
+              <div className="absolute rounded-md bg-slate-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm dark:bg-neutral-900 dark:text-neutral-200">
                 vs
               </div>
             </div>
@@ -1002,6 +1033,7 @@ export function ObservationEditor({
                   onChange={(e) => updateMatchFromTeams(teamA, e.target.value)}
                   placeholder="np. Legia U19"
                   className={cn(
+                    "rounded-md",
                     isRequired("teamB") && !teamB.trim() ? "pr-24" : ""
                   )}
                 />
@@ -1014,7 +1046,7 @@ export function ObservationEditor({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
               <Label className="text-sm">Data i godzina meczu</Label>
-              <div className="mt-1">
+              <div className="mt-1 rounded-md">
                 <DateTimePicker24h
                   value={{ date: matchDate, time: matchTime }}
                   onChange={({ date, time }) => {
@@ -1032,10 +1064,19 @@ export function ObservationEditor({
 
           <div>
             <Label className="text-sm">Tryb meczu</Label>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
               {CONDITIONS.map((mode) => {
                 const isActive = (o.conditions ?? "live") === mode;
                 const isLive = mode === "live";
+                const isTv = mode === "tv";
+                const isMix = mode === "mix";
+
+                const title = isLive ? "Live" : isTv ? "TV" : "MIX";
+                const subtitle = isLive
+                  ? "Na żywo z boiska"
+                  : isTv
+                  ? "Transmisja / wideo"
+                  : "Część na żywo, część z wideo";
 
                 return (
                   <button
@@ -1043,7 +1084,7 @@ export function ObservationEditor({
                     type="button"
                     onClick={() => setField("conditions", mode)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded border px-3 py-2 text-left text-xs transition",
+                      "flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-xs transition",
                       isActive
                         ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200 dark:border-indigo-400 dark:bg-indigo-900/30 dark:ring-indigo-500/60"
                         : "border-gray-200 bg-white hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
@@ -1057,17 +1098,15 @@ export function ObservationEditor({
                       )}
                       <div>
                         <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-800 dark:text-neutral-50">
-                          {isLive ? "Live" : "TV"}
+                          {title}
                         </div>
                         <div className="text-[11px] text-slate-500 dark:text-neutral-400">
-                          {isLive
-                            ? "Na żywo z boiska"
-                            : "Transmisja / wideo"}
+                          {subtitle}
                         </div>
                       </div>
                     </div>
                     {isActive && (
-                      <span className="ml-2 h-2 w-2 rounded bg-indigo-500 shadow-[0_0_0_4px_rgba(79,70,229,0.25)] dark:bg-indigo-300" />
+                      <span className="ml-2 h-2 w-2 rounded-md bg-indigo-500 shadow-[0_0_0_4px_rgba(79,70,229,0.25)] dark:bg-indigo-300" />
                     )}
                   </button>
                 );
@@ -1077,7 +1116,9 @@ export function ObservationEditor({
               Mecz:{" "}
               {(o.conditions ?? "live") === "live"
                 ? "Live (boisko)"
-                : "TV / wideo"}
+                : (o.conditions ?? "live") === "tv"
+                ? "TV / wideo"
+                : "MIX (live + TV)"}
               {isRequired("conditions") && (
                 <span className="ml-1 font-semibold text-rose-500">
                   – pole ustawione jako wymagane
@@ -1094,6 +1135,7 @@ export function ObservationEditor({
                 onChange={(e) => setField("competition", e.target.value)}
                 placeholder="np. CLJ U19, Puchar Polski"
                 className={cn(
+                  "rounded-md",
                   isRequired("competition") && !hasCompetition ? "pr-24" : ""
                 )}
               />
@@ -1112,7 +1154,7 @@ export function ObservationEditor({
           title="Zawodnicy"
           description="Jeden input – numer lub nazwisko, dropdown z wynikami i szczegóły pod wierszem zawodnika."
           right={
-            <span className="inline-flex h-8 items-center gap-1 rounded bg-indigo-50 px-2 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200">
+            <span className="inline-flex h-8 items-center gap-1 rounded-md bg-indigo-50 px-2 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200">
               <Users className="h-3.5 w-3.5" /> {o.players?.length ?? 0}{" "}
               zapisanych
             </span>
@@ -1134,7 +1176,7 @@ export function ObservationEditor({
                     }
                   }}
                   placeholder="np. 9 lub Piotr Nowak"
-                  className="pl-8 pr-24"
+                  className="rounded-md pl-8 pr-24"
                 />
                 <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-gray-400">
                   Dodaj zawodnika
@@ -1142,7 +1184,7 @@ export function ObservationEditor({
               </div>
 
               {filteredPlayers.length > 0 && (
-                <div className="absolute left-0 right-0 top-[100%] z-20 mt-1 rounded border border-gray-200 bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-950">
+                <div className="absolute left-0 right-0 top-[100%] z-20 mt-1 rounded-md border border-gray-200 bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-950">
                   {filteredPlayers.map((p) => (
                     <button
                       key={p.id}
@@ -1165,17 +1207,18 @@ export function ObservationEditor({
 
             <Button
               variant="outline"
-              className="mt-1 h-10 border-gray-300 dark:border-neutral-700 sm:mt-6"
+              className="mt-1 h-10 rounded-md border-gray-300 dark:border-neutral-700 sm:mt-6"
               onClick={() => addPlayerFromInput()}
               disabled={!quickInput.trim()}
               title="Dodaj zawodnika"
             >
+              <Plus className="mr-1 h-4 w-4" />
               Dodaj
             </Button>
           </div>
 
           {/* Tabela zawodników */}
-          <div className="w-full overflow-x-auto rounded border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+          <div className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
             <table className="w-full text-sm">
               <thead className="bg-stone-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                 <tr className="text-xs sm:text-sm">
@@ -1183,7 +1226,7 @@ export function ObservationEditor({
                     Zawodnik
                   </th>
                   <th className="p-2 text-left font-medium sm:p-3">
-                    Pozycja
+                    Pozycja w meczu
                   </th>
                   <th className="p-2 text-left font-medium sm:p-3">
                     Minuty
@@ -1200,6 +1243,7 @@ export function ObservationEditor({
               <tbody>
                 {(o.players ?? []).map((p) => {
                   const isOpen = expandedId === p.id;
+                  const isConfirmDelete = confirmDeleteId === p.id;
 
                   const pos = p.position;
                   const showGK = pos === "GK";
@@ -1257,7 +1301,7 @@ export function ObservationEditor({
                                   undefined) as PositionKey | undefined,
                               })
                             }
-                            className="w-[11rem] rounded border border-gray-300 bg-white p-2 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                            className="w-[11rem] rounded-md border border-gray-300 bg-white p-2 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
                             title={
                               p.position
                                 ? `${p.position} — ${POS_INFO[p.position]}`
@@ -1288,7 +1332,7 @@ export function ObservationEditor({
                               })
                             }
                             placeholder="min"
-                            className="h-8 w-16 sm:w-20"
+                            className="h-8 w-16 rounded-md sm:w-20"
                           />
                         </td>
 
@@ -1307,12 +1351,13 @@ export function ObservationEditor({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 border-gray-300 dark:border-neutral-700"
-                                onClick={() =>
+                                className="h-8 rounded-md border-gray-300 dark:border-neutral-700"
+                                onClick={() => {
                                   setExpandedId((cur) =>
                                     cur === p.id ? null : p.id
-                                  )
-                                }
+                                  );
+                                  setConfirmDeleteId(null);
+                                }}
                                 title={
                                   isOpen
                                     ? "Ukryj szczegóły"
@@ -1335,22 +1380,46 @@ export function ObservationEditor({
                                   </>
                                 )}
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 border-gray-300 text-red-600 dark:border-neutral-700"
-                                onClick={() => removePlayer(p.id)}
-                                title="Usuń zawodnika"
-                              >
-                                Usuń
-                              </Button>
+
+                              {!isConfirmDelete ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 rounded-md border-gray-300 p-0 text-red-600 dark:border-neutral-700"
+                                  onClick={() => setConfirmDeleteId(p.id)}
+                                  title="Usuń zawodnika"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <div className="inline-flex items-center gap-1">
+                                  <Button
+                                    size="sm"
+                                    className="h-8 rounded-md bg-red-600 px-2 text-xs text-white hover:bg-red-700"
+                                    onClick={() => {
+                                      removePlayer(p.id);
+                                      setConfirmDeleteId(null);
+                                    }}
+                                  >
+                                    Tak
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 rounded-md border-gray-300 px-2 text-xs dark:border-neutral-700"
+                                    onClick={() => setConfirmDeleteId(null)}
+                                  >
+                                    Nie
+                                  </Button>
+                                </div>
+                              )}
                             </div>
 
                             {!inBase && normalizedName && (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 w-fit rounded border-black bg-black px-3 text-white hover:bg-zinc-900 hover:text-white dark:border-black dark:bg-black dark:hover:bg-zinc-900"
+                                className="h-8 w-fit rounded-md border-black bg-black px-3 text-white hover:bg-zinc-900 hover:text-white dark:border-black dark:bg-black dark:hover:bg-zinc-900"
                                 onClick={() => {
                                   setPromotePlayer(p);
                                   setNewPlayerClub("");
@@ -1482,7 +1551,7 @@ export function ObservationEditor({
                                 </Group>
                               )}
 
-                              <div className="mt-2 rounded border border-stone-200 bg-white/90 p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
+                              <div className="mt-2 rounded-md bg-none p-0 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
                                 <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
                                   Notatka do zawodnika
                                 </div>
@@ -1492,7 +1561,7 @@ export function ObservationEditor({
                                     updatePlayer(p.id, { note: e.target.value })
                                   }
                                   placeholder="Notatka o zawodniku…"
-                                  className="min-h-[80px] bg-white/90 text-sm dark:bg-neutral-950"
+                                  className="min-h-[80px] rounded-md bg-white/90 text-sm dark:bg-neutral-950"
                                 />
                                 <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
                                   Wewnętrzna notatka – widoczna tylko w tej
@@ -1534,7 +1603,7 @@ export function ObservationEditor({
               value={o.note ?? ""}
               onChange={(e) => setField("note", e.target.value)}
               placeholder="Krótka notatka…"
-              className="min-h-[140px]"
+              className="min-h-[140px] rounded-md"
             />
             <div className="inline-flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
               <span className="inline-flex items-center gap-1">
@@ -1542,7 +1611,7 @@ export function ObservationEditor({
                 <span>Notatka dot. całej obserwacji.</span>
               </span>
               {isRequired("note") && !hasNote && (
-                <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-100">
+                <span className="rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-100">
                   Wymagane wg konfiguracji
                 </span>
               )}
@@ -1558,13 +1627,13 @@ export function ObservationEditor({
             className="fixed inset-0 z-[110] bg-black/40"
             onClick={() => setPromotePlayer(null)}
           />
-          <div className="fixed left-1/2 top-1/2 z-[111] max-h-[80vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950">
+          <div className="fixed left-1/2 top-1/2 z-[111] max-h-[80vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold">
                 Dodaj zawodnika do bazy
               </h2>
               <button
-                className="rounded p-1 text-dark hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+                className="rounded-md p-1 text-dark hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
                 onClick={() => setPromotePlayer(null)}
               >
                 ✕
@@ -1575,7 +1644,7 @@ export function ObservationEditor({
               <div>
                 <Label className="text-xs">Imię i nazwisko</Label>
                 <Input
-                  className="mt-1"
+                  className="mt-1 rounded-md"
                   value={(promotePlayer.name || "").replace(/^#/, "").trim()}
                   readOnly
                 />
@@ -1587,7 +1656,7 @@ export function ObservationEditor({
               <div>
                 <Label className="text-xs">Klub (opcjonalnie)</Label>
                 <Input
-                  className="mt-1"
+                  className="mt-1 rounded-md"
                   value={newPlayerClub}
                   onChange={(e) => setNewPlayerClub(e.target.value)}
                   placeholder="np. Lech U19"
@@ -1599,7 +1668,7 @@ export function ObservationEditor({
                   Domyślna pozycja (opcjonalnie)
                 </Label>
                 <select
-                  className="mt-1 w-full rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                  className="mt-1 w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                   value={newPlayerPosition}
                   onChange={(e) =>
                     setNewPlayerPosition(
@@ -1620,13 +1689,13 @@ export function ObservationEditor({
             <div className="mt-4 flex justify-end gap-2">
               <Button
                 variant="outline"
-                className="border-gray-300 dark:border-neutral-700"
+                className="rounded-md border-gray-300 dark:border-neutral-700"
                 onClick={() => setPromotePlayer(null)}
               >
                 Anuluj
               </Button>
               <Button
-                className="bg-gray-900 text-white hover:bg-gray-800"
+                className="rounded-md bg-gray-900 text-white hover:bg-gray-800"
                 onClick={handlePromotePlayerSave}
               >
                 Dodaj do mojej bazy
@@ -1648,10 +1717,10 @@ function Group({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-3 rounded border border-stone-200 bg-white/95 p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
+    <div className="mt-3 rounded-md bg-none p-0 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="inline-flex items-center gap-2 rounded bg-stone-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
-          <span className="h-1.5 w-1.5 rounded bg-stone-500" />
+        <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
+          <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
           {title}
         </div>
       </div>
