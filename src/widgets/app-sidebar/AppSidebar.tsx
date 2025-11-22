@@ -144,6 +144,7 @@ export default function AppSidebar({
   const [mounted, setMounted] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState<Role>("scout");
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   // dynamic rank thresholds (managed in Supabase)
   const [rankThresholds, setRankThresholds] = useState<
@@ -176,9 +177,16 @@ export default function AppSidebar({
       if (cancelled) return;
       if (error || !data.user) {
         setUserId(null);
+        setDisplayName(null);
         return;
       }
       setUserId(data.user.id);
+
+      const meta = (data.user.user_metadata || {}) as any;
+      const nameFromMeta =
+        meta.full_name || meta.name || meta.display_name || "";
+      const finalName = nameFromMeta || data.user.email || "Użytkownik";
+      setDisplayName(finalName);
     })();
 
     return () => {
@@ -245,7 +253,6 @@ export default function AppSidebar({
    * Only "fully filled":
    *  - players: status = 'active'
    *  - observations: status = 'final'
-   * Adjust filters here if your definition changes.
    */
   const readCounts = async () => {
     if (!userId) return;
@@ -328,8 +335,6 @@ export default function AppSidebar({
   );
 
   const playersBadge = playersCount > 0 ? String(playersCount) : undefined;
-  // OBS: badge dla obserwacji usunięty – obsCount jest używany tylko w rank-cardzie
-  // const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
 
   /* ===== Logout via Supabase ===== */
   async function handleLogout() {
@@ -372,102 +377,7 @@ export default function AppSidebar({
           pathname === "/observations" ||
           pathname?.startsWith("/observations/")
         }
-        // badge usunięty – liczba obserwacji nie pokazuje się już w nav
-        // badge={obsBadge}
-        // badgeTitle="Wypełnione obserwacje (final)"
       />
-
-      {role === "admin" && (
-        <>
-          {/* ADMIN section */}
-          <div className="mt-4 rounded-md border border-slate-200 bg-stone-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-800">
-                <Settings className="h-3.5 w-3.5" />
-                Administracja
-              </span>
-              <div className="h-px flex-1 bg-gradient-to-r from-indigo-300/50 to-transparent dark:from-indigo-700/30" />
-            </div>
-
-            <div className="space-y-0.5">
-              {/* Global players + submenu */}
-              <div>
-                <NavItem
-                  href="/players/global"
-                  icon={<Globe className="h-4 w-4" />}
-                  label="Zawodnicy (global)"
-                  active={isGlobalSection}
-                />
-                <div className="mt-0.5 space-y-0.5 pl-9">
-                  <SubNavItem
-                    href="/players/global"
-                    label="Globalna baza"
-                    active={globalBaseActive}
-                  />
-                  <SubNavItem
-                    href="/players/global/search"
-                    label="Wyszukaj"
-                    active={globalSearchActive}
-                  />
-                </div>
-              </div>
-
-              {/* Zarządzanie + submenu: Metryki & Oceny & Ranki */}
-              <div>
-                <NavItem
-                  href="/admin/manage"
-                  icon={<Settings className="h-4 w-4" />}
-                  label="Zarządzanie"
-                  active={isManageSection}
-                />
-                <div className="mt-0.5 space-y-0.5 pl-9">
-                  <SubNavItem
-                    href="/admin/manage"
-                    label="Użytkownicy"
-                    active={manageBaseActive}
-                  />
-                  <SubNavItem
-                    href="/admin/manage/metrics"
-                    label="Metryki obserwacji"
-                    active={manageMetricsActive}
-                  />
-                  <SubNavItem
-                    href="/admin/manage/ratings"
-                    label="Oceny zawodnika"
-                    active={manageRatingsActive}
-                  />
-                  <SubNavItem
-                    href="/admin/manage/ranks"
-                    label="Rangi użytkowników"
-                    active={manageRanksActive}
-                  />
-                  <SubNavItem
-                    href="/admin/manage/required-fields"
-                    label="Wymagane pola"
-                    active={manageRequiredActive}
-                  />
-                </div>
-              </div>
-
-              <NavItem
-                href="/scouts"
-                icon={<Users className="h-4 w-4" />}
-                label="Lista scoutów"
-                active={
-                  pathname === "/scouts" || pathname?.startsWith("/scouts/")
-                }
-              />
-
-              <NavItem
-                href="/duplicates"
-                icon={<TriangleAlert className="h-4 w-4" />}
-                label="Duplikaty"
-                active={pathname === "/duplicates"}
-              />
-            </div>
-          </div>
-        </>
-      )}
     </nav>
   );
 
@@ -511,6 +421,101 @@ export default function AppSidebar({
 
       {/* Bottom fixed panel */}
       <div className="-mx-3 mt-6 border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/90">
+        {role === "admin" && (
+          <>
+            {/* ADMIN section */}
+            <div className="mt-1 rounded-md border border-slate-200 bg-stone-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-800">
+                  <Settings className="h-3.5 w-3.5" />
+                  Administracja
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-r from-indigo-300/50 to-transparent dark:from-indigo-700/30" />
+              </div>
+
+              <div className="space-y-0.5">
+                {/* Global players + submenu */}
+                <div>
+                  <NavItem
+                    href="/players/global"
+                    icon={<Globe className="h-4 w-4" />}
+                    label="Zawodnicy (global)"
+                    active={isGlobalSection}
+                  />
+                  <div className="mt-0.5 space-y-0.5 pl-9">
+                    <SubNavItem
+                      href="/players/global"
+                      label="Globalna baza"
+                      active={globalBaseActive}
+                    />
+                    <SubNavItem
+                      href="/players/global/search"
+                      label="Wyszukaj"
+                      active={globalSearchActive}
+                    />
+                  </div>
+                </div>
+
+                {/* Zarządzanie + submenu: Metryki & Oceny & Ranki */}
+                <div>
+                  <NavItem
+                    href="/admin/manage"
+                    icon={<Settings className="h-4 w-4" />}
+                    label="Zarządzanie"
+                    active={isManageSection}
+                  />
+                  <div className="mt-0.5 space-y-0.5 pl-9">
+                    <SubNavItem
+                      href="/admin/manage"
+                      label="Użytkownicy"
+                      active={manageBaseActive}
+                    />
+                    <SubNavItem
+                      href="/admin/manage/metrics"
+                      label="Metryki obserwacji"
+                      active={manageMetricsActive}
+                    />
+                    <SubNavItem
+                      href="/admin/manage/ratings"
+                      label="Oceny zawodnika"
+                      active={manageRatingsActive}
+                    />
+                    <SubNavItem
+                      href="/admin/manage/ranks"
+                      label="Rangi użytkowników"
+                      active={manageRanksActive}
+                    />
+                    <SubNavItem
+                      href="/admin/manage/required-fields"
+                      label="Wymagane pola"
+                      active={manageRequiredActive}
+                    />
+                  </div>
+                </div>
+
+                <NavItem
+                  href="/scouts"
+                  icon={<Users className="h-4 w-4" />}
+                  label="Lista scoutów"
+                  active={
+                    pathname === "/scouts" || pathname?.startsWith("/scouts/")
+                  }
+                />
+
+                <NavItem
+                  href="/duplicates"
+                  icon={<TriangleAlert className="h-4 w-4" />}
+                  label="Duplikaty"
+                  active={pathname === "/duplicates"}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* SEPARATOR między Administracja a account-row */}
+        <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
+
         <div ref={accountRef} className="relative">
           <button
             onClick={() => setAccountOpen((v) => !v)}
@@ -518,19 +523,31 @@ export default function AppSidebar({
             aria-haspopup="menu"
             aria-expanded={accountOpen}
           >
-            <span className="flex items-center gap-1 text-xs opacity-70">
-              {labelForRole(role)}
+            {/* Name | Role */}
+            <span className="flex min-w-0 items-center gap-1 text-[11px] opacity-80">
+              <span className="truncate">
+                {displayName || "Użytkownik"}
+              </span>
+              <span aria-hidden className="opacity-40">
+                |
+              </span>
+              <span className="truncate">
+                {labelForRole(role)}
+              </span>
             </span>
+
+            {/* + / − zamiast chevrona */}
             <motion.span
               aria-hidden
-              animate={{ rotate: accountOpen ? 180 : 0 }}
+              initial={false}
+              animate={{ scale: accountOpen ? 1.05 : 1 }}
               transition={{
-                duration: prefersReduced ? 0 : 0.16,
+                duration: prefersReduced ? 0 : 0.12,
                 ease: [0.2, 0.7, 0.2, 1],
               }}
-              className="inline-flex"
+              className="inline-flex h-5 w-5 mr-3 items-center justify-center rounded border border-gray-300 text-xs text-gray-700 dark:border-neutral-600 dark:text-neutral-100"
             >
-              <ChevronDown className="h-4 w-4" />
+              {accountOpen ? "−" : "+"}
             </motion.span>
           </button>
 
@@ -545,7 +562,7 @@ export default function AppSidebar({
                   duration: prefersReduced ? 0 : 0.14,
                   ease: "easeOut",
                 }}
-                className="absolute bottom-12 left-0 right-0 z-40 w-auto max-w-full overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
+                className="absolute bottom-[65px] left-0 right-0 z-40 w-auto max-w-full overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
               >
                 {/* Rank card */}
                 <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
@@ -636,7 +653,9 @@ export default function AppSidebar({
                   Rola
                 </div>
                 <div className="px-2 pb-2 text-sm text-dark dark:text-neutral-200">
-                  {labelForRole(role)}
+                  {displayName
+                    ? `${displayName} | ${labelForRole(role)}`
+                    : labelForRole(role)}
                 </div>
 
                 <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
