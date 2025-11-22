@@ -25,23 +25,16 @@ import {
   PlayCircle,
   Monitor,
   Search,
-  Calendar as CalendarIcon,
 } from "lucide-react";
 import StarRating from "@/shared/ui/StarRating";
 import {
-  loadMetrics,
   syncMetricsFromSupabase,
   type MetricsConfig,
 } from "@/shared/metrics";
 import { AddPlayerIcon } from "@/components/icons";
 import { getSupabase } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { DateTimePicker24h } from "@/shared/ui/DateTimePicker24h";
 
 /* ------------ Types ------------ */
 type Mode = "live" | "tv";
@@ -146,7 +139,7 @@ function Section({
   );
 }
 
-/* 💊 SavePill – styl jak w AddPlayerPage */
+/* 💊 SavePill – stan zapisu (bez localStorage) */
 function SavePill({
   state,
   size = "default",
@@ -175,7 +168,7 @@ function SavePill({
       {state === "saving" ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Autozapis…
+          Zapisywanie…
         </>
       ) : (
         <>
@@ -241,45 +234,57 @@ export function ObservationEditor({
 
   const [o, setO] = useState<XO>(() => {
     const base = frozenInitialRef.current;
-    const meta = base.__listMeta ?? {
-      id: base.id ?? 0,
-      status: (base as any).status ?? "draft",
-      bucket: "active" as const,
-      time: (base as any).time ?? "",
-      player: (base as any).player ?? "",
+    const normalizedBase: XO = {
+      ...base,
+      reportDate:
+        base.reportDate ?? ((base as any).date as string | undefined),
     };
+    const meta =
+      normalizedBase.__listMeta ?? {
+        id: normalizedBase.id ?? 0,
+        status: (normalizedBase as any).status ?? "draft",
+        bucket: "active" as const,
+        time: (normalizedBase as any).time ?? "",
+        player: (normalizedBase as any).player ?? "",
+      };
     return {
       conditions: "live",
-      ...base,
+      ...normalizedBase,
       __listMeta: meta,
     };
   });
-
-  /* Klucz autozapisu dla tej obserwacji */
-  const draftKey = useMemo(() => {
-    const baseId =
-      (frozenInitialRef.current.id ??
-        frozenInitialRef.current.__listMeta?.id ??
-        "new") ?? "new";
-    return `s4s.obs.editor.${baseId}`;
-  }, []);
 
   /* ===== Wymagalność pól z Supabase (observations_main) ===== */
   const { isRequiredField, loading: requiredLoading } = useRequiredFields();
   const isRequired = (fieldKey: string) =>
     isRequiredField("observations_main", fieldKey);
 
-  /* ===== Players: Supabase ===== */
+  /* ===== Players: tylko zawodnicy zalogowanego scouta ===== */
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+
   useEffect(() => {
     let cancelled = false;
     const supabase = getSupabase();
+
     (async () => {
       try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) throw userError;
+        if (!user) {
+          if (!cancelled) setAllPlayers([]);
+          return;
+        }
+
         const { data, error } = await supabase
           .from("players")
           .select("*")
+          .eq("user_id", user.id)
           .order("name", { ascending: true });
+
         if (error) throw error;
         if (!cancelled && data) {
           setAllPlayers(data as Player[]);
@@ -289,41 +294,41 @@ export function ObservationEditor({
           "[ObservationEditor] Błąd ładowania players z Supabase:",
           err
         );
+        if (!cancelled) setAllPlayers([]);
       }
     })();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  /* ===== Metrics (konfiguracja z Supabase + localStorage) ===== */
-  const [metrics, setMetrics] = useState<MetricsConfig>(() => loadMetrics());
+  /* ===== Metrics (konfiguracja z Supabase, bez localStorage) ===== */
+  const [metrics, setMetrics] = useState<MetricsConfig>({
+    BASE: [],
+    GK: [],
+    DEF: [],
+    MID: [],
+    ATT: [],
+  });
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      const cfg = await syncMetricsFromSupabase();
-      if (!cancelled) {
-        setMetrics(cfg);
+      try {
+        const cfg = await syncMetricsFromSupabase();
+        if (!cancelled && cfg) {
+          setMetrics(cfg);
+        }
+      } catch (err) {
+        console.error("[ObservationEditor] Błąd ładowania metryk:", err);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "s4s.obs.metrics") {
-        setMetrics(loadMetrics());
-      }
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("storage", onStorage);
-      return () => window.removeEventListener("storage", onStorage);
-    }
   }, []);
 
   function setField<K extends keyof XO>(key: K, val: XO[K]) {
@@ -461,64 +466,17 @@ export function ObservationEditor({
     o.__listMeta?.time || (o as any).time
   )} • ${(o.players?.length ?? 0)} zawodników`;
 
-  /* ===== Autozapis (localStorage) – stan dla SavePill ===== */
-  const [autoState, setAutoState] = useState<"idle" | "saving" | "saved">(
-    "idle"
-  );
-  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // wczytaj szkic, jeśli istnieje
-  useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      const raw = window.localStorage.getItem(draftKey);
-      if (raw) {
-        const parsed = JSON.parse(raw) as XO;
-        setO(parsed);
-        setAutoState("saved");
-      }
-    } catch (err) {
-      console.error(
-        "[ObservationEditor] Błąd odczytu szkicu z localStorage:",
-        err
-      );
-    }
-  }, [draftKey]);
-
-  // zapisuj szkic przy każdej zmianie stanu obserwacji
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(draftKey, JSON.stringify(o));
-      }
-    } catch (err) {
-      console.error(
-        "[ObservationEditor] Błąd zapisu szkicu do localStorage:",
-        err
-      );
-    }
-    setAutoState("saving");
-    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
-    autoTimerRef.current = setTimeout(() => setAutoState("saved"), 450);
-  }, [o, draftKey]);
-
-  function restoreOriginal() {
-    const base = frozenInitialRef.current;
-    setO(base);
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(draftKey);
-      }
-    } catch {
-      // ignore
-    }
-    setAutoState("idle");
-  }
-
   /* Save state Supabase (ręczny przycisk) */
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle"
   );
+
+  // po krótkim czasie chowamy znacznik "Zapisano"
+  useEffect(() => {
+    if (saveState !== "saved") return;
+    const t = setTimeout(() => setSaveState("idle"), 1500);
+    return () => clearTimeout(t);
+  }, [saveState]);
 
   /* Quick add */
   const [quickInput, setQuickInput] = useState("");
@@ -640,14 +598,6 @@ export function ObservationEditor({
 
   const status = o.__listMeta?.status ?? "draft";
 
-  /* ===== Shadcn Calendar – data meczu ===== */
-  const [dateObj, setDateObj] = useState<Date | null>(() =>
-    o.reportDate ? new Date(o.reportDate) : null
-  );
-  useEffect(() => {
-    setDateObj(o.reportDate ? new Date(o.reportDate) : null);
-  }, [o.reportDate]);
-
   /* ===== Walidacja wymaganych pól (Supabase-config) ===== */
   const playerCount = o.players?.length ?? 0;
   const hasTeamA = !!teamA.trim();
@@ -657,6 +607,9 @@ export function ObservationEditor({
   const hasCompetition = !!(o.competition ?? "").trim();
   const hasNote = !!(o.note ?? "").trim();
   const hasConditions = !!(o.conditions ?? "live");
+
+  const matchDate = o.reportDate ?? "";
+  const matchTime = o.__listMeta?.time ?? "";
 
   const canSaveObservation =
     (!isRequired("teamA") || hasTeamA) &&
@@ -696,12 +649,30 @@ export function ObservationEditor({
     isRequired,
   ]);
 
-  /* ========= ZAPIS OBSERWACJI DO SUPABASE (ręczny) ========= */
+  /* ===== Duplikat obserwacji (data + godzina + drużyny + rozgrywki + użytkownik) ===== */
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+
+  /* ========= ZAPIS OBSERWACJI DO SUPABASE (ręczny, bez localStorage) ========= */
   async function handleSaveToSupabase() {
     if (!canSaveObservation) return;
 
     const supabase = getSupabase();
     setSaveState("saving");
+    setDuplicateError(null);
+
+    // 0) pobierz usera (do checku duplikatu)
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("[ObservationEditor] Brak użytkownika przy zapisie", {
+        userError,
+      });
+      setSaveState("idle");
+      return;
+    }
 
     // 1) UPEWNIJ SIĘ, ŻE MAMY ID (dla nowych – generujemy)
     let id = o.id as number | undefined;
@@ -739,18 +710,62 @@ export function ObservationEditor({
     const payload: XO = {
       ...o,
       id,
-      __listMeta: meta,
+      reportDate: matchDate || undefined,
+      __listMeta: {
+        ...meta,
+        time: matchTime || "",
+      },
     };
 
+    const rowDate = payload.reportDate ?? (payload as any).date ?? null;
+    const rowTime = payload.__listMeta?.time || null;
+    const rowTeamA = payload.teamA ?? null;
+    const rowTeamB = payload.teamB ?? null;
+    const rowCompetition = payload.competition ?? null;
+
+    // 2) SPRAWDŹ, czy jest już taka sama obserwacja
+    try {
+      const { count, error: dupError } = await supabase
+        .from("observations")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("date", rowDate)
+        .eq("time", rowTime)
+        .eq("team_a", rowTeamA)
+        .eq("team_b", rowTeamB)
+        .eq("competition", rowCompetition)
+        .neq("id", id);
+
+      if (dupError) {
+        console.error(
+          "[ObservationEditor] Błąd przy sprawdzaniu duplikatu:",
+          dupError
+        );
+      } else if ((count ?? 0) > 0) {
+        setDuplicateError(
+          "Masz już obserwację dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Edytuj istniejącą, zamiast dodawać kolejną."
+        );
+        setSaveState("idle");
+        return;
+      }
+    } catch (err) {
+      console.error(
+        "[ObservationEditor] Wyjątek przy sprawdzaniu duplikatu:",
+        err
+      );
+      // Można tu przerwać zapis, ale na razie pozwalamy kontynuować
+    }
+
+    // 3) Upsert
     const row: any = {
       id,
       player: primaryPlayerName || null,
       match: payload.match ?? null,
-      team_a: payload.teamA ?? null,
-      team_b: payload.teamB ?? null,
-      competition: payload.competition ?? null,
-      date: payload.reportDate ?? (payload as any).date ?? null,
-      time: meta.time || null,
+      team_a: rowTeamA,
+      team_b: rowTeamB,
+      competition: rowCompetition,
+      date: rowDate,
+      time: rowTime,
       status: meta.status,
       bucket: meta.bucket,
       mode: (payload.conditions ?? "live") as string,
@@ -781,18 +796,6 @@ export function ObservationEditor({
           player: primaryPlayerName,
         },
       }));
-    }
-
-    // Po udanym zapisie można wyczyścić szkic
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(draftKey);
-      }
-    } catch (err) {
-      console.error(
-        "[ObservationEditor] Błąd czyszczenia szkicu po zapisie:",
-        err
-      );
     }
 
     setSaveState("saved");
@@ -840,7 +843,7 @@ export function ObservationEditor({
         style={{ top: headerHeight || 64 }}
       >
         <div className="pointer-events-auto mr-2 mt-2 flex items-center gap-2  bg-white/90 px-2 py-1   dark:bg-neutral-950/90 dark:ring-neutral-800">
-          <SavePill state={autoState} size="compact" />
+          <SavePill state={saveState} size="compact" />
           <Button
             variant="outline"
             size="sm"
@@ -865,63 +868,63 @@ export function ObservationEditor({
           </div>
         }
         right={
-       <div className="mb-4 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 md:flex-nowrap">
-  {/* Szkic / Finalna – mobile: 50/50, desktop: kompakt */}
-  <div className="inline-flex w-full rounded border border-slate-300 bg-white p-0.5 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-900 sm:w-auto">
-    <button
-      type="button"
-      onClick={() => setMeta("status", "draft")}
-      className={cn(
-        "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
-        status === "draft"
-          ? "bg-amber-500 text-white shadow-sm"
-          : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-      )}
-    >
-      Szkic
-    </button>
-    <button
-      type="button"
-      onClick={() => setMeta("status", "final")}
-      className={cn(
-        "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
-        status === "final"
-          ? "bg-emerald-600 text-white shadow-sm"
-          : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-      )}
-    >
-      Finalna
-    </button>
-  </div>
+          <div className="mb-4 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 md:flex-nowrap">
+            {/* Szkic / Finalna – mobile: 50/50, desktop: kompakt */}
+            <div className="inline-flex w-full rounded border border-slate-300 bg-white p-0.5 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-900 sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setMeta("status", "draft")}
+                className={cn(
+                  "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
+                  status === "draft"
+                    ? "bg-amber-500 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                )}
+              >
+                Szkic
+              </button>
+              <button
+                type="button"
+                onClick={() => setMeta("status", "final")}
+                className={cn(
+                  "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
+                  status === "final"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                )}
+              >
+                Finalna
+              </button>
+            </div>
 
-  {/* Status autozapisu + akcje */}
-  <div className="ml-0 flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:gap-3">
-    {/* Zapisano */}
-    <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
-      <div className="flex h-10 items-center justify-center">
-        <SavePill state={autoState} />
-      </div>
-    </div>
+            {/* Status zapisu + akcje */}
+            <div className="ml-0 flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:gap-3">
+              {/* Zapisano */}
+              <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
+                <div className="flex h-10 items-center justify-center">
+                  <SavePill state={saveState} />
+                </div>
+              </div>
 
-
-    {/* Zapisz */}
-    <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
-      <Button
-        className="h-10 w-full bg-gray-900 text-white hover:bg-gray-800 sm:w-auto"
-        onClick={handleSaveToSupabase}
-        disabled={
-          saveState === "saving" || !canSaveObservation || requiredLoading
-        }
-      >
-        {saveState === "saving" && (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        )}
-        Zapisz i wróć
-      </Button>
-    </div>
-  </div>
-</div>
-
+              {/* Zapisz */}
+              <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
+                <Button
+                  className="h-10 w-full bg-gray-900 text-white hover:bg-gray-800 sm:w-auto"
+                  onClick={handleSaveToSupabase}
+                  disabled={
+                    saveState === "saving" ||
+                    !canSaveObservation ||
+                    requiredLoading
+                  }
+                >
+                  {saveState === "saving" && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Zapisz i wróć
+                </Button>
+              </div>
+            </div>
+          </div>
         }
       />
 
@@ -940,6 +943,13 @@ export function ObservationEditor({
             </ul>
           </div>
         )}
+
+      {/* Komunikat o duplikacie */}
+      {duplicateError && (
+        <div className="mt-2 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
+          {duplicateError}
+        </div>
+      )}
 
       {/* ===== RESZTA – INFORMACJE, ZAWODNICY, NOTATKA ===== */}
       <div className="mt-4 space-y-6">
@@ -1000,64 +1010,23 @@ export function ObservationEditor({
             </div>
           </div>
 
+          {/* Data + godzina – DateTimePicker */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <Label className="text-sm">Data meczu</Label>
-              <div className="relative mt-1">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start border-gray-300 text-left font-normal dark:border-neutral-700",
-                        !dateObj && "text-muted-foreground",
-                        isRequired("reportDate") && !hasDate ? "pr-24" : ""
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateObj
-                        ? dateObj.toLocaleDateString("pl-PL", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })
-                        : "Wybierz datę"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateObj ?? undefined}
-                      onSelect={(d) => {
-                        const next = d ?? null;
-                        setDateObj(next);
-                        setField(
-                          "reportDate",
-                          next ? next.toISOString().slice(0, 10) : ""
-                        );
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                {isRequired("reportDate") && !hasDate && <ReqChip />}
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="time-picker" className="px-1 text-sm">
-                Godzina meczu
-              </Label>
-              <div className="relative mt-1">
-                <Input
-                  type="time"
-                  id="time-picker"
-                  step="1"
-                  value={o.__listMeta?.time ?? ""}
-                  onChange={(e) => setMeta("time", e.target.value)}
-                  className="h-9 w-full bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+            <div className="md:col-span-2">
+              <Label className="text-sm">Data i godzina meczu</Label>
+              <div className="mt-1">
+                <DateTimePicker24h
+                  value={{ date: matchDate, time: matchTime }}
+                  onChange={({ date, time }) => {
+                    setField("reportDate", date || undefined);
+                    setMeta("time", (time || "") as any);
+                  }}
                 />
-                {isRequired("time") && !hasTime && <ReqChip />}
               </div>
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
+                Ustaw precyzyjnie dzień i godzinę meczu. To pomaga później
+                filtrować obserwacje.
+              </p>
             </div>
           </div>
 
@@ -1144,7 +1113,8 @@ export function ObservationEditor({
           description="Jeden input – numer lub nazwisko, dropdown z wynikami i szczegóły pod wierszem zawodnika."
           right={
             <span className="inline-flex h-8 items-center gap-1 rounded bg-indigo-50 px-2 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200">
-              <Users className="h-3.5 w-3.5" /> {o.players?.length ?? 0} zapisanych
+              <Users className="h-3.5 w-3.5" /> {o.players?.length ?? 0}{" "}
+              zapisanych
             </span>
           }
         >
@@ -1209,11 +1179,21 @@ export function ObservationEditor({
             <table className="w-full text-sm">
               <thead className="bg-stone-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                 <tr className="text-xs sm:text-sm">
-                  <th className="p-2 text-left font-medium sm:p-3">Zawodnik</th>
-                  <th className="p-2 text-left font-medium sm:p-3">Pozycja</th>
-                  <th className="p-2 text-left font-medium sm:p-3">Minuty</th>
-                  <th className="p-2 text-left font-medium sm:p-3">Ocena</th>
-                  <th className="p-2 text-right font-medium sm:p-3">Akcje</th>
+                  <th className="p-2 text-left font-medium sm:p-3">
+                    Zawodnik
+                  </th>
+                  <th className="p-2 text-left font-medium sm:p-3">
+                    Pozycja
+                  </th>
+                  <th className="p-2 text-left font-medium sm:p-3">
+                    Minuty
+                  </th>
+                  <th className="p-2 text-left font-medium sm:p-3">
+                    Ocena
+                  </th>
+                  <th className="p-2 text-right font-medium sm:p-3">
+                    Akcje
+                  </th>
                 </tr>
               </thead>
 
@@ -1226,9 +1206,12 @@ export function ObservationEditor({
                   const showDEF = pos === "CB" || pos === "LB" || pos === "RB";
                   const showMID =
                     pos === "CMD" || pos === "CM" || pos === "CAM";
-                  const showATT = pos === "LW" || pos === "RW" || pos === "ST";
+                  const showATT =
+                    pos === "LW" || pos === "RW" || pos === "ST";
 
-                  const normalizedName = (p.name || "").replace(/^#/, "").trim();
+                  const normalizedName = (p.name || "")
+                    .replace(/^#/, "")
+                    .trim();
                   const inBase =
                     !!normalizedName &&
                     allPlayers.some(
@@ -1612,7 +1595,9 @@ export function ObservationEditor({
               </div>
 
               <div>
-                <Label className="text-xs">Domyślna pozycja (opcjonalnie)</Label>
+                <Label className="text-xs">
+                  Domyślna pozycja (opcjonalnie)
+                </Label>
                 <select
                   className="mt-1 w-full rounded border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                   value={newPlayerPosition}
