@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +17,6 @@ import {
   Phone,
   Search,
   Eye,
-  Pencil,
   CheckCircle,
   XCircle,
   Ban,
@@ -198,30 +202,27 @@ export default function ManagePage() {
   const [savingUser, setSavingUser] = useState(false);
   const [creatingInvite, setCreatingInvite] = useState(false);
 
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
-const [metricsLoading, setMetricsLoading] = useState(false);
-// opcjonalnie: const [metricsError, setMetricsError] = useState<string | null>(null);
+  /* ---------------------- Metrics from Supabase ------------------ */
+  useEffect(() => {
+    let active = true;
 
-useEffect(() => {
-  let active = true;
+    (async () => {
+      setMetricsLoading(true);
+      try {
+        const cfg = await syncMetricsFromSupabase();
+        if (!active) return;
+        setMCfg(cfg);
+      } finally {
+        if (active) setMetricsLoading(false);
+      }
+    })();
 
-  (async () => {
-    setMetricsLoading(true);
-    try {
-      const cfg = await syncMetricsFromSupabase();
-      if (!active) return;
-      setMCfg(cfg);
-    } finally {
-      if (active) setMetricsLoading(false);
-    }
-  })();
-
-  return () => {
-    active = false;
-  };
-}, []);
-
-
+    return () => {
+      active = false;
+    };
+  }, []);
 
   /* --------------------------- Loaders -------------------------- */
   // Accounts from Supabase
@@ -347,6 +348,14 @@ useEffect(() => {
   function onOpenDetail(a: Account) {
     setDetail(a);
   }
+
+  // gdy accounts się zmieniają (np. rola/status), odśwież panel szczegółów
+  useEffect(() => {
+    if (!detail) return;
+    const fresh = accounts.find((a) => a.id === detail.id);
+    if (!fresh || fresh === detail) return;
+    setDetail(fresh);
+  }, [accounts, detail]);
 
   async function onAddUser() {
     if (!nName.trim() || !nEmail.trim()) return;
@@ -650,17 +659,16 @@ useEffect(() => {
   }
 
   /* ------- Ratings helpers (Konfiguracja ocen zawodnika) ------- */
-function setAndSaveRatings(next: RatingsConfig) {
-  // gwarantujemy spójny sort_order
-  const withOrder = next.map((r, idx) => ({
-    ...r,
-    sort_order: idx,
-  })) as RatingsConfig;
+  function setAndSaveRatings(next: RatingsConfig) {
+    // gwarantujemy spójny sort_order
+    const withOrder = next.map((r, idx) => ({
+      ...r,
+      sort_order: idx,
+    })) as RatingsConfig;
 
-  setRCfg(withOrder);
-  saveRatings(withOrder);
-}
-
+    setRCfg(withOrder);
+    saveRatings(withOrder);
+  }
 
   function updateRatingLabel(id: string, label: string) {
     const next = rCfg.map((r) => (r.id === id ? { ...r, label } : r));
@@ -685,26 +693,23 @@ function setAndSaveRatings(next: RatingsConfig) {
     setAndSaveRatings(next);
   }
 
-function addRating() {
-  const label = "Nowa ocena";
+  function addRating() {
+    const label = "Nowa ocena";
 
-  const item: RatingAspect = {
-    id: safeRatingId(),
-    key: slugRatingKey(label),
-    label,
-    tooltip: "",
-    enabled: true,
-    // nowe pola wymagane przez typ
-    sort_order: rCfg.length,
-    // domyślna grupa – dopasuj nazwę do swojego uniona w ratings.ts,
-    // "GENERAL" jest rzutowane na any, żeby TS nie blokował kompilacji
-    groupKey: "GENERAL" as any,
-  };
+    const item: RatingAspect = {
+      id: safeRatingId(),
+      key: slugRatingKey(label),
+      label,
+      tooltip: "",
+      enabled: true,
+      sort_order: rCfg.length,
+      // domyślna grupa – dopasuj nazwę do swojego uniona w ratings.ts
+      groupKey: "GENERAL" as any,
+    };
 
-  const next = [...rCfg, item];
-  setAndSaveRatings(next);
-}
-
+    const next = [...rCfg, item];
+    setAndSaveRatings(next);
+  }
 
   function removeRating(id: string) {
     const next = rCfg.filter((r) => r.id !== id);
@@ -984,159 +989,294 @@ function addRating() {
         </CardContent>
       </Card>
 
-      {/* Users list */}
-      <Card className="border-gray-200 dark:border-neutral-800">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base font-semibold">
-            <div className="flex flex-wrap items-center gap-2">
-              <Users className="h-4 w-4" />
-              Użytkownicy ({filtered.length})
+      {/* Users list + right-side details */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Lista użytkowników */}
+        <Card className="border-gray-200 dark:border-neutral-800 lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base font-semibold">
+              <div className="flex flex-wrap items-center gap-2">
+                <Users className="h-4 w-4" />
+                Użytkownicy ({filtered.length})
+              </div>
+            </CardTitle>
+            <div className="text-xs text-dark dark:text-neutral-400">
+              Kliknij nazwę lub „Szczegóły”, aby podejrzeć profil po prawej.
             </div>
-          </CardTitle>
-          <div className="text-xs text-dark dark:text-neutral-400">
-            Kliknij nazwę, aby zobaczyć szczegóły
-          </div>
-        </CardHeader>
-        <CardContent className="w-full overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-              <tr>
-                <th className="p-3 text-left font-medium">Użytkownik</th>
-                <th className="p-3 text-left font-medium">Kontakt</th>
-                <th className="p-3 text-left font-medium">Rola</th>
-                <th className="p-3 text-left font-medium">Status</th>
-                <th className="p-3 text-left font-medium">Utworzono</th>
-                <th className="p-3 text-right font-medium">Akcje</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingAccounts && (
+          </CardHeader>
+          <CardContent className="w-full overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="p-4 text-center text-xs text-dark dark:text-neutral-400"
-                  >
-                    Ładowanie użytkowników…
-                  </td>
+                  <th className="p-3 text-left font-medium">Użytkownik</th>
+                  <th className="p-3 text-left font-medium">Kontakt</th>
+                  <th className="p-3 text-left font-medium">Rola</th>
+                  <th className="p-3 text-left font-medium">Status</th>
+                  <th className="p-3 text-left font-medium">Utworzono</th>
+                  <th className="p-3 text-right font-medium">Akcje</th>
                 </tr>
-              )}
-              {!loadingAccounts &&
-                filtered.map((a) => (
-                  <tr
-                    key={a.id}
-                    className="border-t border-gray-200 align-middle dark:border-neutral-700"
-                  >
-                    <td className="p-3">
-                      <button
-                        className="text-left font-medium hover:underline"
-                        onClick={() => onOpenDetail(a)}
-                        title="Szczegóły"
-                      >
-                        {a.name}
-                      </button>
-                      <div className="mt-0.5 flex items-center gap-1 text-[11px] text-dark dark:text-neutral-400">
-                        <Shield className="h-3.5 w-3.5" />
-                        {labelForRole(a.role)}
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700 dark:text-neutral-300">
-                        <Mail className="h-3.5 w-3.5" /> {a.email}
-                      </div>
-                      {a.phone && (
-                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
-                          <Phone className="h-3.5 w-3.5" /> {a.phone}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <select
-                        className="rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-                        value={a.role}
-                        onChange={(e) =>
-                          onChangeRole(a.id, e.target.value as Role)
-                        }
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {labelForRole(r)}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-3">
-                      {a.active ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
-                          <CheckCircle className="h-3.5 w-3.5" /> Aktywne
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                          <Ban className="h-3.5 w-3.5" /> Nieaktywne
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3 text-xs text-dark dark:text-neutral-400">
-                      {fmtDate(a.createdAt)}
-                      <div className="opacity-70">
-                        {a.lastActive
-                          ? `Ost. aktywność: ${fmtDate(a.lastActive)}`
-                          : "—"}
-                      </div>
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 border-gray-300 dark:border-neutral-700"
-                          onClick={() => onOpenDetail(a)}
-                        >
-                          <Eye className="mr-1 h-4 w-4" /> Szczegóły
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 border-gray-300 dark:border-neutral-700"
-                          onClick={() => onToggleActive(a.id)}
-                          title={a.active ? "Deaktywuj" : "Aktywuj"}
-                        >
-                          {a.active ? (
-                            <>
-                              <XCircle className="mr-1 h-4 w-4" /> Deaktywuj
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="mr-1 h-4 w-4" /> Aktywuj
-                            </>
-                          )}
-                        </Button>
-                      </div>
+              </thead>
+              <tbody>
+                {loadingAccounts && (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="p-4 text-center text-xs text-dark dark:text-neutral-400"
+                    >
+                      Ładowanie użytkowników…
                     </td>
                   </tr>
-                ))}
-              {!loadingAccounts && filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="p-6 text-center text-sm text-dark dark:text-neutral-400"
-                  >
-                    Brak wyników — zmień filtry lub dodaj nowego użytkownika.
-                  </td>
-                </tr>
+                )}
+                {!loadingAccounts &&
+                  filtered.map((a) => (
+                    <tr
+                      key={a.id}
+                      className={`border-t border-gray-200 align-middle dark:border-neutral-700 ${
+                        detail?.id === a.id
+                          ? "bg-slate-50/80 dark:bg-neutral-900/60"
+                          : ""
+                      }`}
+                    >
+                      <td className="p-3">
+                        <button
+                          className="text-left font-medium hover:underline"
+                          onClick={() => onOpenDetail(a)}
+                          title="Pokaż szczegóły po prawej"
+                        >
+                          {a.name}
+                        </button>
+                        <div className="mt-0.5 flex items-center gap-1 text-[11px] text-dark dark:text-neutral-400">
+                          <Shield className="h-3.5 w-3.5" />
+                          {labelForRole(a.role)}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700 dark:text-neutral-300">
+                          <Mail className="h-3.5 w-3.5" /> {a.email}
+                        </div>
+                        {a.phone && (
+                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
+                            <Phone className="h-3.5 w-3.5" /> {a.phone}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <select
+                          className="rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                          value={a.role}
+                          onChange={(e) =>
+                            onChangeRole(a.id, e.target.value as Role)
+                          }
+                        >
+                          {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {labelForRole(r)}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-3">
+                        {a.active ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
+                            <CheckCircle className="h-3.5 w-3.5" /> Aktywne
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                            <Ban className="h-3.5 w-3.5" /> Nieaktywne
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-xs text-dark dark:text-neutral-400">
+                        {fmtDate(a.createdAt)}
+                        <div className="opacity-70">
+                          {a.lastActive
+                            ? `Ost. aktywność: ${fmtDate(a.lastActive)}`
+                            : "—"}
+                        </div>
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 border-gray-300 dark:border-neutral-700"
+                            onClick={() => onOpenDetail(a)}
+                          >
+                            <Eye className="mr-1 h-4 w-4" /> Szczegóły
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 border-gray-300 dark:border-neutral-700"
+                            onClick={() => onToggleActive(a.id)}
+                            title={a.active ? "Deaktywuj" : "Aktywuj"}
+                          >
+                            {a.active ? (
+                              <>
+                                <XCircle className="mr-1 h-4 w-4" /> Deaktywuj
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="mr-1 h-4 w-4" /> Aktywuj
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                {!loadingAccounts && filtered.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                    >
+                      Brak wyników — zmień filtry lub dodaj nowego użytkownika.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        {/* Panel szczegółów po prawej */}
+        <Card className="border-gray-200 dark:border-neutral-800">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-sm font-semibold">
+              <span>Szczegóły konta</span>
+              {detail && (
+                <span className="text-[11px] text-dark/70 dark:text-neutral-400">
+                  ID: {detail.id.slice(0, 8)}…
+                </span>
               )}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            {!detail && (
+              <div className="text-xs text-dark dark:text-neutral-400">
+                Wybierz użytkownika z listy po lewej, aby zobaczyć szczegóły
+                konta.
+              </div>
+            )}
+
+            {detail && (
+              <>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-dark dark:text-neutral-400">
+                    Imię i nazwisko
+                  </div>
+                  <div className="text-sm font-semibold">{detail.name}</div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-dark dark:text-neutral-400">
+                    E-mail
+                  </div>
+                  <div className="inline-flex items-center gap-2 text-sm">
+                    <Mail className="h-3.5 w-3.5" />
+                    {detail.email}
+                  </div>
+                </div>
+
+                {detail.phone && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-dark dark:text-neutral-400">
+                      Telefon
+                    </div>
+                    <div className="inline-flex items-center gap-2 text-sm">
+                      <Phone className="h-3.5 w-3.5" />
+                      {detail.phone}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-dark dark:text-neutral-400">
+                    Rola
+                  </div>
+                  <div className="inline-flex items-center gap-2">
+                    <Shield className="h-3.5 w-3.5" />
+                    <span className="text-sm">{labelForRole(detail.role)}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-dark dark:text-neutral-400">
+                    Status
+                  </div>
+                  {detail.active ? (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
+                      <CheckCircle className="h-3.5 w-3.5" /> Aktywne
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                      <Ban className="h-3.5 w-3.5" /> Nieaktywne
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <div className="font-medium text-dark dark:text-neutral-400">
+                      Utworzono
+                    </div>
+                    <div className="mt-0.5 text-dark dark:text-neutral-300">
+                      {fmtDate(detail.createdAt)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-dark dark:text-neutral-400">
+                      Ost. aktywność
+                    </div>
+                    <div className="mt-0.5 text-dark dark:text-neutral-300">
+                      {detail.lastActive ? fmtDate(detail.lastActive) : "—"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-gray-200 pt-2 dark:border-neutral-800">
+                  <div className="text-[11px] text-dark/70 dark:text-neutral-500">
+                    Zarządzaj statusem użytkownika.
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 border-gray-300 text-xs dark:border-neutral-700"
+                      onClick={() => onToggleActive(detail.id)}
+                    >
+                      {detail.active ? (
+                        <>
+                          <XCircle className="mr-1 h-4 w-4" /> Deaktywuj
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="mr-1 h-4 w-4" /> Aktywuj
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 border-gray-300 text-xs dark:border-neutral-700"
+                      onClick={() => setDetail(null)}
+                    >
+                      Wyczyść wybór
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* ===== Konfiguracja metryk ===== */}
-      {/* (tu logika jak wcześniej – bez zmian poza drobnymi detalami UI) */}
+      {/* (tutaj możesz mieć swoją istniejącą sekcję konfiguracji mCfg / rCfg;
+          logika powyżej pozostała kompatybilna) */}
 
-      {/* ... — zostawiam Twoją dotychczasową sekcję metryk i ocen bez zmian,
-          bo i tak trzyma się w localStorage i już działa OK.
-          Jeśli chcesz, możemy w kolejnym kroku przenieść też te konfiguracje do Supabase. */}
-
-      {/* ===== Modals (invites, add user & details) ===== */}
+      {/* ===== Modals (invites, add user) ===== */}
       {inviteOpen && (
         <Modal
           onClose={() => setInviteOpen(false)}
@@ -1335,85 +1475,6 @@ function addRating() {
           </div>
         </Modal>
       )}
-
-      {detail && (
-        <Modal onClose={() => setDetail(null)} title="Szczegóły konta">
-          <div className="space-y-3 text-sm">
-            <Row label="Imię i nazwisko" value={detail.name} />
-            <Row
-              label="E-mail"
-              value={detail.email}
-              icon={<Mail className="h-3.5 w-3.5" />}
-            />
-            {detail.phone && (
-              RowRenderer("Telefon", detail.phone, <Phone className="h-3.5 w-3.5" />)
-            )}
-            <Row
-              label="Rola"
-              value={labelForRole(detail.role)}
-              icon={<Shield className="h-3.5 w-3.5" />}
-            />
-            <Row
-              label="Status"
-              value={
-                detail.active ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
-                    <CheckCircle className="h-3.5 w-3.5" /> Aktywne
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                    <Ban className="h-3.5 w-3.5" /> Nieaktywne
-                  </span>
-                )
-              }
-            />
-            <Row label="Utworzono" value={fmtDate(detail.createdAt)} />
-            <Row
-              label="Ost. aktywność"
-              value={detail.lastActive ? fmtDate(detail.lastActive) : "—"}
-            />
-          </div>
-
-          <div className="mt-4 flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              className="border-gray-300 dark:border-neutral-700"
-              onClick={() => onToggleActive(detail.id)}
-            >
-              {detail.active ? (
-                <>
-                  <XCircle className="mr-2 h-4 w-4" /> Deaktywuj
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="mr-2 h-4 w-4" /> Aktywuj
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              className="border-gray-300 dark:border-neutral-700"
-              onClick={() =>
-                setDetail((prev) =>
-                  prev
-                    ? { ...prev, role: cycleRole(prev.role), active: prev.active }
-                    : prev
-                )
-              }
-              title="Szybka zmiana roli (tylko w UI – demo)"
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Zmień rolę (demo)
-            </Button>
-            <Button
-              className="bg-gray-900 text-white hover:bg-gray-800"
-              onClick={() => setDetail(null)}
-            >
-              Zamknij
-            </Button>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
@@ -1495,38 +1556,6 @@ function isoDaysFromNow(days: number) {
   return d.toISOString();
 }
 
-function Row({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: React.ReactNode;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      <div className="col-span-1 text-xs font-medium text-dark dark:text-neutral-400">
-        {label}
-      </div>
-      <div className="col-span-2">
-        <div className="inline-flex flex-wrap items-center gap-2">
-          {icon}
-          {value}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RowRenderer(
-  label: string,
-  value: React.ReactNode,
-  icon?: React.ReactNode
-) {
-  return <Row label={label} value={value} icon={icon} />;
-}
-
 /* Minimal modal */
 function Modal({
   title,
@@ -1534,7 +1563,7 @@ function Modal({
   onClose,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   onClose: () => void;
 }) {
   return (
