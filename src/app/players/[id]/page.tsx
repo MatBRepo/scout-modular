@@ -4,5 +4,5 @@
 import PlayerEditorPage from "@/features/players/PlayerEditorPage";
 
 export default function Page({ params }: { params: { id: string } }) {
-  return <PlayerEditorPage id={params.id} />;
+  return <PlayerEditorPage/>;
 }
