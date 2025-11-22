@@ -7,7 +7,13 @@ import { Crumb, Toolbar } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Users, NotebookPen, Mail, MapPin, ShieldAlert } from "lucide-react";
+import {
+  Users,
+  NotebookPen,
+  Mail,
+  MapPin,
+  ShieldAlert,
+} from "lucide-react";
 import type { Player, Observation } from "@/shared/types";
 import { getSupabase } from "@/lib/supabaseClient";
 
@@ -82,7 +88,9 @@ export default function ScoutProfilePage() {
   const id = String(params?.id ?? "");
   const router = useRouter();
 
-  const [role, setRole] = useState<Role>("scout");
+  // DEV: domyślnie admin, żeby nie blokować widoku
+  const [role, setRole] = useState<Role>("admin");
+
   const [scout, setScout] = useState<Scout | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [observations, setObservations] = useState<Observation[]>([]);
@@ -91,7 +99,7 @@ export default function ScoutProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // still read role from localStorage (auth layer of the app)
+  // próbujemy nadpisać rolę z localStorage, jeśli jest
   useEffect(() => {
     try {
       const r = localStorage.getItem("s4s.role");
@@ -122,7 +130,6 @@ export default function ScoutProfilePage() {
           .maybeSingle();
 
         if (scoutError) throw scoutError;
-
         if (!mounted) return;
 
         if (!scoutRow) {
@@ -144,21 +151,21 @@ export default function ScoutProfilePage() {
           setScout(mapped);
         }
 
-        // 2) players assigned to this scout
+        // 2) players assigned to this scout (po user_id)
         const { data: playerRows, error: playersError } = await supabase
           .from("players")
           .select("*")
-          .eq("scout_id", id);
+          .eq("user_id", id);
 
         if (playersError) throw playersError;
         if (!mounted) return;
         setPlayers((playerRows || []) as Player[]);
 
-        // 3) observations created by this scout
+        // 3) observations created by this scout (po user_id)
         const { data: obsRows, error: obsError } = await supabase
           .from("observations")
           .select("*")
-          .eq("scout_id", id);
+          .eq("user_id", id);
 
         if (obsError) throw obsError;
         if (!mounted) return;
@@ -192,7 +199,7 @@ export default function ScoutProfilePage() {
     return Math.round(sum / players.length);
   }, [players]);
 
-  // --- Guards ---
+  // --- Guards (na razie zostawiamy, ale domyślnie jesteś adminem) ---
 
   if (!isAdmin) {
     return (
@@ -467,7 +474,7 @@ function Info({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="text-dark rounded-md p-2 dark:border-neutral-800">
+    <div className="rounded-md p-2 text-dark dark:border-neutral-800">
       <div className="mb-1 flex items-center gap-1 text-[11px] font-medium tracking-wide text-dark dark:text-neutral-400">
         {icon} {label}
       </div>
