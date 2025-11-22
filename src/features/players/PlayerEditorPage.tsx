@@ -2194,7 +2194,7 @@ export default function PlayerEditorPage() {
 
               </AccordionItem>
             </Accordion>
-          </CardContent>
+          </CardContent>   
         </Card>
 
         {/* KROK 2 – Rozszerzone informacje (tabs jak w AddPlayerPage) */}
