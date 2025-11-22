@@ -586,7 +586,14 @@ function MainPositionPitch({
         )}
       </div>
 
-      <div className="mx-auto max-h-[300px] max-w-[560px] overflow-hidden rounded-xl border border-emerald-500/40 bg-[radial-gradient(circle_at_0%_50%,#14532d_0,#166534_35%,#052e16_90%)] p-3">
+      {/* wrapper z teksturą trawy */}
+      <div
+        className="mx-auto max-h-[300px] max-w-[560px] overflow-hidden rounded-xl border border-emerald-500/40 bg-repeat p-3"
+        style={{
+          backgroundImage: "url('/textures/grass-texture.jpg')",
+          backgroundSize: "80px 80px",
+        }}
+      >
         <TooltipProvider delayDuration={0}>
           <div className="relative h-[220px] w-full rounded-[20px] border border-white/40">
             {/* Środkowa linia – poziomo */}
@@ -651,7 +658,6 @@ function MainPositionPitch({
         </TooltipProvider>
       </div>
 
-
       <div className="mt-3 text-[11px] leading-relaxed text-slate-600 dark:text-neutral-300">
         {activeMeta ? (
           <>
@@ -672,6 +678,7 @@ function MainPositionPitch({
     </section>
   );
 }
+
 
 
 /* ===== Add page ===== */
@@ -1728,7 +1735,7 @@ export default function AddPlayerPage() {
         )}
         style={{ top: headerHeight || 64 }}
       >
-        <div className="pointer-events-auto mr-2 mt-2 border-none flex items-center gap-2 rounded-full bg-none px-2 py-1   dark:bg-neutral-950/90 dark:ring-neutral-800">
+        <div className="pointer-events-auto mr-2 mt-2 flex items-center gap-2  bg-white/90 px-2 py-1   dark:bg-neutral-950/90 dark:ring-neutral-800">
           <SavePill state={saveState} size="compact" />
           <Button
             variant="outline"

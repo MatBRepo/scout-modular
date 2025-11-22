@@ -146,33 +146,42 @@ function Section({
   );
 }
 
-/* 💊 SavePill – status autozapisu (localStorage) */
-function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
+/* 💊 SavePill – styl jak w AddPlayerPage */
+function SavePill({
+  state,
+  size = "default",
+}: {
+  state: "idle" | "saving" | "saved";
+  size?: "default" | "compact";
+  mode?: "known" | "unknown" | null;
+}) {
   const base =
-    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium";
+    size === "compact"
+      ? "inline-flex h-8 items-center rounded-md px-2 text-xs leading-none"
+      : "inline-flex h-10 items-center rounded-md px-3 text-sm leading-none";
+
   const map = {
-    saving:
-      "bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-100 dark:ring-amber-900/40",
-    saved:
-      "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-100 dark:ring-emerald-900/40",
-    idle:
-      "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200 dark:bg-neutral-900/60 dark:text-neutral-300 dark:ring-neutral-700",
+    saving: "text-amber-700 dark:text-amber-200",
+    saved: "text-emerald-700 dark:text-emerald-200",
+    idle: "text-gray-600 dark:text-neutral-300",
   } as const;
 
+  if (state === "idle") {
+    return null;
+  }
+
   return (
-    <span className={`${base} ${map[state]}`} aria-live="polite">
+    <span className={cn(base, map[state])} aria-live="polite">
       {state === "saving" ? (
         <>
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span>Autozapis…</span>
-        </>
-      ) : state === "saved" ? (
-        <>
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          <span>Zapisano</span>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Autozapis…
         </>
       ) : (
-        <span>Czeka na uzupełnienie danych</span>
+        <>
+          <CheckCircle2 className="mr-2 h-4 w-4" />
+          Zapisano
+        </>
       )}
     </span>
   );
@@ -221,7 +230,7 @@ function MetricItem({
 export function ObservationEditor({
   initial,
   onSave,
-  onClose, // (na razie niewykorzystane)
+  onClose,
 }: {
   initial: XO;
   onSave: (o: XO) => void;
@@ -474,7 +483,6 @@ export function ObservationEditor({
         err
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
 
   // zapisuj szkic przy każdej zmianie stanu obserwacji
@@ -702,7 +710,8 @@ export function ObservationEditor({
     }
 
     const baseMeta =
-      o.__listMeta ?? ({
+      o.__listMeta ??
+      ({
         id,
         status: (o as any).status ?? "draft",
         bucket: "active",
@@ -788,12 +797,62 @@ export function ObservationEditor({
 
     setSaveState("saved");
     onSave(payload);
+    onClose();
   }
+
+  /* ===== Sticky mini-header jak w AddPlayerPage ===== */
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('header[role="banner"]');
+    if (header) {
+      setHeaderHeight(header.offsetHeight);
+    }
+
+    const handleResize = () => {
+      const h = document.querySelector<HTMLElement>('header[role="banner"]');
+      if (h) setHeaderHeight(h.offsetHeight);
+    };
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 80);
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   /* Render */
   return (
     <div className="w-full">
-      {/* TOP BAR – styl podobny do AddPlayerPage */}
+      {/* Sticky mini actions under header when scroll */}
+      <div
+        className={cn(
+          "pointer-events-none sticky z-30 flex justify-end transition-all duration-200",
+          isScrolled ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
+        )}
+        style={{ top: headerHeight || 64 }}
+      >
+        <div className="pointer-events-auto mr-2 mt-2 flex items-center gap-2  bg-white/90 px-2 py-1   dark:bg-neutral-950/90 dark:ring-neutral-800">
+          <SavePill state={autoState} size="compact" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={onClose}
+          >
+            Wróć do listy
+          </Button>
+        </div>
+      </div>
+
+      {/* TOP BAR */}
       <Toolbar
         title={
           <div className="mb-3 flex flex-col gap-1">
@@ -806,62 +865,63 @@ export function ObservationEditor({
           </div>
         }
         right={
-          <div className="mb-4 flex w-full items-center gap-2 sm:gap-3 md:flex-nowrap">
-            {/* Szkic / Finalna */}
-            <div className="inline-flex h-10 items-center rounded border border-slate-300 bg-white p-0.5 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
-              <button
-                type="button"
-                onClick={() => setMeta("status", "draft")}
-                className={cn(
-                  "inline-flex h-8 items-center gap-1 rounded px-3 py-1 font-medium transition",
-                  status === "draft"
-                    ? "bg-amber-500 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                )}
-              >
-                Szkic
-              </button>
-              <button
-                type="button"
-                onClick={() => setMeta("status", "final")}
-                className={cn(
-                  "inline-flex h-8 items-center gap-1 rounded px-3 py-1 font-medium transition",
-                  status === "final"
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                )}
-              >
-                Finalna
-              </button>
-            </div>
+       <div className="mb-4 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 md:flex-nowrap">
+  {/* Szkic / Finalna – mobile: 50/50, desktop: kompakt */}
+  <div className="inline-flex w-full rounded border border-slate-300 bg-white p-0.5 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-900 sm:w-auto">
+    <button
+      type="button"
+      onClick={() => setMeta("status", "draft")}
+      className={cn(
+        "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
+        status === "draft"
+          ? "bg-amber-500 text-white shadow-sm"
+          : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+      )}
+    >
+      Szkic
+    </button>
+    <button
+      type="button"
+      onClick={() => setMeta("status", "final")}
+      className={cn(
+        "inline-flex h-8 basis-1/2 items-center justify-center gap-1 rounded px-3 py-1 font-medium transition sm:basis-auto sm:w-auto",
+        status === "final"
+          ? "bg-emerald-600 text-white shadow-sm"
+          : "text-slate-600 hover:bg-slate-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+      )}
+    >
+      Finalna
+    </button>
+  </div>
 
-            {/* Status autozapisu + akcje */}
-            <div className="ml-auto flex flex-wrap items-center gap-2 sm:gap-3">
-              <SavePill state={autoState} />
-              <Button
-                variant="outline"
-                className="h-10 border-gray-300 dark:border-neutral-700"
-                onClick={restoreOriginal}
-              >
-                Cofnij zmiany
-              </Button>
+  {/* Status autozapisu + akcje */}
+  <div className="ml-0 flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:gap-3">
+    {/* Zapisano */}
+    <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
+      <div className="flex h-10 items-center justify-center">
+        <SavePill state={autoState} />
+      </div>
+    </div>
 
-              <Button
-                className="h-10 bg-gray-900 text-white hover:bg-gray-800"
-                onClick={handleSaveToSupabase}
-                disabled={
-                  saveState === "saving" ||
-                  !canSaveObservation ||
-                  requiredLoading
-                }
-              >
-                {saveState === "saving" && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Zapisz i wróć do listy
-              </Button>
-            </div>
-          </div>
+
+    {/* Zapisz */}
+    <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
+      <Button
+        className="h-10 w-full bg-gray-900 text-white hover:bg-gray-800 sm:w-auto"
+        onClick={handleSaveToSupabase}
+        disabled={
+          saveState === "saving" || !canSaveObservation || requiredLoading
+        }
+      >
+        {saveState === "saving" && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
+        Zapisz i wróć
+      </Button>
+    </div>
+  </div>
+</div>
+
         }
       />
 

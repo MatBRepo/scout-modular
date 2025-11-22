@@ -49,7 +49,7 @@ const PATH_LABELS: Record<string, string> = {
   "/": "Strona główna",
 
   // Zawodnicy
-  "/players": "Moi zawodnicy",
+  "/players": "Zawodnicy",
   "/players/new": "Dodaj zawodnika",
 
   // Obserwacje
@@ -58,15 +58,15 @@ const PATH_LABELS: Record<string, string> = {
 
   // Globalni zawodnicy (admin)
   "/players/global": "Zawodnicy (global)",
-  "/players/global/search": "Wyszukaj w globalnej bazie",
+  "/players/global/search": "Wyszukaj",
 
   // Administracja / zarządzanie
-  "/admin": "Panel administracyjny",
-  "/admin/manage": "Zarządzanie użytkownikami",
-  "/admin/manage/metrics": "Metryki obserwacji",
-  "/admin/manage/ratings": "Oceny zawodnika",
-  "/admin/manage/ranks": "Rangi użytkowników",
-  "/admin/manage/required-fields": "Wymagane pola",
+  "/admin": "Admin",
+  "/admin/manage": "Użytkownicy",
+  "/admin/manage/metrics": "Metryki",
+  "/admin/manage/ratings": "Oceny",
+  "/admin/manage/ranks": "Rangi",
+  "/admin/manage/required-fields": "Wymagane",
 
   // Inne
   "/scouts": "Lista scoutów",
@@ -85,7 +85,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   "global-players": "Globalna baza",
   global: "Global",
   search: "Wyszukaj",
-  admin: "Administracja",
+  admin: "Admin",
   manage: "Zarządzanie",
   metrics: "Metryki",
   ratings: "Oceny",

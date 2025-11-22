@@ -1,30 +1,18 @@
 // src/app/(players)/players/[id]/PlayerEditorPage.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Toolbar } from "@/shared/ui/atoms";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-} from "@/components/ui/accordion";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useParams, useRouter } from "next/navigation";
+
+import { Toolbar } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Loader2,
-  ChevronsUpDown,
-  Check,
-  ChevronDown,
-  Search,
-} from "lucide-react";
-import type { Player, Observation } from "@/shared/types";
 import {
   Select,
   SelectTrigger,
@@ -32,6 +20,26 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+} from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ChevronsUpDown,
+  Check,
+  Loader2,
+  CheckCircle2,
+  ChevronDown,
+  Search,
+  Lock,
+  PlayCircle,
+  Monitor,
+} from "lucide-react";
+
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -45,26 +53,44 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import StarRating from "@/shared/ui/StarRating";
+import { KnownPlayerIcon, UnknownPlayerIcon } from "@/components/icons";
+
 import {
   loadRatings,
   syncRatingsFromSupabase,
   type RatingsConfig,
   type RatingAspect,
 } from "@/shared/ratings";
+
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+
 import { getSupabase } from "@/lib/supabaseClient";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
+import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { RadioChipGroup } from "@/components/ui/RadioChipGroup";
 
-/* ============================== Positions ============================== */
+/* ===== ENV / defaults ===== */
+const SCOUT_DEFAULT_COUNTRY =
+  process.env.NEXT_PUBLIC_SCOUT_DEFAULT_COUNTRY || "";
 
-type Pos = Player["pos"];
-
+/* ===== Positions ===== */
+type BucketPos = "GK" | "DF" | "MF" | "FW";
 type DetailedPos =
   | "GK"
   | "CB"
@@ -145,7 +171,20 @@ const POS_DATA: Array<{
   },
 ];
 
-const toBucket = (p: DetailedPos): Pos => {
+const POS_LAYOUT: Record<DetailedPos, { top: string; left: string }> = {
+  GK: { top: "50%", left: "8%" },
+  LB: { top: "30%", left: "24%" },
+  CB: { top: "50%", left: "26%" },
+  RB: { top: "70%", left: "24%" },
+  CDM: { top: "50%", left: "40%" },
+  CM: { top: "50%", left: "55%" },
+  CAM: { top: "50%", left: "68%" },
+  LW: { top: "30%", left: "68%" },
+  RW: { top: "70%", left: "68%" },
+  ST: { top: "50%", left: "86%" },
+};
+
+const toBucket = (p: DetailedPos): BucketPos => {
   switch (p) {
     case "GK":
       return "GK";
@@ -161,30 +200,11 @@ const toBucket = (p: DetailedPos): Pos => {
       return "MF";
     case "ST":
       return "FW";
-    default:
-      return "MF";
   }
 };
 
-function detailedFromBucket(pos?: Pos): DetailedPos {
-  switch (pos) {
-    case "GK":
-      return "GK";
-    case "DF":
-      return "CB";
-    case "MF":
-      return "CM";
-    case "FW":
-      return "ST";
-    default:
-      return "CM";
-  }
-}
-
-/* ============================== Countries ============================== */
-
+/* ===== Countries ===== */
 type Country = { code: string; name: string; flag: string };
-
 const COUNTRIES: Country[] = [
   { code: "PL", name: "Polska", flag: "🇵🇱" },
   { code: "DE", name: "Niemcy", flag: "🇩🇪" },
@@ -218,33 +238,43 @@ const COUNTRIES: Country[] = [
   { code: "AR", name: "Argentyna", flag: "🇦🇷" },
 ];
 
-/* ============================== Small UI ============================== */
+/* ===== Small UI ===== */
 
-function SavePill({ state }: { state: "idle" | "saving" | "saved" }) {
+function SavePill({
+  state,
+  size = "default",
+}: {
+  state: "idle" | "saving" | "saved";
+  size?: "default" | "compact";
+  mode?: "known" | "unknown" | null;
+}) {
   const base =
-    "inline-flex h-10 items-center rounded-md border px-3 text-sm leading-none";
+    size === "compact"
+      ? "inline-flex h-8 items-center rounded-md px-2 text-xs leading-none"
+      : "inline-flex h-10 items-center rounded-md px-3 text-sm leading-none";
+
   const map = {
-    saving:
-      "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100",
-    saved:
-      "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-100",
-    idle:
-      "border-gray-300 bg-white text-gray-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200",
+    saving: "text-amber-700 dark:text-amber-200",
+    saved: "text-emerald-700 dark:text-emerald-200",
+    idle: "text-gray-600 dark:text-neutral-300",
   } as const;
+
+  if (state === "idle") {
+    return null;
+  }
+
   return (
-    <span className={`${base} ${map[state]}`} aria-live="polite">
+    <span className={cn(base, map[state])} aria-live="polite">
       {state === "saving" ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Autozapis…
         </>
-      ) : state === "saved" ? (
+      ) : (
         <>
           <CheckCircle2 className="mr-2 h-4 w-4" />
           Zapisano
         </>
-      ) : (
-        "Czeka na uzupełnienie danych"
       )}
     </span>
   );
@@ -259,151 +289,394 @@ function Chip({ text }: { text: string }) {
 }
 
 /* Country combobox */
-
 function CountryCombobox({
   value,
   onChange,
-  error,
   chip,
 }: {
   value: string;
   onChange: (next: string) => void;
-  error?: string;
   chip?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
-
   return (
-    <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-expanded={open}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-expanded={open}
+          className={cn(
+            "relative flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
+            "border-gray-300 dark:border-neutral-700",
+            chip ? "pr-24" : ""
+          )}
+        >
+          <span
             className={cn(
-              "relative flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
-              error
-                ? "border-red-500"
-                : "border-gray-300 dark:border-neutral-700",
-              chip ? "pr-24" : ""
+              "flex min-w-0 items-center gap-2",
+              !selected && "text-muted-foreground"
             )}
           >
-            <span
-              className={cn(
-                "flex min-w-0 items-center gap-2",
-                !selected && "text-muted-foreground"
-              )}
-            >
-              {selected ? (
-                <>
-                  <span className="text-base leading-none">
-                    {selected.flag}
-                  </span>
-                  <span className="truncate">{selected.name}</span>
-                </>
-              ) : (
-                "Wybierz kraj"
-              )}
-            </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            {chip ? <Chip text={chip} /> : null}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[--radix-popover-trigger-width] p-0"
-          align="start"
-        >
-          <Command shouldFilter>
-            <CommandInput placeholder="Szukaj kraju…" />
-            <CommandList>
-              <CommandEmpty>Brak wyników.</CommandEmpty>
-              <CommandGroup>
-                {COUNTRIES.map((c) => {
-                  const active = c.name === value;
-                  return (
-                    <CommandItem
-                      key={c.code}
-                      value={`${c.name} ${c.code}`}
-                      onSelect={() => {
-                        onChange(c.name);
-                        setOpen(false);
-                      }}
+            {selected ? (
+              <>
+                <span className="text-base leading-none">{selected.flag}</span>
+                <span className="truncate">{selected.name}</span>
+              </>
+            ) : (
+              "Wybierz kraj"
+            )}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {chip ? <Chip text={chip} /> : null}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] p-0"
+        align="start"
+      >
+        <Command shouldFilter>
+          <CommandInput
+            placeholder="Szukaj kraju…"
+            className="border-0 bg-transparent px-3 py-2 text-sm shadow-none focus:border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+          <CommandList>
+            <CommandEmpty>Brak wyników.</CommandEmpty>
+            <CommandGroup>
+              {COUNTRIES.map((c) => {
+                const active = c.name === value;
+                return (
+                  <CommandItem
+                    key={c.code}
+                    value={`${c.name} ${c.code}`}
+                    onSelect={() => {
+                      onChange(c.name);
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="mr-2 text-base">{c.flag}</span>
+                    <span className="mr-2">{c.name}</span>
+                    <span
+                      className={cn(
+                        "ml-auto",
+                        active ? "opacity-100" : "opacity-0"
+                      )}
                     >
-                      <span className="mr-2 text-base">{c.flag}</span>
-                      <span className="mr-2">{c.name}</span>
-                      <span
-                        className={cn(
-                          "ml-auto",
-                          active ? "opacity-100" : "opacity-0"
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                      </span>
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </>
+                      <Check className="h-4 w-4" />
+                    </span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-/* ============================== Types / ObsRec ============================== */
+/* Utility: safe text-normalizer for possibly object values */
+function safeText(val: any): string {
+  if (val == null) return "";
+  if (typeof val === "string" || typeof val === "number") return String(val);
+  if (typeof val === "object") {
+    if ("name" in val) return String((val as any).name);
+    if ("label" in val) return String((val as any).label);
+  }
+  return "";
+}
 
-type ObsRec = Omit<Observation, "player"> & {
-  player?: string;
-  players?: string[];
-  mode?: "live" | "tv";
-  opponentLevel?: string;
+/* DateTime picker 24h – używany do daty/godziny meczu */
+type DateTimeValue = {
+  date: string;
+  time: string;
 };
 
-/* ===== Ratings map stored on player.meta (key -> value) ===== */
+function DateTimePicker24h({
+  value,
+  onChange,
+  placeholder = "Data i godzina meczu",
+}: {
+  value: DateTimeValue;
+  onChange: (value: DateTimeValue) => void;
+  placeholder?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [dateObj, setDateObj] = useState<Date | undefined>(() => {
+    if (value.date) {
+      const d = new Date(`${value.date}T${value.time || "12:00"}:00`);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    }
+    return undefined;
+  });
 
-type RatingMap = Record<string, number>;
+  useEffect(() => {
+    if (!value.date) {
+      setDateObj(undefined);
+      return;
+    }
+    const d = new Date(`${value.date}T${value.time || "12:00"}:00`);
+    if (!Number.isNaN(d.getTime())) {
+      setDateObj(d);
+    }
+  }, [value.date, value.time]);
 
-/* ============================== Page ============================== */
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const minutes = Array.from({ length: 12 }, (_, i) => i * 5);
 
-export default function PlayerEditorPage({ id }: { id: string }) {
-  const router = useRouter();
-  const [p, setP] = useState<Player | null>(null);
+  const handleCombinedChange = (next: Date | undefined) => {
+    if (!next) {
+      setDateObj(undefined);
+      onChange({ date: "", time: "" });
+      return;
+    }
+    setDateObj(next);
+    const iso = next.toISOString();
+    const dateStr = iso.slice(0, 10);
+    const timeStr = iso.slice(11, 16);
+    onChange({ date: dateStr, time: timeStr });
+  };
 
-  const originalRef = useRef<Player | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
-    "idle"
+  const handleDateSelect = (selected: Date | undefined) => {
+    if (!selected) {
+      handleCombinedChange(undefined);
+      return;
+    }
+    const base = dateObj ?? new Date();
+    const next = new Date(selected);
+    next.setHours(base.getHours());
+    next.setMinutes(base.getMinutes());
+    handleCombinedChange(next);
+  };
+
+  const handleTimeChange = (type: "hour" | "minute", raw: string) => {
+    const base = dateObj ?? new Date();
+    const next = new Date(base);
+    const val = parseInt(raw, 10);
+    if (Number.isNaN(val)) return;
+    if (type === "hour") {
+      next.setHours(val);
+    } else {
+      next.setMinutes(val);
+    }
+    handleCombinedChange(next);
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-full justify-start text-left font-normal border-gray-300 dark:border-neutral-700",
+            !dateObj && "text-muted-foreground"
+          )}
+        >
+          <CalendarDaysIcon className="mr-2 h-4 w-4" />
+          {dateObj ? (
+            format(dateObj, "dd.MM.yyyy HH:mm")
+          ) : (
+            <span>{placeholder}</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <div className="sm:flex">
+          <Calendar
+            mode="single"
+            selected={dateObj}
+            onSelect={handleDateSelect}
+            initialFocus
+          />
+          <div className="flex flex-col divide-y sm:h-[300px] sm:flex-row sm:divide-y-0 sm:divide-x">
+            <ScrollArea className="w-64 sm:w-auto">
+              <div className="flex p-2 sm:flex-col">
+                {hours.map((hour) => (
+                  <Button
+                    key={hour}
+                    size="icon"
+                    variant={
+                      dateObj && dateObj.getHours() === hour
+                        ? "default"
+                        : "ghost"
+                    }
+                    className="aspect-square shrink-0 sm:w-full"
+                    onClick={() => handleTimeChange("hour", hour.toString())}
+                  >
+                    {hour.toString().padStart(2, "0")}
+                  </Button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" className="sm:hidden" />
+            </ScrollArea>
+            <ScrollArea className="w-64 sm:w-auto">
+              <div className="flex p-2 sm:flex-col">
+                {minutes.map((minute) => (
+                  <Button
+                    key={minute}
+                    size="icon"
+                    variant={
+                      dateObj && dateObj.getMinutes() === minute
+                        ? "default"
+                        : "ghost"
+                    }
+                    className="aspect-square shrink-0 sm:w-full"
+                    onClick={() =>
+                      handleTimeChange("minute", minute.toString())
+                    }
+                  >
+                    {minute.toString().padStart(2, "0")}
+                  </Button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" className="sm:hidden" />
+            </ScrollArea>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+}
 
-  // Accordions
-  const [basicOpen, setBasicOpen] = useState(true);
-  const [extOpen, setExtOpen] = useState(false);
-  const [gradeOpen, setGradeOpen] = useState(false);
-  const [obsOpen, setObsOpen] = useState(false);
+/* Boisko – główna pozycja */
+function MainPositionPitch({
+  value,
+  onChange,
+}: {
+  value: DetailedPos | "";
+  onChange: (next: DetailedPos) => void;
+}) {
+  const [hovered, setHovered] = useState<DetailedPos | null>(null);
 
-  // Extended tabs
-  type ExtKey = "profile" | "eligibility" | "stats365" | "contact";
-  const [extView, setExtView] = useState<ExtKey>("profile");
+  const activeKey = (hovered || value || null) as DetailedPos | null;
+  const activeMeta = activeKey
+    ? POS_DATA.find((p) => p.value === activeKey) ?? null
+    : null;
 
-  // Local extended fields (meta.ext)
-  const [ext, setExt] = useState(() => ({
-    // Basic helpers
-    birthYear: "",
-    clubCountry: "",
-    jerseyNumber: "",
-    unknownNote: "",
+  return (
+    <section className="mt-5 rounded-xl bg-white px-3 py-3 shadow-sm ring-1 ring-slate-200/70 dark:bg-neutral-950 dark:ring-neutral-800">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+            Boisko – główna pozycja
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
+            Kliknij na znacznik na boisku, aby ustawić główną pozycję zawodnika.
+          </p>
+        </div>
+        {activeMeta && (
+          <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
+            {activeMeta.code} · {activeMeta.name}
+          </span>
+        )}
+      </div>
 
-    // Tab 1 – Profil boiskowy
+      <div
+        className="mx-auto max-h-[300px] max-w-[560px] overflow-hidden rounded-xl border border-emerald-500/40 bg-repeat p-3"
+        style={{
+          backgroundImage: "url('/textures/grass-texture.png')",
+          backgroundSize: "80px 80px",
+        }}
+      >
+        <TooltipProvider delayDuration={0}>
+          <div className="relative h-[220px] w-full rounded-[20px] border border-white/40">
+            <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/40" />
+            <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
+            <div className="absolute left-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-r border-white/40" />
+            <div className="absolute left-0 top-1/2 h-20 w-14 -translate-y-1/2 border-y border-r border-white/40" />
+            <div className="absolute right-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-l border-white/40" />
+            <div className="absolute right-0 top-1/2 h-20 w-14 -translate-y-1/2 border-y border-l border-white/40" />
+
+            {POS_DATA.map((pos) => {
+              const layout = POS_LAYOUT[pos.value];
+              if (!layout) return null;
+              const isSelected = value === pos.value;
+
+              return (
+                <Tooltip key={pos.value}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "group absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-xs font-semibold text-white shadow-sm transition-transform",
+                        isSelected
+                          ? "border-emerald-300 bg-emerald-500/90 shadow-[0_0_0_4px_rgba(16,185,129,0.45)]"
+                          : "border-white/70 bg-white/10 hover:scale-[1.03] hover:bg-white/25"
+                      )}
+                      style={{ top: layout.top, left: layout.left }}
+                      onClick={() => onChange(pos.value)}
+                      onMouseEnter={() => setHovered(pos.value)}
+                      onMouseLeave={() =>
+                        setHovered((prev) => (prev === pos.value ? null : prev))
+                      }
+                    >
+                      <span className="pointer-events-none">{pos.code}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    align="center"
+                    className="max-w-xs border-none bg-slate-900/95 px-3 py-2 text-left text-[11px] text-slate-100 shadow-lg"
+                  >
+                    <div className="text-xs font-semibold">
+                      {pos.code} · {pos.name}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-slate-300">
+                      {pos.desc}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
+      </div>
+
+      <div className="mt-3 text-[11px] leading-relaxed text-slate-600 dark:text-neutral-300">
+        {activeMeta ? (
+          <>
+            <span className="font-semibold">
+              {activeMeta.code} – {activeMeta.name}
+            </span>
+            <span className="ml-1.5 text-slate-600 dark:text-neutral-300">
+              {activeMeta.desc}
+            </span>
+          </>
+        ) : (
+          <span>
+            Najedź na znacznik, aby zobaczyć szczegółowy opis pozycji i kliknij,
+            aby ją wybrać jako główną.
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ===== Editor page ===== */
+type Choice = "known" | "unknown" | null;
+
+type ObsRec = {
+  id: number;
+  match?: string | any;
+  date?: string | any;
+  time?: string | any;
+  status?: "draft" | "final";
+  mode?: "live" | "tv";
+  opponentLevel?: string | any;
+  players?: any[];
+};
+
+type PlayerRatings = Record<string, number>;
+
+function getDefaultExt() {
+  return {
     height: "",
     weight: "",
     dominantFoot: "",
     mainPos: "" as DetailedPos | "",
     altPositions: [] as DetailedPos[],
 
-    // Tab 2 – Status & scouting
     english: null as null | boolean,
     euPassport: null as null | boolean,
     birthCountry: "",
@@ -415,507 +688,214 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     transfermarkt: "",
     wyscout: "",
 
-    // Tab 3 – Zdrowie i statystyki
     injuryHistory: "",
     minutes365: "",
     starts365: "",
     subs365: "",
     goals365: "",
 
-    // Tab 4 – Kontakt & social
     phone: "",
     email: "",
     fb: "",
     ig: "",
     tiktok: "",
-  }));
+  };
+}
 
-  // highlight głównej pozycji
-  const [highlightMainPos, setHighlightMainPos] = useState(false);
-  useEffect(() => {
-    if (ext.mainPos) setHighlightMainPos(false);
-  }, [ext.mainPos]);
+type ExtKey = "profile" | "eligibility" | "stats365" | "contact";
 
-  /* ---------- Ratings config z Supabase ---------- */
+export default function PlayerEditorPage() {
+  const params = useParams<{ id?: string }>();
+  const router = useRouter();
 
-  const [ratingCfg, setRatingCfg] = useState<RatingsConfig>(() =>
+  const initialId = params?.id ? Number(params.id) : NaN;
+  const [playerId, setPlayerId] = useState<number | null>(
+    Number.isNaN(initialId) ? null : initialId
+  );
+
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [choice, setChoice] = useState<Choice>(null);
+
+  const [basicOpen, setBasicOpen] = useState(true);
+  const [extOpen, setExtOpen] = useState(true);
+  const [gradeOpen, setGradeOpen] = useState(true);
+  const [obsOpen, setObsOpen] = useState(true);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+  const [club, setClub] = useState("");
+  const [clubCountry, setClubCountry] = useState("");
+
+  const [jerseyNumber, setJerseyNumber] = useState("");
+  const [uClub, setUClub] = useState("");
+  const [uClubCountry, setUClubCountry] = useState("");
+  const [uNote, setUNote] = useState("");
+
+  const [posDet, setPosDet] = useState<DetailedPos>("CM");
+  const [uPosDet, setUPosDet] = useState<DetailedPos>("CM");
+
+  const [ext, setExt] = useState(getDefaultExt);
+
+  const [ratingConfig, setRatingConfig] = useState<RatingsConfig>(() =>
     loadRatings()
   );
+  const [ratings, setRatings] = useState<PlayerRatings>({});
+  const [notes, setNotes] = useState("");
 
-  const enabledRatingAspects = useMemo<RatingAspect[]>(
-    () => ratingCfg.filter((a) => a.enabled !== false),
-    [ratingCfg]
-  );
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const basicRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('header[role="banner"]');
+    if (header) {
+      setHeaderHeight(header.offsetHeight);
+    }
+
+    const handleResize = () => {
+      const h = document.querySelector<HTMLElement>('header[role="banner"]');
+      if (h) setHeaderHeight(h.offsetHeight);
+    };
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 80);
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  // domyślny kraj scouta – tylko jeśli nic nie ma
+  useEffect(() => {
+    if (!SCOUT_DEFAULT_COUNTRY) return;
+    setExt((prev) => {
+      if (prev.birthCountry) return prev;
+      return { ...prev, birthCountry: SCOUT_DEFAULT_COUNTRY };
+    });
+    setClubCountry((prev) => prev || SCOUT_DEFAULT_COUNTRY);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const cfg = await syncRatingsFromSupabase();
-      if (!cancelled) setRatingCfg(cfg);
+      if (!cancelled) setRatingConfig(cfg);
     })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Grade state
-  const [ratings, setRatings] = useState<RatingMap>({});
-  const [grade, setGrade] = useState({ notes: "", finalComment: "" });
-
-  // --- Grupy aspektów wg groupKey z Supabase ---
-  const baseAspects = enabledRatingAspects.filter(
-    (a) => (a.groupKey ?? "GEN") === "GEN"
+  const enabledRatingAspects = useMemo<RatingAspect[]>(
+    () => ratingConfig.filter((r) => r.enabled !== false),
+    [ratingConfig]
   );
-  const gkAspects = enabledRatingAspects.filter((a) => a.groupKey === "GK");
-  const defAspects = enabledRatingAspects.filter((a) => a.groupKey === "DEF");
-  const midAspects = enabledRatingAspects.filter((a) => a.groupKey === "MID");
-  const attAspects = enabledRatingAspects.filter((a) => a.groupKey === "FW");
 
-  // Pozycja główna dla oceny
-  const effectiveMainPos: DetailedPos | "" =
-    (ext.mainPos as DetailedPos | "") || "";
-  const effectiveBucket: Pos | null = effectiveMainPos
-    ? toBucket(effectiveMainPos)
-    : null;
-
-  /* ------------------------------ Observations ------------------------------ */
-
-  const [observations, setObservations] = useState<ObsRec[]>([]);
-  const [obsQuery, setObsQuery] = useState("");
-  const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
-
-  // quick-new fields
-  const [qaMatch, setQaMatch] = useState("");
-  const [qaDate, setQaDate] = useState("");
-  const [qaTime, setQaTime] = useState("");
-  const [qaMode, setQaMode] = useState<"live" | "tv">("live");
-  const [qaStatus, setQaStatus] = useState<ObsRec["status"]>("draft");
-  const [qaOpponentLevel, setQaOpponentLevel] = useState("");
-
-  /* ------------------------------ Helpers ------------------------------ */
-
-  function bumpSaving() {
-    setSaveStatus("saving");
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
-  }
-
-  const normalize = (arr: ObsRec[]) =>
-    arr.map((o) => {
-      const rawPlayers = Array.isArray(o.players)
-        ? o.players
-        : o.player && String(o.player).trim()
-        ? [o.player]
-        : [];
-
-      const playersArray = rawPlayers
-        .map((pl: any) => {
-          if (!pl) return null;
-          if (typeof pl === "string") return pl;
-          if (typeof pl === "object" && "name" in pl) return String(pl.name);
-          return null;
-        })
-        .filter((x): x is string => !!x && x.trim() !== "");
-
-      const unique = Array.from(new Set(playersArray));
-      return { ...o, players: unique };
-    });
-
-  async function fetchObservations() {
-    try {
-      const supabase = getSupabase();
-      const { data, error } = await supabase
-        .from("observations")
-        .select("id, player, match, date, time, status, mode, players, payload")
-        .order("date", { ascending: false })
-        .order("time", { ascending: false });
-
-      if (error) {
-        console.error("Błąd wczytywania obserwacji", error);
-        return;
-      }
-
-      const rows = (data ?? []) as any[];
-
-      const mapped: ObsRec[] = normalize(
-        rows.map((row) => ({
-          id: row.id,
-          player: row.player ?? undefined,
-          match: row.match ?? "",
-          date: row.date ?? "",
-          time: row.time ?? "",
-          status: (row.status as ObsRec["status"]) ?? "draft",
-          mode: (row.mode as "live" | "tv") ?? "live",
-          opponentLevel:
-            (row.payload && (row.payload as any).opponentLevel) || "",
-          players:
-            Array.isArray(row.players) && row.players.length
-              ? row.players.filter(Boolean)
-              : row.player
-              ? [row.player]
-              : [],
-        }))
-      );
-
-      setObservations(mapped);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
+  // Ładowanie zawodnika z Supabase do edycji
   useEffect(() => {
-    fetchObservations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const playerObs = useMemo(() => {
-    if (!p) return [];
-    return [...observations]
-      .filter((o) => (o.players ?? []).includes(p.name))
-      .sort((a, b) =>
-        ((b.date || "") + (b.time || "")).localeCompare(
-          (a.date || "") + (a.time || "")
-        )
-      );
-  }, [observations, p]);
-
-  const existingFiltered = useMemo(() => {
-    const q = obsQuery.trim().toLowerCase();
-    const arr = [...observations]
-      .filter((o) => o.players && o.players.length > 0)
-      .sort((a, b) =>
-        ((b.date || "") + (b.time || "")).localeCompare(
-          (a.date || "") + (a.time || "")
-        )
-      );
-    if (!q) return arr;
-    return arr.filter(
-      (o) =>
-        (o.match || "").toLowerCase().includes(q) ||
-        (o.players || []).some((n) => (n || "").toLowerCase().includes(q)) ||
-        (o.date || "").includes(q)
-    );
-  }, [observations, obsQuery]);
-
-  async function addObservationForPlayer() {
-    if (!p) return;
-    bumpSaving();
-    try {
-      const supabase = getSupabase();
-      const payload: any = {};
-      if (qaOpponentLevel.trim()) {
-        payload.opponentLevel = qaOpponentLevel.trim();
-      }
-
-      const { error } = await supabase.from("observations").insert([
-        {
-          player: p.name,
-          match: qaMatch.trim() || null,
-          date: qaDate || null,
-          time: qaTime || null,
-          status: qaStatus,
-          mode: qaMode,
-          players: [p.name],
-          bucket: "active",
-          payload,
-        },
-      ]);
-
-      if (error) {
-        console.error("Błąd dodawania obserwacji", error);
-      } else {
-        await fetchObservations();
-        setQaMatch("");
-        setQaDate("");
-        setQaTime("");
-        setQaMode("live");
-        setQaStatus("draft");
-        setQaOpponentLevel("");
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  async function duplicateExistingToThisPlayer() {
-    if (!p || obsSelectedId == null) return;
-    const base = observations.find((o) => o.id === obsSelectedId);
-    if (!base) return;
-
-    bumpSaving();
-    try {
-      const supabase = getSupabase();
-      const payload: any = {};
-      if (base.opponentLevel) {
-        payload.opponentLevel = base.opponentLevel;
-      }
-
-      const { error } = await supabase.from("observations").insert([
-        {
-          player: p.name,
-          match: base.match ?? null,
-          date: base.date ?? null,
-          time: base.time ?? null,
-          status: base.status,
-          mode: base.mode ?? "live",
-          players: [p.name],
-          bucket: "active",
-          payload,
-        },
-      ]);
-
-      if (error) {
-        console.error("Błąd kopiowania obserwacji", error);
-      } else {
-        await fetchObservations();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  async function reassignExistingToThisPlayer() {
-    if (!p || obsSelectedId == null) return;
-    const base = observations.find((o) => o.id === obsSelectedId);
-    if (!base) return;
-
-    bumpSaving();
-    try {
-      const supabase = getSupabase();
-      const updatedPlayers = Array.from(
-        new Set([...(base.players ?? []), p.name])
-      );
-
-      const { error } = await supabase
-        .from("observations")
-        .update({ players: updatedPlayers })
-        .eq("id", obsSelectedId);
-
-      if (error) {
-        console.error("Błąd przypisywania obserwacji", error);
-      } else {
-        await fetchObservations();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  /* ------------------------------ Player persistence (Supabase) ------------------------------ */
-
-  async function savePlayerToSupabase(updated: Player) {
-    try {
-      const supabase = getSupabase();
-      const patch: any = {
-        name: updated.name,
-        pos: updated.pos,
-        club: updated.club,
-        age: (updated as any).age,
-        status: (updated as any).status,
-        firstName: (updated as any).firstName ?? null,
-        lastName: (updated as any).lastName ?? null,
-        birthDate: (updated as any).birthDate ?? null,
-        nationality: (updated as any).nationality ?? null,
-        photo: (updated as any).photo ?? null,
-        meta: (updated as any).meta ?? {},
-      };
-
-      const { error } = await supabase
-        .from("players")
-        .update(patch)
-        .eq("id", (updated as any).id);
-
-      if (error) {
-        console.error("Błąd zapisu zawodnika", error);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  function saveBasic(next: Partial<Player>) {
-    if (!p) return;
-    const updated = { ...p, ...next } as Player;
-    bumpSaving();
-    setP(updated);
-    void savePlayerToSupabase(updated);
-  }
-
-  function saveMetaPatch(patch: any) {
-    if (!p) return;
-    const prevMeta: any = (p as any).meta ?? {};
-    const updated = {
-      ...(p as any),
-      meta: { ...prevMeta, ...patch },
-    } as Player;
-    bumpSaving();
-    setP(updated);
-    void savePlayerToSupabase(updated);
-  }
-
-  function saveExtPatch(patch: Partial<typeof ext>) {
-    if (!p) return;
-    const prevMeta: any = (p as any).meta ?? {};
-    const prevExt: any = prevMeta.ext ?? {};
-    const nextExt = { ...prevExt, ...patch };
-    saveMetaPatch({ ext: nextExt });
-  }
-
-  function updateDetailedPos(sel: DetailedPos) {
-    if (!p) return;
-    const prevMeta: any = (p as any).meta ?? {};
-    const updated: Player = {
-      ...(p as any),
-      pos: toBucket(sel) as Pos,
-      meta: { ...prevMeta, detailedPos: sel },
-    } as Player;
-    bumpSaving();
-    setP(updated);
-    void savePlayerToSupabase(updated);
-  }
-
-  const currentDetailedPos: DetailedPos | null = useMemo(() => {
-    if (!p) return null;
-    const metaPos =
-      ((p as any).meta?.detailedPos as DetailedPos | undefined) ?? undefined;
-    return metaPos ?? detailedFromBucket(p.pos);
-  }, [p]);
-
-  /* ------------------------------ Load player from Supabase ------------------------------ */
-
-  useEffect(() => {
+    if (!playerId) return;
     let cancelled = false;
 
-    async function loadPlayer() {
+    (async () => {
       try {
+        setLoading(true);
+        setLoadError(null);
         const supabase = getSupabase();
         const { data, error } = await supabase
           .from("players")
           .select("*")
-          .eq("id", Number(id))
-          .maybeSingle();
+          .eq("id", playerId)
+          .single();
 
-        if (cancelled) return;
-
-        if (error || !data) {
-          console.error("Nie udało się pobrać zawodnika", error);
-          setP(null);
-          originalRef.current = null;
+        if (error) {
+          console.error("[PlayerEditorPage] load error:", error);
+          if (!cancelled) {
+            setLoadError("Nie udało się załadować zawodnika.");
+          }
           return;
         }
 
-        const found = data as Player;
-        setP(found);
-        originalRef.current = structuredClone(found);
+        if (!cancelled && data) {
+          const meta = data.meta || {};
+          const basicMeta = meta.basic || {};
+          const extended = meta.extended || {};
+          const mode: Choice =
+            meta.mode === "unknown"
+              ? "unknown"
+              : meta.mode === "known"
+              ? "known"
+              : data.firstName || data.lastName
+              ? "known"
+              : "unknown";
 
-        const meta: any = (found as any).meta ?? {};
-        const extPrev: any = meta.ext ?? {};
+          setChoice(mode);
 
-        setExt((prev) => ({
-          ...prev,
-          birthYear: extPrev.birthYear ?? "",
-          clubCountry: extPrev.clubCountry ?? "",
-          jerseyNumber: extPrev.jerseyNumber ?? "",
-          unknownNote: extPrev.unknownNote ?? "",
+          if (mode === "known") {
+            setFirstName(basicMeta.firstName ?? data.firstName ?? "");
+            setLastName(basicMeta.lastName ?? data.lastName ?? "");
+            setBirthYear(basicMeta.birthYear ?? data.birthDate ?? "");
+            setClub(basicMeta.club ?? data.club ?? "");
+            setClubCountry(
+              basicMeta.clubCountry ??
+                extended.birthCountry ??
+                data.nationality ??
+                ""
+            );
+            setJerseyNumber(basicMeta.jerseyNumber ?? "");
+          } else {
+            setJerseyNumber(basicMeta.jerseyNumber ?? "");
+            setUClub(basicMeta.club ?? data.club ?? "");
+            setUClubCountry(
+              basicMeta.clubCountry ??
+                extended.birthCountry ??
+                data.nationality ??
+                ""
+            );
+            setUNote(meta.unknownNote ?? "");
+          }
 
-          height: extPrev.height ?? "",
-          weight: extPrev.weight ?? "",
-          dominantFoot: extPrev.dominantFoot ?? "",
-          mainPos: extPrev.mainPos ?? meta.detailedPos ?? "",
-          altPositions: Array.isArray(extPrev.altPositions)
-            ? extPrev.altPositions
-            : [],
+          const mergedExt = {
+            ...getDefaultExt(),
+            ...(extended || {}),
+          };
+          setExt(mergedExt);
 
-          english:
-            typeof extPrev.english === "boolean" ? extPrev.english : null,
-          euPassport:
-            typeof extPrev.euPassport === "boolean"
-              ? extPrev.euPassport
-              : null,
-          birthCountry: extPrev.birthCountry ?? "",
-          contractStatus: extPrev.contractStatus ?? "",
-          agency: extPrev.agency ?? "",
-          releaseClause: extPrev.releaseClause ?? "",
-          leagueLevel: extPrev.leagueLevel ?? "",
-          clipsLinks: extPrev.clipsLinks ?? "",
-          transfermarkt: extPrev.transfermarkt ?? "",
-          wyscout: extPrev.wyscout ?? "",
+          const mainPos =
+            (mergedExt.mainPos as DetailedPos | "") ||
+            (basicMeta.posDet as DetailedPos | "") ||
+            "CM";
+          setPosDet(mainPos || "CM");
+          setUPosDet(mainPos || "CM");
 
-          injuryHistory: extPrev.injuryHistory ?? "",
-          minutes365: extPrev.minutes365 ?? "",
-          starts365: extPrev.starts365 ?? "",
-          subs365: extPrev.subs365 ?? "",
-          goals365: extPrev.goals365 ?? "",
+          setRatings(meta.ratings || {});
+          setNotes(meta.notes || "");
 
-          phone: extPrev.phone ?? "",
-          email: extPrev.email ?? "",
-          fb: extPrev.fb ?? "",
-          ig: extPrev.ig ?? "",
-          tiktok: extPrev.tiktok ?? "",
-        }));
-
-        setGrade({
-          notes: meta.notes ?? "",
-          finalComment: meta.finalComment ?? "",
-        });
-
-        const rPrev: RatingMap = meta.ratings ?? {};
-        setRatings(rPrev);
-      } catch (err) {
-        if (!cancelled) {
-          console.error(err);
-          setP(null);
-          originalRef.current = null;
+          const obsMeta = meta.observationsMeta || {};
+          setObservations(obsMeta.list || []);
+          setObsSelectedId(obsMeta.selectedId ?? null);
         }
+      } catch (err) {
+        console.error("[PlayerEditorPage] load exception:", err);
+        if (!cancelled) {
+          setLoadError("Wystąpił błąd podczas ładowania zawodnika.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    }
-
-    loadPlayer();
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [id]);
-
-  const isUnknown = useMemo(
-    () => (p ? !(p as any).firstName && !(p as any).lastName : false),
-    [p]
-  );
-
-  const firstName = (p as any)?.firstName ?? "";
-  const lastName = (p as any)?.lastName ?? "";
-  const isKnown = !!(firstName || lastName);
-
-  function cancelToOriginal() {
-    const orig = originalRef.current;
-    if (!orig) return;
-    setSaveStatus("saving");
-    const cloned = structuredClone(orig);
-    setP(cloned);
-    void savePlayerToSupabase(cloned);
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => setSaveStatus("saved"), 450);
-  }
-
-  function manualSave() {
-    if (!p) return;
-    bumpSaving();
-    void savePlayerToSupabase(p);
-  }
-
-  if (!p) {
-    return (
-      <div className="w-full">
-        <Card className="mt-3">
-          <CardContent className="px-4 py-4 md:px-6">
-            Nie znaleziono zawodnika.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  /* ------------------------------ Counters ------------------------------ */
+  }, [playerId]);
 
   const countTruthy = (vals: Array<unknown>) =>
     vals.filter((v) => {
@@ -923,24 +903,28 @@ export default function PlayerEditorPage({ id }: { id: string }) {
       return !!(v !== null && v !== undefined && String(v).trim() !== "");
     }).length;
 
-  // Basic
   const cntBasicKnown = countTruthy([
     firstName,
     lastName,
-    ext.birthYear,
-    p.club,
-    ext.clubCountry,
+    birthYear,
+    club,
+    clubCountry,
   ]);
   const cntBasicUnknown = countTruthy([
-    ext.jerseyNumber,
-    p.club,
-    ext.clubCountry,
-    ext.unknownNote,
+    jerseyNumber,
+    uClub,
+    uClubCountry,
+    uNote,
   ]);
-  const cntBasic = isKnown ? cntBasicKnown : cntBasicUnknown;
-  const basicMax = isKnown ? 5 : 4;
+  const badgeBasic =
+    choice === "unknown"
+      ? cntBasicUnknown
+      : choice === "known"
+      ? cntBasicKnown
+      : 0;
+  const basicMax =
+    choice === "unknown" ? 4 : choice === "known" ? 5 : 0;
 
-  // Tabs – ext
   const cntProfile = countTruthy([
     ext.height,
     ext.weight,
@@ -981,56 +965,595 @@ export default function PlayerEditorPage({ id }: { id: string }) {
   const totalExt = cntProfile + cntEligibility + cntStats365 + cntContact;
   const totalExtMax = 5 + 10 + 5 + 5;
 
-  // Ocena
-  const cntNotes = countTruthy([grade.notes]);
-  const cntAspects = countTruthy(
-    enabledRatingAspects.map((a) => ratings[a.key] ?? 0)
-  );
-  const cntFinal = countTruthy([grade.finalComment]);
-  const totalGrade = cntNotes + cntAspects + cntFinal;
-  const totalGradeMax = 1 + enabledRatingAspects.length + 1;
+  const cntRatingsFilled = countTruthy(Object.values(ratings));
+  const cntGradeBadge = Number(Boolean(notes)) + cntRatingsFilled;
+  const cntGradeMax = 1 + enabledRatingAspects.length;
 
-  /* ---------- Ocena helpery ---------- */
+  const baseAspects = enabledRatingAspects.filter(
+    (a) => (a.groupKey ?? "GEN") === "GEN"
+  );
+  const gkAspects = enabledRatingAspects.filter((a) => a.groupKey === "GK");
+  const defAspects = enabledRatingAspects.filter((a) => a.groupKey === "DEF");
+  const midAspects = enabledRatingAspects.filter((a) => a.groupKey === "MID");
+  const attAspects = enabledRatingAspects.filter((a) => a.groupKey === "FW");
+
+  const effectiveMainPos: DetailedPos | "" =
+    (ext.mainPos as DetailedPos | "") || "";
+  const effectiveBucket: BucketPos | null = effectiveMainPos
+    ? toBucket(effectiveMainPos)
+    : null;
+
+  const [observations, setObservations] = useState<ObsRec[]>([]);
+  const [obsQuery, setObsQuery] = useState("");
+  const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
+  const [qaMatch, setQaMatch] = useState("");
+  const [qaDate, setQaDate] = useState("");
+  const [qaTime, setQaTime] = useState("");
+  const [qaMode, setQaMode] = useState<"live" | "tv">("live");
+  const [qaStatus, setQaStatus] = useState<"draft" | "final">("draft");
+  const [qaOpponentLevel, setQaOpponentLevel] = useState("");
+
+  const [qaTeamA, setQaTeamA] = useState("");
+  const [qaTeamB, setQaTeamB] = useState("");
+  const QA_CONDITIONS: ("live" | "tv")[] = ["live", "tv"];
+
+  function updateQaMatchFromTeams(a: string, b: string) {
+    setQaTeamA(a);
+    setQaTeamB(b);
+    const composed =
+      a.trim() && b.trim()
+        ? `${a.trim()} vs ${b.trim()}`
+        : (a + " " + b).trim();
+    setQaMatch(composed);
+  }
+
+  // Ładowanie obserwacji z globalnego dziennika
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const supabase = getSupabase();
+
+        const { data, error } = await supabase
+          .from("observations")
+          .select(
+            "id, match, date, time, status, mode, opponentLevel, players"
+          )
+          .order("date", { ascending: false })
+          .order("time", { ascending: false });
+
+        if (error) {
+          console.error(
+            "[PlayerEditorPage] Supabase load observations error:",
+            error
+          );
+          return;
+        }
+
+        if (!cancelled && data) {
+          const mapped: ObsRec[] = data.map((row: any) => ({
+            id: row.id,
+            match: safeText(row.match),
+            date: safeText(row.date),
+            time: safeText(row.time),
+            status: (row.status as "draft" | "final") ?? "draft",
+            mode: (row.mode as "live" | "tv") ?? "live",
+            opponentLevel: safeText(row.opponentLevel),
+            players: row.players ?? [],
+          }));
+          setObservations(mapped);
+        }
+      } catch (err) {
+        console.error(
+          "[PlayerEditorPage] Supabase load observations exception:",
+          err
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function addObservation() {
+    const next: ObsRec = {
+      id: Date.now(),
+      match: qaMatch.trim() || "—",
+      date: qaDate || "",
+      time: qaTime || "",
+      status: qaStatus,
+      mode: qaMode,
+      opponentLevel: qaOpponentLevel.trim() || "",
+      players: [],
+    };
+    setObservations((prev) => [next, ...prev]);
+    setQaMatch("");
+    setQaDate("");
+    setQaTime("");
+    setQaMode("live");
+    setQaStatus("draft");
+    setQaOpponentLevel("");
+    setQaTeamA("");
+    setQaTeamB("");
+  }
+
+  const normalizedObservations = useMemo<ObsRec[]>(() => {
+    return (observations || []).map((o) => ({
+      ...o,
+      match: safeText(o.match),
+      date: safeText(o.date),
+      time: safeText(o.time),
+      opponentLevel: safeText(o.opponentLevel),
+    }));
+  }, [observations]);
+
+  const existingFiltered = useMemo(() => {
+    const q = obsQuery.trim().toLowerCase();
+    const arr = [...normalizedObservations].sort((a, b) =>
+      ((b.date || "") + (b.time || "")).localeCompare(
+        (a.date || "") + (a.time || "")
+      )
+    );
+    if (!q) return arr;
+    return arr.filter((o) => {
+      const matchText = (o.match || "").toLowerCase();
+      const dateText = o.date || "";
+      return matchText.includes(q) || dateText.includes(q);
+    });
+  }, [normalizedObservations, obsQuery]);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingObs, setEditingObs] = useState<ObsRec | null>(null);
+
+  function openEditModal(o: ObsRec) {
+    setEditingObs({ ...o });
+    setEditOpen(true);
+  }
+
+  function saveEditedObservation() {
+    if (!editingObs) return;
+    const next = observations.map((o) =>
+      o.id === editingObs.id ? editingObs : o
+    );
+    setObservations(next);
+    setEditOpen(false);
+  }
+
+  const [extView, setExtView] = useState<ExtKey>("profile");
+
+  function ExtContent({ view }: { view: ExtKey }) {
+    switch (view) {
+      case "profile":
+        return (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <Label className="text-sm">Wzrost (cm)</Label>
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={ext.height}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, height: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Waga (kg)</Label>
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={ext.weight}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, weight: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Dominująca noga</Label>
+                <Select
+                  value={ext.dominantFoot || undefined}
+                  onValueChange={(val) =>
+                    setExt((s) => ({ ...s, dominantFoot: val }))
+                  }
+                >
+                  <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
+                    <SelectValue placeholder="Wybierz" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="R">Prawa (R)</SelectItem>
+                    <SelectItem value="L">Lewa (L)</SelectItem>
+                    <SelectItem value="Both">Obunożny</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <Label className="text-sm">Pozycje alternatywne</Label>
+                <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                  {POS_DATA.map((opt) => {
+                    const checked = ext.altPositions.includes(opt.value);
+                    return (
+                      <label
+                        key={opt.value}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs",
+                          checked
+                            ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-950/40"
+                            : "border-slate-200 bg-white dark:border-neutral-700 dark:bg-neutral-950"
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-3 w-3"
+                          checked={checked}
+                          onChange={() =>
+                            setExt((s) => {
+                              const current = s.altPositions;
+                              const next = checked
+                                ? current.filter((x) => x !== opt.value)
+                                : [...current, opt.value];
+                              return { ...s, altPositions: next };
+                            })
+                          }
+                        />
+                        <span>{opt.code}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "eligibility":
+        return (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <RadioChipGroup
+                  legend="Znajomość języka angielskiego"
+                  layout="grid-2"
+                  value={
+                    ext.english === true
+                      ? "yes"
+                      : ext.english === false
+                      ? "no"
+                      : ""
+                  }
+                  options={[{ value: "yes", label: "Tak" }, { value: "no", label: "Nie" }]}
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      english:
+                        val === "yes" ? true : val === "no" ? false : null,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <RadioChipGroup
+                  legend="Paszport UE"
+                  layout="grid-2"
+                  value={
+                    ext.euPassport === true
+                      ? "yes"
+                      : ext.euPassport === false
+                      ? "no"
+                      : ""
+                  }
+                  options={[{ value: "yes", label: "Tak" }, { value: "no", label: "Nie" }]}
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      euPassport:
+                        val === "yes" ? true : val === "no" ? false : null,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Kraj urodzenia</Label>
+                <CountryCombobox
+                  value={ext.birthCountry}
+                  onChange={(val) =>
+                    setExt((s) => ({ ...s, birthCountry: val }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <Label className="text-sm">Status kontraktu</Label>
+                <Input
+                  value={ext.contractStatus}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      contractStatus: e.target.value,
+                    }))
+                  }
+                  placeholder="np. do 2027, wolny agent…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Agencja menadżerska</Label>
+                <Input
+                  value={ext.agency}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, agency: e.target.value }))
+                  }
+                  placeholder="np. XYZ Management"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Klauzula wykupu</Label>
+                <Input
+                  value={ext.releaseClause}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      releaseClause: e.target.value,
+                    }))
+                  }
+                  placeholder="Kwota, zapis, uwagi…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">
+                  Poziom rozgrywkowy obecnego klubu
+                </Label>
+                <Input
+                  value={ext.leagueLevel}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, leagueLevel: e.target.value }))
+                  }
+                  placeholder="np. Ekstraklasa, CLJ U19, 3 liga…"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm">Linki do klipów / time-codes</Label>
+                <Textarea
+                  value={ext.clipsLinks}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, clipsLinks: e.target.value }))
+                  }
+                  placeholder="Lista linków (po jednym w linii)…"
+                  className="mt-1"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <Label className="text-sm">Link do Transfermarkt</Label>
+                  <Input
+                    value={ext.transfermarkt}
+                    onChange={(e) =>
+                      setExt((s) => ({
+                        ...s,
+                        transfermarkt: e.target.value,
+                      }))
+                    }
+                    placeholder="https://www.transfermarkt…"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">Link do Wyscout</Label>
+                  <Input
+                    value={ext.wyscout}
+                    onChange={(e) =>
+                      setExt((s) => ({ ...s, wyscout: e.target.value }))
+                    }
+                    placeholder="https://platform.wyscout…"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "stats365":
+        return (
+          <div className="space-y-5">
+            <div>
+              <Label className="text-sm">
+                Historia urazów (jeśli dostępna)
+              </Label>
+              <Textarea
+                value={ext.injuryHistory}
+                onChange={(e) =>
+                  setExt((s) => ({
+                    ...s,
+                    injuryHistory: e.target.value,
+                  }))
+                }
+                placeholder="Krótki opis kontuzji, przerw, operacji…"
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+              <div>
+                <Label className="text-sm">
+                  Minuty w ostatnich 365 dniach
+                </Label>
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={ext.minutes365}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      minutes365: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Mecze jako starter</Label>
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={ext.starts365}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      starts365: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Mecze jako rezerwowy</Label>
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={ext.subs365}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      subs365: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm">
+                  Gole w ostatnich 365 dniach
+                </Label>
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={ext.goals365}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      goals365: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case "contact":
+        return (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <Label className="text-sm">Telefon kontaktowy</Label>
+                <Input
+                  value={ext.phone}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, phone: e.target.value }))
+                  }
+                  placeholder="+48…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">E-mail kontaktowy</Label>
+                <Input
+                  type="email"
+                  value={ext.email}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, email: e.target.value }))
+                  }
+                  placeholder="mail@przyklad.pl"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <Label className="text-sm">Link FB</Label>
+                <Input
+                  value={ext.fb}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, fb: e.target.value }))
+                  }
+                  placeholder="https://facebook.com/…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Link IG</Label>
+                <Input
+                  value={ext.ig}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, ig: e.target.value }))
+                  }
+                  placeholder="https://instagram.com/…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Link TikTok</Label>
+                <Input
+                  value={ext.tiktok}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, tiktok: e.target.value }))
+                  }
+                  placeholder="https://tiktok.com/@…"
+                />
+              </div>
+            </div>
+          </div>
+        );
+    }
+  }
 
   function RatingRow({ aspect }: { aspect: RatingAspect }) {
     const val = ratings[aspect.key] ?? 0;
     const hasTooltip = !!aspect.tooltip;
+
     return (
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="max-w-[65%]">
-          <div className="flex items-center gap-1">
-            <span className="text-sm">{aspect.label}</span>
-            {hasTooltip && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-600 hover:bg-slate-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    >
-                      i
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs leading-snug">
-                    {aspect.tooltip}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+      <div className="flex w-full max-w-[320px] flex-col justify-between rounded-md border border-slate-200 bg-white/90 p-3 text-xs shadow-sm transition-shadow dark:border-neutral-700 dark:bg-neutral-950/80">
+        <div className="mb-2 flex items-start gap-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-1">
+              <span className="text-[13px] font-medium">
+                {aspect.label}
+              </span>
+              {hasTooltip && (
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-600 hover:bg-slate-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                      >
+                        i
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-xs leading-snug">
+                      {aspect.tooltip}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            {aspect.tooltip && (
+              <p className="mt-1 line-clamp-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                {aspect.tooltip}
+              </p>
             )}
           </div>
         </div>
-        <div className="mt-1 sm:mt-0">
+        <div className="mt-1">
           <StarRating
             max={5}
             value={val}
-            onChange={(v) => {
-              const next = {
-                ...ratings,
+            onChange={(v) =>
+              setRatings((prev) => ({
+                ...prev,
                 [aspect.key]: v,
-              };
-              setRatings(next);
-              saveMetaPatch({ ratings: next });
-            }}
+              }))
+            }
           />
         </div>
       </div>
@@ -1051,7 +1574,7 @@ export default function PlayerEditorPage({ id }: { id: string }) {
           <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
           {title}
         </div>
-        <div className="space-y-3">
+        <div className="flex flex-wrap gap-3">
           {aspects.map((aspect) => (
             <RatingRow key={aspect.id} aspect={aspect} />
           ))}
@@ -1060,1397 +1583,1442 @@ export default function PlayerEditorPage({ id }: { id: string }) {
     );
   }
 
-  /* ------------------------------ ExtContent (tabs) ------------------------------ */
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
+    "idle"
+  );
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function ExtContent({ view }: { view: ExtKey }) {
-    switch (view) {
-      case "profile":
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div>
-                <Label className="text-sm">Wzrost (cm)</Label>
-                <Input
-                  type="number"
-                  value={ext.height}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, height: v }));
-                    saveExtPatch({ height: v });
-                  }}
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Waga (kg)</Label>
-                <Input
-                  type="number"
-                  value={ext.weight}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, weight: v }));
-                    saveExtPatch({ weight: v });
-                  }}
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Dominująca noga</Label>
-                <Select
-                  value={ext.dominantFoot || undefined}
-                  onValueChange={(val) => {
-                    setExt((s) => ({ ...s, dominantFoot: val }));
-                    saveExtPatch({ dominantFoot: val });
-                  }}
-                >
-                  <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
-                    <SelectValue placeholder="Wybierz" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="R">Prawa (R)</SelectItem>
-                    <SelectItem value="L">Lewa (L)</SelectItem>
-                    <SelectItem value="Both">Obunożny</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+  useEffect(() => {
+    let cancelled = false;
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div
-                className={cn(
-                  highlightMainPos &&
-                    "rounded-md bg-indigo-50/60 p-2 ring-2 ring-indigo-500/80 dark:bg-indigo-950/30"
-                )}
-              >
-                <Label className="text-sm">Główna pozycja</Label>
-                <Select
-                  value={ext.mainPos || (currentDetailedPos ?? undefined)}
-                  onValueChange={(v) => {
-                    const val = v as DetailedPos;
-                    setExt((s) => ({ ...s, mainPos: val }));
-                    saveExtPatch({ mainPos: val });
-                    updateDetailedPos(val);
-                  }}
-                >
-                  <SelectTrigger className="mt-1 w-full justify-start border-gray-300 dark:border-neutral-700 dark:bg-neutral-950 [&>svg]:ml-auto">
-                    <SelectValue placeholder="Wybierz pozycję" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {POS_DATA.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        <div className="text-left">
-                          <div className="font-medium">
-                            {opt.code}: {opt.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {opt.desc}
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="mt-1 text-[11px] text-slate-600 dark:text-neutral-400">
-                  Ta pozycja steruje dodatkowymi kategoriami oceny
-                  (GK/DEF/MID/ATT).
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-sm">Pozycje alternatywne</Label>
-                <div className="mt-1 grid grid-cols-2 gap-1 sm:grid-cols-3">
-                  {POS_DATA.map((opt) => {
-                    const checked = ext.altPositions.includes(opt.value);
-                    return (
-                      <label
-                        key={opt.value}
-                        className={cn(
-                          "flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs",
-                          checked
-                            ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-950/40"
-                            : "border-slate-200 bg-white dark:border-neutral-700 dark:bg-neutral-950"
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-3 w-3"
-                          checked={checked}
-                          onChange={() => {
-                            setExt((s) => {
-                              const current = s.altPositions;
-                              const next = checked
-                                ? current.filter((x) => x !== opt.value)
-                                : [...current, opt.value];
-                              const upd = { ...s, altPositions: next };
-                              saveExtPatch({ altPositions: next });
-                              return upd;
-                            });
-                          }}
-                        />
-                        <span>{opt.code}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case "eligibility":
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div>
-                <Label className="text-sm">
-                  Znajomość języka angielskiego
-                </Label>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExt((s) => ({ ...s, english: true }));
-                      saveExtPatch({ english: true });
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
-                      ext.english === true
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    )}
-                  >
-                    Tak
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExt((s) => ({ ...s, english: false }));
-                      saveExtPatch({ english: false });
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
-                      ext.english === false
-                        ? "bg-rose-600 text-white hover:bg-rose-700"
-                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    )}
-                  >
-                    Nie
-                  </button>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm">Paszport UE</Label>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExt((s) => ({ ...s, euPassport: true }));
-                      saveExtPatch({ euPassport: true });
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
-                      ext.euPassport === true
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    )}
-                  >
-                    Tak
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExt((s) => ({ ...s, euPassport: false }));
-                      saveExtPatch({ euPassport: false });
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02]",
-                      ext.euPassport === false
-                        ? "bg-rose-600 text-white hover:bg-rose-700"
-                        : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                    )}
-                  >
-                    Nie
-                  </button>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm">Kraj urodzenia</Label>
-                <CountryCombobox
-                  value={ext.birthCountry}
-                  onChange={(val) => {
-                    setExt((s) => ({ ...s, birthCountry: val }));
-                    saveExtPatch({ birthCountry: val });
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div>
-                <Label className="text-sm">Status kontraktu</Label>
-                <Input
-                  value={ext.contractStatus}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, contractStatus: v }));
-                    saveExtPatch({ contractStatus: v });
-                  }}
-                  placeholder="np. do 2027, wolny agent…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Agencja menadżerska</Label>
-                <Input
-                  value={ext.agency}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, agency: v }));
-                    saveExtPatch({ agency: v });
-                  }}
-                  placeholder="np. XYZ Management"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Klauzula wykupu</Label>
-                <Input
-                  value={ext.releaseClause}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, releaseClause: v }));
-                    saveExtPatch({ releaseClause: v });
-                  }}
-                  placeholder="Kwota, zapis, uwagi…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">
-                  Poziom rozgrywkowy obecnego klubu
-                </Label>
-                <Input
-                  value={ext.leagueLevel}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, leagueLevel: v }));
-                    saveExtPatch({ leagueLevel: v });
-                  }}
-                  placeholder="np. Ekstraklasa, CLJ U19, 3 liga…"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm">Linki do klipów / time-codes</Label>
-                <Textarea
-                  value={ext.clipsLinks}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, clipsLinks: v }));
-                    saveExtPatch({ clipsLinks: v });
-                  }}
-                  placeholder="Lista linków (po jednym w linii)…"
-                  className="mt-1"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div>
-                  <Label className="text-sm">Link do Transfermarkt</Label>
-                  <Input
-                    value={ext.transfermarkt}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setExt((s) => ({ ...s, transfermarkt: v }));
-                      saveExtPatch({ transfermarkt: v });
-                    }}
-                    placeholder="https://www.transfermarkt…"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Link do Wyscout</Label>
-                  <Input
-                    value={ext.wyscout}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setExt((s) => ({ ...s, wyscout: v }));
-                      saveExtPatch({ wyscout: v });
-                    }}
-                    placeholder="https://platform.wyscout…"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case "stats365":
-        return (
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm">
-                Historia urazów (jeśli dostępna)
-              </Label>
-              <Textarea
-                value={ext.injuryHistory}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setExt((s) => ({ ...s, injuryHistory: v }));
-                  saveExtPatch({ injuryHistory: v });
-                }}
-                placeholder="Krótki opis kontuzji, przerw, operacji…"
-                className="mt-1"
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
-              <div>
-                <Label className="text-sm">
-                  Minuty w ostatnich 365 dniach
-                </Label>
-                <Input
-                  type="number"
-                  value={ext.minutes365}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, minutes365: v }));
-                    saveExtPatch({ minutes365: v });
-                  }}
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Mecze jako starter</Label>
-                <Input
-                  type="number"
-                  value={ext.starts365}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, starts365: v }));
-                    saveExtPatch({ starts365: v });
-                  }}
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Mecze jako rezerwowy</Label>
-                <Input
-                  type="number"
-                  value={ext.subs365}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, subs365: v }));
-                    saveExtPatch({ subs365: v });
-                  }}
-                />
-              </div>
-              <div>
-                <Label className="text-sm">
-                  Gole w ostatnich 365 dniach
-                </Label>
-                <Input
-                  type="number"
-                  value={ext.goals365}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, goals365: v }));
-                    saveExtPatch({ goals365: v });
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case "contact":
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div>
-                <Label className="text-sm">Telefon kontaktowy</Label>
-                <Input
-                  value={ext.phone}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, phone: v }));
-                    saveExtPatch({ phone: v });
-                  }}
-                  placeholder="+48…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">E-mail kontaktowy</Label>
-                <Input
-                  type="email"
-                  value={ext.email}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, email: v }));
-                    saveExtPatch({ email: v });
-                  }}
-                  placeholder="mail@przyklad.pl"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div>
-                <Label className="text-sm">Link FB</Label>
-                <Input
-                  value={ext.fb}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, fb: v }));
-                    saveExtPatch({ fb: v });
-                  }}
-                  placeholder="https://facebook.com/…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Link IG</Label>
-                <Input
-                  value={ext.ig}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, ig: v }));
-                    saveExtPatch({ ig: v });
-                  }}
-                  placeholder="https://instagram.com/…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Link TikTok</Label>
-                <Input
-                  value={ext.tiktok}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setExt((s) => ({ ...s, tiktok: v }));
-                    saveExtPatch({ tiktok: v });
-                  }}
-                  placeholder="https://tiktok.com/@…"
-                />
-              </div>
-            </div>
-          </div>
-        );
+    if (!choice || !playerId) {
+      setSaveState("idle");
+      return;
     }
+
+    const isKnown = choice === "known";
+    const knownValid =
+      isKnown &&
+      !!firstName.trim() &&
+      !!lastName.trim() &&
+      !!birthYear.trim() &&
+      !!club.trim() &&
+      !!clubCountry.trim();
+
+    const unknownValid =
+      !isKnown &&
+      !!jerseyNumber.trim() &&
+      !!uClub.trim() &&
+      !!uClubCountry.trim();
+
+    if (!knownValid && !unknownValid) {
+      setSaveState("idle");
+      return;
+    }
+
+    setSaveError(null);
+    setSaveState("saving");
+
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+
+    saveTimer.current = setTimeout(() => {
+      (async () => {
+        try {
+          const supabase = getSupabase();
+          const currentYear = new Date().getFullYear();
+
+          const isKnownX = choice === "known";
+          let name: string;
+          let clubFinal: string;
+          let posBucket: BucketPos;
+          let clubCountryFinal: string;
+          let age = 0;
+
+          if (isKnownX) {
+            const fn = firstName.trim();
+            const ln = lastName.trim();
+            name = `${fn} ${ln}`.trim() || "Bez imienia";
+            clubFinal = club.trim();
+            posBucket = toBucket(posDet);
+            clubCountryFinal = clubCountry.trim();
+            if (birthYear.trim()) {
+              const by = parseInt(birthYear.trim(), 10);
+              if (!Number.isNaN(by)) {
+                age = Math.max(0, currentYear - by);
+              }
+            }
+          } else {
+            const num = jerseyNumber.trim();
+            const c = uClub.trim();
+            name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
+            clubFinal = c;
+            posBucket = toBucket(uPosDet);
+            clubCountryFinal = uClubCountry.trim();
+          }
+
+          const nationalityVal =
+            ext.birthCountry.trim() || clubCountryFinal || null;
+
+          const meta = {
+            mode: choice,
+            extended: ext,
+            ratings,
+            notes,
+            unknownNote: uNote || null,
+            basic: {
+              firstName: firstName.trim() || null,
+              lastName: lastName.trim() || null,
+              birthYear: birthYear.trim() || null,
+              club: clubFinal,
+              clubCountry: clubCountryFinal || null,
+              jerseyNumber: jerseyNumber.trim() || null,
+              posDet,
+              uPosDet,
+            },
+            observationsMeta: {
+              selectedId: obsSelectedId,
+              list: normalizedObservations,
+            },
+          };
+
+          const updatePayload: any = {
+            name,
+            pos: posBucket,
+            club: clubFinal,
+            age,
+            status: "active",
+            firstName: isKnownX ? firstName.trim() || null : null,
+            lastName: isKnownX ? lastName.trim() || null : null,
+            birthDate: isKnownX ? birthYear.trim() || null : null,
+            nationality: nationalityVal,
+            photo: null,
+            meta,
+          };
+
+          const { error } = await supabase
+            .from("players")
+            .update(updatePayload)
+            .eq("id", playerId);
+
+          if (error) {
+            console.error("[PlayerEditorPage] Supabase update error:", error);
+            if (!cancelled) {
+              setSaveState("idle");
+              setSaveError(
+                "Nie udało się zaktualizować zawodnika w Supabase."
+              );
+            }
+            return;
+          }
+
+          if (!cancelled) {
+            setSaveState("saved");
+          }
+        } catch (err) {
+          console.error("[PlayerEditorPage] Supabase save exception:", err);
+          if (!cancelled) {
+            setSaveState("idle");
+            setSaveError(
+              "Wystąpił błąd podczas zapisu zawodnika do Supabase."
+            );
+          }
+        }
+      })();
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [
+    choice,
+    firstName,
+    lastName,
+    birthYear,
+    club,
+    clubCountry,
+    jerseyNumber,
+    uClub,
+    uClubCountry,
+    posDet,
+    uPosDet,
+    ext,
+    ratings,
+    notes,
+    normalizedObservations,
+    obsSelectedId,
+    playerId,
+    uNote,
+  ]);
+
+  const stepPillClass =
+    "inline-flex h-6 items-center rounded-md bg-slate-100 px-2.5 text-[11px] tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
+
+  const hasChoice = !!choice;
+
+  if (!playerId) {
+    return (
+      <div className="w-full space-y-4">
+        <Toolbar
+          title="Edycja zawodnika"
+          right={null}
+        />
+        <p className="text-sm text-red-600">
+          Brak poprawnego identyfikatora zawodnika w adresie URL.
+        </p>
+      </div>
+    );
   }
 
-  /* ============================== Render ============================== */
-
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
+      {/* Sticky mini actions under header when scroll */}
+      <div
+        className={cn(
+          "pointer-events-none sticky z-30 flex justify-end transition-all duration-200",
+          isScrolled ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
+        )}
+        style={{ top: headerHeight || 64 }}
+      >
+        <div className="pointer-events-auto mr-2 mt-2 flex items-center gap-2 bg-white/90 px-2 py-1 dark:bg-neutral-950/90 dark:ring-neutral-800">
+          <SavePill state={saveState} size="compact" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => router.push("/players")}
+          >
+            Wróć do listy
+          </Button>
+        </div>
+      </div>
+
       <Toolbar
-        title={`Profil: ${p.name}`}
+        title="Edycja zawodnika"
         right={
-          <div className="mb-4 flex w-full items-center gap-2 sm:gap-3 md:flex-nowrap justify-end">
-            <SavePill state={saveStatus} />
-            <div className="ml-auto md:ml-0 flex items-center gap-2">
-              <Button
-                variant="outline"
-                className="h-10 border-gray-300 dark:border-amber-800"
-                onClick={cancelToOriginal}
-              >
-                Cofnij zmiany
-              </Button>
-              <Button
-                className="h-10 bg-gray-900 text-white hover:bg-gray-800"
-                onClick={() => router.push("/players")}
-              >
-                Wróć do listy
-              </Button>
-            </div>
+          <div className="flex w-full items-center justify-end gap-2 sm:gap-3 md:flex-nowrap">
+            <SavePill state={saveState} />
+            <Button
+              variant="outline"
+              className="h-10"
+              onClick={() => router.push("/players")}
+            >
+              Wróć do listy
+            </Button>
           </div>
         }
       />
 
-      {isUnknown && (
-        <div className="mb-4 mt-2 rounded-md-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-100">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex flex-1 items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                <div className="font-medium">
-                  Edytujesz nieznanego zawodnika
-                </div>
-                <div className="opacity-90">
-                  Aby zapisać profil jako <b>nieznany</b>, wystarczy numer na
-                  koszulce, aktualny klub, kraj klubu i krótka notatka
-                  (opcjonalnie). Jeśli uzupełnisz <b>imię</b> lub{" "}
-                  <b>nazwisko</b>, profil zostanie traktowany jako{" "}
-                  <b>znany</b> (wtedy kluczowe są: imię, nazwisko, rok
-                  urodzenia, klub i kraj klubu).
-                </div>
-              </div>
-            </div>
-            <div className="flex w-full sm:w-auto items-center gap-2 justify-end sm:justify-normal sm:ml-4">
-              <Button
-                variant="outline"
-                className="h-9 border-amber-300 dark:border-amber-800"
-                onClick={cancelToOriginal}
-              >
-                Anuluj zmiany
-              </Button>
-              <Button
-                className="h-9 bg-gray-900 text-white hover:bg-gray-800"
-                onClick={manualSave}
-              >
-                Zapisz jako nieznany
-              </Button>
-            </div>
-          </div>
-        </div>
+      {loading && (
+        <Card className="border-dashed border-slate-300 bg-slate-50/80 dark:border-neutral-800 dark:bg-neutral-950/60">
+          <CardContent className="px-4 py-6 text-sm text-slate-600 dark:text-neutral-300">
+            Ładowanie danych zawodnika…
+          </CardContent>
+        </Card>
       )}
 
-      <div className="space-y-4">
-        {/* --- Podstawowe informacje --- */}
-        <Card className="mt-3">
-          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
+      {loadError && (
+        <p className="text-sm text-red-600">{loadError}</p>
+      )}
+
+      {/* KROK 0 – tryb (jak w AddPlayerPage) */}
+      <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
+        <CardHeader className="group flex items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+          <div className="flex w-full items-center justify-between gap-3">
+            <div>
+              <div className={stepPillClass}>Krok 0 · Tryb profilu</div>
+              <h2 className="mt-1 text-base font-semibold tracking-tight">
+                Wybierz sposób przechowywania danych zawodnika
+              </h2>
+              <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                Możesz przechowywać pełne dane osobowe lub tylko anonimowy
+                profil (numer, klub, kraj). Zmiana trybu zaktualizuje układ
+                pól.
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 py-4 md:px-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button
               type="button"
-              aria-expanded={basicOpen}
-              aria-controls="basic-panel"
-              onClick={() => setBasicOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
+              onClick={() => setChoice("known")}
+              className={cn(
+                "w-full rounded-lg p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md bg-white dark:bg-neutral-950 ring-1",
+                choice === "known"
+                  ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
+                  : "ring-gray-200 hover:ring-emerald-600/70 dark:ring-neutral-800 dark:hover:ring-emerald-600/60"
+              )}
             >
-              <div className="text-xl font-semibold leading-none tracking-tight">
-                Podstawowe informacje
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                  {cntBasic}/{basicMax}
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
+                  <KnownPlayerIcon
+                    className={cn(
+                      "h-7 w-7",
+                      choice === "known"
+                        ? "text-emerald-800"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                    strokeWidth={1.0}
+                  />
                 </span>
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    basicOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
+                <div className="min-w-0">
+                  <div
+                    className={cn(
+                      "mb-1 text-sm font-semibold",
+                      choice === "known"
+                        ? "text-emerald-900"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                  >
+                    Pełne dane zawodnika
+                  </div>
+                  <div
+                    className={cn(
+                      "text-xs leading-relaxed",
+                      choice === "known"
+                        ? "text-emerald-900/80"
+                        : "text-black/70 dark:text-neutral-300"
+                    )}
+                  >
+                    Imię, nazwisko, rok urodzenia, klub i kraj klubu. Profil
+                    gotowy pod pełne raporty.
+                  </div>
+                </div>
               </div>
             </button>
-          </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
-            <Accordion
-              type="single"
-              collapsible
-              value={basicOpen ? "basic" : undefined}
-              onValueChange={(v) => setBasicOpen(v === "basic")}
-              className="w-full"
-            >
-              <AccordionItem value="basic" className="border-0">
-                <AccordionContent id="basic-panel" className="pt-4">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    {/* Imię / Nazwisko */}
-                    <div>
-                      <Label className="text-sm">Imię</Label>
-                      <div className="relative">
-                        <Input
-                          value={firstName}
-                          onChange={(e) =>
-                            saveBasic({
-                              firstName: e.target.value,
-                              name: `${e.target.value} ${lastName}`.trim(),
-                            } as any)
-                          }
-                          className={
-                            isKnown && !firstName ? "pr-24" : undefined
-                          }
-                        />
-                        {isKnown && !firstName && <Chip text="Wymagane" />}
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-sm">Nazwisko</Label>
-                      <div className="relative">
-                        <Input
-                          value={lastName}
-                          onChange={(e) =>
-                            saveBasic({
-                              lastName: e.target.value,
-                              name: `${firstName} ${e.target.value}`.trim(),
-                            } as any)
-                          }
-                          className={
-                            isKnown && !lastName ? "pr-24" : undefined
-                          }
-                        />
-                        {isKnown && !lastName && <Chip text="Wymagane" />}
-                      </div>
-                    </div>
 
-                    {/* Rok urodzenia / Numer na koszulce */}
-                    <div>
-                      <Label className="text-sm">Rok urodzenia</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          value={ext.birthYear}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setExt((s) => ({ ...s, birthYear: v }));
-                            saveExtPatch({ birthYear: v });
-                          }}
-                          className={
-                            isKnown && !ext.birthYear ? "pr-24" : undefined
-                          }
-                        />
-                        {isKnown && !ext.birthYear && <Chip text="Wymagane" />}
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-sm">Numer na koszulce</Label>
-                      <div className="relative">
-                        <Input
-                          value={ext.jerseyNumber}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setExt((s) => ({ ...s, jerseyNumber: v }));
-                            saveExtPatch({ jerseyNumber: v });
-                          }}
-                          className={
-                            !isKnown && !ext.jerseyNumber ? "pr-24" : undefined
-                          }
-                        />
-                        {!isKnown && !ext.jerseyNumber && (
-                          <Chip text="Wymagane" />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Klub / kraj klubu */}
-                    <div>
-                      <Label className="text-sm">Aktualny klub</Label>
-                      <div className="relative">
-                        <Input
-                          value={p.club}
-                          onChange={(e) => saveBasic({ club: e.target.value })}
-                          className={!p.club ? "pr-24" : undefined}
-                        />
-                        {!p.club && <Chip text="Wymagane" />}
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-sm pb-2">
-                        Kraj aktualnego klubu
-                      </Label>
-                      <CountryCombobox
-                        value={ext.clubCountry}
-                        onChange={(val) => {
-                          setExt((s) => ({ ...s, clubCountry: val }));
-                          saveExtPatch({ clubCountry: val });
-                        }}
-                        chip={!ext.clubCountry ? "Wymagane" : undefined}
-                      />
-                    </div>
-
-                    {/* Notatka */}
-                    <div className="md:col-span-2">
-                      <Label className="text-sm">
-                        Notatka własna (dla nieznanego profilu)
-                      </Label>
-                      <Textarea
-                        value={ext.unknownNote}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setExt((s) => ({ ...s, unknownNote: v }));
-                          saveExtPatch({ unknownNote: v });
-                        }}
-                        placeholder="Krótki opis zawodnika, wyróżniki, informacje z meczu…"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* --- Rozszerzone informacje --- */}
-        <Card className="mt-3">
-          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
             <button
               type="button"
-              aria-expanded={extOpen}
-              aria-controls="ext-panel"
-              onClick={() => setExtOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
+              onClick={() => setChoice("unknown")}
+              className={cn(
+                "w-full rounded-lg p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md bg-white dark:bg-neutral-950 ring-1",
+                choice === "unknown"
+                  ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
+                  : "ring-gray-200 hover:ring-rose-600/70 dark:ring-neutral-800 dark:hover:ring-rose-600/60"
+              )}
             >
-              <div className="text-xl font-semibold leading-none tracking-tight">
-                Rozszerzone informacje
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                  {totalExt}/{totalExtMax}
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
+                  <UnknownPlayerIcon
+                    className={cn(
+                      "h-7 w-7",
+                      choice === "unknown"
+                        ? "text-rose-900"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                    strokeWidth={1.0}
+                  />
                 </span>
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    extOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
+                <div className="min-w-0">
+                  <div
+                    className={cn(
+                      "mb-1 text-sm font-semibold",
+                      choice === "unknown"
+                        ? "text-rose-900"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                  >
+                    Profil anonimowy
+                  </div>
+                  <div
+                    className={cn(
+                      "text-xs leading-relaxed",
+                      choice === "unknown"
+                        ? "text-rose-900/80"
+                        : "text-black/70 dark:text-neutral-300"
+                    )}
+                  >
+                    Numer, klub i kraj – gdy nie możesz (lub nie chcesz) podać
+                    danych osobowych, ale chcesz śledzić zawodnika.
+                  </div>
+                </div>
               </div>
             </button>
-          </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
-            <Accordion
-              type="single"
-              collapsible
-              value={extOpen ? "ext" : undefined}
-              onValueChange={(v) => setExtOpen(v === "ext")}
-              className="w-full"
-            >
-              <AccordionItem value="ext" className="border-0">
-                <AccordionContent id="ext-panel" className="pt-4">
-                  {/* Mobile: select; desktop: Tabs */}
-                  <div className="md:hidden">
-                    <Label className="mb-1 block text-sm">Sekcja</Label>
-                    <select
-                      value={extView}
-                      onChange={(e) => setExtView(e.target.value as ExtKey)}
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-                    >
-                      <option value="profile">Profil boiskowy</option>
-                      <option value="eligibility">
-                        Status &amp; scouting
-                      </option>
-                      <option value="stats365">Zdrowie i statystyki</option>
-                      <option value="contact">Kontakt &amp; social</option>
-                    </select>
-                    <div className="mt-4">
-                      <ExtContent view={extView} />
-                    </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Wrapper na kroki 1–4 z blokadą, gdy brak wyboru trybu */}
+      <div className="relative">
+        <div
+          className={cn(
+            "space-y-4",
+            !hasChoice && "pointer-events-none opacity-40 blur-[5px]"
+          )}
+        >
+          {/* KROK 1 – Podstawowe informacje + Główna pozycja (pitch) */}
+          <Card ref={basicRef} className="mt-1">
+            <CardHeader className="group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+              <button
+                type="button"
+                aria-expanded={basicOpen}
+                aria-controls="basic-panel"
+                onClick={() => setBasicOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div>
+                  <div className={stepPillClass}>Krok 1 · Dane bazowe</div>
+                  <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
+                    Podstawowe informacje
                   </div>
-
-                  <div className="hidden md:block">
-                    <Tabs
-                      value={extView}
-                      onValueChange={(v: any) => setExtView(v)}
-                      className="w-full"
-                    >
-                      <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="profile">
-                          Profil boiskowy
-                        </TabsTrigger>
-                        <TabsTrigger value="eligibility">
-                          Status &amp; scouting
-                        </TabsTrigger>
-                        <TabsTrigger value="stats365">
-                          Zdrowie i statystyki
-                        </TabsTrigger>
-                        <TabsTrigger value="contact">
-                          Kontakt &amp; social
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="profile" className="mt-4">
-                        <ExtContent view="profile" />
-                      </TabsContent>
-                      <TabsContent value="eligibility" className="mt-4">
-                        <ExtContent view="eligibility" />
-                      </TabsContent>
-                      <TabsContent value="stats365" className="mt-4">
-                        <ExtContent view="stats365" />
-                      </TabsContent>
-                      <TabsContent value="contact" className="mt-4">
-                        <ExtContent view="contact" />
-                      </TabsContent>
-                    </Tabs>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* --- Ocena --- */}
-        <Card className="mt-3">
-          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
-            <button
-              type="button"
-              aria-expanded={gradeOpen}
-              aria-controls="grade-panel"
-              onClick={() => setGradeOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
-            >
-              <div className="text-xl font-semibold leading-none tracking-tight">
-                Ocena
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                  {totalGrade}/{totalGradeMax}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    gradeOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
-              </div>
-            </button>
-          </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
-            <Accordion
-              type="single"
-              collapsible
-              value={gradeOpen ? "grade" : undefined}
-              onValueChange={(v) => setGradeOpen(v === "grade")}
-              className="w-full"
-            >
-              <AccordionItem value="grade" className="border-0">
-                <AccordionContent id="grade-panel" className="pt-4">
-                  {isUnknown && (
-                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
-                      Dla nieznanych profili ocena jest opcjonalna – możesz ją
-                      uzupełnić, gdy będziesz mieć więcej informacji o
-                      zawodniku.
-                    </p>
-                  )}
-
-                  <div className="relative">
-                    {/* Główna treść */}
-                    <div
-                      className={cn(
-                        "space-y-5",
-                        !effectiveMainPos && "pointer-events-none opacity-40"
-                      )}
-                    >
-                      {/* Poziom docelowy */}
-                      <div>
-                        <Label className="text-sm">
-                          Poziom docelowy – gdzie mógłby grać zawodnik
-                        </Label>
-                        <Textarea
-                          placeholder={`Np. "Ekstraklasa top 8", "CLJ U19 czołowy zespół", "II liga – górna połowa"…`}
-                          value={grade.notes}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setGrade((s) => ({ ...s, notes: v }));
-                            saveMetaPatch({ targetLevel: v, notes: v });
-                          }}
-                          className="mt-1"
-                        />
-                      </div>
-
-                      {/* Oceny 1–5 */}
+                  <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                    Kluczowe dane zawodnika wykorzystywane w tabelach i
+                    raportach.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pl-4">
+                  <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                    {badgeBasic}/{basicMax}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 transition-transform",
+                      basicOpen ? "rotate-180" : "rotate-0"
+                    )}
+                  />
+                </div>
+              </button>
+            </CardHeader>
+            <CardContent className="px-4 py-0 md:px-6">
+              <Accordion
+                type="single"
+                collapsible
+                value={basicOpen ? "basic" : undefined}
+                onValueChange={(v) => setBasicOpen(v === "basic")}
+                className="w-full"
+              >
+                <AccordionItem value="basic" className="border-0">
+                  <AccordionContent id="basic-panel" className="pt-4 pb-5">
+                    {choice === "unknown" ? (
                       <div className="space-y-5">
-                        {enabledRatingAspects.length === 0 ? (
-                          <p className="text-xs text-slate-500 dark:text-neutral-400">
-                            Brak skonfigurowanych kategorii ocen. Dodaj je w
-                            panelu <b>„Konfiguracja ocen zawodnika”</b>.
-                          </p>
-                        ) : (
-                          <>
-                            <RatingGroup
-                              title="Podstawowe"
-                              aspects={baseAspects}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div>
+                            <Label className="text-sm">
+                              Numer na koszulce
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                className={cn(!jerseyNumber && "pr-24")}
+                                value={jerseyNumber}
+                                onChange={(e) =>
+                                  setJerseyNumber(e.target.value)
+                                }
+                                placeholder="np. 27"
+                              />
+                              {!jerseyNumber && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm">Aktualny klub</Label>
+                            <div className="relative">
+                              <Input
+                                value={uClub}
+                                onChange={(e) => setUClub(e.target.value)}
+                                className={cn(!uClub && "pr-24")}
+                              />
+                              {!uClub && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm pb-2">
+                              Kraj aktualnego klubu
+                            </Label>
+                            <CountryCombobox
+                              value={uClubCountry}
+                              onChange={(val) => setUClubCountry(val)}
+                              chip={!uClubCountry ? "Wymagane" : undefined}
                             />
+                          </div>
+                          <div className="md:col-span-2">
+                            <Label className="text-sm">
+                              Notatka własna (opcjonalne)
+                            </Label>
+                            <Textarea
+                              value={uNote}
+                              onChange={(e) => setUNote(e.target.value)}
+                              placeholder="Krótka notatka o zawodniku, kontekst skauta…"
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
 
-                            {effectiveBucket === "GK" && (
-                              <RatingGroup
-                                title="Bramkarz (GK)"
-                                aspects={gkAspects}
-                              />
-                            )}
-                            {effectiveBucket === "DF" && (
-                              <RatingGroup
-                                title="Obrońca (DEF)"
-                                aspects={defAspects}
-                              />
-                            )}
-                            {effectiveBucket === "MF" && (
-                              <RatingGroup
-                                title="Pomocnik (MID)"
-                                aspects={midAspects}
-                              />
-                            )}
-                            {effectiveBucket === "FW" && (
-                              <RatingGroup
-                                title="Napastnik (ATT)"
-                                aspects={attAspects}
-                              />
-                            )}
-
-                            {!effectiveBucket &&
-                              enabledRatingAspects.length > 0 && (
-                                <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                                  Ustaw <b>Główną pozycję</b> w sekcji
-                                  „Rozszerzone informacje”, aby zobaczyć
-                                  dodatkowe kategorie oceny (GK/DEF/MID/ATT).
-                                </p>
-                              )}
-                          </>
-                        )}
-                      </div>
-
-                      {/* Podsumowanie */}
-                      <div>
-                        <Label className="text-sm">
-                          Podsumowanie – opis zawodnika, mocne/słabe strony,
-                          ryzyka, rekomendacja
-                        </Label>
-                        <Textarea
-                          placeholder="Swobodny opis zawodnika, mocne / słabe strony, kluczowe ryzyka, rekomendacja (TAK / NIE / OBSERWOWAĆ)…"
-                          value={grade.finalComment}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setGrade((s) => ({ ...s, finalComment: v }));
-                            saveMetaPatch({
-                              finalSummary: v,
-                              finalComment: v,
-                            });
+                        <MainPositionPitch
+                          value={(ext.mainPos as DetailedPos | "") || ""}
+                          onChange={(pos) => {
+                            setExt((s) => ({ ...s, mainPos: pos }));
+                            setUPosDet(pos);
+                            setPosDet(pos);
                           }}
-                          className="mt-1"
                         />
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-5">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div>
+                            <Label className="text-sm">Imię</Label>
+                            <div className="relative">
+                              <Input
+                                value={firstName}
+                                onChange={(e) =>
+                                  setFirstName(e.target.value)
+                                }
+                                className={cn(!firstName && "pr-24")}
+                              />
+                              {!firstName && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm">Nazwisko</Label>
+                            <div className="relative">
+                              <Input
+                                value={lastName}
+                                onChange={(e) =>
+                                  setLastName(e.target.value)
+                                }
+                                className={cn(!lastName && "pr-24")}
+                              />
+                              {!lastName && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm">Rok urodzenia</Label>
+                            <div className="relative">
+                              <Input
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={birthYear}
+                                onChange={(e) =>
+                                  setBirthYear(e.target.value)
+                                }
+                                className={cn(!birthYear && "pr-24")}
+                              />
+                              {!birthYear && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm">
+                              Numer na koszulce
+                            </Label>
+                            <Input
+                              value={jerseyNumber}
+                              onChange={(e) =>
+                                setJerseyNumber(e.target.value)
+                              }
+                              placeholder="opcjonalne"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm">Aktualny klub</Label>
+                            <div className="relative">
+                              <Input
+                                value={club}
+                                onChange={(e) => setClub(e.target.value)}
+                                className={cn(!club && "pr-24")}
+                              />
+                              {!club && <Chip text="Wymagane" />}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm pb-2">
+                              Kraj aktualnego klubu
+                            </Label>
+                            <CountryCombobox
+                              value={clubCountry}
+                              onChange={(val) => setClubCountry(val)}
+                              chip={!clubCountry ? "Wymagane" : undefined}
+                            />
+                          </div>
+                        </div>
 
-                    {/* Overlay blokujący, jeśli nie wybrano Głównej pozycji */}
-                    {!effectiveMainPos && (
-                      <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
-                        <p className="mb-3 text-xs sm:text-sm text-slate-700 dark:text-neutral-200">
-                          Aby wprowadzić oceny i poziom docelowy, najpierw
-                          uzupełnij <b>Główną pozycję</b> w sekcji
-                          „Rozszerzone informacje”.
-                        </p>
-                        <Button
-                          size="sm"
-                          type="button"
-                          className="bg-gray-900 text-white hover:bg-gray-800"
-                          onClick={() => {
-                            setExtOpen(true);
-                            setExtView("profile");
-                            setHighlightMainPos(true);
+                        <MainPositionPitch
+                          value={(ext.mainPos as DetailedPos | "") || ""}
+                          onChange={(pos) => {
+                            setExt((s) => ({ ...s, mainPos: pos }));
+                            setPosDet(pos);
+                            setUPosDet(pos);
                           }}
-                        >
-                          Uzupełnij Główną pozycję
-                        </Button>
+                        />
                       </div>
                     )}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+
+          {/* KROK 2 – Rozszerzone informacje (tabs jak w AddPlayerPage) */}
+          <Card className="mt-1">
+            <CardHeader className="group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+              <button
+                type="button"
+                aria-expanded={extOpen}
+                aria-controls="ext-panel"
+                onClick={() => setExtOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div>
+                  <div className={stepPillClass}>Krok 2 · Profil boiskowy</div>
+                  <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
+                    Rozszerzone informacje
                   </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* --- Obserwacje --- */}
-        <Card className="mt-3">
-          <CardHeader className="flex items-center justify-between border-b border-gray-200 px-4 py-5 md:px-6 dark:border-neutral-800">
-            <button
-              type="button"
-              aria-expanded={obsOpen}
-              aria-controls="obs-panel"
-              onClick={() => setObsOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
-            >
-              <div className="text-xl font-semibold leading-none tracking-tight">
-                Obserwacje
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                  {playerObs.length}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    obsOpen ? "rotate-180" : "rotate-0"
+                  <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                    Dodatkowe dane sportowe, kontraktowe i kontaktowe – przydatne
+                    w profesjonalnym scouting report.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pl-4">
+                  {choice === "unknown" && (
+                    <span className="hidden text-[11px] text-slate-500 sm:inline">
+                      Profil anonimowy
+                    </span>
                   )}
-                />
-              </div>
-            </button>
-          </CardHeader>
+                  <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                    {totalExt}/{totalExtMax}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 transition-transform",
+                      extOpen ? "rotate-180" : "rotate-0"
+                    )}
+                  />
+                </div>
+              </button>
+            </CardHeader>
+            <CardContent className="px-4 py-0 md:px-6">
+              <Accordion
+                type="single"
+                collapsible
+                value={extOpen ? "ext" : undefined}
+                onValueChange={(v) => setExtOpen(v === "ext")}
+                className="w-full"
+              >
+                <AccordionItem value="ext" className="border-0">
+                  <AccordionContent id="ext-panel" className="pt-4 pb-5">
+                    {choice === "unknown" && (
+                      <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                        Możesz stopniowo uzupełniać te dane, gdy będziesz
+                        poznawać zawodnika lepiej.
+                      </p>
+                    )}
 
-          <CardContent className="px-4 py-0 md:px-6">
-            <Accordion
-              type="single"
-              collapsible
-              value={obsOpen ? "obs" : undefined}
-              onValueChange={(v) => setObsOpen(v === "obs")}
-            >
-              <AccordionItem value="obs" className="border-0">
-                <AccordionContent id="obs-panel" className="pt-4">
-                  <Tabs defaultValue="new" className="w-full">
-                    {/* segmented control */}
-                    <TabsList className="mb-3 inline-flex w-full max-w-md items-center justify-between rounded-md bg-gray-100 p-1 shadow-inner dark:bg-neutral-900">
-                      <TabsTrigger
-                        value="new"
-                        className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                    {/* Mobile: Select; Desktop: Tabs (identyczne jak w AddPlayerPage) */}
+                    <div className="md:hidden">
+                      <Label className="mb-1 block text-sm">Sekcja</Label>
+                      <select
+                        value={extView}
+                        onChange={(e) =>
+                          setExtView(e.target.value as ExtKey)
+                        }
+                        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                       >
-                        Nowa obserwacja
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="existing"
-                        className="flex-1 rounded-md px-4 py-2 text-xs sm:text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-neutral-800"
+                        <option value="profile">Profil boiskowy</option>
+                        <option value="eligibility">
+                          Status &amp; scouting
+                        </option>
+                        <option value="stats365">Zdrowie i statystyki</option>
+                        <option value="contact">
+                          Kontakt &amp; social
+                        </option>
+                      </select>
+                      <div className="mt-4">
+                        <ExtContent view={extView} />
+                      </div>
+                    </div>
+
+                    <div className="hidden md:block">
+                      <Tabs
+                        value={extView}
+                        onValueChange={(v: any) => setExtView(v)}
+                        className="w-full"
                       >
-                        Istniejące
-                      </TabsTrigger>
-                    </TabsList>
-                    <p className="mb-4 text-xs text-slate-500 dark:text-neutral-400">
-                      Dodaj nową obserwację tego zawodnika lub przypisz
-                      istniejącą z Twojego dziennika.
-                    </p>
+                        <TabsList className="inline-flex w-auto gap-1 rounded-md bg-slate-100 p-1 dark:bg-neutral-900">
+                          <TabsTrigger value="profile">
+                            Profil boiskowy
+                          </TabsTrigger>
+                          <TabsTrigger value="eligibility">
+                            Status &amp; scouting
+                          </TabsTrigger>
+                          <TabsTrigger value="stats365">
+                            Zdrowie i statystyki
+                          </TabsTrigger>
+                          <TabsTrigger value="contact">
+                            Kontakt &amp; social
+                          </TabsTrigger>
+                        </TabsList>
 
-                    {/* NEW */}
-                    <TabsContent value="new" className="mt-2 space-y-4">
-                      <div>
-                        <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
-                          Mecz
-                        </div>
-                        <div className="mb-3 text-xs text-slate-700 dark:text-neutral-400">
-                          Wpisz drużyny — pole „Mecz” składa się automatycznie.
-                        </div>
+                        <TabsContent value="profile" className="mt-4">
+                          <ExtContent view="profile" />
+                        </TabsContent>
+                        <TabsContent value="eligibility" className="mt-4">
+                          <ExtContent view="eligibility" />
+                        </TabsContent>
+                        <TabsContent value="stats365" className="mt-4">
+                          <ExtContent view="stats365" />
+                        </TabsContent>
+                        <TabsContent value="contact" className="mt-4">
+                          <ExtContent view="contact" />
+                        </TabsContent>
+                      </Tabs>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
 
-                        <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
-                          <div>
-                            <Label>Drużyna A</Label>
-                            <Input
-                              value={qaMatch.split(/ *vs */i)[0] || ""}
-                              onChange={(e) => {
-                                const b =
-                                  (qaMatch.split(/ *vs */i)[1] || "").trim();
-                                const a = e.target.value;
-                                setQaMatch(
-                                  a && b
-                                    ? `${a} vs ${b}`
-                                    : (a + " " + b).trim()
-                                );
-                              }}
-                              placeholder="np. Lech U19"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div className="hidden select-none items-end justify-center pb-2 text-sm text-slate-800 dark:text-neutral-200 sm:flex">
-                            vs
-                          </div>
-                          <div>
-                            <Label>Drużyna B</Label>
-                            <Input
-                              value={
-                                (qaMatch.split(/ *vs */i)[1] || "").trim()
-                              }
-                              onChange={(e) => {
-                                const a =
-                                  (qaMatch.split(/ *vs */i)[0] || "").trim();
-                                const b = e.target.value;
-                                setQaMatch(
-                                  a && b
-                                    ? `${a} vs ${b}`
-                                    : (a + " " + b).trim()
-                                );
-                              }}
-                              placeholder="np. Wisła U19"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div className="sm:hidden text-center text-sm text-slate-800 dark:text-neutral-200">
-                            vs
-                          </div>
-                        </div>
+          {/* KROK 3 – Ocena (layout 1:1 jak w AddPlayerPage) */}
+          <Card className="mt-1">
+            <CardHeader className="group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+              <button
+                type="button"
+                aria-expanded={gradeOpen}
+                aria-controls="grade-panel"
+                onClick={() => setGradeOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div>
+                  <div className={stepPillClass}>Krok 3 · Ocena</div>
+                  <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
+                    Ocena zawodnika
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                    Rozbij ocenę na kategorie techniczne, mentalne i fizyczne –
+                    konfigurujesz je w module „Konfiguracja ocen zawodnika”.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pl-4">
+                  {choice === "unknown" && (
+                    <span className="hidden text-[11px] text-slate-500 sm:inline">
+                      Profil anonimowy
+                    </span>
+                  )}
+                  <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                    {cntGradeBadge}/{cntGradeMax}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 transition-transform",
+                      gradeOpen ? "rotate-180" : "rotate-0"
+                    )}
+                  />
+                </div>
+              </button>
+            </CardHeader>
+            <CardContent className="px-4 py-0 md:px-6">
+              <Accordion
+                type="single"
+                collapsible
+                value={gradeOpen ? "grade" : undefined}
+                onValueChange={(v) => setGradeOpen(v === "grade")}
+                className="w-full"
+              >
+                <AccordionItem value="grade" className="border-0">
+                  <AccordionContent id="grade-panel" className="pt-4 pb-5">
+                    {choice === "unknown" && (
+                      <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                        Możesz wypełniać oceny nawet dla profilu anonimowego –
+                        ważna jest zachowana spójność z główną pozycją.
+                      </p>
+                    )}
 
-                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          <div>
-                            <Label>Data meczu</Label>
-                            <Input
-                              type="date"
-                              value={qaDate}
-                              onChange={(e) => setQaDate(e.target.value)}
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Godzina meczu</Label>
-                            <Input
-                              type="time"
-                              value={qaTime}
-                              onChange={(e) => setQaTime(e.target.value)}
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Poziom przeciwnika</Label>
-                            <Input
-                              value={qaOpponentLevel}
-                              onChange={(e) =>
-                                setQaOpponentLevel(e.target.value)
-                              }
-                              placeholder="np. CLJ U17, 3 liga, top akademia…"
-                              className="mt-1"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <div>
-                            <Label className="text-sm">Tryb</Label>
-                            <div className="mt-2 flex gap-2">
-                              <button
-                                onClick={() => setQaMode("live")}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                  qaMode === "live"
-                                    ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                )}
-                                type="button"
-                                aria-pressed={qaMode === "live"}
-                              >
-                                Live
-                              </button>
-                              <button
-                                onClick={() => setQaMode("tv")}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                  qaMode === "tv"
-                                    ? "bg-violet-600 text-white hover:bg-violet-700"
-                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                )}
-                                type="button"
-                                aria-pressed={qaMode === "tv"}
-                              >
-                                TV
-                              </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label className="text-sm">Status</Label>
-                            <div className="mt-2 flex gap-2">
-                              <button
-                                onClick={() => setQaStatus("draft")}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                  qaStatus === "draft"
-                                    ? "bg-amber-600 text-white hover:bg-amber-700"
-                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                )}
-                                type="button"
-                                aria-pressed={qaStatus === "draft"}
-                              >
-                                Szkic
-                              </button>
-                              <button
-                                onClick={() => setQaStatus("final")}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-medium transition hover:scale-[1.02] focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60",
-                                  qaStatus === "final"
-                                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                    : "bg-stone-100 text-gray-800 hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                                )}
-                                type="button"
-                                aria-pressed={qaStatus === "final"}
-                              >
-                                Finalna
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 space-y-1 text-xs text-slate-800 dark:text-neutral-300">
-                          <div>
-                            Mecz:{" "}
-                            <span className="font-medium">
-                              {qaMatch || "—"}
-                            </span>
-                            <span className="ml-2 inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-                              {qaMode === "tv" ? "TV" : "Live"}
-                            </span>
-                          </div>
-                          {qaOpponentLevel && (
-                            <div className="text-[11px] text-slate-600 dark:text-neutral-400">
-                              Poziom przeciwnika:{" "}
-                              <span className="font-medium">
-                                {qaOpponentLevel}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="sticky bottom-0 mt-1 -mx-4 border-t border-gray-200 bg-white/90 px-4 py-5 md:-mx-6 md:px-6 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            className="bg-gray-900 text-white hover:bg-gray-800"
-                            onClick={addObservationForPlayer}
-                            disabled={!qaMatch.trim() || !qaDate.trim()}
-                          >
-                            Dodaj obserwację tego zawodnika
-                          </Button>
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    {/* EXISTING */}
-                    <TabsContent value="existing" className="mt-2 space-y-3">
-                      <div className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
-                        <div className="flex items-center gap-2">
-                          <Search className="h-4 w-4 opacity-70" />
+                    <div className="relative">
+                      <div
+                        className={cn(
+                          "space-y-6",
+                          !effectiveMainPos && "pointer-events-none opacity-40"
+                        )}
+                      >
+                        <div>
+                          <Label className="text-sm">Notatki ogólne</Label>
                           <Input
-                            value={obsQuery}
-                            onChange={(e) => setObsQuery(e.target.value)}
-                            placeholder="Szukaj po meczu, zawodniku, dacie…"
-                            className="flex-1 border-0 focus-visible:ring-0"
+                            placeholder="Krótki komentarz o zawodniku…"
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            className="mt-1"
                           />
                         </div>
-                        <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-                          Wybierz obserwację z listy, aby przypisać ją do tego
-                          profilu lub skopiować.
-                        </p>
-                      </div>
 
-                      <div className="max-h-80 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
-                        <table className="w-full text-sm">
-                          <thead className="sticky top-0 bg-stone-100 text-slate-900 dark:bg-neutral-900 dark:text-neutral-300">
-                            <tr>
-                              <th className="p-2 text-left font-medium">#</th>
-                              <th className="p-2 text-left font-medium">
-                                Mecz
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Zawodnicy
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Data
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Poziom
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Tryb
-                              </th>
-                              <th className="p-2 text-left font-medium">
-                                Status
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {existingFiltered.map((o, idx) => (
-                              <tr
-                                key={o.id}
-                                className={cn(
-                                  "cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
-                                  idx % 2
-                                    ? "bg-stone-100/40 dark:bg-neutral-900/30"
-                                    : "",
-                                  obsSelectedId === o.id
-                                    ? "bg-blue-50/60 dark:bg-blue-900/20"
-                                    : ""
-                                )}
-                                onClick={() => setObsSelectedId(o.id)}
-                              >
-                                <td className="p-2">
-                                  <input
-                                    type="radio"
-                                    name="obsPick"
-                                    checked={obsSelectedId === o.id}
-                                    onChange={() => setObsSelectedId(o.id)}
-                                  />
-                                </td>
-                                <td className="p-2">{o.match || "—"}</td>
-                                <td className="p-2">
-                                  {(o.players ?? []).length > 0 ? (
-                                    <div className="flex flex-wrap gap-1">
-                                      {(o.players ?? []).map((n: any, i) => {
-                                        const label =
-                                          typeof n === "string"
-                                            ? n
-                                            : n &&
-                                              typeof n === "object" &&
-                                              "name" in n
-                                            ? String(n.name)
-                                            : "";
+                        <div className="space-y-6">
+                          {enabledRatingAspects.length === 0 && (
+                            <p className="text-xs text-slate-500 dark:text-neutral-400">
+                              Brak skonfigurowanych kategorii ocen. Dodaj je w
+                              panelu „Konfiguracja ocen zawodnika”.
+                            </p>
+                          )}
 
-                                        if (!label) return null;
+                          <RatingGroup title="Podstawowe" aspects={baseAspects} />
 
-                                        return (
-                                          <span
-                                            key={`${o.id}-pl-${i}`}
-                                            className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
-                                          >
-                                            {label}
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    "—"
-                                  )}
-                                </td>
+                          {effectiveBucket === "GK" && (
+                            <RatingGroup
+                              title="Bramkarz (GK)"
+                              aspects={gkAspects}
+                            />
+                          )}
+                          {effectiveBucket === "DF" && (
+                            <RatingGroup
+                              title="Obrońca (DEF)"
+                              aspects={defAspects}
+                            />
+                          )}
+                          {effectiveBucket === "MF" && (
+                            <RatingGroup
+                              title="Pomocnik (MID)"
+                              aspects={midAspects}
+                            />
+                          )}
+                          {effectiveBucket === "FW" && (
+                            <RatingGroup
+                              title="Napastnik (ATT)"
+                              aspects={attAspects}
+                            />
+                          )}
 
-                                <td className="p-2">
-                                  {[o.date || "—", o.time || ""]
-                                    .filter(Boolean)
-                                    .join(" ")}
-                                </td>
-                                <td className="p-2 text-xs">
-                                  {o.opponentLevel || (
-                                    <span className="text-slate-400">—</span>
-                                  )}
-                                </td>
-                                <td className="p-2">
-                                  <span
-                                    className={cn(
-                                      "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-                                      (o as any).mode === "tv"
-                                        ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
-                                        : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                    )}
-                                  >
-                                    {(o as any).mode === "tv" ? "TV" : "Live"}
-                                  </span>
-                                </td>
-                                <td className="p-2">
-                                  <span
-                                    className={cn(
-                                      "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-                                      o.status === "final"
-                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                                    )}
-                                  >
-                                    {o.status === "final"
-                                      ? "Finalna"
-                                      : "Szkic"}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                            {existingFiltered.length === 0 && (
-                              <tr>
-                                <td
-                                  colSpan={7}
-                                  className="p-6 text-center text-sm text-slate-900 dark:text-neutral-400"
-                                >
-                                  Brak obserwacji dla podanych kryteriów.
-                                </td>
-                              </tr>
+                          {!effectiveBucket &&
+                            enabledRatingAspects.length > 0 && (
+                              <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                Ustaw <b>Główną pozycję</b> w kroku 1, aby
+                                zobaczyć dodatkowe kategorie oceny
+                                (GK/DEF/MID/ATT).
+                              </p>
                             )}
-                          </tbody>
-                        </table>
+                        </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-[11px] text-slate-800 dark:text-neutral-400">
-                          Wybierz rekord i wybierz akcję.
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {/* opcjonalnie: duplikat */}
-                          {/* <Button
-                            variant="outline"
-                            disabled={obsSelectedId == null}
-                            onClick={duplicateExistingToThisPlayer}
-                          >
-                            Skopiuj jako nową obserwację
-                          </Button> */}
+                      {!effectiveMainPos && (
+                        <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
+                          <p className="mb-3 text-xs text-slate-700 dark:text-neutral-200 sm:text-sm">
+                            Aby wprowadzić oceny, najpierw uzupełnij{" "}
+                            <b>Główną pozycję</b> zawodnika w kroku 1.
+                          </p>
                           <Button
+                            size="sm"
+                            type="button"
                             className="bg-gray-900 text-white hover:bg-gray-800"
-                            disabled={obsSelectedId == null}
-                            onClick={reassignExistingToThisPlayer}
+                            onClick={() => {
+                              setBasicOpen(true);
+                              basicRef.current?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "start",
+                              });
+                            }}
                           >
-                            Przypisz do zawodnika
+                            Przejdź do kroku 1
                           </Button>
                         </div>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+
+          {/* KROK 4 – Obserwacje (jak w AddPlayerPage) */}
+          <Card className="mt-1">
+            <CardHeader className="group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+              <button
+                type="button"
+                aria-expanded={obsOpen}
+                aria-controls="obs-panel"
+                onClick={() => setObsOpen((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div>
+                  <div className={stepPillClass}>Krok 4 · Obserwacje</div>
+                  <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
+                    Obserwacje
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                    Dodawaj mecze i przypisuj je do profilu zawodnika. Możesz
+                    korzystać z globalnego dziennika obserwacji.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pl-4">
+                  {choice === "unknown" && (
+                    <span className="hidden text-[11px] text-slate-500 sm:inline">
+                      Profil anonimowy
+                    </span>
+                  )}
+                  <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+                    {normalizedObservations.length}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 transition-transform",
+                      obsOpen ? "rotate-180" : "rotate-0"
+                    )}
+                  />
+                </div>
+              </button>
+            </CardHeader>
+            <CardContent className="px-4 py-0 md:px-6">
+              <Accordion
+                type="single"
+                collapsible
+                value={obsOpen ? "obs" : undefined}
+                onValueChange={(v) => setObsOpen(v === "obs")}
+              >
+                <AccordionItem value="obs" className="border-0">
+                  <AccordionContent id="obs-panel" className="pt-4 pb-5">
+                    {choice === "unknown" && (
+                      <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                        Możesz tworzyć obserwacje również dla profilu
+                        anonimowego – ważne, by zachować spójność meczu i
+                        poziomu.
+                      </p>
+                    )}
+
+                    <div className="space-y-8">
+                      {/* Nowa obserwacja */}
+                      <section className="space-y-4 rounded-md border border-gray-200 bg-white/90 px-3 py-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700 dark:bg-neutral-900 dark:text-neutral-200">
+                            <span className="h-1.5 w-1.5 rounded-md bg-slate-500" />
+                            Nowa obserwacja
+                          </div>
+                          <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                            Ustaw drużyny, datę, tryb i poziom przeciwnika –
+                            nazwa meczu złoży się automatycznie.
+                          </span>
+                        </div>
+
+                        {/* SCOREBOARD PREVIEW */}
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
+                          <div className="flex flex-col items-center gap-3 md:flex-row md:justify-between">
+                            <div className="flex items-center gap-4 text-center md:text-left">
+                              <div className="min-w-[120px]">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                  Drużyna A
+                                </p>
+                                <p className="mt-0.5 truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                                  {qaTeamA || "Nie ustawiono"}
+                                </p>
+                              </div>
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[11px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 dark:bg-neutral-950 dark:text-neutral-100 dark:ring-neutral-700">
+                                VS
+                              </div>
+                              <div className="min-w-[120px]">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                  Drużyna B
+                                </p>
+                                <p className="mt-0.5 truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                                  {qaTeamB || "Nie ustawiono"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600 dark:text-neutral-300">
+                              {qaDate && (
+                                <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                  {qaDate}
+                                </span>
+                              )}
+                              {qaTime && (
+                                <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                  {qaTime}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                {qaMode === "live"
+                                  ? "Live (boisko)"
+                                  : "TV / wideo"}
+                              </span>
+                              {qaOpponentLevel && (
+                                <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                  Poziom: {qaOpponentLevel}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="mt-2 text-[11px] text-slate-500 dark:text-neutral-400">
+                            Nazwa meczu do zapisu:{" "}
+                            <span className="font-medium text-slate-800 dark:text-neutral-50">
+                              {qaMatch ||
+                                "uzupełni się automatycznie po wpisaniu obu drużyn"}
+                            </span>
+                            .
+                          </p>
+                        </div>
+
+                        {/* Drużyny – wejścia */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950">
+                            <Label className="text-sm">Drużyna A</Label>
+                            <Input
+                              className="mt-1"
+                              value={qaTeamA}
+                              onChange={(e) =>
+                                updateQaMatchFromTeams(
+                                  e.target.value,
+                                  qaTeamB
+                                )
+                              }
+                              placeholder="np. Lech U19"
+                            />
+                            <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
+                              Wpisz nazwę gospodarzy lub drużyny bliżej
+                              obserwatora.
+                            </p>
+                          </div>
+
+                          <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950">
+                            <Label className="text-sm">Drużyna B</Label>
+                            <Input
+                              className="mt-1"
+                              value={qaTeamB}
+                              onChange={(e) =>
+                                updateQaMatchFromTeams(
+                                  qaTeamA,
+                                  e.target.value
+                                )
+                              }
+                              placeholder="np. Wisła U19"
+                            />
+                            <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
+                              Wpisz nazwę rywala – „vs” złoży się powyżej.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Data + godzina */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="md:col-span-2">
+                            <Label className="text-sm">
+                              Data i godzina meczu
+                            </Label>
+                            <div className="mt-1">
+                              <DateTimePicker24h
+                                value={{ date: qaDate, time: qaTime }}
+                                onChange={({ date, time }) => {
+                                  setQaDate(date);
+                                  setQaTime(time);
+                                }}
+                              />
+                            </div>
+                            <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
+                              Ustaw dokładny dzień i godzinę – przyda się przy
+                              filtrowaniu dziennika.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Tryb meczu */}
+                        <div>
+                          <Label className="text-sm">Tryb meczu</Label>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            {QA_CONDITIONS.map((mode) => {
+                              const isActive = qaMode === mode;
+                              const isLive = mode === "live";
+                              return (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  onClick={() => setQaMode(mode)}
+                                  className={cn(
+                                    "flex w-full items-center justify-between rounded border px-3 py-2 text-left text-xs transition",
+                                    isActive
+                                      ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200 dark:border-indigo-400 dark:bg-indigo-900/30 dark:ring-indigo-500/60"
+                                      : "border-gray-200 bg-white hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {isLive ? (
+                                      <PlayCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                                    ) : (
+                                      <Monitor className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                                    )}
+                                    <div>
+                                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-800 dark:text-neutral-50">
+                                        {isLive ? "Live" : "TV"}
+                                      </div>
+                                      <div className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                        {isLive
+                                          ? "Na żywo z boiska"
+                                          : "Transmisja / wideo"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {isActive && (
+                                    <span className="ml-2 h-2 w-2 rounded bg-indigo-500 shadow-[0_0_0_4px_rgba(79,70,229,0.25)] dark:bg-indigo-300" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Poziom przeciwnika */}
+                        <div>
+                          <Label className="text-sm">Poziom przeciwnika</Label>
+                          <Input
+                            value={qaOpponentLevel}
+                            onChange={(e) =>
+                              setQaOpponentLevel(e.target.value)
+                            }
+                            placeholder="np. CLJ U17, 3 liga, top akademia…"
+                            className="mt-1"
+                          />
+                          <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
+                            Krótkie określenie poziomu – pomaga przy
+                            porównywaniu raportów.
+                          </p>
+                        </div>
+
+                        {/* Sticky przycisk */}
+                        <div className="sticky bottom-0 mt-1 -mx-3 border-t border-gray-200 bg-white/90 px-3 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
+                          <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                              Do zapisu wymagane są: dwie drużyny i data meczu.
+                            </p>
+                            <Button
+                              className="bg-gray-900 text-white hover:bg-gray-800"
+                              onClick={addObservation}
+                              disabled={
+                                !qaTeamA.trim() ||
+                                !qaTeamB.trim() ||
+                                !qaDate.trim()
+                              }
+                            >
+                              Dodaj obserwację tego zawodnika
+                            </Button>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Istniejące obserwacje */}
+                      <section className="space-y-3 rounded-md border border-gray-200 bg-white/90 px-3 py-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700 dark:bg-neutral-900 dark:text-neutral-200">
+                            <span className="h-1.5 w-1.5 rounded-md bg-slate-500" />
+                            Istniejące obserwacje
+                          </div>
+                          <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                            Wyszukaj i przypisz obserwację z dziennika.
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950">
+                          <div className="flex items-center gap-2">
+                            <Search className="h-4 w-4 opacity-70" />
+                            <Input
+                              value={obsQuery}
+                              onChange={(e) => setObsQuery(e.target.value)}
+                              placeholder="Szukaj po meczu lub dacie…"
+                              className="flex-1 border-0 focus-visible:ring-0"
+                            />
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                            Wybierz obserwację z listy, aby podejrzeć szczegóły
+                            lub ją edytować.
+                          </p>
+                        </div>
+
+                        <div className="max-h-80 space-y-2 overflow-auto">
+                          {(() => {
+                            const list = existingFiltered;
+                            if (list.length === 0) {
+                              return (
+                                <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50/60 text-center text-sm text-slate-500 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-400">
+                                  Brak obserwacji dla podanych kryteriów.
+                                  Zapisz nową lub zmień filtr wyszukiwania.
+                                </div>
+                              );
+                            }
+
+                            return list.map((o) => {
+                              const selected = obsSelectedId === o.id;
+                              const matchLabel =
+                                o.match || "Bez nazwy meczu";
+
+                              const dateTime = [o.date || "—", o.time || ""]
+                                .filter(Boolean)
+                                .join(" · ");
+
+                              return (
+                                <button
+                                  key={o.id}
+                                  type="button"
+                                  onClick={() => setObsSelectedId(o.id)}
+                                  className={cn(
+                                    "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition",
+                                    selected
+                                      ? "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-200 dark:border-emerald-500/80 dark:bg-emerald-900/20 dark:ring-emerald-700/70"
+                                      : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
+                                  )}
+                                >
+                                  <div className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                                    <span
+                                      className={cn(
+                                        "flex h-4 w-4 items-center justify-center rounded-full border",
+                                        selected
+                                          ? "border-emerald-500 bg-emerald-500/10"
+                                          : "border-slate-300 bg-white dark:border-neutral-700 dark:bg-neutral-900"
+                                      )}
+                                    >
+                                      {selected && (
+                                        <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300" />
+                                      )}
+                                    </span>
+                                  </div>
+
+                                  <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                                        {matchLabel}
+                                      </p>
+                                      <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                        {dateTime || "Brak daty"}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-1 text-[11px]">
+                                      {o.opponentLevel && (
+                                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
+                                          Poziom: {o.opponentLevel}
+                                        </span>
+                                      )}
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                          o.mode === "tv"
+                                            ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                                            : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                                        )}
+                                      >
+                                        {o.mode === "tv" ? "TV" : "Live"}
+                                      </span>
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                          o.status === "final"
+                                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                        )}
+                                      >
+                                        {o.status === "final"
+                                          ? "Finalna"
+                                          : "Szkic"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="ml-2 flex flex-shrink-0 items-center">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 px-2 text-xs"
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openEditModal(o);
+                                      }}
+                                    >
+                                      Edytuj
+                                    </Button>
+                                  </div>
+                                </button>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </section>
+                    </div>
+
+                    {/* EDIT MODAL */}
+                    <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Edytuj obserwację</DialogTitle>
+                        </DialogHeader>
+                        {editingObs && (
+                          <div className="space-y-4">
+                            <div>
+                              <Label>Mecz</Label>
+                              <Input
+                                value={safeText(editingObs.match) || ""}
+                                onChange={(e) =>
+                                  setEditingObs((prev) =>
+                                    prev
+                                      ? { ...prev, match: e.target.value }
+                                      : prev
+                                  )
+                                }
+                                className="mt-1"
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                              <div>
+                                <Label>Data i godzina meczu</Label>
+                                <div className="mt-1">
+                                  <DateTimePicker24h
+                                    value={{
+                                      date:
+                                        safeText(editingObs.date) || "",
+                                      time:
+                                        safeText(editingObs.time) || "",
+                                    }}
+                                    onChange={({ date, time }) =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, date, time }
+                                          : prev
+                                      )
+                                    }
+                                    placeholder="Data i godzina meczu"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <Label>Poziom przeciwnika</Label>
+                                <Input
+                                  value={
+                                    safeText(editingObs.opponentLevel) ||
+                                    ""
+                                  }
+                                  onChange={(e) =>
+                                    setEditingObs((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            opponentLevel: e.target.value,
+                                          }
+                                        : prev
+                                    )
+                                  }
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                              <div>
+                                <Label className="text-sm">Tryb</Label>
+                                <div className="mt-2 flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant={
+                                      editingObs.mode === "live"
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, mode: "live" }
+                                          : prev
+                                      )
+                                    }
+                                  >
+                                    Live
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={
+                                      editingObs.mode === "tv"
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, mode: "tv" }
+                                          : prev
+                                      )
+                                    }
+                                  >
+                                    TV
+                                  </Button>
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-sm">Status</Label>
+                                <div className="mt-2 flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant={
+                                      editingObs.status === "draft"
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, status: "draft" }
+                                          : prev
+                                      )
+                                    }
+                                  >
+                                    Szkic
+                                  </Button>
+
+                                  <Button
+                                    type="button"
+                                    variant={
+                                      editingObs.status === "final"
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingObs((prev) =>
+                                        prev
+                                          ? { ...prev, status: "final" }
+                                          : prev
+                                      )
+                                    }
+                                  >
+                                    Finalna
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <DialogFooter className="mt-4">
+                          <Button
+                            variant="outline"
+                            type="button"
+                            onClick={() => setEditOpen(false)}
+                          >
+                            Anuluj
+                          </Button>
+                          <Button
+                            type="button"
+                            className="bg-gray-900 text-white hover:bg-gray-800"
+                            onClick={saveEditedObservation}
+                          >
+                            Zapisz zmiany
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        </div>
+
+        {!hasChoice && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="flex max-w-xs flex-col items-center gap-2 rounded-md bg-none px-4 py-3 text-center dark:border-neutral-700 dark:bg-neutral-950/95">
+              <Lock className="h-6 w-6 text-slate-900 dark:text-neutral-50" />
+              <p className="leading-snug text-sm text-slate-900 dark:text-neutral-50">
+                Wybierz tryb profilu w <b>Kroku 0</b>, aby odblokować kolejne
+                kroki edycji.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
+
+      {saveError && (
+        <p className="mt-3 text-sm text-red-600">{saveError}</p>
+      )}
     </div>
   );
 }
