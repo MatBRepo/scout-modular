@@ -2035,160 +2035,163 @@ export default function PlayerEditorPage() {
               className="w-full"
             >
               <AccordionItem value="basic" className="border-0">
-                <AccordionContent id="basic-panel" className="pt-4 pb-5">
-                  {choice === "unknown" ? (
-                    <div className="space-y-5">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
-                          <Label className="text-sm">
-                            Numer na koszulce
-                          </Label>
-                          <div className="relative">
-                            <Input
-                              className={cn(!jerseyNumber && "pr-24")}
-                              value={jerseyNumber}
-                              onChange={(e) =>
-                                setJerseyNumber(e.target.value)
-                              }
-                              placeholder="np. 27"
-                            />
-                            {!jerseyNumber && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
+<AccordionContent id="basic-panel" className="pt-4 pb-5">
+  <div className="space-y-6">
+    {/* DWA BLOKI Z AWSZE WIDOCZNE */}
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {/* Pełne dane zawodnika */}
+      <section className="rounded-lg border border-slate-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+              Pełne dane zawodnika
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-neutral-400">
+              Imię, nazwisko, rok urodzenia, klub i kraj klubu – używane, gdy profil ma być{" "}
+              <b>imienny</b>.
+            </p>
+          </div>
+        </div>
 
-                        <div>
-                          <Label className="text-sm">Aktualny klub</Label>
-                          <div className="relative">
-                            <Input
-                              value={uClub}
-                              onChange={(e) => setUClub(e.target.value)}
-                              className={cn(!uClub && "pr-24")}
-                            />
-                            {!uClub && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm pb-2">
-                            Kraj aktualnego klubu
-                          </Label>
-                          <CountryCombobox
-                            value={uClubCountry}
-                            onChange={(val) => setUClubCountry(val)}
-                            chip={!uClubCountry ? "Wymagane" : undefined}
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label className="text-sm">
-                            Notatka własna (opcjonalne)
-                          </Label>
-                          <Textarea
-                            value={uNote}
-                            onChange={(e) => setUNote(e.target.value)}
-                            placeholder="Krótka notatka o zawodniku, kontekst skauta…"
-                            className="mt-1"
-                          />
-                        </div>
-                      </div>
+        <div className="mt-3 grid grid-cols-1 gap-4">
+          <div>
+            <Label className="text-sm">Imię</Label>
+            <div className="relative">
+              <Input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className={cn(!firstName && "pr-24")}
+              />
+              {!firstName && <Chip text="Wymagane" />}
+            </div>
+          </div>
+          <div>
+            <Label className="text-sm">Nazwisko</Label>
+            <div className="relative">
+              <Input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className={cn(!lastName && "pr-24")}
+              />
+              {!lastName && <Chip text="Wymagane" />}
+            </div>
+          </div>
+          <div>
+            <Label className="text-sm">Rok urodzenia</Label>
+            <div className="relative">
+              <Input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                className={cn(!birthYear && "pr-24")}
+              />
+              {!birthYear && <Chip text="Wymagane" />}
+            </div>
+          </div>
+          <div>
+            <Label className="text-sm">Numer na koszulce (opcjonalny)</Label>
+            <Input
+              value={jerseyNumber}
+              onChange={(e) => setJerseyNumber(e.target.value)}
+              placeholder="np. 27"
+            />
+          </div>
+          <div>
+            <Label className="text-sm">Aktualny klub</Label>
+            <div className="relative">
+              <Input
+                value={club}
+                onChange={(e) => setClub(e.target.value)}
+                className={cn(!club && "pr-24")}
+              />
+              {!club && <Chip text="Wymagane" />}
+            </div>
+          </div>
+          <div>
+            <Label className="text-sm pb-2">Kraj aktualnego klubu</Label>
+            <CountryCombobox
+              value={clubCountry}
+              onChange={(val) => setClubCountry(val)}
+              chip={!clubCountry ? "Wymagane" : undefined}
+            />
+          </div>
+        </div>
+      </section>
 
-                      <MainPositionPitch
-                        value={(ext.mainPos as DetailedPos | "") || ""}
-                        onChange={(pos) => {
-                          setExt((s) => ({ ...s, mainPos: pos }));
-                          setUPosDet(pos);
-                          setPosDet(pos);
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-5">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
-                          <Label className="text-sm">Imię</Label>
-                          <div className="relative">
-                            <Input
-                              value={firstName}
-                              onChange={(e) =>
-                                setFirstName(e.target.value)
-                              }
-                              className={cn(!firstName && "pr-24")}
-                            />
-                            {!firstName && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm">Nazwisko</Label>
-                          <div className="relative">
-                            <Input
-                              value={lastName}
-                              onChange={(e) =>
-                                setLastName(e.target.value)
-                              }
-                              className={cn(!lastName && "pr-24")}
-                            />
-                            {!lastName && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm">Rok urodzenia</Label>
-                          <div className="relative">
-                            <Input
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={birthYear}
-                              onChange={(e) =>
-                                setBirthYear(e.target.value)
-                              }
-                              className={cn(!birthYear && "pr-24")}
-                            />
-                            {!birthYear && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm">
-                            Numer na koszulce
-                          </Label>
-                          <Input
-                            value={jerseyNumber}
-                            onChange={(e) =>
-                              setJerseyNumber(e.target.value)
-                            }
-                            placeholder="opcjonalne"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Aktualny klub</Label>
-                          <div className="relative">
-                            <Input
-                              value={club}
-                              onChange={(e) => setClub(e.target.value)}
-                              className={cn(!club && "pr-24")}
-                            />
-                            {!club && <Chip text="Wymagane" />}
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm pb-2">
-                            Kraj aktualnego klubu
-                          </Label>
-                          <CountryCombobox
-                            value={clubCountry}
-                            onChange={(val) => setClubCountry(val)}
-                            chip={!clubCountry ? "Wymagane" : undefined}
-                          />
-                        </div>
-                      </div>
+      {/* Profil anonimowy */}
+      <section className="rounded-lg border border-slate-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+              Profil anonimowy
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-neutral-400">
+              Używany, gdy nie chcesz podawać danych osobowych – tylko numer, klub i kraj.
+            </p>
+          </div>
+        </div>
 
-                      <MainPositionPitch
-                        value={(ext.mainPos as DetailedPos | "") || ""}
-                        onChange={(pos) => {
-                          setExt((s) => ({ ...s, mainPos: pos }));
-                          setPosDet(pos);
-                          setUPosDet(pos);
-                        }}
-                      />
-                    </div>
-                  )}
-                </AccordionContent>
+        <div className="mt-3 grid grid-cols-1 gap-4">
+          <div>
+            <Label className="text-sm">Numer na koszulce</Label>
+            <div className="relative">
+              <Input
+                className={cn(!jerseyNumber && "pr-24")}
+                value={jerseyNumber}
+                onChange={(e) => setJerseyNumber(e.target.value)}
+                placeholder="np. 27"
+              />
+              {!jerseyNumber && <Chip text="Wymagane" />}
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-sm">Aktualny klub (anonimowy)</Label>
+            <div className="relative">
+              <Input
+                value={uClub}
+                onChange={(e) => setUClub(e.target.value)}
+                className={cn(!uClub && "pr-24")}
+              />
+              {!uClub && <Chip text="Wymagane" />}
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-sm pb-2">Kraj aktualnego klubu (anonimowy)</Label>
+            <CountryCombobox
+              value={uClubCountry}
+              onChange={(val) => setUClubCountry(val)}
+              chip={!uClubCountry ? "Wymagane" : undefined}
+            />
+          </div>
+
+          <div>
+            <Label className="text-sm">Notatka własna (opcjonalne)</Label>
+            <Textarea
+              value={uNote}
+              onChange={(e) => setUNote(e.target.value)}
+              placeholder="Krótka notatka o zawodniku, kontekst skauta…"
+              className="mt-1"
+            />
+          </div>
+        </div>
+      </section>
+    </div>
+
+    {/* Boisko – główna pozycja (wspólne dla obu trybów) */}
+    <MainPositionPitch
+      value={(ext.mainPos as DetailedPos | "") || ""}
+      onChange={(pos) => {
+        setExt((s) => ({ ...s, mainPos: pos }));
+        setPosDet(pos);
+        setUPosDet(pos);
+      }}
+    />
+  </div>
+</AccordionContent>
+
               </AccordionItem>
             </Accordion>
           </CardContent>
