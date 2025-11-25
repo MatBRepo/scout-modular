@@ -945,7 +945,7 @@ export default function MyPlayersFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Wszyscy</span>
-                      <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                      <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
                         {tabCounts.all}
                       </span>
                     </TabsTrigger>
@@ -954,7 +954,7 @@ export default function MyPlayersFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Znani</span>
-                      <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                      <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
                         {tabCounts.known}
                       </span>
                     </TabsTrigger>
@@ -963,7 +963,7 @@ export default function MyPlayersFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Nieznani</span>
-                      <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                      <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
                         {tabCounts.unknown}
                       </span>
                     </TabsTrigger>
@@ -1161,7 +1161,7 @@ export default function MyPlayersFeature({
                 className="flex-1 flex items-center justify-center gap-2"
               >
                 <span>Wszyscy</span>
-                <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
                   {tabCounts.all}
                 </span>
               </TabsTrigger>
@@ -1170,7 +1170,7 @@ export default function MyPlayersFeature({
                 className="flex-1 flex items-center justify-center gap-2"
               >
                 <span>Znani</span>
-                <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
                   {tabCounts.known}
                 </span>
               </TabsTrigger>
@@ -1179,7 +1179,7 @@ export default function MyPlayersFeature({
                 className="flex-1 flex items-center justify-center gap-2"
               >
                 <span>Nieznani</span>
-                <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
                   {tabCounts.unknown}
                 </span>
               </TabsTrigger>
