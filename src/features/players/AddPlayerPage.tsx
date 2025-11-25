@@ -173,16 +173,22 @@ const POS_DATA: Array<{
 ];
 
 const POS_LAYOUT: Record<DetailedPos, { top: string; left: string }> = {
-  GK: { top: "50%", left: "8%" },
-  LB: { top: "30%", left: "24%" },
-  CB: { top: "50%", left: "26%" },
-  RB: { top: "70%", left: "24%" },
-  CDM: { top: "50%", left: "40%" },
-  CM: { top: "50%", left: "55%" },
-  CAM: { top: "50%", left: "68%" },
-  LW: { top: "30%", left: "68%" },
-  RW: { top: "70%", left: "68%" },
-  ST: { top: "50%", left: "86%" },
+  // GK – approx. in front of goal, centred on the box
+  GK: { top: "50%", left: "10%" },
+
+  // Coords taken from the SVG circles (cx, cy -> % of 590x350 viewBox)
+  LB:  { top: "22.3%", left: "24.1%" }, // (142, 78)
+  CB:  { top: "50%",   left: "24.1%" }, // (142, 175)
+  RB:  { top: "78%",   left: "24.1%" }, // (142, 273)
+
+  CDM: { top: "50%",   left: "36.95%" }, // (218, 175)
+  CM:  { top: "50%",   left: "49.83%" }, // (294, 175)
+  CAM: { top: "50%",   left: "63.05%" }, // (372, 175)
+
+  LW:  { top: "22.3%", left: "63.05%" }, // (372, 78)
+  RW:  { top: "78%",   left: "63.05%" }, // (372, 273)
+
+  ST:  { top: "50%",   left: "76.27%" }, // (450, 175)
 };
 
 const toBucket = (p: DetailedPos): BucketPos => {
@@ -409,82 +415,205 @@ function MainPositionPitch({
     : null;
 
   return (
-    <section className="mt-2 rounded-md bg-white px-3 py-3 shadow-sm ring-1 ring-slate-200/70 dark:bg-neutral-950 dark:ring-neutral-800">
+    <section className="mt-2 mb-2 bg-transparent border-none  dark:bg-neutral-950 dark:ring-neutral-800">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
             Boisko – główna pozycja
           </div>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
-            Kliknij na znacznik na boisku, aby ustawić główną pozycję zawodnika.
+            Kliknij na znacznik na boisku, aby ustawić główną pozycję
+            zawodnika.
           </p>
         </div>
         {activeMeta && (
-          <span className="inline-flex items-center rounded-md bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
+          <span className="inline-flex items-center rounded bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
             {activeMeta.code} · {activeMeta.name}
           </span>
         )}
       </div>
 
-      <div
-        className="mx-auto max-h-[300px] w-full overflow-hidden rounded-md border border-emerald-500/40 bg-repeat p-3"
-        style={{
-          backgroundImage: "url('/textures/grass-texture.png')",
-          backgroundSize: "80px 80px",
-        }}
-      >
-        <TooltipProvider delayDuration={0}>
-          <div className="relative h-[220px] w-full rounded-[20px] border border-white/40">
-            <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/40" />
-            <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-md border border-white/40" />
-            <div className="absolute left-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-r border-white/40" />
-            <div className="absolute left-0 top-1/2 h-20 w-14 -translate-y-1/2 border-y border-r border-white/40" />
-            <div className="absolute right-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-l border-white/40" />
-            <div className="absolute right-0 top-1/2 h-20 w-14 -translate-y-1/2 border-y border-l border-white/40" />
+      {/* Pitch wrapper – the GREEN background comes from here */}
+      <div className="mx-auto w-full max-w-[700px] rounded border-none bg-transparent">
+        <div className="relative w-full overflow-hidden rounded-[20px] bg-[#248604] aspect-[590/350]">
+          {/* SVG lines – no fill, pointer-events disabled */}
+          <svg
+            viewBox="0 0 590 350"
+            className="pointer-events-none absolute inset-0 h-full w-full p-2"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {/* outer white line, no fill */}
+            <rect
+              x="2"
+              y="2"
+              width="586"
+              height="346"
+              rx="0"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
 
-            {POS_DATA.map((pos) => {
-              const layout = POS_LAYOUT[pos.value];
-              if (!layout) return null;
-              const isSelected = value === pos.value;
+            {/* left half */}
+            <rect
+              x="18.5139"
+              y="16.2588"
+              width="274.939"
+              height="317.482"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="18.5139"
+              y="79.2017"
+              width="104.178"
+              height="192.55"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="18.5139"
+              y="112.58"
+              width="47.2579"
+              height="124.839"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="8.66235"
+              y="112.58"
+              width="10.0408"
+              height="124.839"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
 
-              return (
-                <Tooltip key={pos.value}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "group absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border text-xs font-semibold text-white shadow-sm transition-transform",
-                        isSelected
-                          ? "border-emerald-300 bg-emerald-500/90 shadow-[0_0_0_4px_rgba(16,185,129,0.45)]"
-                          : "border-white/70 bg-white/10 hover:scale-[1.03] hover:bg-white/25"
-                      )}
-                      style={{ top: layout.top, left: layout.left }}
-                      onClick={() => onChange(pos.value)}
-                      onMouseEnter={() => setHovered(pos.value)}
-                      onMouseLeave={() =>
-                        setHovered((prev) => (prev === pos.value ? null : prev))
-                      }
-                    >
-                      <span className="pointer-events-none">{pos.code}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    align="center"
-                    className="max-w-xs border-none bg-slate-900/95 px-3 py-2 text-left text-[11px] text-slate-100 shadow-lg"
-                  >
-                    <div className="text-xs font-semibold">
-                      {pos.code} · {pos.name}
-                    </div>
-                    <div className="mt-0.5 text-[11px] text-slate-300">
-                      {pos.desc}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </div>
-        </TooltipProvider>
+            {/* left corner arcs (kept as in your SVG, shortened masks) */}
+            <path
+              d="M31.7444 15.2588C31.7444 21.5792 25.9524 26.7031 18.8079 26.7031C18.3711 26.7031 17.9395 26.6819 17.5139 26.6445V15.2588H31.7444Z"
+              fill="white"
+              fillOpacity="0.1"
+            />
+            <path
+              d="M17.5139 322.344C24.7684 322.344 30.6497 327.39 30.6497 333.614C30.6497 333.995 30.6262 334.37 30.5833 334.741L17.5139 334.741L17.5139 322.344Z"
+              fill="white"
+              fillOpacity="0.1"
+            />
+
+            {/* right half (mirrored) */}
+            <rect
+              x="-1"
+              y="1"
+              width="278.223"
+              height="317.482"
+              transform="matrix(-1 0 0 1 570.486 15.2588)"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="-1"
+              y="1"
+              width="104.178"
+              height="192.55"
+              transform="matrix(-1 0 0 1 570.486 78.2017)"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="-1"
+              y="1"
+              width="47.2579"
+              height="124.839"
+              transform="matrix(-1 0 0 1 570.486 111.58)"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="-1"
+              y="1"
+              width="10.0408"
+              height="124.839"
+              transform="matrix(-1 0 0 1 580.338 111.58)"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+
+            <path
+              d="M558.256 15.2588C558.256 21.5792 564.048 26.7031 571.192 26.7031C571.629 26.7031 572.06 26.6819 572.486 26.6445V15.2588H558.256Z"
+              fill="white"
+              fillOpacity="0.1"
+            />
+            <path
+              d="M572.486 322.344C565.232 322.344 559.35 327.39 559.35 333.614C559.35 333.995 559.374 334.37 559.417 334.741L572.486 334.741L572.486 322.344Z"
+              fill="white"
+              fillOpacity="0.1"
+            />
+
+            {/* penalty arcs */}
+            <path
+              d="M122 106.618C139.904 124.296 151 148.852 151 176C151 203.148 139.903 227.703 122 245.381V106.618Z"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <path
+              d="M468 106.618C450.096 124.296 439 148.852 439 176C439 203.148 450.097 227.703 468 245.381V106.618Z"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+
+            {/* centre line */}
+            <line
+              x1="295"
+              y1="16"
+              x2="295"
+              y2="334"
+              stroke="white"
+              strokeWidth="2"
+            />
+
+            {/* two little white dots */}
+            <circle cx="496" cy="174" r="1" fill="white" />
+            <circle cx="94" cy="174" r="1" fill="white" />
+          </svg>
+
+          {/* Position markers – scale with the container */}
+          {POS_DATA.map((pos) => {
+            const layout = POS_LAYOUT[pos.value];
+            if (!layout) return null;
+            const isSelected = value === pos.value;
+
+            return (
+              <button
+                key={pos.value}
+                type="button"
+                className={cn(
+                  "absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-xs font-semibold shadow-sm transition-transform",
+                  isSelected
+                    ? "border-emerald-500 bg-[#6CC78F] text-black shadow-[0_0_0_4px_rgba(16,185,129,0.55)]"
+                    : "border-white bg-[#87D4A1] text-black hover:scale-[1.03]"
+                )}
+                style={{ top: layout.top, left: layout.left }}
+                onClick={() => onChange(pos.value)}
+                onMouseEnter={() => setHovered(pos.value)}
+                onMouseLeave={() =>
+                  setHovered((prev) => (prev === pos.value ? null : prev))
+                }
+              >
+                {pos.code}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-3 text-[11px] leading-relaxed text-slate-600 dark:text-neutral-300">
@@ -499,8 +628,7 @@ function MainPositionPitch({
           </>
         ) : (
           <span>
-            Najedź na znacznik, aby zobaczyć szczegółowy opis pozycji i kliknij,
-            aby ją wybrać jako główną.
+            Najedź na znacznik i kliknij, aby wybrać główną pozycję zawodnika.
           </span>
         )}
       </div>
@@ -1631,7 +1759,7 @@ export default function AddPlayerPage() {
 
       {/* KROK 0 – tryb profilu (ustalany automatycznie na podstawie pól) */}
       <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
-        <CardHeader className="group flex items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+        <CardHeader className="group flex items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
           <div className="flex w-full items-center justify-between gap-3">
             <div>
               <div className={stepPillClass}>Krok 0 · Tryb profilu</div>
@@ -1646,7 +1774,7 @@ export default function AddPlayerPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="px-4 py-4 md:px-6">
+        <CardContent className="px-4 py-4 md:px-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div
               className={cn(
@@ -1748,7 +1876,7 @@ export default function AddPlayerPage() {
         <Card ref={basicRef} className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               basicOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1782,7 +1910,7 @@ export default function AddPlayerPage() {
               </div>
             </button>
           </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
+          <CardContent className="px-4 py-0 md:px-4">
             <Accordion
               type="single"
               collapsible
@@ -1878,7 +2006,7 @@ export default function AddPlayerPage() {
                         />
                       </div>
 
-                      <div className="md:col-span-2">
+                      <div className="md:col-span-1">
                         <Label className="text-sm">
                           Notatka własna (opcjonalne)
                         </Label>
@@ -1901,7 +2029,7 @@ export default function AddPlayerPage() {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               extOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1940,7 +2068,7 @@ export default function AddPlayerPage() {
               </div>
             </button>
           </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
+          <CardContent className="px-4 py-0 md:px-4">
             <Accordion
               type="single"
               collapsible
@@ -2025,7 +2153,7 @@ export default function AddPlayerPage() {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               gradeOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2064,7 +2192,7 @@ export default function AddPlayerPage() {
               </div>
             </button>
           </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
+          <CardContent className="px-4 py-0 md:px-4">
             <Accordion
               type="single"
               collapsible
@@ -2177,7 +2305,7 @@ export default function AddPlayerPage() {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               obsOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2216,7 +2344,7 @@ export default function AddPlayerPage() {
               </div>
             </button>
           </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
+          <CardContent className="px-4 py-0 md:px-4">
             <Accordion
               type="single"
               collapsible

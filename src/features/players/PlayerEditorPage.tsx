@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useId,
 } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -35,7 +36,8 @@ import {
   Check,
   Loader2,
   CheckCircle2,
-  ChevronDown, ChevronLeft
+  ChevronDown,
+  ChevronLeft,
 } from "lucide-react";
 
 import { Calendar } from "@/components/ui/calendar";
@@ -174,16 +176,20 @@ const POS_DATA: Array<{
 ];
 
 const POS_LAYOUT: Record<DetailedPos, { top: string; left: string }> = {
-  GK: { top: "50%", left: "8%" },
-  LB: { top: "30%", left: "24%" },
-  CB: { top: "50%", left: "26%" },
-  RB: { top: "70%", left: "24%" },
-  CDM: { top: "50%", left: "40%" },
-  CM: { top: "50%", left: "55%" },
-  CAM: { top: "50%", left: "68%" },
-  LW: { top: "30%", left: "68%" },
-  RW: { top: "70%", left: "68%" },
-  ST: { top: "50%", left: "86%" },
+  GK: { top: "50%", left: "10%" },
+
+  LB: { top: "22.3%", left: "24.1%" },
+  CB: { top: "50%", left: "24.1%" },
+  RB: { top: "78%", left: "24.1%" },
+
+  CDM: { top: "50%", left: "36.95%" },
+  CM: { top: "50%", left: "49.83%" },
+  CAM: { top: "50%", left: "63.05%" },
+
+  LW: { top: "22.3%", left: "63.05%" },
+  RW: { top: "78%", left: "63.05%" },
+
+  ST: { top: "50%", left: "76.27%" },
 };
 
 const toBucket = (p: DetailedPos): BucketPos => {
@@ -270,20 +276,17 @@ function SavePill({
       {state === "saving" ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin md:mr-2" />
-          {/* text hidden on mobile, visible md+ */}
           <span className="hidden md:inline">Autozapis…</span>
         </>
       ) : (
         <>
           <CheckCircle2 className="h-4 w-4 md:mr-2" />
-          {/* text hidden on mobile, visible md+ */}
           <span className="hidden md:inline">Zapisano</span>
         </>
       )}
     </span>
   );
 }
-
 
 function Chip({ text }: { text: string }) {
   return (
@@ -293,7 +296,7 @@ function Chip({ text }: { text: string }) {
   );
 }
 
-/* Country combobox */
+/* Country combobox (old – still used in other fields) */
 function CountryCombobox({
   value,
   onChange,
@@ -380,6 +383,87 @@ function CountryCombobox({
   );
 }
 
+/* NEW: Search combobox (shadcn-style) – used for Kraj aktualnego klubu (wspólny) */
+function CountrySearchCombobox({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const selected = COUNTRIES.find((c) => c.name === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            "w-full justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-normal shadow-sm outline-none outline-offset-0 transition",
+            "hover:bg-white focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+            "dark:border-neutral-700 dark:bg-neutral-950"
+          )}
+        >
+          <span
+            className={cn(
+              "flex min-w-0 items-center gap-2 truncate",
+              !selected && "text-muted-foreground"
+            )}
+          >
+            {selected ? (
+              <>
+                <span className="text-base leading-none">{selected.flag}</span>
+                <span className="truncate">{selected.name}</span>
+              </>
+            ) : (
+              "Wybierz kraj"
+            )}
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className="shrink-0 text-muted-foreground/80"
+            size={16}
+          />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-full min-w-[var(--radix-popper-anchor-width)] border-gray-300 p-0 dark:border-neutral-700"
+      >
+        <Command>
+          <CommandInput placeholder="Szukaj kraju..." />
+          <CommandList>
+            <CommandEmpty>Brak wyników.</CommandEmpty>
+            <CommandGroup>
+              {COUNTRIES.map((country) => (
+                <CommandItem
+                  key={country.code}
+                  value={country.name}
+                  onSelect={() => {
+                    onChange(country.name);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="mr-2 text-base">{country.flag}</span>
+                  <span className="mr-2">{country.name}</span>
+                  {value === country.name && (
+                    <Check className="ml-auto h-4 w-4" />
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /* Utility: safe text-normalizer for possibly object values */
 function safeText(val: any): string {
   if (val == null) return "";
@@ -397,30 +481,231 @@ type DateTimeValue = {
   time: string;
 };
 
-const PITCH_SVG = `
-<svg width="100%" height="100%" viewBox="0 0 590 350" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="590" height="350" rx="15" fill="#248604"/>
-<rect x="18.5139" y="16.2588" width="274.939" height="317.482" stroke="white" stroke-width="2"/>
-<rect x="18.5139" y="79.2017" width="104.178" height="192.55" stroke="white" stroke-width="2"/>
-<rect x="18.5139" y="112.58" width="47.2579" height="124.839" stroke="white" stroke-width="2"/>
-<rect x="8.66235" y="112.58" width="10.0408" height="124.839" stroke="white" stroke-width="2"/>
-<mask id="path-6-inside-1_6055_2662" fill="white">
-<path d="M31.7444 15.2588C31.7444 21.5792 25.9524 26.7031 18.8079 26.7031C18.3711 26.7031 17.9395 26.6819 17.5139 26.6445V15.2588H31.7444Z"/>
-</mask>
-<path d="M31.7444 15.2588C31.7444 21.5792 25.9524 26.7031 18.8079 26.7031C18.3711 26.7031 17.9395 26.6819 17.5139 26.6445V15.2588H31.7444Z" fill="white" fill-opacity="0.1"/>
-<path d="M31.7444 15.2588L33.7444 15.2588L33.7444 13.2588H31.7444V15.2588ZM18.8079 26.7031V28.7031H18.8079L18.8079 26.7031ZM17.5139 26.6445H15.5139V28.4765L17.3389 28.6369L17.5139 26.6445ZM17.5139 15.2588V13.2588H15.5139V15.2588H17.5139ZM31.7444 15.2588L29.7444 15.2588C29.7444 20.2513 25.0853 24.7031 18.8079 24.7031L18.8079 26.7031L18.8079 28.7031C26.8196 28.7031 33.7444 22.9071 33.7444 15.2588L31.7444 15.2588ZM18.8079 26.7031V24.7031C18.4358 24.7031 18.0629 24.6851 17.689 24.6522L17.5139 26.6445L17.3389 28.6369C17.8162 28.6788 18.3065 28.7031 18.8079 28.7031V26.7031ZM17.5139 26.6445H19.5139V15.2588H17.5139H15.5139V26.6445H17.5139ZM17.5139 15.2588V17.2588H31.7444V15.2588V13.2588H17.5139V15.2588Z" fill="white" mask="url(#path-6-inside-1_6055_2662)"/>
-<mask id="path-8-inside-2_6055_2662" fill="white">
-<path d="M17.5139 322.344C24.7684 322.344 30.6497 327.39 30.6497 333.614C30.6497 333.995 30.6262 334.37 30.5833 334.741L17.5139 334.741L17.5139 322.344Z"/>
-</mask>
-<path d="M17.5139 322.344C24.7684 322.344 30.6497 327.39 30.6497 333.614C30.6497 333.995 30.6262 334.37 30.5833 334.741L17.5139 334.741L17.5139 322.344Z" fill="white" fill-opacity="0.1"/>
-<path d="M17.5139 322.344L17.5139 320.344L15.5139 320.344L15.5139 322.344L17.5139 322.344ZM30.6497 333.614L32.6497 333.614L32.6497 333.614L30.6497 333.614ZM30.5833 334.741L30.5833 336.741L32.3651 336.741L32.57 334.971L30.5833 334.741ZM17.5139 334.741L15.5139 334.741L15.5139 336.741L17.5139 336.741L17.5139 334.741ZM17.5139 322.344L17.5139 324.344C23.9622 324.344 28.6497 328.771 28.6497 333.614L30.6497 333.614L32.6497 333.614C32.6497 326.009 25.5746 320.344 17.5139 320.344L17.5139 322.344ZM30.6497 333.614L28.6497 333.614C28.6497 333.912 28.6313 334.211 28.5965 334.511L30.5833 334.741L32.57 334.971C32.6211 334.53 32.6497 334.077 32.6497 333.614L30.6497 333.614ZM30.5833 334.741L30.5833 332.741L17.5139 332.741L17.5139 334.741L17.5139 336.741L30.5833 336.741L30.5833 334.741ZM17.5139 334.741L19.5139 334.741L19.5139 322.344L17.5139 322.344L15.5139 322.344L15.5139 334.741L17.5139 334.741Z" fill="white" mask="url(#path-8-inside-2_6055_2662)"/>
-<!-- (rest of your SVG unchanged, from previous message) -->
-<circle cx="496" cy="174" r="1" fill="white"/>
-<circle cx="94" cy="174" r="1" fill="white"/>
-</svg>
-`;
+/* Boisko – główna pozycja */
+function MainPositionPitch({
+  value,
+  onChange,
+}: {
+  value: DetailedPos | "";
+  onChange: (next: DetailedPos) => void;
+}) {
+  const [hovered, setHovered] = useState<DetailedPos | null>(null);
 
+  const activeKey = (hovered || value || null) as DetailedPos | null;
+  const activeMeta = activeKey
+    ? POS_DATA.find((p) => p.value === activeKey) ?? null
+    : null;
 
+  return (
+    <section className="mt-2 mb-2 bg-transparent border-none  dark:bg-neutral-950 dark:ring-neutral-800">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+            Boisko – główna pozycja
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
+            Kliknij na znacznik na boisku, aby ustawić główną pozycję
+            zawodnika.
+          </p>
+        </div>
+        {activeMeta && (
+          <span className="inline-flex items-center rounded bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
+            {activeMeta.code} · {activeMeta.name}
+          </span>
+        )}
+      </div>
+
+      <div className="mx-auto w-full max-w-[700px] rounded border-none bg-transparent">
+        <div className="relative w-full overflow-hidden rounded-[20px] bg-[#248604] aspect-[590/350]">
+          <svg
+            viewBox="0 0 590 350"
+            className="pointer-events-none absolute inset-0 h-full w-full p-2"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <rect
+              x="2"
+              y="2"
+              width="586"
+              height="346"
+              rx="0"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="18.5139"
+              y="16.2588"
+              width="274.939"
+              height="317.482"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="18.5139"
+              y="79.2017"
+              width="104.178"
+              height="192.55"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="18.5139"
+              y="112.58"
+              width="47.2579"
+              height="124.839"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="8.66235"
+              y="112.58"
+              width="10.0408"
+              height="124.839"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+
+            <path
+              d="M31.7444 15.2588C31.7444 21.5792 25.9524 26.7031 18.8079 26.7031C18.3711 26.7031 17.9395 26.6819 17.5139 26.6445V15.2588H31.7444Z"
+              fill="white"
+              fillOpacity="0.1"
+            />
+            <path
+              d="M17.5139 322.344C24.7684 322.344 30.6497 327.39 30.6497 333.614C30.6497 333.995 30.6262 334.37 30.5833 334.741L17.5139 334.741L17.5139 322.344Z"
+              fill="white"
+              fillOpacity="0.1"
+            />
+
+            <rect
+              x="-1"
+              y="1"
+              width="278.223"
+              height="317.482"
+              transform="matrix(-1 0 0 1 570.486 15.2588)"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="-1"
+              y="1"
+              width="104.178"
+              height="192.55"
+              transform="matrix(-1 0 0 1 570.486 78.2017)"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="-1"
+              y="1"
+              width="47.2579"
+              height="124.839"
+              transform="matrix(-1 0 0 1 570.486 111.58)"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <rect
+              x="-1"
+              y="1"
+              width="10.0408"
+              height="124.839"
+              transform="matrix(-1 0 0 1 580.338 111.58)"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+
+            <path
+              d="M558.256 15.2588C558.256 21.5792 564.048 26.7031 571.192 26.7031C571.629 26.7031 572.06 26.6819 572.486 26.6445V15.2588H558.256Z"
+              fill="white"
+              fillOpacity="0.1"
+            />
+            <path
+              d="M572.486 322.344C565.232 322.344 559.35 327.39 559.35 333.614C559.35 333.995 559.374 334.37 559.417 334.741L572.486 334.741L572.486 322.344Z"
+              fill="white"
+              fillOpacity="0.1"
+            />
+
+            <path
+              d="M122 106.618C139.904 124.296 151 148.852 151 176C151 203.148 139.903 227.703 122 245.381V106.618Z"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+            <path
+              d="M468 106.618C450.096 124.296 439 148.852 439 176C439 203.148 450.097 227.703 468 245.381V106.618Z"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+
+            <line
+              x1="295"
+              y1="16"
+              x2="295"
+              y2="334"
+              stroke="white"
+              strokeWidth="2"
+            />
+
+            <circle cx="496" cy="174" r="1" fill="white" />
+            <circle cx="94" cy="174" r="1" fill="white" />
+          </svg>
+
+          {POS_DATA.map((pos) => {
+            const layout = POS_LAYOUT[pos.value];
+            if (!layout) return null;
+            const isSelected = value === pos.value;
+
+            return (
+              <button
+                key={pos.value}
+                type="button"
+                className={cn(
+                  "absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-xs font-semibold shadow-sm transition-transform",
+                  isSelected
+                    ? "border-emerald-500 bg-[#6CC78F] text-black shadow-[0_0_0_4px_rgba(16,185,129,0.55)]"
+                    : "border-white bg-[#87D4A1] text-black hover:scale-[1.03]"
+                )}
+                style={{ top: layout.top, left: layout.left }}
+                onClick={() => onChange(pos.value)}
+                onMouseEnter={() => setHovered(pos.value)}
+                onMouseLeave={() =>
+                  setHovered((prev) => (prev === pos.value ? null : prev))
+                }
+              >
+                {pos.code}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-3 text-[11px] leading-relaxed text-slate-600 dark:text-neutral-300">
+        {activeMeta ? (
+          <>
+            <span className="font-semibold">
+              {activeMeta.code} – {activeMeta.name}
+            </span>
+            <span className="ml-1.5 text-slate-600 dark:text-neutral-300">
+              {activeMeta.desc}
+            </span>
+          </>
+        ) : (
+          <span>
+            Najedź na znacznik i kliknij, aby wybrać główną pozycję zawodnika.
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
 
 /* ===== Editor page ===== */
 type Choice = "known" | "unknown" | null;
@@ -476,7 +761,7 @@ type ExtKey = "profile" | "eligibility" | "stats365" | "contact";
 export default function PlayerEditorPage() {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
-  const { setActions } = useHeaderActions(); // NEW: get header actions setter
+  const { setActions } = useHeaderActions();
 
   const initialId = params?.id ? Number(params.id) : NaN;
   const [playerId, setPlayerId] = useState<number | null>(
@@ -501,7 +786,6 @@ export default function PlayerEditorPage() {
 
   const [jerseyNumber, setJerseyNumber] = useState("");
   const [uClub, setUClub] = useState("");
-  const [uClubCountry, setUClubCountry] = useState("");
   const [uNote, setUNote] = useState("");
 
   const [posDet, setPosDet] = useState<DetailedPos>("CM");
@@ -597,7 +881,7 @@ export default function PlayerEditorPage() {
           } else {
             setJerseyNumber(basicMeta.jerseyNumber ?? "");
             setUClub(basicMeta.club ?? data.club ?? "");
-            setUClubCountry(
+            setClubCountry(
               basicMeta.clubCountry ??
                 extended.birthCountry ??
                 data.nationality ??
@@ -643,17 +927,14 @@ export default function PlayerEditorPage() {
 
   // AUTOMATYCZNE wyliczanie trybu profilu (known / unknown) na podstawie pól
   useEffect(() => {
-    // Dane osobowe = tylko imię / nazwisko / rok urodzenia
     const hasPersonal =
       firstName.trim() !== "" ||
       lastName.trim() !== "" ||
       birthYear.trim() !== "";
 
-    // Dane anonimowe = numer + klub + kraj (mogą być z "known" pól lub z u*)
     const hasAnon =
       jerseyNumber.trim() !== "" ||
       uClub.trim() !== "" ||
-      uClubCountry.trim() !== "" ||
       (!hasPersonal &&
         (club.trim() !== "" || clubCountry.trim() !== "")) ||
       uNote.trim() !== "";
@@ -664,7 +945,6 @@ export default function PlayerEditorPage() {
     } else if (!hasPersonal && hasAnon) {
       next = "unknown";
     } else if (hasPersonal && hasAnon) {
-      // jeśli wypełnione oba zestawy pól – preferuj pełne dane
       next = "known";
     } else {
       next = null;
@@ -679,7 +959,6 @@ export default function PlayerEditorPage() {
     clubCountry,
     jerseyNumber,
     uClub,
-    uClubCountry,
     uNote,
   ]);
 
@@ -715,7 +994,7 @@ export default function PlayerEditorPage() {
   const cntBasicUnknown = countTruthy([
     jerseyNumber,
     uClub,
-    uClubCountry,
+    clubCountry,
     uNote,
   ]);
   const badgeBasic =
@@ -1420,7 +1699,7 @@ export default function PlayerEditorPage() {
       !isKnown &&
       !!jerseyNumber.trim() &&
       !!(uClub.trim() || club.trim()) &&
-      !!(uClubCountry.trim() || clubCountry.trim());
+      !!clubCountry.trim();
 
     if (!knownValid && !unknownValid) {
       setSaveState("idle");
@@ -1461,12 +1740,11 @@ export default function PlayerEditorPage() {
           } else {
             const num = jerseyNumber.trim();
             const c = uClub.trim() || club.trim();
-            const cc = uClubCountry.trim() || clubCountry.trim();
 
             name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
             clubFinal = c;
             posBucket = toBucket(uPosDet || posDet);
-            clubCountryFinal = cc;
+            clubCountryFinal = clubCountry.trim();
           }
 
           const nationalityVal =
@@ -1552,7 +1830,6 @@ export default function PlayerEditorPage() {
     clubCountry,
     jerseyNumber,
     uClub,
-    uClubCountry,
     posDet,
     uPosDet,
     ext,
@@ -1601,41 +1878,38 @@ export default function PlayerEditorPage() {
     return true;
   }
 
-// NEW: push "Zapisano / Wróć do listy" into global header via ClientRoot
-useEffect(() => {
-  const node = (
-    <div className="flex items-center gap-2">
-      <SavePill state={saveState} size="compact" />
+  // NEW: push "Zapisano / Wróć do listy" into global header via ClientRoot
+  useEffect(() => {
+    const node = (
+      <div className="flex items-center gap-2">
+        <SavePill state={saveState} size="compact" />
 
-      {/* Desktop / tablet: text button */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="hidden h-8 px-3 text-xs md:inline-flex"
-        onClick={() => router.push("/players")}
-      >
-        Wróć do listy
-      </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden h-8 px-3 text-xs md:inline-flex"
+          onClick={() => router.push("/players")}
+        >
+          Wróć do listy
+        </Button>
 
-      {/* Mobile: round back arrow */}
-      <Button
-        variant="outline"
-        size="icon"
-        className="inline-flex h-8 w-8 p-0 md:hidden"
-        aria-label="Wróć do listy"
-        onClick={() => router.push("/players")}
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-    </div>
-  );
+        <Button
+          variant="outline"
+          size="icon"
+          className="inline-flex h-8 w-8 p-0 md:hidden"
+          aria-label="Wróć do listy"
+          onClick={() => router.push("/players")}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+      </div>
+    );
 
-  setActions(node);
-  return () => {
-    setActions(null);
-  };
-}, [setActions, saveState, router]);
-
+    setActions(node);
+    return () => {
+      setActions(null);
+    };
+  }, [setActions, saveState, router]);
 
   if (!playerId) {
     return (
@@ -1650,11 +1924,7 @@ useEffect(() => {
 
   return (
     <div className="w-full space-y-4">
-      {/* Toolbar już BEZ lokalnych akcji – wszystko w globalnym headerze */}
-      <Toolbar
-        title="Edycja zawodnika"
-        right={null}
-      />
+      <Toolbar title="Edycja zawodnika" right={null} />
 
       {loading && (
         <Card className="border-dashed border-slate-300 bg-slate-50/80 dark:border-neutral-800 dark:bg-neutral-950/60">
@@ -1668,129 +1938,128 @@ useEffect(() => {
         <p className="text-sm text-red-600">{loadError}</p>
       )}
 
-      {/* KROK 0 – tryb profilu (ustalany automatycznie na podstawie pól) */}
+      {/* KROK 0 – tryb profilu */}
       <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
-<CardHeader className="group flex items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60 hidden md:block">
-  <div className="flex w-full items-center justify-between gap-3 hidden md:block">
-    <div className="hidden md:block">
-      <div className={stepPillClass}>Krok 0 · Tryb profilu</div>
-      <h2 className="mt-1 text-base font-semibold tracking-tight hidden md:block">
-        Tryb przechowywania danych zawodnika
-      </h2>
-      <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400 hidden md:block">
-        System automatycznie określa, czy profil jest <b>pełny</b> czy{" "}
-        <b>anonimowy</b> na podstawie uzupełnionych pól – Ty po prostu
-        wypełniasz dane.
-      </p>
-    </div>
-  </div>
-</CardHeader>
-
-<CardContent className="px-4 py-4 md:px-6">
-  <div className="grid grid-cols-2 gap-3">
-    <div
-      className={cn(
-        "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
-        choice === "known"
-          ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
-          : "ring-gray-200 dark:ring-neutral-800"
-      )}
-    >
-      <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
-          <KnownPlayerIcon
-            className={cn(
-              "h-7 w-7",
-              choice === "known"
-                ? "text-emerald-800"
-                : "text-black dark:text-neutral-100"
-            )}
-            strokeWidth={1.0}
-          />
-        </span>
-        <div className="min-w-0">
-          <div
-            className={cn(
-              "mb-1 text-sm font-semibold",
-              choice === "known"
-                ? "text-emerald-900"
-                : "text-black dark:text-neutral-100"
-            )}
-          >
-            Pełne dane zawodnika
+        <CardHeader className="group hidden items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:flex md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+          <div className="flex w-full items-center justify-between gap-3">
+            <div>
+              <div className={stepPillClass}>Krok 0 · Tryb profilu</div>
+              <h2 className="mt-1 hidden text-base font-semibold tracking-tight md:block">
+                Tryb przechowywania danych zawodnika
+              </h2>
+              <p className="mt-1 hidden text-xs text-slate-500 dark:text-neutral-400 md:block">
+                System automatycznie określa, czy profil jest <b>pełny</b> czy{" "}
+                <b>anonimowy</b> na podstawie uzupełnionych pól – Ty po prostu
+                wypełniasz dane.
+              </p>
+            </div>
           </div>
-          <div
-            className={cn(
-              "text-xs leading-relaxed",
-              choice === "known"
-                ? "text-emerald-900/80"
-                : "text-black/70 dark:text-neutral-300"
-            )}
-          >
-            Imię, nazwisko, rok urodzenia, klub i kraj – profil{" "}
-            <b>imienny</b>.
-          </div>
-        </div>
-      </div>
-    </div>
+        </CardHeader>
 
-    <div
-      className={cn(
-        "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
-        choice === "unknown"
-          ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
-          : "ring-gray-200 dark:ring-neutral-800"
-      )}
-    >
-      <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
-          <UnknownPlayerIcon
-            className={cn(
-              "h-7 w-7",
-              choice === "unknown"
-                ? "text-rose-900"
-                : "text-black dark:text-neutral-100"
-            )}
-            strokeWidth={1.0}
-          />
-        </span>
-        <div className="min-w-0">
-          <div
-            className={cn(
-              "mb-1 text-sm font-semibold",
-              choice === "unknown"
-                ? "text-rose-900"
-                : "text-black dark:text-neutral-100"
-            )}
-          >
-            Profil anonimowy
-          </div>
-          <div
-            className={cn(
-              "text-xs leading-relaxed",
-              choice === "unknown"
-                ? "text-rose-900/80"
-                : "text-black/70 dark:text-neutral-300"
-            )}
-          >
-            Numer, klub i kraj – gdy nie podajesz danych osobowych.
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</CardContent>
+        <CardContent className="px-4 py-4 md:px-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div
+              className={cn(
+                "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
+                choice === "known"
+                  ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
+                  : "ring-gray-200 dark:ring-neutral-800"
+              )}
+            >
+              <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
+                  <KnownPlayerIcon
+                    className={cn(
+                      "h-7 w-7",
+                      choice === "known"
+                        ? "text-emerald-800"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                    strokeWidth={1.0}
+                  />
+                </span>
+                <div className="min-w-0">
+                  <div
+                    className={cn(
+                      "mb-1 text-sm font-semibold",
+                      choice === "known"
+                        ? "text-emerald-900"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                  >
+                    Pełne dane zawodnika
+                  </div>
+                  <div
+                    className={cn(
+                      "text-xs leading-relaxed",
+                      choice === "known"
+                        ? "text-emerald-900/80"
+                        : "text-black/70 dark:text-neutral-300"
+                    )}
+                  >
+                    Imię, nazwisko, rok urodzenia, klub i kraj – profil{" "}
+                    <b>imienny</b>.
+                  </div>
+                </div>
+              </div>
+            </div>
 
-
+            <div
+              className={cn(
+                "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
+                choice === "unknown"
+                  ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
+                  : "ring-gray-200 dark:ring-neutral-800"
+              )}
+            >
+              <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
+                  <UnknownPlayerIcon
+                    className={cn(
+                      "h-7 w-7",
+                      choice === "unknown"
+                        ? "text-rose-900"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                    strokeWidth={1.0}
+                  />
+                </span>
+                <div className="min-w-0">
+                  <div
+                    className={cn(
+                      "mb-1 text-sm font-semibold",
+                      choice === "unknown"
+                        ? "text-rose-900"
+                        : "text-black dark:text-neutral-100"
+                    )}
+                  >
+                    Profil anonimowy
+                  </div>
+                  <div
+                    className={cn(
+                      "text-xs leading-relaxed",
+                      choice === "unknown"
+                        ? "text-rose-900/80"
+                        : "text-black/70 dark:text-neutral-300"
+                    )}
+                  >
+                    Numer, klub i wspólny kraj – gdy nie podajesz danych
+                    osobowych.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
-      {/* Kroki 1–4 – zawsze dostępne; tryb profilu wyliczany automatycznie */}
+      {/* Kroki 1–4 */}
       <div className="space-y-4">
-        {/* KROK 1 – Podstawowe informacje + Główna pozycja (pitch) */}
+        {/* KROK 1 – Podstawowe informacje + Główna pozycja */}
         <Card ref={basicRef} className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               basicOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1824,7 +2093,7 @@ useEffect(() => {
               </div>
             </button>
           </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
+          <CardContent className="px-4 py-0 md:px-4">
             <Accordion
               type="single"
               collapsible
@@ -1886,32 +2155,27 @@ useEffect(() => {
                         />
                       </div>
                       <div>
-                        <Label className="text-sm pb-2">
-                          Kraj aktualnego klubu (imienny)
-                        </Label>
-                        <CountryCombobox
-                          value={clubCountry}
-                          onChange={(val) => setClubCountry(val)}
-                        />
-                      </div>
-                      <div>
                         <Label className="text-sm">
                           Aktualny klub (gdy anonimowo)
                         </Label>
                         <Input
                           value={uClub}
                           onChange={(e) => setUClub(e.target.value)}
-                          placeholder="np. Klub bez danych osobowych"
+                          placeholder="np. klub bez danych osobowych"
                         />
                       </div>
-                      <div>
-                        <Label className="text-sm pb-2">
-                          Kraj aktualnego klubu (gdy anonimowo)
+
+                      <div className="md:col-span-2">
+                        <Label className="pb-1 text-sm">
+                          Kraj aktualnego klubu
                         </Label>
-                        <CountryCombobox
-                          value={uClubCountry}
-                          onChange={(val) => setUClubCountry(val)}
+                        <CountrySearchCombobox
+                          value={clubCountry}
+                          onChange={(val) => setClubCountry(val)}
                         />
+                        <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
+                          Jeden wspólny kraj dla profilu imiennego i anonimowego.
+                        </p>
                       </div>
 
                       <div className="md:col-span-1">
@@ -1925,7 +2189,7 @@ useEffect(() => {
                         />
                       </div>
 
-                      <div className="md:col-span-2">
+                      <div className="md:col-span-1">
                         <Label className="text-sm">
                           Notatka własna (opcjonalne)
                         </Label>
@@ -1948,7 +2212,7 @@ useEffect(() => {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               extOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1987,7 +2251,7 @@ useEffect(() => {
               </div>
             </button>
           </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
+          <CardContent className="px-4 py-0 md:px-4">
             <Accordion
               type="single"
               collapsible
@@ -2072,7 +2336,7 @@ useEffect(() => {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               gradeOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2111,7 +2375,7 @@ useEffect(() => {
               </div>
             </button>
           </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
+          <CardContent className="px-4 py-0 md:px-4">
             <Accordion
               type="single"
               collapsible
@@ -2224,7 +2488,7 @@ useEffect(() => {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               obsOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2263,7 +2527,7 @@ useEffect(() => {
               </div>
             </button>
           </CardHeader>
-          <CardContent className="px-4 py-0 md:px-6">
+          <CardContent className="px-4 py-0 md:px-4">
             <Accordion
               type="single"
               collapsible
@@ -2274,9 +2538,8 @@ useEffect(() => {
                 <AccordionContent id="obs-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
-                      Możesz tworzyć obserwacje również dla profilu
-                      anonimowego – ważne, by zachować spójność meczu i
-                      poziomu.
+                      Możesz tworzyć obserwacje również dla profilu anonimowego
+                      – ważne, by zachować spójność meczu i poziomu.
                     </p>
                   )}
 
@@ -2295,7 +2558,6 @@ useEffect(() => {
                     />
                   </div>
 
-                  {/* Stary, ukryty UI dodawania/edytowania obserwacji – zostawiony jako dead-code dla TS */}
                   {false && (
                     <>
                       <div className="space-y-8">{/* ... */}</div>

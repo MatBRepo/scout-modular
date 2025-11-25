@@ -554,51 +554,80 @@ export default function MyPlayersFeature({
     closeQuick();
   }
 
-  /* ===== active chips (always show positions chip) ===== */
-  const activeChips = useMemo(() => {
-    const chips: { key: string; label: string; clear: () => void }[] = [];
+/* ===== active chips (hide "Poz.: Wszystkie" by default) ===== */
+const activeChips = useMemo(() => {
+  const chips: { key: string; label: string; clear: () => void }[] = [];
 
-    if (q.trim()) chips.push({
+  if (q.trim()) {
+    chips.push({
       key: "q",
       label: `Szukaj: “${q.trim()}”`,
-      clear: () => { setQ(""); setPage(1); }
+      clear: () => {
+        setQ("");
+        setPage(1);
+      },
     });
+  }
 
-    const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
-    const posLabel = visiblePositions.length === POS.length
-      ? "Poz.: Wszystkie"
-      : `Poz.: ${visiblePositions.join(", ")}`;
+  const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
+  const allSelected = visiblePositions.length === POS.length;
+
+  if (!allSelected) {
+    const posLabel = `Poz.: ${visiblePositions.join(", ")}`;
     chips.push({
       key: "pos",
       label: posLabel,
-      clear: () => { setPos({ GK:true, DF:true, MF:true, FW:true }); setPage(1); },
+      clear: () => {
+        setPos({ GK: true, DF: true, MF: true, FW: true });
+        setPage(1);
+      },
     });
+  }
 
-    if (club.trim()) chips.push({
+  if (club.trim()) {
+    chips.push({
       key: "club",
       label: `Klub: ${club.trim()}`,
-      clear: () => { setClub(""); setPage(1); }
+      clear: () => {
+        setClub("");
+        setPage(1);
+      },
     });
+  }
 
-    if (ageMin !== "") chips.push({
+  if (ageMin !== "") {
+    chips.push({
       key: "ageMin",
       label: `Wiek ≥ ${ageMin}`,
-      clear: () => { setAgeMin(""); setPage(1); }
+      clear: () => {
+        setAgeMin("");
+        setPage(1);
+      },
     });
-    if (ageMax !== "") chips.push({
+  }
+
+  if (ageMax !== "") {
+    chips.push({
       key: "ageMax",
       label: `Wiek ≤ ${ageMax}`,
-      clear: () => { setAgeMax(""); setPage(1); }
+      clear: () => {
+        setAgeMax("");
+        setPage(1);
+      },
     });
+  }
 
-    if (knownScope !== "all") chips.push({
+  if (knownScope !== "all") {
+    chips.push({
       key: "known",
       label: knownScope === "known" ? "Znani" : "Nieznani",
       clear: () => changeKnownScope("all"),
     });
+  }
 
-    return chips;
-  }, [q, pos, club, ageMin, ageMax, knownScope]);
+  return chips;
+}, [q, pos, club, ageMin, ageMax, knownScope]);
+
 
   const MAX_INLINE_CHIPS = 2;
   const inlineChips = activeChips.slice(0, MAX_INLINE_CHIPS);
@@ -1616,9 +1645,9 @@ const KnownBadge = ({ known }: { known: boolean }) => {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => {
-            const jersey = !r._known ? getJerseyNo(r.name) : null;
-            const isConfirmingTrash = confirmTrashId === r.id;
+{rows.map((r) => {
+  const jersey = getJerseyNo(r.name);
+  const isConfirmingTrash = confirmTrashId === r.id;
 
             return (
               <tr
@@ -1626,28 +1655,37 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                 className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
                 onDoubleClick={() => onOpen(r.id)}
               >
-                {visibleCols.photo && (
-                  <td className={cellPad}>
-                    <div className="relative">
-                      {!r._known ? (
-                        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
-                          <PlayerOnlyTshirt className="h-6 w-6"  strokeWidthAll={14} />
-                          {jersey && (
-                            <span className="absolute -bottom-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-md bg-indigo-600 px-1.5 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-neutral-950">
-                              {jersey}
-                            </span>
-                          )}
-                        </div>
-                      ) : r.photo ? (
-                        <img src={r.photo} alt={r.name} className="h-9 w-10 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm" loading="lazy" />
-                      ) : (
-                        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
-                          {getInitials(r.name)}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                )}
+{visibleCols.photo && (
+  <td className={cellPad}>
+    <div className="relative">
+      {r._known ? (
+        r.photo ? (
+          <img
+            src={r.photo}
+            alt={r.name}
+            className="h-9 w-10 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
+            {getInitials(r.name)}
+          </div>
+        )
+      ) : jersey ? (
+        // NIEZNANY + jest numer koszulki → pokazujemy sam numer
+        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
+          {jersey}
+        </div>
+      ) : (
+        // NIEZNANY + brak numeru → sama koszulka, BEZ fioletowego badga
+        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
+          <PlayerOnlyTshirt className="h-6 w-6" strokeWidthAll={14} />
+        </div>
+      )}
+    </div>
+  </td>
+)}
+
 
                 {visibleCols.select && (
                   <td className={cellPad}>
