@@ -18,7 +18,7 @@ import {
   Users,
   GripVertical,
   ChevronDown,
-  ChevronUp,
+  ChevronUp, ChevronLeft,
   FileEdit,
   Loader2,
   CheckCircle2,
@@ -830,35 +830,45 @@ export function ObservationEditor({
     };
 
     // wstawiamy do globalnego headera: Zapisano + Zapisz i wróć + Wróć do listy
-    setActions(
-      <div className="flex items-center gap-2">
-        <div className="hidden sm:flex">
-          <SavePill state={saveState} />
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 px-3 text-xs rounded-md bg-gray-900 text-white hover:bg-gray-900 hover:text-white"
-          onClick={onClickSave}
-          disabled={
-            saveState === "saving" || !canSaveObservation || requiredLoading
-          }
-        >
-          {saveState === "saving" && (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          )}
-          Zapisz i wróć
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs"
-          onClick={onClose}
-        >
-          Wróć do listy
-        </Button>
-      </div>
-    );
+setActions(
+  <div className="flex items-center gap-2">
+    {/* Save pill – icon only on mobile, text on md+ (handled inside SavePill) */}
+    <SavePill state={saveState} size="compact" />
+
+    {/* Zapisz i wróć */}
+    <Button
+      variant="outline"
+      size="sm"
+      className="flex h-8 items-center justify-center rounded-md bg-gray-900 px-2 text-xs text-white hover:bg-gray-900 hover:text-white"
+      onClick={onClickSave}
+      disabled={
+        saveState === "saving" || !canSaveObservation || requiredLoading
+      }
+    >
+      {saveState === "saving" ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <>
+          {/* icon always, text only md+ */}
+          <CheckCircle2 className="h-4 w-4 md:mr-2" />
+          <span className="hidden md:inline">Zapisz i wróć</span>
+        </>
+      )}
+    </Button>
+
+    {/* Wróć do listy */}
+    <Button
+      variant="outline"
+      size="sm"
+      className="flex h-8 items-center justify-center px-2 text-xs"
+      onClick={onClose}
+    >
+      <ChevronLeft className="h-4 w-4 md:mr-1" />
+      <span className="hidden md:inline">Wróć do listy</span>
+    </Button>
+  </div>
+);
+
 
     return () => {
       // po wyjściu z edytora czyścimy akcje

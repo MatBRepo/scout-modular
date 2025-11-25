@@ -30,7 +30,7 @@ export function Toolbar({ title, subtitle, right }: ToolbarProps) {
     <div className="flex flex-wrap items-center justify-between">
       <div>
         {/* If you had <h2> here, keep it, but render the node */}
-        {typeof title === "string" ? <h2 className="text-lg font-semibold mb-2">{title}</h2> : title}
+        {typeof title === "string" ? <h2 className="text-2xl font-semibold mb-2">{title}</h2> : title}
         {subtitle ? (
           typeof subtitle === "string" ? (
             <div className="text-sm text-muted-foreground">{subtitle}</div>

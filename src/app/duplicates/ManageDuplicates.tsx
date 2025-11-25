@@ -783,10 +783,10 @@ export default function DuplicatesPage() {
   }
 
   return (
-    <div className="w-full max-w-[1200px] mx-auto px-3 py-4 md:px-0">
+    <div className="w-full  mx-auto px-3 py-4 md:px-0">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Duplikaty</h1>
+          <h1 className="text-2xl font-semibold">Duplikaty</h1>
           <p className="text-sm text-dark">
             Wykrywa tych samych zawodników dodanych przez różnych scoutów. Tylko
             dla Administratora. Dane pochodzą z{" "}

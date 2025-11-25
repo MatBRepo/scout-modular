@@ -1059,7 +1059,7 @@ export default function ObservationsFeature({
             </div>
           }
           right={
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between w-full">
               <div />
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
                 {/* Search */}

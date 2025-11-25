@@ -12,7 +12,12 @@ import Link from "next/link";
 import { ThemeProvider } from "next-themes";
 import AppSidebar from "@/widgets/app-sidebar/AppSidebar";
 import PageTransition from "@/shared/ui/PageTransition";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import type { ReadonlyURLSearchParams } from "next/navigation";
 import { Menu, ChevronRight } from "lucide-react";
 import { HomeIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
@@ -109,7 +114,7 @@ function getCrumbLabel(
   fullPath: string,
   segment: string,
   index: number,
-  searchParams: URLSearchParams | null
+  searchParams: ReadonlyURLSearchParams | null
 ) {
   if (index === 0) return "Strona główna";
 
@@ -155,7 +160,7 @@ type Crumb = { label: string; href: string; isEllipsis?: boolean };
 
 function buildBreadcrumb(
   pathname: string,
-  searchParams: URLSearchParams | null
+  searchParams: ReadonlyURLSearchParams | null
 ): Crumb[] {
   const parts = pathname
     .split("?")[0]
@@ -218,8 +223,7 @@ function AppShell({
   headerActions?: ReactNode | null;
 }) {
   const search = useSearchParams();
-  const crumbs = buildBreadcrumb(pathname, search as unknown as URLSearchParams);
-  const prefersReduced = useReducedMotion();
+  const crumbs = buildBreadcrumb(pathname, search);
 
   const [breadcrumbsExpanded, setBreadcrumbsExpanded] = useState(false);
 
@@ -242,19 +246,21 @@ function AppShell({
     isPlayersSubpage || isObservationsSubpage || isObsCreateQuery;
 
   const totalCrumbs = crumbs.length;
-  const canCollapse = totalCrumbs > 4;
-  const shouldCollapse = canCollapse && !breadcrumbsExpanded;
+  const shouldCollapse = totalCrumbs > 2 && !breadcrumbsExpanded;
 
   let displayedCrumbs: Crumb[] = crumbs;
 
   if (shouldCollapse) {
     displayedCrumbs = [
       crumbs[0],
-      crumbs[1],
       { label: "[...]", href: "#", isEllipsis: true },
       crumbs[totalCrumbs - 1],
     ];
   }
+
+  // Crumbs that are hidden inside the tooltip (middle path)
+  const hiddenCrumbs =
+    totalCrumbs > 2 ? crumbs.slice(1, totalCrumbs - 1) : [];
 
   return (
     <>
@@ -274,6 +280,7 @@ function AppShell({
               </button>
             )}
 
+            {/* SHORT BREADCRUMB IN HEADER */}
             <nav
               aria-label="Breadcrumb"
               className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
@@ -287,14 +294,16 @@ function AppShell({
                     return (
                       <li
                         key="breadcrumb-ellipsis"
-                        className="flex min-w-0 items-center"
+                        className="relative flex min-w-0 items-center"
                       >
                         <button
                           type="button"
-                          onClick={() => setBreadcrumbsExpanded(true)}
+                          onClick={() =>
+                            setBreadcrumbsExpanded((prev) => !prev)
+                          }
                           className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-neutral-300 dark:ring-neutral-700 dark:hover:bg-neutral-900"
-                          aria-label="Pokaż pełną ścieżkę nawigacji"
-                          title="Pokaż pełną ścieżkę nawigacji"
+                          aria-label="Pokaż ukrytą ścieżkę nawigacji"
+                          title="Pokaż ukrytą ścieżkę nawigacji"
                         >
                           [...]
                         </button>
@@ -302,6 +311,68 @@ function AppShell({
                           className="mx-1 h-4 w-4 opacity-60"
                           aria-hidden="true"
                         />
+
+                        {/* TOOLTIP WITH HIDDEN PATH – MOBILE ONLY */}
+                        {breadcrumbsExpanded && hiddenCrumbs.length > 0 && (
+                          <>
+                            {/* click outside area */}
+                            <button
+                              type="button"
+                              className="fixed inset-0 z-[70] cursor-default md:hidden"
+                              aria-hidden="true"
+                              onClick={() =>
+                                setBreadcrumbsExpanded(false)
+                              }
+                            />
+                            <div className="absolute left-0 top-full z-[71] mt-1 max-w-[80vw] rounded-md border border-slate-200 bg-white px-2 py-1 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900 md:hidden">
+                              <ol className="flex flex-wrap items-center gap-1 text-slate-700 dark:text-neutral-100">
+                                {hiddenCrumbs.map((hc, idx) => {
+                                  const lastHidden =
+                                    idx === hiddenCrumbs.length - 1;
+                                  const hiddenLabel =
+                                    hc.label || "Strona główna";
+
+                                  return (
+                                    <li
+                                      key={hc.href}
+                                      className="flex min-w-0 items-center"
+                                    >
+                                      {!lastHidden ? (
+                                        <>
+                                          <Link
+                                            href={hc.href}
+                                            className="truncate hover:underline normal-case"
+                                            title={hiddenLabel}
+                                            onClick={() =>
+                                              setBreadcrumbsExpanded(
+                                                false
+                                              )
+                                            }
+                                          >
+                                            <span className="normal-case">
+                                              {hiddenLabel}
+                                            </span>
+                                          </Link>
+                                          <ChevronRight
+                                            className="mx-1 h-3.5 w-3.5 opacity-60"
+                                            aria-hidden="true"
+                                          />
+                                        </>
+                                      ) : (
+                                        <span
+                                          className="truncate font-medium text-slate-900 dark:text-neutral-50 normal-case"
+                                          title={hiddenLabel}
+                                        >
+                                          {hiddenLabel}
+                                        </span>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ol>
+                            </div>
+                          </>
+                        )}
                       </li>
                     );
                   }
@@ -343,13 +414,13 @@ function AppShell({
               </ol>
             </nav>
 
-            <div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] px-3 md:px-0">
+            <div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] pr-0 sm:px-0">
               {isAuthed ? (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, ease: easeOutCustom }}
-                  className="ml-2 flex shrink-0 items-center gap-2 min-h-[36px]"
+                  className="ml-2 mr-2 md:mr-0 flex shrink-0 items-center gap-2 min-h-[36px]"
                 >
                   {headerActions ? (
                     <div className="flex items-center gap-2">
@@ -451,7 +522,9 @@ export default function ClientRoot({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
 
-  const [headerActions, setHeaderActions] = useState<ReactNode | null>(null);
+  const [headerActions, setHeaderActions] = useState<ReactNode | null>(
+    null
+  );
 
   useEffect(() => {
     if (prefersReduced) return;
@@ -469,7 +542,11 @@ export default function ClientRoot({
     router.push("/observations?create=1");
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem={false}
+    >
       <div
         className={`fixed inset-x-0 top-0 z-[60] h-0.5 bg-indigo-500 transition-opacity ${
           routeLoading ? "opacity-100" : "opacity-0"

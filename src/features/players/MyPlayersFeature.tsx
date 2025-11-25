@@ -824,7 +824,7 @@ export default function MyPlayersFeature({
             </div>
           }
           right={
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between min-h-10">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between min-h-10 w-full">
               <div />
 
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">

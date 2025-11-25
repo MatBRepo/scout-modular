@@ -35,7 +35,7 @@ import {
   Check,
   Loader2,
   CheckCircle2,
-  ChevronDown,
+  ChevronDown, ChevronLeft
 } from "lucide-react";
 
 import { Calendar } from "@/components/ui/calendar";
@@ -269,18 +269,21 @@ function SavePill({
     <span className={cn(base, map[state])} aria-live="polite">
       {state === "saving" ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Autozapis…
+          <Loader2 className="h-4 w-4 animate-spin md:mr-2" />
+          {/* text hidden on mobile, visible md+ */}
+          <span className="hidden md:inline">Autozapis…</span>
         </>
       ) : (
         <>
-          <CheckCircle2 className="mr-2 h-4 w-4" />
-          Zapisano
+          <CheckCircle2 className="h-4 w-4 md:mr-2" />
+          {/* text hidden on mobile, visible md+ */}
+          <span className="hidden md:inline">Zapisano</span>
         </>
       )}
     </span>
   );
 }
+
 
 function Chip({ text }: { text: string }) {
   return (
@@ -1652,7 +1655,7 @@ export default function PlayerEditorPage() {
   ]);
 
   const stepPillClass =
-    "inline-flex h-6 items-center rounded-md bg-slate-100 px-2.5 text-[11px] tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
+    "inline-flex h-6 items-center rounded-md bg-slate-100 px-2.5 text-[11px] tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200 hidden md:flex";
 
   // Helper to avoid infinite loop in observations onChange
   function mapTableRowsToObservations(rows: any[]): ObsRec[] {
@@ -1688,27 +1691,41 @@ export default function PlayerEditorPage() {
     return true;
   }
 
-  // NEW: push "Zapisano / Wróć do listy" into global header via ClientRoot
-  useEffect(() => {
-    const node = (
-      <div className="flex items-center gap-2">
-        <SavePill state={saveState} size="compact" />
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 px-3 text-xs"
-          onClick={() => router.push("/players")}
-        >
-          Wróć do listy
-        </Button>
-      </div>
-    );
+// NEW: push "Zapisano / Wróć do listy" into global header via ClientRoot
+useEffect(() => {
+  const node = (
+    <div className="flex items-center gap-2">
+      <SavePill state={saveState} size="compact" />
 
-    setActions(node);
-    return () => {
-      setActions(null);
-    };
-  }, [setActions, saveState, router]);
+      {/* Desktop / tablet: text button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="hidden h-8 px-3 text-xs md:inline-flex"
+        onClick={() => router.push("/players")}
+      >
+        Wróć do listy
+      </Button>
+
+      {/* Mobile: round back arrow */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="inline-flex h-8 w-8 p-0 md:hidden"
+        aria-label="Wróć do listy"
+        onClick={() => router.push("/players")}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+
+  setActions(node);
+  return () => {
+    setActions(null);
+  };
+}, [setActions, saveState, router]);
+
 
   if (!playerId) {
     return (
@@ -1743,115 +1760,118 @@ export default function PlayerEditorPage() {
 
       {/* KROK 0 – tryb profilu (ustalany automatycznie na podstawie pól) */}
       <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
-        <CardHeader className="group flex items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
-          <div className="flex w-full items-center justify-between gap-3">
-            <div>
-              <div className={stepPillClass}>Krok 0 · Tryb profilu</div>
-              <h2 className="mt-1 text-base font-semibold tracking-tight">
-                Tryb przechowywania danych zawodnika
-              </h2>
-              <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
-                System automatycznie określa, czy profil jest <b>pełny</b> czy{" "}
-                <b>anonimowy</b> na podstawie uzupełnionych pól – Ty po prostu
-                wypełniasz dane.
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 py-4 md:px-6">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div
-              className={cn(
-                "w-full cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
-                choice === "known"
-                  ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
-                  : "ring-gray-200 dark:ring-neutral-800"
-              )}
-            >
-              <div className="flex items-start gap-4">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
-                  <KnownPlayerIcon
-                    className={cn(
-                      "h-7 w-7",
-                      choice === "known"
-                        ? "text-emerald-800"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                    strokeWidth={1.0}
-                  />
-                </span>
-                <div className="min-w-0">
-                  <div
-                    className={cn(
-                      "mb-1 text-sm font-semibold",
-                      choice === "known"
-                        ? "text-emerald-900"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                  >
-                    Pełne dane zawodnika
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xs leading-relaxed",
-                      choice === "known"
-                        ? "text-emerald-900/80"
-                        : "text-black/70 dark:text-neutral-300"
-                    )}
-                  >
-                    Imię, nazwisko, rok urodzenia, klub i kraj – profil{" "}
-                    <b>imienny</b>.
-                  </div>
-                </div>
-              </div>
-            </div>
+<CardHeader className="group flex items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-6 dark:border-neutral-800 dark:hover:bg-neutral-900/60 hidden md:block">
+  <div className="flex w-full items-center justify-between gap-3 hidden md:block">
+    <div className="hidden md:block">
+      <div className={stepPillClass}>Krok 0 · Tryb profilu</div>
+      <h2 className="mt-1 text-base font-semibold tracking-tight hidden md:block">
+        Tryb przechowywania danych zawodnika
+      </h2>
+      <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400 hidden md:block">
+        System automatycznie określa, czy profil jest <b>pełny</b> czy{" "}
+        <b>anonimowy</b> na podstawie uzupełnionych pól – Ty po prostu
+        wypełniasz dane.
+      </p>
+    </div>
+  </div>
+</CardHeader>
 
-            <div
-              className={cn(
-                "w-full cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
-                choice === "unknown"
-                  ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
-                  : "ring-gray-200 dark:ring-neutral-800"
-              )}
-            >
-              <div className="flex items-start gap-4">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
-                  <UnknownPlayerIcon
-                    className={cn(
-                      "h-7 w-7",
-                      choice === "unknown"
-                        ? "text-rose-900"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                    strokeWidth={1.0}
-                  />
-                </span>
-                <div className="min-w-0">
-                  <div
-                    className={cn(
-                      "mb-1 text-sm font-semibold",
-                      choice === "unknown"
-                        ? "text-rose-900"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                  >
-                    Profil anonimowy
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xs leading-relaxed",
-                      choice === "unknown"
-                        ? "text-rose-900/80"
-                        : "text-black/70 dark:text-neutral-300"
-                    )}
-                  >
-                    Numer, klub i kraj – gdy nie podajesz danych osobowych.
-                  </div>
-                </div>
-              </div>
-            </div>
+<CardContent className="px-4 py-4 md:px-6">
+  <div className="grid grid-cols-2 gap-3">
+    <div
+      className={cn(
+        "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
+        choice === "known"
+          ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
+          : "ring-gray-200 dark:ring-neutral-800"
+      )}
+    >
+      <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
+          <KnownPlayerIcon
+            className={cn(
+              "h-7 w-7",
+              choice === "known"
+                ? "text-emerald-800"
+                : "text-black dark:text-neutral-100"
+            )}
+            strokeWidth={1.0}
+          />
+        </span>
+        <div className="min-w-0">
+          <div
+            className={cn(
+              "mb-1 text-sm font-semibold",
+              choice === "known"
+                ? "text-emerald-900"
+                : "text-black dark:text-neutral-100"
+            )}
+          >
+            Pełne dane zawodnika
           </div>
-        </CardContent>
+          <div
+            className={cn(
+              "text-xs leading-relaxed",
+              choice === "known"
+                ? "text-emerald-900/80"
+                : "text-black/70 dark:text-neutral-300"
+            )}
+          >
+            Imię, nazwisko, rok urodzenia, klub i kraj – profil{" "}
+            <b>imienny</b>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      className={cn(
+        "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
+        choice === "unknown"
+          ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
+          : "ring-gray-200 dark:ring-neutral-800"
+      )}
+    >
+      <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
+          <UnknownPlayerIcon
+            className={cn(
+              "h-7 w-7",
+              choice === "unknown"
+                ? "text-rose-900"
+                : "text-black dark:text-neutral-100"
+            )}
+            strokeWidth={1.0}
+          />
+        </span>
+        <div className="min-w-0">
+          <div
+            className={cn(
+              "mb-1 text-sm font-semibold",
+              choice === "unknown"
+                ? "text-rose-900"
+                : "text-black dark:text-neutral-100"
+            )}
+          >
+            Profil anonimowy
+          </div>
+          <div
+            className={cn(
+              "text-xs leading-relaxed",
+              choice === "unknown"
+                ? "text-rose-900/80"
+                : "text-black/70 dark:text-neutral-300"
+            )}
+          >
+            Numer, klub i kraj – gdy nie podajesz danych osobowych.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</CardContent>
+
+
       </Card>
 
       {/* Kroki 1–4 – zawsze dostępne; tryb profilu wyliczany automatycznie */}
