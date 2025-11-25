@@ -341,6 +341,10 @@ export default function GlobalDatabasePage() {
     }
   }
 
+  async function refreshFromSupabase() {
+    await loadPlayers();
+  }
+
   /* ------------------------- Local helpers ------------------------ */
 
   const filtered = useMemo(() => {
@@ -480,16 +484,11 @@ export default function GlobalDatabasePage() {
     }
   }
 
-  async function refreshFromSupabase() {
-    await loadPlayers();
-  }
-
   const isAdmin = authStatus === "ok" && role === "admin";
 
   /* ------------------- Szczegóły globalnego gracza ------------------ */
 
   async function toggleDetail(r: GlobalPlayer) {
-    // jeśli klikam w ten sam – zwijamy
     if (expandedGlobal && expandedGlobal.id === r.id) {
       setExpandedGlobal(null);
       setDetailPlayers([]);
@@ -499,7 +498,6 @@ export default function GlobalDatabasePage() {
       return;
     }
 
-    // nowy rozwijany wiersz
     setExpandedGlobal(r);
     setDetailLoading(true);
     setDetailError(null);
@@ -510,7 +508,7 @@ export default function GlobalDatabasePage() {
       const supabase = getSupabase();
       const normName = normalizeName(r.name || "");
 
-      // 1) players – szukamy po name (a potem normalizujemy w JS)
+      // 1) players – szukamy po name, potem dopinamy normName
       const { data: playersData, error: playersErr } = await supabase
         .from("players")
         .select("id, meta, user_id, name, \"firstName\", \"lastName\"")
@@ -537,7 +535,7 @@ export default function GlobalDatabasePage() {
 
       const playerIds = playersArr.map((p) => p.id);
 
-      // 2) observations – bierzemy trochę rekordów i filtrujemy w JS
+      // 2) observations – szeroko, filtr w JS
       const { data: obsData, error: obsErr } = await supabase
         .from("observations")
         .select("*")
@@ -554,7 +552,6 @@ export default function GlobalDatabasePage() {
       const allObs = Array.isArray(obsData) ? obsData : [];
 
       const matchedObs = allObs.filter((o: any) => {
-        // dopasowanie po kolumnie player (tekst)
         if (o.player && normalizeName(o.player) === normName) {
           return true;
         }
@@ -736,7 +733,7 @@ export default function GlobalDatabasePage() {
   }
 
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full space-y-5">
       <Toolbar
         title="Zawodnicy — globalna baza (Admin)"
         right={
@@ -747,13 +744,13 @@ export default function GlobalDatabasePage() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Szukaj po nazwisku, klubie, narodowości…"
-                className="w-72 pl-8 pr-10"
+                className="w-72 rounded-md pl-8 pr-10 text-sm"
               />
               {q && (
                 <button
                   type="button"
                   onClick={clearSearch}
-                  className="absolute right-2 text-xs text-gray-400 hover:text-gray-700 dark:text-neutral-500 dark:hover:text-neutral-200"
+                  className="absolute right-2 text-xs text-gray-400 transition hover:text-gray-700 dark:text-neutral-500 dark:hover:text-neutral-200"
                   aria-label="Wyczyść wyszukiwanie"
                 >
                   ✕
@@ -763,7 +760,7 @@ export default function GlobalDatabasePage() {
 
             <Button
               variant="outline"
-              className="h-9 border-gray-300 dark:border-neutral-700"
+              className="h-9 rounded-md border-gray-300 text-xs font-medium dark:border-neutral-700"
               onClick={handleSync}
               title="Przeładuj globalną bazę z tabeli global_players"
               disabled={syncing || loadingList}
@@ -773,12 +770,12 @@ export default function GlobalDatabasePage() {
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              Przeładuj bazę
+              Przeładuj
             </Button>
 
             <Button
               variant="outline"
-              className="h-9 border-gray-300 dark:border-neutral-700"
+              className="h-9 rounded-md border-gray-300 text-xs font-medium dark:border-neutral-700"
               onClick={refreshFromSupabase}
               title="Wczytaj ponownie z global_players"
               disabled={loadingList || syncing}
@@ -788,54 +785,41 @@ export default function GlobalDatabasePage() {
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              Odśwież
+              Odśwież listę
             </Button>
           </div>
         }
       />
 
-      <Card className="border-dashed border-slate-300 bg-slate-50/70 text-xs dark:border-neutral-700 dark:bg-neutral-900/40">
-        <CardContent className="flex flex-wrap items-start gap-2 px-3 py-2">
-          <InfoIcon className="mt-0.5 h-3.5 w-3.5 text-slate-500 dark:text-neutral-400" />
-          <div className="space-y-1">
-            <div className="font-medium text-slate-800 dark:text-neutral-100">
-              Globalna baza = końcowy, bezduplikatowy katalog zawodników
+      <Card className="border-stone-200 bg-gradient-to-r from-slate-50 to-stone-100 text-xs dark:border-neutral-700 dark:from-neutral-900 dark:to-neutral-900/70">
+        <CardContent className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+          <div className="flex flex-1 items-start gap-2">
+            <div className="mt-0.5 rounded-md bg-slate-900/5 p-1 dark:bg-neutral-100/5">
+              <InfoIcon className="h-3.5 w-3.5 text-stone-600 dark:text-neutral-300" />
             </div>
-            <p className="text-slate-600 dark:text-neutral-300">
-              W tej tabeli widzisz po <b>jednym wierszu na zawodnika</b>{" "}
-              (deduplikacja po znormalizowanej nazwie). Rekordy trafiają z
-              widoku{" "}
-              <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] dark:bg-neutral-800">
-                Duplikaty
-              </code>{" "}
-              po akcji <b>„Scal i dodaj do Globalnej bazy”</b> /{" "}
-              <b>„Powiąż z globalnym”</b> lub z zewnętrznych źródeł (TM/Wyscout).
-              Jeśli zawodnik ma przypisanych scoutów w polu{" "}
-              <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] dark:bg-neutral-800">
-                sources
-              </code>
-              , zobaczysz badge z liczbą kont scoutów i listę po kliknięciu.
-            </p>
+            <div className="space-y-1">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
+                Globalna baza zawodników
+              </div>
+              <p className="text-[11px] leading-snug text-stone-600 dark:text-neutral-300">
+                Jeden rekord = jeden zawodnik (po deduplikacji nazwy). Dane
+                spływają z widoku{" "}
+                <code className="rounded bg-stone-200 px-1 py-0.5 text-[10px] dark:bg-neutral-800">
+                  Duplikaty
+                </code>{" "}
+                po akcji <b>„Scal i dodaj do Globalnej bazy”</b> /
+                <b> „Powiąż z globalnym”</b> oraz z zewnętrznych źródeł.
+              </p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {error && (
-        <div className="mt-1 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
-          {error}
-        </div>
-      )}
-
-      <Card className="border-gray-200 dark:border-neutral-800">
-        <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-sm">
-              Globalna baza •{" "}
-              <span className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                {filtered.length} zawodników
+          <div className="flex flex-col items-end gap-1 text-[11px] text-stone-600 dark:text-neutral-300">
+            <span>
+              Zawodników:{" "}
+              <span className="font-semibold text-slate-900 dark:text-neutral-50">
+                {filtered.length}
               </span>
-            </CardTitle>
-            <p className="text-xs text-gray-500 dark:text-neutral-400">
+            </span>
+            <span className="text-[10px]">
               Ostatnia aktualizacja:{" "}
               {lastSync
                 ? lastSync.toLocaleString("pl-PL", {
@@ -845,14 +829,38 @@ export default function GlobalDatabasePage() {
                     hour: "2-digit",
                     minute: "2-digit",
                   })
-                : "brak danych – dodaj zawodników przez Duplikaty / merge do globalnej bazy"}
+                : "brak danych"}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {error && (
+        <div className="mt-1 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
+          {error}
+        </div>
+      )}
+
+      <Card className="border-gray-200 shadow-sm dark:border-neutral-800">
+        <CardHeader className="flex flex-col gap-1 border-b border-stone-200/70 pb-3 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
+          <div className="space-y-1">
+            <CardTitle className="text-sm font-semibold text-slate-900 dark:text-neutral-50">
+              Globalna baza zawodników
+            </CardTitle>
+            <p className="text-[11px] text-gray-500 dark:text-neutral-400">
+              Kliknij{" "}
+              <span className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
+                <InfoIcon className="mr-1 h-3 w-3" />
+                Szczegóły
+              </span>{" "}
+              aby zobaczyć zagregowane oceny i wszystkie obserwacje z systemu.
             </p>
           </div>
 
           {(loadingList || syncing) && (
-            <div className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-neutral-400">
+            <div className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-3 py-1 text-[11px] text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              {syncing ? "Przeładowywanie…" : "Ładowanie…"}
+              {syncing ? "Przeładowywanie bazy…" : "Ładowanie danych…"}
             </div>
           )}
         </CardHeader>
@@ -860,22 +868,20 @@ export default function GlobalDatabasePage() {
         <CardContent className="p-0">
           <div className="w-full overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+              <thead className="bg-slate-50 text-xs font-medium uppercase tracking-wide text-stone-600 dark:bg-neutral-900 dark:text-neutral-300">
                 <tr>
-                  <th className="p-3 text-left font-medium">Zawodnik</th>
-                  <th className="p-3 text-left font-medium">Klub</th>
-                  <th className="p-3 text-left font-medium">Pozycja</th>
-                  <th className="p-3 text-left font-medium">Wiek</th>
-                  <th className="p-3 text-left font-medium">Narodowość</th>
-                  <th className="p-3 text-left font-medium">Źródło</th>
-                  <th className="p-3 text-left font-medium">Dodano</th>
-                  <th className="p-3 text-left font-medium">
-                    Notatka (Admin)
-                  </th>
-                  <th className="p-3 text-right font-medium">Akcje</th>
+                  <th className="px-3 py-2 text-left">Zawodnik</th>
+                  <th className="px-3 py-2 text-left">Klub</th>
+                  <th className="px-3 py-2 text-left">Pozycja</th>
+                  <th className="px-3 py-2 text-left">Wiek</th>
+                  <th className="px-3 py-2 text-left">Narodowość</th>
+                  <th className="px-3 py-2 text-left">Źródło</th>
+                  <th className="px-3 py-2 text-left">Dodano</th>
+                  <th className="px-3 py-2 text-left">Notatka (Admin)</th>
+                  <th className="px-3 py-2 text-right">Akcje</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-xs sm:text-[13px]">
                 {filtered.map((r, idx) => {
                   const isEditing = editingId === r.id;
                   const isSavingThis = savingNoteId === r.id;
@@ -904,27 +910,37 @@ export default function GlobalDatabasePage() {
                       <tr
                         key={r.id}
                         className={cn(
-                          "border-t border-gray-200 align-top dark:border-neutral-800",
+                          "border-t border-gray-100 align-top transition-colors dark:border-neutral-800",
                           idx % 2
-                            ? "bg-stone-50/60 dark:bg-neutral-900/40"
-                            : "bg-white dark:bg-neutral-950"
+                            ? "bg-white dark:bg-neutral-950"
+                            : "bg-slate-50/40 dark:bg-neutral-950/60",
+                          "hover:bg-stone-100/90 dark:hover:bg-neutral-900",
+                          isExpanded &&
+                            "border-sky-200 bg-sky-50/70 shadow-sm dark:border-sky-700 dark:stone-700"
                         )}
                       >
-                        <td className="p-3">
+                        <td className="px-3 py-2">
                           <div className="flex flex-col gap-1">
-                            <div className="font-medium text-gray-900 dark:text-neutral-100">
-                              {r.name || "—"}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="font-semibold text-gray-900 dark:text-neutral-100">
+                                {r.name || "—"}
+                              </div>
+                              {r.pos && (
+                                <span className="inline-flex rounded-md bg-slate-900/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-800 dark:bg-neutral-100/5 dark:text-neutral-100">
+                                  {r.pos}
+                                </span>
+                              )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-neutral-400">
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500 dark:text-neutral-400">
                               {r.extId && (
-                                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-neutral-900">
+                                <span className="rounded-md bg-stone-100 px-1.5 py-0.5 dark:bg-neutral-900">
                                   ID zewn.: {r.extId}
                                 </span>
                               )}
                               {scoutsCount > 0 && (
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                                  className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-700 transition hover:bg-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
                                   onClick={() =>
                                     setSourcesModal({
                                       playerName:
@@ -945,16 +961,16 @@ export default function GlobalDatabasePage() {
                             </div>
                           </div>
                         </td>
-                        <td className="p-3">
+                        <td className="px-3 py-2">
                           {r.club ? (
-                            <span className="inline-flex max-w-[180px] items-center rounded-md bg-slate-50 px-2 py-0.5 text-[11px] text-slate-800 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+                            <span className="inline-flex max-w-[180px] items-center rounded-md bg-slate-50 px-2 py-0.5 text-[11px] text-slate-800 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
                               {r.club}
                             </span>
                           ) : (
                             "—"
                           )}
                         </td>
-                        <td className="p-3">
+                        <td className="px-3 py-2">
                           {r.pos ? (
                             <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
                               {r.pos}
@@ -963,20 +979,20 @@ export default function GlobalDatabasePage() {
                             "—"
                           )}
                         </td>
-                        <td className="p-3">{r.age ?? "—"}</td>
-                        <td className="p-3">
+                        <td className="px-3 py-2">{r.age ?? "—"}</td>
+                        <td className="px-3 py-2">
                           {r.nationality ? (
-                            <span className="inline-flex max-w-[140px] items-center rounded-md bg-slate-50 px-2 py-0.5 text-[11px] text-slate-800 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+                            <span className="inline-flex max-w-[140px] items-center rounded-md bg-slate-50 px-2 py-0.5 text-[11px] text-slate-800 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
                               {r.nationality}
                             </span>
                           ) : (
                             "—"
                           )}
                         </td>
-                        <td className="p-3">
+                        <td className="px-3 py-2">
                           {labelForSource(r.source)}
                         </td>
-                        <td className="p-3">
+                        <td className="px-3 py-2">
                           {r.addedAt
                             ? new Date(r.addedAt).toLocaleString(
                                 "pl-PL",
@@ -990,7 +1006,7 @@ export default function GlobalDatabasePage() {
                               )
                             : "—"}
                         </td>
-                        <td className="p-3">
+                        <td className="px-3 py-2">
                           {!isEditing ? (
                             r.adminNote ? (
                               <div className="max-w-xs truncate text-gray-800 dark:text-neutral-100">
@@ -1003,7 +1019,7 @@ export default function GlobalDatabasePage() {
                             )
                           ) : (
                             <div className="max-w-md space-y-2">
-                              <Label className="text-xs">
+                              <Label className="text-[11px]">
                                 Notatka
                               </Label>
                               <textarea
@@ -1011,12 +1027,12 @@ export default function GlobalDatabasePage() {
                                 onChange={(e) =>
                                   setNoteDraft(e.target.value)
                                 }
-                                className="h-24 w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-                                placeholder="Twoja prywatna notatka (widoczna tylko dla Admina w tym widoku)…"
+                                className="h-24 w-full rounded-md border border-gray-300 p-2 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                                placeholder="Prywatna notatka Admina o tym zawodniku…"
                               />
                               <div className="flex flex-wrap items-center gap-2">
                                 <Button
-                                  className="bg-gray-900 text-white hover:bg-gray-800"
+                                  className="bg-gray-900 text-xs text-white hover:bg-gray-800"
                                   size="sm"
                                   onClick={saveNote}
                                   disabled={isSavingThis}
@@ -1031,7 +1047,7 @@ export default function GlobalDatabasePage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="border-gray-300 dark:border-neutral-700"
+                                  className="border-gray-300 text-xs dark:border-neutral-700"
                                   onClick={cancelNote}
                                   disabled={isSavingThis}
                                 >
@@ -1041,14 +1057,14 @@ export default function GlobalDatabasePage() {
                             </div>
                           )}
                         </td>
-                        <td className="p-3 text-right">
+                        <td className="px-3 py-2 text-right">
                           {!isEditing ? (
                             <div className="flex flex-wrap justify-end gap-2">
                               <Button
                                 size="sm"
                                 variant={isExpanded ? "default" : "outline"}
                                 className={cn(
-                                  "h-8",
+                                  "h-8 rounded-md px-3 text-[11px] font-medium",
                                   !isExpanded &&
                                     "border-gray-300 dark:border-neutral-700"
                                 )}
@@ -1056,7 +1072,7 @@ export default function GlobalDatabasePage() {
                                 title="Pokaż szczegóły globalnego zawodnika"
                                 disabled={isDeletingThis}
                               >
-                                <InfoIcon className="mr-1 h-4 w-4" />
+                                <InfoIcon className="mr-1 h-3.5 w-3.5" />
                                 {isExpanded
                                   ? "Ukryj szczegóły"
                                   : "Szczegóły"}
@@ -1064,25 +1080,25 @@ export default function GlobalDatabasePage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 border-gray-300 dark:border-neutral-700"
+                                className="h-8 rounded-md border-gray-300 px-3 text-[11px] font-medium dark:border-neutral-700"
                                 onClick={() => startEditNote(r)}
                                 title="Edytuj notatkę Administratora"
                                 disabled={isDeletingThis}
                               >
-                                <NotebookPen className="mr-1 h-4 w-4" />
+                                <NotebookPen className="mr-1 h-3.5 w-3.5" />
                                 Notatka
                               </Button>
                               <Button
                                 size="sm"
-                                className="h-8 bg-gray-900 text-white hover:bg-gray-800"
+                                className="h-8 rounded-md bg-gray-900 px-3 text-[11px] font-medium text-white hover:bg-gray-800"
                                 onClick={() => remove(r.id)}
                                 title="Usuń z globalnej bazy"
                                 disabled={isDeletingThis}
                               >
                                 {isDeletingThis ? (
-                                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                                 ) : (
-                                  <Trash2 className="mr-1 h-4 w-4" />
+                                  <Trash2 className="mr-1 h-3.5 w-3.5" />
                                 )}
                                 Usuń
                               </Button>
@@ -1091,11 +1107,11 @@ export default function GlobalDatabasePage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8 border-gray-300 dark:border-neutral-700"
+                              className="h-8 rounded-md border-gray-300 px-3 text-[11px] font-medium dark:border-neutral-700"
                               onClick={cancelNote}
                               disabled={isSavingThis}
                             >
-                              <Undo2 className="mr-1 h-4 w-4" />
+                              <Undo2 className="mr-1 h-3.5 w-3.5" />
                               Anuluj
                             </Button>
                           )}
@@ -1105,26 +1121,67 @@ export default function GlobalDatabasePage() {
                       {isExpanded && (
                         <tr
                           key={`${r.id}-details`}
-                          className="border-t border-slate-200 bg-slate-50/70 dark:border-neutral-800 dark:bg-neutral-950/60"
+                          className="border-t border-stone-200 bg-slate-50/70 dark:border-neutral-800 dark:bg-neutral-950/60"
                         >
-                          <td colSpan={9} className="p-3">
-                            <div className="space-y-3 text-xs">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div>
-                                  <div className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+                          <td colSpan={9} className="px-3 py-4">
+                            <div className="space-y-4 rounded-md border border-stone-200 bg-white/95 p-4 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-950/95">
+                              {/* Header / summary */}
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="space-y-1.5">
+                                  <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
+                                    <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
                                     Szczegóły globalnego zawodnika
                                   </div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-neutral-50">
-                                    {r.name} • {r.club || "bez klubu"} •{" "}
-                                    {r.pos || "brak pozycji"}
+                                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                                    <span>{r.name}</span>
+                                    {r.club && (
+                                      <>
+                                        <span className="text-[11px] text-stone-400">
+                                          •
+                                        </span>
+                                        <span className="rounded-md bg-slate-900/5 px-2 py-0.5 text-[11px] font-normal text-stone-700 dark:bg-neutral-100/5 dark:text-neutral-200">
+                                          {r.club}
+                                        </span>
+                                      </>
+                                    )}
+                                    {r.pos && (
+                                      <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                                        {r.pos}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-2 text-[11px] text-stone-500 dark:text-neutral-400">
+                                    {r.nationality && (
+                                      <span className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 dark:bg-neutral-900">
+                                        {r.nationality}
+                                      </span>
+                                    )}
+                                    {r.source && (
+                                      <span className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 dark:bg-neutral-900">
+                                        Źródło: {labelForSource(r.source)}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
-                                {detailLoading && (
-                                  <div className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-neutral-400">
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Ładowanie szczegółów…
+
+                                <div className="flex flex-col items-end gap-1 text-[11px] text-stone-600 dark:text-neutral-300">
+                                  <div className="flex flex-wrap justify-end gap-1.5">
+                                    <SummaryPill
+                                      label="Profile scoutów"
+                                      value={detailPlayers.length}
+                                    />
+                                    <SummaryPill
+                                      label="Obserwacje"
+                                      value={detailObservations.length}
+                                    />
                                   </div>
-                                )}
+                                  {detailLoading && (
+                                    <div className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600 dark:bg-neutral-900 dark:text-neutral-300">
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      Ładowanie szczegółów…
+                                    </div>
+                                  )}
+                                </div>
                               </div>
 
                               {detailError && (
@@ -1150,11 +1207,17 @@ export default function GlobalDatabasePage() {
                                   defaultValue="ratings"
                                   className="w-full"
                                 >
-                                  <TabsList className="mb-3">
-                                    <TabsTrigger value="ratings">
+                                  <TabsList className="mb-3 h-10 rounded-md bg-stone-100 p-1 text-[11px] dark:bg-neutral-900">
+                                    <TabsTrigger
+                                      value="ratings"
+                                      className="rounded-md px-3"
+                                    >
                                       Ocena zawodnika
                                     </TabsTrigger>
-                                    <TabsTrigger value="observations">
+                                    <TabsTrigger
+                                      value="observations"
+                                      className="rounded-md px-3"
+                                    >
                                       Obserwacje
                                     </TabsTrigger>
                                   </TabsList>
@@ -1235,31 +1298,36 @@ export default function GlobalDatabasePage() {
                                           return (
                                             <div
                                               key={o.id}
-                                              className="flex flex-col gap-1 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-950"
+                                              className="flex flex-col gap-1 rounded-md border border-gray-200 bg-slate-50/80 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-950"
                                             >
-                                              <div className="flex flex-wrap items-center gap-2">
-                                                <span className="font-medium text-gray-900 dark:text-neutral-50">
-                                                  {o.match ||
-                                                    "Bez nazwy meczu"}
-                                                </span>
-                                                <span className="text-[11px] text-gray-500 dark:text-neutral-400">
-                                                  {o.date} {o.time}
-                                                </span>
-                                                {o.mode && (
-                                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 dark:bg-neutral-900 dark:text-neutral-200">
-                                                    {o.mode}
-                                                  </span>
-                                                )}
-                                                {o.status && (
-                                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 dark:bg-neutral-900 dark:text-neutral-200">
-                                                    {o.status}
-                                                  </span>
-                                                )}
+                                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <div className="flex flex-col gap-0.5">
+                                                  <div className="font-medium text-slate-900 dark:text-neutral-50">
+                                                    {o.match ||
+                                                      "Bez nazwy meczu"}
+                                                  </div>
+                                                  <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+                                                    {o.date}{" "}
+                                                    {o.time && `• ${o.time}`}
+                                                  </div>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-1">
+                                                  {o.mode && (
+                                                    <span className="rounded-md bg-slate-900/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-stone-700 dark:bg-neutral-100/5 dark:text-neutral-200">
+                                                      {o.mode}
+                                                    </span>
+                                                  )}
+                                                  {o.status && (
+                                                    <span className="rounded-md bg-slate-900/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-stone-700 dark:bg-neutral-100/5 dark:text-neutral-200">
+                                                      {o.status}
+                                                    </span>
+                                                  )}
+                                                </div>
                                               </div>
                                               {scout && (
                                                 <div className="text-[11px] text-gray-500 dark:text-neutral-400">
                                                   Scout:{" "}
-                                                  <span className="font-medium">
+                                                  <span className="font-medium text-slate-800 dark:text-neutral-100">
                                                     {scout.name ||
                                                       "Bez nazwy konta"}
                                                   </span>
@@ -1287,7 +1355,7 @@ export default function GlobalDatabasePage() {
                   <tr>
                     <td
                       colSpan={9}
-                      className="p-5 text-center text-sm text-dark dark:text-neutral-400"
+                      className="px-5 py-7 text-center text-sm text-dark dark:text-neutral-400"
                     >
                       Brak rekordów do wyświetlenia.
                     </td>
@@ -1297,7 +1365,7 @@ export default function GlobalDatabasePage() {
                   <tr>
                     <td
                       colSpan={9}
-                      className="p-5 text-center text-sm text-dark dark:text-neutral-400"
+                      className="px-5 py-7 text-center text-sm text-dark dark:text-neutral-400"
                     >
                       Ładowanie danych z Supabase…
                     </td>
@@ -1318,12 +1386,12 @@ export default function GlobalDatabasePage() {
           onClick={() => setSourcesModal(null)}
         >
           <div
-            className="w-full max-w-md overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950"
+            className="w-full max-w-md overflow-hidden rounded-md border border-gray-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2.5 dark:border-neutral-800">
               <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+                <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-neutral-400">
                   Zawodnik
                 </div>
                 <div className="text-sm font-semibold text-slate-900 dark:text-neutral-50">
@@ -1332,7 +1400,7 @@ export default function GlobalDatabasePage() {
               </div>
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-stone-100 hover:text-gray-900 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:bg-stone-100 hover:text-gray-900 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 onClick={() => setSourcesModal(null)}
                 aria-label="Zamknij"
               >
@@ -1341,12 +1409,12 @@ export default function GlobalDatabasePage() {
             </div>
             <div className="max-h-[60vh] overflow-auto px-4 py-3 text-sm">
               {sourcesModal.scouts.length === 0 ? (
-                <div className="text-xs text-slate-500 dark:text-neutral-400">
+                <div className="text-xs text-stone-500 dark:text-neutral-400">
                   Brak powiązanych scoutów (puste sources w global_players).
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="text-xs text-slate-500 dark:text-neutral-400">
+                  <div className="text-xs text-stone-500 dark:text-neutral-400">
                     Ten zawodnik znajduje się w bazie{" "}
                     <b>{sourcesModal.scouts.length}</b>{" "}
                     {sourcesModal.scouts.length === 1
@@ -1358,12 +1426,12 @@ export default function GlobalDatabasePage() {
                     {sourcesModal.scouts.map((s) => (
                       <li
                         key={s.id}
-                        className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-800 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700"
+                        className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-800 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700"
                       >
                         <div className="font-medium">
                           {s.name || "Bez nazwy konta"}
                         </div>
-                        <div className="mt-0.5 break-all text-[11px] text-slate-500 dark:text-neutral-400">
+                        <div className="mt-0.5 break-all text-[11px] text-stone-500 dark:text-neutral-400">
                           ID: {s.id}
                           {s.email ? ` • ${s.email}` : ""}
                         </div>
@@ -1373,13 +1441,13 @@ export default function GlobalDatabasePage() {
                 </div>
               )}
             </div>
-            <div className="border-t border-gray-200 bg-slate-50 px-4 py-2 text-[11px] text-slate-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+            <div className="border-t border-gray-200 bg-slate-50 px-4 py-2 text-[11px] text-stone-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
               Lista budowana z pola{" "}
-              <code className="rounded bg-slate-200 px-1 py-0.5 dark:bg-neutral-800">
+              <code className="rounded bg-stone-200 px-1 py-0.5 dark:bg-neutral-800">
                 global_players.sources
               </code>{" "}
               oraz tabeli{" "}
-              <code className="rounded bg-slate-200 px-1 py-0.5 dark:bg-neutral-800">
+              <code className="rounded bg-stone-200 px-1 py-0.5 dark:bg-neutral-800">
                 profiles
               </code>
               .
@@ -1422,18 +1490,18 @@ function RatingBlock({
         {items.map((s) => (
           <div
             key={s.key}
-            className="rounded-md border border-slate-200 bg-white/90 p-3 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-950/80"
+            className="rounded-md border border-stone-200 bg-white/90 p-3 text-xs shadow-sm transition hover:-translate-y-[1px] hover:border-stone-300 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-950/80 dark:hover:border-neutral-500"
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="font-medium text-[13px]">
+              <div className="font-medium text-[13px] text-slate-900 dark:text-neutral-50">
                 {s.label}
               </div>
-              <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+              <span className="text-[11px] text-stone-500 dark:text-neutral-400">
                 {s.count} ocen
               </span>
             </div>
             {s.tooltip && (
-              <p className="mt-1 line-clamp-3 text-[11px] text-slate-500 dark:text-neutral-400">
+              <p className="mt-1 line-clamp-3 text-[11px] text-stone-500 dark:text-neutral-400">
                 {s.tooltip}
               </p>
             )}
@@ -1443,13 +1511,24 @@ function RatingBlock({
                 value={s.avg}
                 onChange={() => {}}
               />
-              <span className="text-xs text-slate-700 dark:text-neutral-200">
+              <span className="text-xs text-stone-700 dark:text-neutral-200">
                 {s.avg.toFixed(1)}/5
               </span>
             </div>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function SummaryPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2.5 py-0.5 text-[10px] text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
+      <span className="text-[11px] font-semibold text-slate-900 dark:text-neutral-50">
+        {value}
+      </span>
+      <span>{label}</span>
     </div>
   );
 }
