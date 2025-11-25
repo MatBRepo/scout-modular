@@ -38,13 +38,16 @@ export function RadioChipGroup({
 
   const layoutClass =
     layout === "wrap"
-      ? "flex flex-wrap gap-2"
+      ? "flex flex-wrap gap-2 !mt-0"
       : cn(
-          "grid gap-2",
+          "grid gap-2 !mt-0",
           layout === "grid-2" && "grid-cols-2",
           layout === "grid-3" && "grid-cols-3",
           layout === "grid-4" && "grid-cols-4"
         );
+
+  // używamy value (kontrolowane) albo defaultValue (niekontrolowane)
+  const selectedValue = value ?? defaultValue;
 
   return (
     <fieldset className={cn("w-full space-y-2", className)}>
@@ -62,19 +65,17 @@ export function RadioChipGroup({
       >
         {options.map((item) => {
           const itemId = `${id}-${item.value}`;
+          const isSelected = selectedValue === item.value;
+
           return (
             <label
               key={itemId}
               htmlFor={itemId}
               className={cn(
-                // base “tile”
-                "relative flex cursor-pointer select-none items-center justify-center rounded-md border border-input px-4 py-2 text-center text-sm shadow-sm transition-[color,box-shadow,border-color,background-color]",
-                // when the inner RadioGroupItem is checked
-                "has-[data-state=checked]:border-black has-[data-state=checked]:bg-slate-50",
-                // focus ring when the radio has focus-visible
-                "has-[data-state=checked]:ring-[1.5px] has-[data-state=checked]:ring-black/40 has-[data-focus-visible]:border-ring has-[data-focus-visible]:ring-[3px] has-[data-focus-visible]:ring-ring/50",
-                // disabled
-                "has-[data-disabled]:cursor-not-allowed has-[data-disabled]:opacity-50"
+                "relative flex cursor-pointer select-none items-center justify-center rounded-md border border-input px-4 py-2 text-center text-sm  transition-[color,box-shadow,border-color,background-color]",
+                isSelected &&
+                  "border-black bg-slate-50 ",
+                item.disabled && "cursor-not-allowed opacity-50"
               )}
             >
               <RadioGroupItem
@@ -84,7 +85,12 @@ export function RadioChipGroup({
                 className="sr-only"
                 aria-label={item.label}
               />
-              <p className="text-sm font-medium text-foreground">
+              <p
+                className={cn(
+                  "text-sm font-medium",
+                  isSelected ? "text-foreground" : "text-foreground/80"
+                )}
+              >
                 {item.label}
               </p>
             </label>

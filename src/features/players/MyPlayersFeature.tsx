@@ -10,9 +10,29 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Toolbar } from "@/shared/ui/atoms";
 import type { Player, Observation } from "@/shared/types";
 import {
-  PlusCircle, Pencil, Undo2, Trash2, ListFilter, ChevronUp, ChevronDown,
-  Download, PlusSquare, Search, ArrowLeft, X, ChevronLeft, ChevronRight,
-  Columns3, EllipsisVertical, Users, FileDown, FileSpreadsheet, FileEdit, Tv, Radio, Eraser
+  PlusCircle,
+  Pencil,
+  Undo2,
+  Trash2,
+  ListFilter,
+  ChevronUp,
+  ChevronDown,
+  Download,
+  PlusSquare,
+  Search,
+  ArrowLeft,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Columns3,
+  EllipsisVertical,
+  Users,
+  FileDown,
+  FileSpreadsheet,
+  FileEdit,
+  Tv,
+  Radio,
+  Eraser,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +44,7 @@ import {
 } from "@/components/ui/tooltip";
 import { AddPlayerIcon, PlayerOnlyTshirt } from "@/components/icons";
 import { supabase } from "@/shared/supabase-client";
+import { computePlayerProfileProgress } from "@/shared/playerProfileProgress";
 
 /* ====== helpers: mobile detection + portal ====== */
 function useIsMobile(maxPx = 640) {
@@ -150,7 +171,10 @@ function AnchoredPopover({
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       const a = anchorRef.current;
-      const p = (document.querySelector("[data-popover-panel='true']") as HTMLElement) || null;
+      const p =
+        (document.querySelector(
+          "[data-popover-panel='true']"
+        ) as HTMLElement) || null;
       if (p?.contains(t) || a?.contains(t)) return;
       onClose();
     };
@@ -187,17 +211,22 @@ type PosGroup = "GK" | "DF" | "MF" | "FW";
 
 function toPosGroup(p: Player["pos"]): PosGroup {
   switch (p) {
-    case "GK": return "GK";
+    case "GK":
+      return "GK";
     case "DF":
     case "CB":
     case "RB":
-    case "CW": return "DF";
+    case "CW":
+      return "DF";
     case "MF":
-    case "CM": return "MF";
+    case "CM":
+      return "MF";
     case "FW":
-    case "LW": return "FW";
+    case "LW":
+      return "FW";
     case "?":
-    default: return "MF";
+    default:
+      return "MF";
   }
 }
 
@@ -208,6 +237,7 @@ const DEFAULT_COLS = {
   club: true,
   pos: true,
   age: true,
+  progress: true, // nowa kolumna
   obs: true,
   actions: true,
 };
@@ -220,17 +250,30 @@ const COL_LABELS: Record<ColKey, string> = {
   club: "Klub",
   pos: "Pozycja",
   age: "Wiek",
+  progress: "Profil",
   obs: "Obserwacje",
   actions: "Akcje",
 };
 
 type KnownScope = "known" | "unknown" | "all";
 type Scope = "active" | "trash";
-type SortKey = "name" | "club" | "pos" | "age" | "obs";
+type SortKey = "name" | "club" | "pos" | "age" | "obs" | "progress";
 type SortDir = "asc" | "desc";
 
-type PlayerWithOwner = Player & { user_id?: string | null; profile_id?: string | null };
-type ObservationWithOwner = Observation & { user_id?: string | null; profile_id?: string | null };
+type PlayerWithOwner = Player & {
+  user_id?: string | null;
+  profile_id?: string | null;
+};
+type ObservationWithOwner = Observation & {
+  user_id?: string | null;
+  profile_id?: string | null;
+};
+
+type PlayerRow = Player & {
+  _known: boolean;
+  _obs: number;
+  _progress: number;
+};
 
 /* =======================================
    Main feature
@@ -278,10 +321,10 @@ export default function MyPlayersFeature({
     };
   }, []);
 
-  // Filtrowanie po właścicielu — zakładam kolumnę user_id (i opcjonalnie profile_id)
+  // Filtrowanie po właścicielu — user_id/profile_id
   const ownedPlayers = useMemo(() => {
     const base = players as PlayerWithOwner[];
-    if (!authUserId) return base; // fallback: wszystko, jeśli z jakiegoś powodu nie ma usera
+    if (!authUserId) return base;
     return base.filter(
       (p) => p.user_id === authUserId || p.profile_id === authUserId
     );
@@ -303,7 +346,10 @@ export default function MyPlayersFeature({
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [pos, setPos] = useState<Record<PosGroup, boolean>>({
-    GK: true, DF: true, MF: true, FW: true,
+    GK: true,
+    DF: true,
+    MF: true,
+    FW: true,
   });
   const [club, setClub] = useState("");
   const [ageMin, setAgeMin] = useState<number | "">("");
@@ -371,13 +417,14 @@ export default function MyPlayersFeature({
     router.replace(`/players?${sp.toString()}`, { scroll: false });
   }
 
-  // Base with obs count + known flag – TYLKO dla ownedPlayers/ownedObservations
-  const withObsCount = useMemo(
+  // Base with obs count + known flag + progress – TYLKO dla ownedPlayers/ownedObservations
+  const withObsCount = useMemo<PlayerRow[]>(
     () =>
       (ownedPlayers as PlayerWithOwner[]).map((p) => ({
         ...p,
         _obs: ownedObservations.filter((o) => o.player === p.name).length,
         _known: Boolean((p as any).firstName || (p as any).lastName),
+        _progress: computePlayerProfileProgress(p),
       })),
     [ownedPlayers, ownedObservations]
   );
@@ -393,7 +440,9 @@ export default function MyPlayersFeature({
             r.club.toLowerCase().includes(q.toLowerCase())
       )
       .filter((r) => pos[toPosGroup(r.pos)])
-      .filter((r) => (club ? r.club.toLowerCase().includes(club.toLowerCase()) : true))
+      .filter((r) =>
+        club ? r.club.toLowerCase().includes(club.toLowerCase()) : true
+      )
       .filter((r) => (ageMin === "" ? true : r.age >= Number(ageMin)))
       .filter((r) => (ageMax === "" ? true : r.age <= Number(ageMax)));
   }, [withObsCount, scope, q, pos, club, ageMin, ageMax]);
@@ -406,14 +455,15 @@ export default function MyPlayersFeature({
   }, [baseFilteredNoKnown]);
 
   // Final filtered (includes knownScope)
-  const filtered = useMemo(() => {
+  const filtered = useMemo<PlayerRow[]>(() => {
     let base = [...baseFilteredNoKnown];
     if (knownScope === "known") base = base.filter((r) => r._known);
     if (knownScope === "unknown") base = base.filter((r) => !r._known);
 
     base.sort((a: any, b: any) => {
       const dir = sortDir === "asc" ? 1 : -1;
-      let av: any; let bv: any;
+      let av: any;
+      let bv: any;
       switch (sortKey) {
         case "name":
         case "club":
@@ -422,9 +472,17 @@ export default function MyPlayersFeature({
           bv = (b[sortKey] || "").toString().toLowerCase();
           return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
         case "age":
-          av = a.age || 0; bv = b.age || 0; return (av - bv) * dir;
+          av = a.age || 0;
+          bv = b.age || 0;
+          return (av - bv) * dir;
         case "obs":
-          av = a._obs || 0; bv = b._obs || 0; return (av - bv) * dir;
+          av = a._obs || 0;
+          bv = b._obs || 0;
+          return (av - bv) * dir;
+        case "progress":
+          av = a._progress || 0;
+          bv = b._progress || 0;
+          return (av - bv) * dir;
         default:
           return 0;
       }
@@ -440,33 +498,43 @@ export default function MyPlayersFeature({
     const start = (currentPage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages, page]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
 
   // ====== actions ======
   function trash(id: number) {
-    const next: Player[] = players.map(p =>
-      p.id === id ? { ...p, status: 'trash' as Player['status'] } : p
+    const next: Player[] = players.map((p) =>
+      p.id === id ? ({ ...p, status: "trash" } as Player) : p
     );
     onChangePlayers(next);
-    setSelected(s => { const copy = new Set(s); copy.delete(id); return copy; });
+    setSelected((s) => {
+      const copy = new Set(s);
+      copy.delete(id);
+      return copy;
+    });
   }
   function restore(id: number) {
-    const next: Player[] = players.map(p =>
-      p.id === id ? { ...p, status: 'active' as Player['status'] } : p
+    const next: Player[] = players.map((p) =>
+      p.id === id ? ({ ...p, status: "active" } as Player) : p
     );
     onChangePlayers(next);
-    setSelected(s => { const copy = new Set(s); copy.delete(id); return copy; });
+    setSelected((s) => {
+      const copy = new Set(s);
+      copy.delete(id);
+      return copy;
+    });
   }
   function bulkTrash() {
-    const next: Player[] = players.map(p =>
-      selected.has(p.id) ? { ...p, status: 'trash' as Player['status'] } : p
+    const next: Player[] = players.map((p) =>
+      selected.has(p.id) ? ({ ...p, status: "trash" } as Player) : p
     );
     onChangePlayers(next);
     setSelected(new Set());
   }
   function bulkRestore() {
-    const next: Player[] = players.map(p =>
-      selected.has(p.id) ? { ...p, status: 'active' as Player['status'] } : p
+    const next: Player[] = players.map((p) =>
+      selected.has(p.id) ? ({ ...p, status: "active" } as Player) : p
     );
     onChangePlayers(next);
     setSelected(new Set());
@@ -474,35 +542,105 @@ export default function MyPlayersFeature({
 
   // exports – tylko własny widok, ale operujemy na filtered (już zawęzonym)
   function exportCSV() {
-    const headers = ["id", "name", "club", "pos", "age", "status", "obs"];
-    const rows = filtered.map((p) => [p.id, p.name, p.club, p.pos, p.age, p.status, (p as any)._obs]);
-    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const headers = [
+      "id",
+      "name",
+      "club",
+      "pos",
+      "age",
+      "status",
+      "obs",
+      "progress",
+    ];
+    const rows = filtered.map((p) => [
+      p.id,
+      p.name,
+      p.club,
+      p.pos,
+      p.age,
+      p.status,
+      (p as any)._obs,
+      (p as any)._progress,
+    ]);
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) =>
+        r
+          .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+          .join(",")
+      ),
+    ].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "players.csv"; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "players.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
   function exportExcel() {
-    const headers = ["ID", "Nazwa", "Klub", "Pozycja", "Wiek", "Status", "Obserwacje"];
-    const rows = filtered.map((p) => [p.id, p.name, p.club, p.pos, p.age, p.status, (p as any)._obs]);
+    const headers = [
+      "ID",
+      "Nazwa",
+      "Klub",
+      "Pozycja",
+      "Wiek",
+      "Status",
+      "Obserwacje",
+      "Profil %",
+    ];
+    const rows = filtered.map((p) => [
+      p.id,
+      p.name,
+      p.club,
+      p.pos,
+      p.age,
+      p.status,
+      (p as any)._obs,
+      (p as any)._progress,
+    ]);
     const tableHtml =
-      `<table><thead><tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>` +
-      rows.map(r=>`<tr>${r.map(c=>`<td>${escapeHtml(String(c??""))}</td>`).join("")}</tr>`).join("") +
+      `<table><thead><tr>${headers
+        .map((h) => `<th>${escapeHtml(h)}</th>`)
+        .join("")}</tr></thead><tbody>` +
+      rows
+        .map(
+          (r) =>
+            `<tr>${r
+              .map((c) => `<td>${escapeHtml(String(c ?? ""))}</td>`)
+              .join("")}</tr>`
+        )
+        .join("") +
       `</tbody></table>`;
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${tableHtml}</body></html>`;
-    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+    const blob = new Blob([html], {
+      type: "application/vnd.ms-excel",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "players.xls"; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "players.xls";
+    a.click();
+    URL.revokeObjectURL(url);
   }
   function escapeHtml(s: string) {
-    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 
   // Quick area controls
   function openQuick(player: Player) {
     setQuickFor(player);
     setQuickTab("new");
-    setQaMatch(""); setQaDate(""); setQaTime(""); setQaMode("live"); setQaStatus("draft");
-    setObsQuery(""); setObsSelectedId(null);
+    setQaMatch("");
+    setQaDate("");
+    setQaTime("");
+    setQaMode("live");
+    setQaStatus("draft");
+    setObsQuery("");
+    setObsSelectedId(null);
     setContent("quick");
   }
   function closeQuick() {
@@ -525,109 +663,120 @@ export default function MyPlayersFeature({
     if (onQuickAddObservation) {
       onQuickAddObservation(obs);
     } else {
-      console.warn("[MyPlayersFeature] onQuickAddObservation not provided – quick obs not persisted");
+      console.warn(
+        "[MyPlayersFeature] onQuickAddObservation not provided – quick obs not persisted"
+      );
     }
     closeQuick();
   }
   function duplicateExistingToPlayer() {
     if (!quickFor || obsSelectedId == null) return;
-    const base = ownedObservations.find(o => o.id === obsSelectedId);
+    const base = ownedObservations.find((o) => o.id === obsSelectedId);
     if (!base) return;
-    const copy: Observation = { ...base, id: Date.now(), player: quickFor.name };
+    const copy: Observation = {
+      ...base,
+      id: Date.now(),
+      player: quickFor.name,
+    };
     if (onQuickAddObservation) {
       onQuickAddObservation(copy);
     } else {
-      console.warn("[MyPlayersFeature] onQuickAddObservation not provided – duplicate obs not persisted");
+      console.warn(
+        "[MyPlayersFeature] onQuickAddObservation not provided – duplicate obs not persisted"
+      );
     }
     closeQuick();
   }
   function reassignExistingToPlayer() {
     if (!quickFor || obsSelectedId == null) return;
-    const base = ownedObservations.find(o => o.id === obsSelectedId);
+    const base = ownedObservations.find((o) => o.id === obsSelectedId);
     if (!base) return;
     const updated: Observation = { ...base, player: quickFor.name };
     if (onQuickAddObservation) {
       onQuickAddObservation(updated);
     } else {
-      console.warn("[MyPlayersFeature] onQuickAddObservation not provided – reassign obs not persisted");
+      console.warn(
+        "[MyPlayersFeature] onQuickAddObservation not provided – reassign obs not persisted"
+      );
     }
     closeQuick();
   }
 
-/* ===== active chips (hide "Poz.: Wszystkie" by default) ===== */
-const activeChips = useMemo(() => {
-  const chips: { key: string; label: string; clear: () => void }[] = [];
+  /* ===== active chips (hide "Poz.: Wszystkie" by default) ===== */
+  const activeChips = useMemo(() => {
+    const chips: { key: string; label: string; clear: () => void }[] = [];
 
-  if (q.trim()) {
-    chips.push({
-      key: "q",
-      label: `Szukaj: “${q.trim()}”`,
-      clear: () => {
-        setQ("");
-        setPage(1);
-      },
-    });
-  }
+    if (q.trim()) {
+      chips.push({
+        key: "q",
+        label: `Szukaj: “${q.trim()}”`,
+        clear: () => {
+          setQ("");
+          setPage(1);
+        },
+      });
+    }
 
-  const visiblePositions = (Object.keys(pos) as PosGroup[]).filter((k) => pos[k]);
-  const allSelected = visiblePositions.length === POS.length;
+    const visiblePositions = (Object.keys(pos) as PosGroup[]).filter(
+      (k) => pos[k]
+    );
+    const allSelected = visiblePositions.length === POS.length;
 
-  if (!allSelected) {
-    const posLabel = `Poz.: ${visiblePositions.join(", ")}`;
-    chips.push({
-      key: "pos",
-      label: posLabel,
-      clear: () => {
-        setPos({ GK: true, DF: true, MF: true, FW: true });
-        setPage(1);
-      },
-    });
-  }
+    if (!allSelected) {
+      const posLabel = `Poz.: ${visiblePositions.join(", ")}`;
+      chips.push({
+        key: "pos",
+        label: posLabel,
+        clear: () => {
+          setPos({ GK: true, DF: true, MF: true, FW: true });
+          setPage(1);
+        },
+      });
+    }
 
-  if (club.trim()) {
-    chips.push({
-      key: "club",
-      label: `Klub: ${club.trim()}`,
-      clear: () => {
-        setClub("");
-        setPage(1);
-      },
-    });
-  }
+    if (club.trim()) {
+      chips.push({
+        key: "club",
+        label: `Klub: ${club.trim()}`,
+        clear: () => {
+          setClub("");
+          setPage(1);
+        },
+      });
+    }
 
-  if (ageMin !== "") {
-    chips.push({
-      key: "ageMin",
-      label: `Wiek ≥ ${ageMin}`,
-      clear: () => {
-        setAgeMin("");
-        setPage(1);
-      },
-    });
-  }
+    if (ageMin !== "") {
+      chips.push({
+        key: "ageMin",
+        label: `Wiek ≥ ${ageMin}`,
+        clear: () => {
+          setAgeMin("");
+          setPage(1);
+        },
+      });
+    }
 
-  if (ageMax !== "") {
-    chips.push({
-      key: "ageMax",
-      label: `Wiek ≤ ${ageMax}`,
-      clear: () => {
-        setAgeMax("");
-        setPage(1);
-      },
-    });
-  }
+    if (ageMax !== "") {
+      chips.push({
+        key: "ageMax",
+        label: `Wiek ≤ ${ageMax}`,
+        clear: () => {
+          setAgeMax("");
+          setPage(1);
+        },
+      });
+    }
 
-  if (knownScope !== "all") {
-    chips.push({
-      key: "known",
-      label: knownScope === "known" ? "Znani" : "Nieznani",
-      clear: () => changeKnownScope("all"),
-    });
-  }
+    if (knownScope !== "all") {
+      chips.push({
+        key: "known",
+        label: knownScope === "known" ? "Znani" : "Nieznani",
+        clear: () => changeKnownScope("all"),
+      });
+    }
 
-  return chips;
-}, [q, pos, club, ageMin, ageMax, knownScope]);
-
+    return chips;
+  }, [q, pos, club, ageMin, ageMax, knownScope]);
 
   const MAX_INLINE_CHIPS = 2;
   const inlineChips = activeChips.slice(0, MAX_INLINE_CHIPS);
@@ -642,7 +791,10 @@ const activeChips = useMemo(() => {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      const typing = tag === "input" || tag === "textarea" || (e as any).isComposing;
+      const typing =
+        tag === "input" ||
+        tag === "textarea" ||
+        (e as any).isComposing;
       if (typing) return;
 
       if (e.key === "/") {
@@ -682,7 +834,7 @@ const activeChips = useMemo(() => {
   /* ====== filtersCount for badge ====== */
   const filtersCount =
     (q.trim() ? 1 : 0) +
-    (Object.values(pos).some(v => !v) ? 1 : 0) +
+    (Object.values(pos).some((v) => !v) ? 1 : 0) +
     (club.trim() ? 1 : 0) +
     (ageMin !== "" ? 1 : 0) +
     (ageMax !== "" ? 1 : 0) +
@@ -690,7 +842,11 @@ const activeChips = useMemo(() => {
 
   /* ====== scope-aware selection state (used by pill) ====== */
   const anyActiveSelected = useMemo(() => {
-    return ownedPlayers.some(p => selected.has(p.id) && ((p.status ?? "active") === "active"));
+    return ownedPlayers.some(
+      (p) =>
+        selected.has(p.id) &&
+        ((p.status ?? "active") === "active")
+    );
   }, [ownedPlayers, selected]);
 
   // ====== MOBILE: detect horizontal overflow & first scroll ======
@@ -698,17 +854,25 @@ const activeChips = useMemo(() => {
     const el = tableWrapRef.current;
     if (!el) return;
     const check = () => {
-      const should = isMobile && el.scrollWidth > el.clientWidth && el.scrollLeft < 8;
+      const should =
+        isMobile &&
+        el.scrollWidth > el.clientWidth &&
+        el.scrollLeft < 8;
       setShowScrollHint(should);
     };
     check();
     const onScroll = () => {
       if (el.scrollLeft > 12) setShowScrollHint(false);
     };
-    el.addEventListener("scroll", onScroll, { passive: true } as any);
+    el.addEventListener("scroll", onScroll, {
+      passive: true,
+    } as any);
     window.addEventListener("resize", check);
     return () => {
-      el.removeEventListener("scroll", onScroll as any);
+      el.removeEventListener(
+        "scroll",
+        onScroll as any
+      );
       window.removeEventListener("resize", check);
     };
   }, [isMobile, paginated.length, JSON.stringify(visibleCols)]);
@@ -717,9 +881,14 @@ const activeChips = useMemo(() => {
   const Chip = ({
     label,
     onClear,
-  }: { label: string; onClear: () => void }) => (
+  }: {
+    label: string;
+    onClear: () => void;
+  }) => (
     <span className="inline-flex h-9 items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
-      <span className="max-w-[200px] truncate">{label}</span>
+      <span className="max-w-[200px] truncate">
+        {label}
+      </span>
       <button
         className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
         onClick={onClear}
@@ -762,45 +931,58 @@ const activeChips = useMemo(() => {
               </span>
 
               {/* Right: tabs block (desktop) */}
-{/* Right: tabs block (desktop) */}
-<div className="hidden md:block shrink-0">
-  <Tabs
-    className="items-center"
-    value={knownScope}
-    onValueChange={(v) => changeKnownScope(v as KnownScope)}
-  >
-    <TabsList>
-      <TabsTrigger value="all" className="flex items-center gap-2">
-        <span>Wszyscy</span>
-        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
-          {tabCounts.all}
-        </span>
-      </TabsTrigger>
-      <TabsTrigger value="known" className="flex items-center gap-2">
-        <span>Znani</span>
-        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
-          {tabCounts.known}
-        </span>
-      </TabsTrigger>
-      <TabsTrigger value="unknown" className="flex items-center gap-2">
-        <span>Nieznani</span>
-        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
-          {tabCounts.unknown}
-        </span>
-      </TabsTrigger>
-    </TabsList>
-    <TabsContent value="all" />
-    <TabsContent value="known" />
-    <TabsContent value="unknown" />
-  </Tabs>
-</div>
-
+              <div className="hidden md:block shrink-0">
+                <Tabs
+                  className="items-center"
+                  value={knownScope}
+                  onValueChange={(v) =>
+                    changeKnownScope(v as KnownScope)
+                  }
+                >
+                  <TabsList>
+                    <TabsTrigger
+                      value="all"
+                      className="flex items-center gap-2"
+                    >
+                      <span>Wszyscy</span>
+                      <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                        {tabCounts.all}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="known"
+                      className="flex items-center gap-2"
+                    >
+                      <span>Znani</span>
+                      <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                        {tabCounts.known}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="unknown"
+                      className="flex items-center gap-2"
+                    >
+                      <span>Nieznani</span>
+                      <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                        {tabCounts.unknown}
+                      </span>
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="all" />
+                  <TabsContent value="known" />
+                  <TabsContent value="unknown" />
+                </Tabs>
+              </div>
 
               {/* Center: Active filter chips (desktop) */}
               <div className="hidden md:flex flex-1 items-start justify-center h-9">
                 <div className="flex items-center gap-1 h-9">
-                  {inlineChips.map(c => (
-                    <Chip key={c.key} label={c.label} onClear={c.clear} />
+                  {inlineChips.map((c) => (
+                    <Chip
+                      key={c.key}
+                      label={c.label}
+                      onClear={c.clear}
+                    />
                   ))}
 
                   {overflowChips.length > 0 && (
@@ -811,12 +993,22 @@ const activeChips = useMemo(() => {
                         className="inline-flex h-9 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
                         onClick={() => setChipsOpen((v) => !v)}
                         onMouseEnter={() => {
-                          if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                          if (chipsHoverTimer.current)
+                            window.clearTimeout(
+                              chipsHoverTimer.current
+                            );
                           setChipsOpen(true);
                         }}
                         onMouseLeave={() => {
-                          if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
-                          chipsHoverTimer.current = window.setTimeout(() => setChipsOpen(false), 160) as unknown as number;
+                          if (chipsHoverTimer.current)
+                            window.clearTimeout(
+                              chipsHoverTimer.current
+                            );
+                          chipsHoverTimer.current =
+                            window.setTimeout(
+                              () => setChipsOpen(false),
+                              160
+                            ) as unknown as number;
                         }}
                         aria-expanded={chipsOpen}
                         title="Pokaż więcej filtrów"
@@ -834,20 +1026,34 @@ const activeChips = useMemo(() => {
                         <div
                           className="w-full p-2"
                           onMouseEnter={() => {
-                            if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
+                            if (chipsHoverTimer.current)
+                              window.clearTimeout(
+                                chipsHoverTimer.current
+                              );
                             setChipsOpen(true);
                           }}
                           onMouseLeave={() => {
-                            if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
-                            chipsHoverTimer.current = window.setTimeout(() => setChipsOpen(false), 140) as unknown as number;
+                            if (chipsHoverTimer.current)
+                              window.clearTimeout(
+                                chipsHoverTimer.current
+                              );
+                            chipsHoverTimer.current =
+                              window.setTimeout(
+                                () => setChipsOpen(false),
+                                140
+                              ) as unknown as number;
                           }}
                         >
                           <div className="mb-1 px-1 text-[11px] font-semibold text-gray-700 dark:text-neutral-200">
                             Aktywne filtry
                           </div>
                           <div className="flex flex-wrap items-center gap-1">
-                            {overflowChips.map(c => (
-                              <Chip key={c.key} label={c.label} onClear={c.clear} />
+                            {overflowChips.map((c) => (
+                              <Chip
+                                key={c.key}
+                                label={c.label}
+                                onClear={c.clear}
+                              />
                             ))}
                           </div>
                         </div>
@@ -872,7 +1078,10 @@ const activeChips = useMemo(() => {
                   <Input
                     ref={searchRef}
                     value={q}
-                    onChange={(e) => { setQ(e.target.value); setPage(1); }}
+                    onChange={(e) => {
+                      setQ(e.target.value);
+                      setPage(1);
+                    }}
                     placeholder="Szukaj po nazwisku/klubie… (/)"
                     className={`${controlH} w-full pl-8 pr-3 text-sm`}
                     aria-label="Szukaj w bazie zawodników"
@@ -896,7 +1105,8 @@ const activeChips = useMemo(() => {
                 >
                   <ListFilter className="h-4 w-4" />
                   <span className="hidden sm:inline">
-                    Filtry{filtersCount ? ` (${filtersCount})` : ""}
+                    Filtry
+                    {filtersCount ? ` (${filtersCount})` : ""}
                   </span>
                 </Button>
 
@@ -936,69 +1146,71 @@ const activeChips = useMemo(() => {
           }
         />
 
-{/* Tabs for mobile */}
-<div className="mt-2 md:hidden">
-  <Tabs
-    className="items-center w-full"
-    value={knownScope}
-    onValueChange={(v) => changeKnownScope(v as KnownScope)}
-  >
-    <TabsList className="w-full flex">
-      <TabsTrigger
-        value="all"
-        className="flex-1 flex items-center justify-center gap-2"
-      >
-        <span>Wszyscy</span>
-        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
-          {tabCounts.all}
-        </span>
-      </TabsTrigger>
-      <TabsTrigger
-        value="known"
-        className="flex-1 flex items-center justify-center gap-2"
-      >
-        <span>Znani</span>
-        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
-          {tabCounts.known}
-        </span>
-      </TabsTrigger>
-      <TabsTrigger
-        value="unknown"
-        className="flex-1 flex items-center justify-center gap-2"
-      >
-        <span>Nieznani</span>
-        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
-          {tabCounts.unknown}
-        </span>
-      </TabsTrigger>
-    </TabsList>
-    <TabsContent value="all" />
-    <TabsContent value="known" />
-    <TabsContent value="unknown" />
-  </Tabs>
-
-  {/* Mobile: compact chips under tabs */}
-  {activeChips.length > 0 && (
-    <div className="mt-2 flex flex-wrap items-center gap-1">
-      {/* unchanged */}
-      {activeChips.map(c => (
-        <span
-          key={c.key}
-          className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
-        >
-          <span className="max-w-[120px] truncate">{c.label}</span>
-          <button
-            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
-            onClick={c.clear}
+        {/* Tabs for mobile */}
+        <div className="mt-2 md:hidden">
+          <Tabs
+            className="items-center w-full"
+            value={knownScope}
+            onValueChange={(v) =>
+              changeKnownScope(v as KnownScope)
+            }
           >
-            <X className="h-3 w-3" />
-          </button>
-        </span>
-      ))}
-    </div>
-  )}
-</div>
+            <TabsList className="w-full flex">
+              <TabsTrigger
+                value="all"
+                className="flex-1 flex items-center justify-center gap-2"
+              >
+                <span>Wszyscy</span>
+                <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                  {tabCounts.all}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="known"
+                className="flex-1 flex items-center justify-center gap-2"
+              >
+                <span>Znani</span>
+                <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                  {tabCounts.known}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="unknown"
+                className="flex-1 flex items-center justify-center gap-2"
+              >
+                <span>Nieznani</span>
+                <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+                  {tabCounts.unknown}
+                </span>
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="all" />
+            <TabsContent value="known" />
+            <TabsContent value="unknown" />
+          </Tabs>
 
+          {/* Mobile: compact chips under tabs */}
+          {activeChips.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              {activeChips.map((c) => (
+                <span
+                  key={c.key}
+                  className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
+                >
+                  <span className="max-w-[120px] truncate">
+                    {c.label}
+                  </span>
+                  <button
+                    className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
+                    onClick={c.clear}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Desktop: anchored popovers */}
         {!isMobile && (
@@ -1013,13 +1225,20 @@ const activeChips = useMemo(() => {
             >
               <div className="w-full p-3 text-sm">
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="text-xs font-semibold text-dark dark:text-neutral-300">Filtry</div>
+                  <div className="text-xs font-semibold text-dark dark:text-neutral-300">
+                    Filtry
+                  </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900"
                         onClick={() => {
-                          setPos({ GK:true, DF:true, MF:true, FW:true });
+                          setPos({
+                            GK: true,
+                            DF: true,
+                            MF: true,
+                            FW: true,
+                          });
                           setClub("");
                           setAgeMin("");
                           setAgeMax("");
@@ -1031,52 +1250,113 @@ const activeChips = useMemo(() => {
                         aria-label="Wyczyść wszystko"
                       >
                         <Eraser className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Wyczyść</span>
+                        <span className="hidden sm:inline">
+                          Wyczyść
+                        </span>
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>Wyczyść filtry</TooltipContent>
+                    <TooltipContent>
+                      Wyczyść filtry
+                    </TooltipContent>
                   </Tooltip>
                 </div>
 
                 <div className="mb-2 grid grid-cols-4 gap-2">
                   {POS.map((p) => (
-                    <label key={p} className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-stone-100 dark:hover:bg-neutral-800">
+                    <label
+                      key={p}
+                      className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-stone-100 dark:hover:bg-neutral-800"
+                    >
                       <span>{p}</span>
                       <Checkbox
                         checked={pos[p]}
-                        onCheckedChange={(v) => { setPos(prev => ({ ...prev, [p]: Boolean(v) })); setPage(1); }}
+                        onCheckedChange={(v) => {
+                          setPos((prev) => ({
+                            ...prev,
+                            [p]: Boolean(v),
+                          }));
+                          setPage(1);
+                        }}
                       />
                     </label>
                   ))}
                 </div>
 
                 <div className="mb-2">
-                  <Label className="text-xs text-dark dark:text-neutral-300">Klub</Label>
-                  <Input value={club} onChange={(e) => { setClub(e.target.value); setPage(1); }} className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950" />
+                  <Label className="text-xs text-dark dark:text-neutral-300">
+                    Klub
+                  </Label>
+                  <Input
+                    value={club}
+                    onChange={(e) => {
+                      setClub(e.target.value);
+                      setPage(1);
+                    }}
+                    className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-dark dark:text-neutral-300">Wiek min</Label>
-                    <Input type="number" value={ageMin} onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950" />
+                    <Label className="text-xs text-dark dark:text-neutral-300">
+                      Wiek min
+                    </Label>
+                    <Input
+                      type="number"
+                      value={ageMin}
+                      onChange={(e) => {
+                        setAgeMin(
+                          e.target.value === ""
+                            ? ""
+                            : Number(e.target.value)
+                        );
+                        setPage(1);
+                      }}
+                      className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                    />
                   </div>
                   <div>
-                    <Label className="text-xs text-dark dark:text-neutral-300">Wiek max</Label>
-                    <Input type="number" value={ageMax} onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }} className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950" />
+                    <Label className="text-xs text-dark dark:text-neutral-300">
+                      Wiek max
+                    </Label>
+                    <Input
+                      type="number"
+                      value={ageMax}
+                      onChange={(e) => {
+                        setAgeMax(
+                          e.target.value === ""
+                            ? ""
+                            : Number(e.target.value)
+                        );
+                        setPage(1);
+                      }}
+                      className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                    />
                   </div>
                 </div>
 
                 {activeChips.length > 0 && (
                   <div className="mt-3 border-t border-gray-200 pt-2 dark:border-neutral-800">
-                    <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">Aktywne</div>
+                    <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">
+                      Aktywne
+                    </div>
                     <div className="flex flex-wrap items-center gap-1">
-                      {activeChips.map(c => <Chip key={c.key} label={c.label} onClear={c.clear} />)}
+                      {activeChips.map((c) => (
+                        <Chip
+                          key={c.key}
+                          label={c.label}
+                          onClear={c.clear}
+                        />
+                      ))}
                     </div>
                   </div>
                 )}
 
                 <div className="mt-3 flex items-center justify-end gap-2">
-                  <Button className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60" onClick={() => setFiltersOpen(false)}>
+                  <Button
+                    className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
+                    onClick={() => setFiltersOpen(false)}
+                  >
                     Zastosuj
                   </Button>
                 </div>
@@ -1092,7 +1372,9 @@ const activeChips = useMemo(() => {
               maxWidth={320}
             >
               <div className="w-full p-3">
-                <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">Widoczność kolumn</div>
+                <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">
+                  Widoczność kolumn
+                </div>
                 {Object.keys(DEFAULT_COLS).map((k) => {
                   const key = k as ColKey;
                   return (
@@ -1100,10 +1382,17 @@ const activeChips = useMemo(() => {
                       key={key}
                       className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
-                      <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
+                      <span className="text-gray-800 dark:text-neutral-100">
+                        {COL_LABELS[key]}
+                      </span>
                       <Checkbox
                         checked={visibleCols[key]}
-                        onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
+                        onCheckedChange={(v) =>
+                          setVisibleCols({
+                            ...visibleCols,
+                            [key]: Boolean(v),
+                          })
+                        }
                       />
                     </label>
                   );
@@ -1122,33 +1411,48 @@ const activeChips = useMemo(() => {
               <div className="w-full p-1">
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
-                  onClick={() => { setColsOpen(true); setMoreOpen(false); }}
+                  onClick={() => {
+                    setColsOpen(true);
+                    setMoreOpen(false);
+                  }}
                 >
                   <Columns3 className="h-4 w-4" /> Kolumny
                 </button>
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
-                  onClick={() => { setScope("active"); setMoreOpen(false); }}
+                  onClick={() => {
+                    setScope("active");
+                    setMoreOpen(false);
+                  }}
                 >
                   <Users className="h-4 w-4" /> Aktywni
                 </button>
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
-                  onClick={() => { setScope("trash"); setMoreOpen(false); }}
+                  onClick={() => {
+                    setScope("trash");
+                    setMoreOpen(false);
+                  }}
                 >
                   <Trash2 className="h-4 w-4" /> Kosz
                 </button>
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
-                  onClick={() => { setMoreOpen(false); exportCSV(); }}
+                  onClick={() => {
+                    setMoreOpen(false);
+                    exportCSV();
+                  }}
                 >
                   <FileDown className="h-4 w-4" /> Eksport CSV
                 </button>
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
-                  onClick={() => { setMoreOpen(false); exportExcel(); }}
+                  onClick={() => {
+                    setMoreOpen(false);
+                    exportExcel();
+                  }}
                 >
                   <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
                 </button>
@@ -1176,7 +1480,10 @@ const activeChips = useMemo(() => {
                     <Checkbox
                       checked={pos[p]}
                       onCheckedChange={(v) => {
-                        setPos(prev => ({ ...prev, [p]: Boolean(v) }));
+                        setPos((prev) => ({
+                          ...prev,
+                          [p]: Boolean(v),
+                        }));
                         setPage(1);
                       }}
                     />
@@ -1188,7 +1495,10 @@ const activeChips = useMemo(() => {
                 <Label className="text-xs">Klub</Label>
                 <Input
                   value={club}
-                  onChange={(e) => { setClub(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setClub(e.target.value);
+                    setPage(1);
+                  }}
                   className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                 />
               </div>
@@ -1199,7 +1509,14 @@ const activeChips = useMemo(() => {
                   <Input
                     type="number"
                     value={ageMin}
-                    onChange={(e) => { setAgeMin(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }}
+                    onChange={(e) => {
+                      setAgeMin(
+                        e.target.value === ""
+                          ? ""
+                          : Number(e.target.value)
+                      );
+                      setPage(1);
+                    }}
                     className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                   />
                 </div>
@@ -1208,7 +1525,14 @@ const activeChips = useMemo(() => {
                   <Input
                     type="number"
                     value={ageMax}
-                    onChange={(e) => { setAgeMax(e.target.value === "" ? "" : Number(e.target.value)); setPage(1); }}
+                    onChange={(e) => {
+                      setAgeMax(
+                        e.target.value === ""
+                          ? ""
+                          : Number(e.target.value)
+                      );
+                      setPage(1);
+                    }}
                     className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                   />
                 </div>
@@ -1216,11 +1540,18 @@ const activeChips = useMemo(() => {
 
               {activeChips.length > 0 && (
                 <div className="mt-3 border-t border-gray-200 pt-2 dark:border-neutral-800">
-                  <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">Aktywne</div>
+                  <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">
+                    Aktywne
+                  </div>
                   <div className="flex flex-wrap items-center gap-1">
-                    {activeChips.map(c => (
-                      <span key={c.key} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900">
-                        <span className="max-w-[160px] truncate">{c.label}</span>
+                    {activeChips.map((c) => (
+                      <span
+                        key={c.key}
+                        className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
+                      >
+                        <span className="max-w-[160px] truncate">
+                          {c.label}
+                        </span>
                         <button
                           className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
                           onClick={c.clear}
@@ -1239,7 +1570,12 @@ const activeChips = useMemo(() => {
                   variant="outline"
                   className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                   onClick={() => {
-                    setPos({ GK:true, DF:true, MF:true, FW:true });
+                    setPos({
+                      GK: true,
+                      DF: true,
+                      MF: true,
+                      FW: true,
+                    });
                     setClub("");
                     setAgeMin("");
                     setAgeMax("");
@@ -1330,10 +1666,17 @@ const activeChips = useMemo(() => {
                       key={key}
                       className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
-                      <span className="text-gray-800 dark:text-neutral-100">{COL_LABELS[key]}</span>
+                      <span className="text-gray-800 dark:text-neutral-100">
+                        {COL_LABELS[key]}
+                      </span>
                       <Checkbox
                         checked={visibleCols[key]}
-                        onCheckedChange={(v) => setVisibleCols({ ...visibleCols, [key]: Boolean(v) })}
+                        onCheckedChange={(v) =>
+                          setVisibleCols({
+                            ...visibleCols,
+                            [key]: Boolean(v),
+                          })
+                        }
                       />
                     </label>
                   );
@@ -1396,38 +1739,51 @@ const activeChips = useMemo(() => {
           {content === "table" ? (
             <>
               <div className="relative">
-                
-               
-<PlayersTable
-  rows={paginated as any}
-  observations={ownedObservations}
-  visibleCols={visibleCols}
-  selected={selected}
-  setSelected={setSelected}
-  scope={scope}
-  onOpen={(id) => {
-    const p = (players as any[]).find((pl) => pl.id === id);
-    let label: string | undefined;
+                <PlayersTable
+                  rows={paginated as PlayerRow[]}
+                  observations={ownedObservations}
+                  visibleCols={visibleCols}
+                  selected={selected}
+                  setSelected={setSelected}
+                  scope={scope}
+                  onOpen={(id) => {
+                    const p = (players as any[]).find(
+                      (pl) => pl.id === id
+                    );
+                    let label: string | undefined;
 
-    if (p) {
-      const fn = (p.firstName ?? p.imie ?? "").toString().trim();
-      const ln = (p.lastName ?? p.nazwisko ?? "").toString().trim();
+                    if (p) {
+                      const fn = (
+                        p.firstName ?? p.imie ?? ""
+                      )
+                        .toString()
+                        .trim();
+                      const ln = (
+                        p.lastName ?? p.nazwisko ?? ""
+                      )
+                        .toString()
+                        .trim();
 
-      // jeśli masz rozbite firstName/lastName – użyj tego
-      if (fn || ln) {
-        label = `${fn} ${ln}`.trim();
-      } else {
-        // fallback: to co masz w p.name (np. "#9 Lech U19")
-        label = p.name;
-      }
-    }
+                      if (fn || ln) {
+                        label = `${fn} ${ln}`.trim();
+                      } else {
+                        label = p.name;
+                      }
+                    }
 
-    const qs = label ? `?playerName=${encodeURIComponent(label)}` : "";
-    router.push(`/players/${id}${qs}`);
-  }}
-                    onTrash={trash}
+                    const qs = label
+                      ? `?playerName=${encodeURIComponent(
+                          label
+                        )}`
+                      : "";
+                    router.push(`/players/${id}${qs}`);
+                  }}
+                  onTrash={trash}
                   onRestore={restore}
-                  onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
+                  onSortChange={(k, d) => {
+                    setSortKey(k);
+                    setSortDir(d);
+                  }}
                   sortKey={sortKey}
                   sortDir={sortDir}
                   onQuick={(p) => openQuick(p)}
@@ -1435,7 +1791,7 @@ const activeChips = useMemo(() => {
                   rowH={rowH}
                   pageSliceCount={paginated.length}
                   wrapRef={tableWrapRef}
-/>
+                />
 
                 {showScrollHint && (
                   <div className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 sm:hidden">
@@ -1449,18 +1805,37 @@ const activeChips = useMemo(() => {
               {/* Pagination footer */}
               <div className="mt-3 flex flex-row flex-wrap items-center justify-center lg:justify-between gap-2 rounded-md p-2 text-sm shadow-sm dark:bg-neutral-950">
                 <div className="flex flex-row flex-wrap items-center gap-2">
-                  <span className="text-dark dark:text-neutral-300 leading-none">Wiersze na stronę:</span>
+                  <span className="text-dark dark:text-neutral-300 leading-none">
+                    Wiersze na stronę:
+                  </span>
                   <select
                     className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
                     value={pageSize}
-                    onChange={(e)=>{ setPageSize(Number(e.target.value) as any); setPage(1); }}
+                    onChange={(e) => {
+                      setPageSize(
+                        Number(e.target.value) as any
+                      );
+                      setPage(1);
+                    }}
                     aria-label="Liczba wierszy na stronę"
                   >
-                    {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+                    {[10, 25, 50, 100].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
                   </select>
 
                   <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
-                    {total === 0 ? "0" : ((currentPage - 1) * pageSize + 1)}–{Math.min(currentPage * pageSize, total)} z {total}
+                    {total === 0
+                      ? "0"
+                      : (currentPage - 1) * pageSize + 1}
+                    –
+                    {Math.min(
+                      currentPage * pageSize,
+                      total
+                    )}{" "}
+                    z {total}
                   </span>
                 </div>
 
@@ -1469,7 +1844,9 @@ const activeChips = useMemo(() => {
                     variant="outline"
                     className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
                     disabled={currentPage <= 1}
-                    onClick={()=>setPage(p=>Math.max(1, p-1))}
+                    onClick={() =>
+                      setPage((p) => Math.max(1, p - 1))
+                    }
                     aria-label="Poprzednia strona"
                     title="Poprzednia strona"
                   >
@@ -1484,7 +1861,11 @@ const activeChips = useMemo(() => {
                     variant="outline"
                     className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
                     disabled={currentPage >= totalPages}
-                    onClick={()=>setPage(p=>Math.min(totalPages, p+1))}
+                    onClick={() =>
+                      setPage((p) =>
+                        Math.min(totalPages, p + 1)
+                      )
+                    }
                     aria-label="Następna strona"
                     title="Następna strona"
                   >
@@ -1547,7 +1928,7 @@ function PlayersTable({
   pageSliceCount,
   wrapRef,
 }: {
-  rows: (Player & { _known: boolean; _obs: number })[];
+  rows: PlayerRow[];
   observations: Observation[];
   visibleCols: Record<keyof typeof DEFAULT_COLS, boolean>;
   selected: Set<number>;
@@ -1565,33 +1946,61 @@ function PlayersTable({
   pageSliceCount: number;
   wrapRef?: React.RefObject<HTMLDivElement | null>;
 }) {
-  const allChecked = pageSliceCount > 0 && rows.every((r) => selected.has(r.id));
-  const someChecked = !allChecked && rows.some((r) => selected.has(r.id));
+  const allChecked =
+    pageSliceCount > 0 && rows.every((r) => selected.has(r.id));
+  const someChecked =
+    !allChecked && rows.some((r) => selected.has(r.id));
 
   // per-row confirmation for trash
-  const [confirmTrashId, setConfirmTrashId] = useState<number | null>(null);
+  const [confirmTrashId, setConfirmTrashId] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     // reset confirmation on page/scope change
     setConfirmTrashId(null);
   }, [rows, scope]);
 
-  function SortHeader({ k, children }: { k: SortKey; children: React.ReactNode }) {
+  function SortHeader({
+    k,
+    children,
+  }: {
+    k: SortKey;
+    children: React.ReactNode;
+  }) {
     const active = sortKey === k;
     return (
       <button
-        className={"flex items-center gap-1 font-medium " + (active ? "text-gray-900 dark:text-neutral-100" : "")}
-        onClick={() => onSortChange(k, active && sortDir === "asc" ? "desc" : "asc")}
+        className={
+          "flex items-center gap-1 font-medium " +
+          (active
+            ? "text-gray-900 dark:text-neutral-100"
+            : "")
+        }
+        onClick={() =>
+          onSortChange(
+            k,
+            active && sortDir === "asc" ? "desc" : "asc"
+          )
+        }
       >
         {children}
-        {active ? (sortDir === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />) : null}
+        {active ? (
+          sortDir === "asc" ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )
+        ) : null}
       </button>
     );
   }
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(/\s+/);
-    const first = parts[0]?.[0] ?? ""; const last = parts.length > 1 ? parts[parts.length-1][0] ?? "" : "";
+    const first = parts[0]?.[0] ?? "";
+    const last =
+      parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
     return (first + last).toUpperCase();
   };
 
@@ -1600,16 +2009,20 @@ function PlayersTable({
     return m ? m[1] : null;
   };
 
-const KnownBadge = ({ known }: { known: boolean }) => {
-  if (known) return null; // znany → no badge
+  const KnownBadge = ({ known }: { known: boolean }) => {
+    if (known) return null; // znany → no badge
+    return (
+      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+        nieznany
+      </span>
+    );
+  };
 
-  return (
-    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-      nieznany
-    </span>
-  );
-};
-
+  const progressBarColor = (v: number) => {
+    if (v < 40) return "bg-rose-500";
+    if (v < 75) return "bg-amber-500";
+    return "bg-emerald-500";
+  };
 
   return (
     <div
@@ -1619,16 +2032,36 @@ const KnownBadge = ({ known }: { known: boolean }) => {
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
           <tr>
-            {visibleCols.photo && <th className={`${cellPad} text-left font-medium w-16`}></th>}
+            {visibleCols.photo && (
+              <th
+                className={`${cellPad} text-left font-medium w-16`}
+              ></th>
+            )}
             {visibleCols.select && (
-              <th className={`${cellPad} text-left font-medium w-10`}>
+              <th
+                className={`${cellPad} text-left font-medium w-10`}
+              >
                 <Checkbox
-                  checked={rows.length === 0 ? false : (allChecked ? true : (someChecked ? "indeterminate" : false))}
+                  checked={
+                    rows.length === 0
+                      ? false
+                      : allChecked
+                      ? true
+                      : someChecked
+                      ? "indeterminate"
+                      : false
+                  }
                   onCheckedChange={(v) => {
-                    if (v) setSelected(new Set([...selected, ...rows.map((f) => f.id)]));
+                    if (v)
+                      setSelected(
+                        new Set([
+                          ...selected,
+                          ...rows.map((f) => f.id),
+                        ])
+                      );
                     else {
                       const set = new Set(selected);
-                      rows.forEach(r => set.delete(r.id));
+                      rows.forEach((r) => set.delete(r.id));
                       setSelected(set);
                     }
                   }}
@@ -1636,18 +2069,49 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                 />
               </th>
             )}
-            {visibleCols.name && <th className={`${cellPad} text-left`}><SortHeader k="name">Nazwa</SortHeader></th>}
-            {visibleCols.club && <th className={`${cellPad} text-left`}><SortHeader k="club">Klub</SortHeader></th>}
-            {visibleCols.pos && <th className={`${cellPad} text-left`}><SortHeader k="pos">Pozycja</SortHeader></th>}
-            {visibleCols.age && <th className={`${cellPad} text-left`}><SortHeader k="age">Wiek</SortHeader></th>}
-            {visibleCols.obs && <th className={`${cellPad} text-left`}><SortHeader k="obs">Obserwacje</SortHeader></th>}
-            {visibleCols.actions && <th className={`${cellPad} text-right font-medium`}>Akcje</th>}
+            {visibleCols.name && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="name">Nazwa</SortHeader>
+              </th>
+            )}
+            {visibleCols.club && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="club">Klub</SortHeader>
+              </th>
+            )}
+            {visibleCols.pos && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="pos">Pozycja</SortHeader>
+              </th>
+            )}
+            {visibleCols.age && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="age">Wiek</SortHeader>
+              </th>
+            )}
+            {visibleCols.progress && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="progress">Wypełnienie profilu</SortHeader>
+              </th>
+            )}
+            {visibleCols.obs && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="obs">Obserwacje</SortHeader>
+              </th>
+            )}
+            {visibleCols.actions && (
+              <th
+                className={`${cellPad} text-right font-medium`}
+              >
+                Akcje
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
-{rows.map((r) => {
-  const jersey = getJerseyNo(r.name);
-  const isConfirmingTrash = confirmTrashId === r.id;
+          {rows.map((r) => {
+            const jersey = getJerseyNo(r.name);
+            const isConfirmingTrash = confirmTrashId === r.id;
 
             return (
               <tr
@@ -1655,37 +2119,39 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                 className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
                 onDoubleClick={() => onOpen(r.id)}
               >
-{visibleCols.photo && (
-  <td className={cellPad}>
-    <div className="relative">
-      {r._known ? (
-        r.photo ? (
-          <img
-            src={r.photo}
-            alt={r.name}
-            className="h-9 w-10 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
-            {getInitials(r.name)}
-          </div>
-        )
-      ) : jersey ? (
-        // NIEZNANY + jest numer koszulki → pokazujemy sam numer
-        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
-          {jersey}
-        </div>
-      ) : (
-        // NIEZNANY + brak numeru → sama koszulka, BEZ fioletowego badga
-        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
-          <PlayerOnlyTshirt className="h-6 w-6" strokeWidthAll={14} />
-        </div>
-      )}
-    </div>
-  </td>
-)}
-
+                {visibleCols.photo && (
+                  <td className={cellPad}>
+                    <div className="relative">
+                      {r._known ? (
+                        r.photo ? (
+                          <img
+                            src={r.photo}
+                            alt={r.name}
+                            className="h-9 w-10 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
+                            {getInitials(r.name)}
+                          </div>
+                        )
+                      ) : jersey ? (
+                        // NIEZNANY + jest numer koszulki → pokazujemy sam numer
+                        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
+                          {jersey}
+                        </div>
+                      ) : (
+                        // NIEZNANY + brak numeru → sama koszulka
+                        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
+                          <PlayerOnlyTshirt
+                            className="h-6 w-6"
+                            strokeWidthAll={14}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                )}
 
                 {visibleCols.select && (
                   <td className={cellPad}>
@@ -1693,7 +2159,8 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                       checked={selected.has(r.id)}
                       onCheckedChange={(v) => {
                         const copy = new Set(selected);
-                        if (v) copy.add(r.id); else copy.delete(r.id);
+                        if (v) copy.add(r.id);
+                        else copy.delete(r.id);
                         setSelected(copy);
                       }}
                       aria-label={`Zaznacz ${r.name}`}
@@ -1702,16 +2169,30 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                 )}
 
                 {visibleCols.name && (
-                  <td className={`${cellPad} max-w-[260px] text-gray-900 dark:text-neutral-100`}>
+                  <td
+                    className={`${cellPad} max-w-[260px] text-gray-900 dark:text-neutral-100`}
+                  >
                     <div className="flex items-center gap-2">
-                      <span className="truncate" title={r.name}>{r.name}</span>
+                      <span
+                        className="truncate"
+                        title={r.name}
+                      >
+                        {r.name}
+                      </span>
                       <KnownBadge known={r._known} />
                     </div>
                   </td>
                 )}
                 {visibleCols.club && (
-                  <td className={`${cellPad} max-w-[220px] text-gray-700 dark:text-neutral-200`}>
-                    <span className="truncate" title={r.club}>{r.club}</span>
+                  <td
+                    className={`${cellPad} max-w-[220px] text-gray-700 dark:text-neutral-200`}
+                  >
+                    <span
+                      className="truncate"
+                      title={r.club}
+                    >
+                      {r.club}
+                    </span>
                   </td>
                 )}
                 {visibleCols.pos && (
@@ -1721,7 +2202,34 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                     </span>
                   </td>
                 )}
-                {visibleCols.age && <td className={`${cellPad} text-gray-700 dark:text-neutral-200`}>{r.age}</td>}
+                {visibleCols.age && (
+                  <td
+                    className={`${cellPad} text-gray-700 dark:text-neutral-200`}
+                  >
+                    {r.age}
+                  </td>
+                )}
+
+                {visibleCols.progress && (
+                  <td className={cellPad}>
+                    <div className="flex items-center gap-2">
+                      <div className="relative h-2 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-800">
+                        <div
+                          className={`h-full ${progressBarColor(
+                            r._progress
+                          )} transition-[width] duration-300`}
+                          style={{
+                            width: `${r._progress}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-medium text-gray-700 dark:text-neutral-300 tabular-nums">
+                        {r._progress}%
+                      </span>
+                    </div>
+                  </td>
+                )}
+
                 {visibleCols.obs && (
                   <td className={cellPad}>
                     <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
@@ -1730,7 +2238,9 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                   </td>
                 )}
                 {visibleCols.actions && (
-                  <td className={`${cellPad} text-right`}>
+                  <td
+                    className={`${cellPad} text-right`}
+                  >
                     <div className="flex justify-end gap-1.5">
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -1738,13 +2248,28 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                             size="icon"
                             variant="outline"
                             className="h-9 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                            onClick={(e) => { e.stopPropagation(); onOpen(r.id); }}
-                            aria-label={r._known ? "Edytuj" : "Uzupełnij dane"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpen(r.id);
+                            }}
+                            aria-label={
+                              r._known
+                                ? "Edytuj"
+                                : "Uzupełnij dane"
+                            }
                           >
-                            {r._known ? <Pencil className="h-4 w-4" /> : <FileEdit className="h-4 w-4" />}
+                            {r._known ? (
+                              <Pencil className="h-4 w-4" />
+                            ) : (
+                              <FileEdit className="h-4 w-4" />
+                            )}
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{r._known ? "Edytuj" : "Uzupełnij dane"}</TooltipContent>
+                        <TooltipContent>
+                          {r._known
+                            ? "Edytuj"
+                            : "Uzupełnij dane"}
+                        </TooltipContent>
                       </Tooltip>
 
                       {scope === "active" ? (
@@ -1789,7 +2314,9 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Przenieś do kosza</TooltipContent>
+                            <TooltipContent>
+                              Przenieś do kosza
+                            </TooltipContent>
                           </Tooltip>
                         )
                       ) : (
@@ -1799,13 +2326,18 @@ const KnownBadge = ({ known }: { known: boolean }) => {
                               size="icon"
                               variant="outline"
                               className="h-9 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                              onClick={(e) => { e.stopPropagation(); onRestore(r.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRestore(r.id);
+                              }}
                               aria-label="Przywróć"
                             >
                               <Undo2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Przywróć</TooltipContent>
+                          <TooltipContent>
+                            Przywróć
+                          </TooltipContent>
                         </Tooltip>
                       )}
                     </div>
@@ -1817,7 +2349,10 @@ const KnownBadge = ({ known }: { known: boolean }) => {
           {rows.length === 0 && (
             <tr>
               <td
-                colSpan={Object.values(visibleCols).filter(Boolean).length || 1}
+                colSpan={
+                  Object.values(visibleCols).filter(Boolean)
+                    .length || 1
+                }
                 className={`${cellPad} text-center text-sm text-dark dark:text-neutral-400`}
               >
                 Brak wyników dla bieżących filtrów.
@@ -1836,39 +2371,61 @@ const KnownBadge = ({ known }: { known: boolean }) => {
 function QuickObservation({
   player,
   onBack,
-  quickTab, setQuickTab,
-  qaMatch, setQaMatch,
-  qaDate, setQaDate,
-  qaTime, setQaTime,
-  qaMode, setQaMode,
-  qaStatus, setQaStatus,
+  quickTab,
+  setQuickTab,
+  qaMatch,
+  setQaMatch,
+  qaDate,
+  setQaDate,
+  qaTime,
+  setQaTime,
+  qaMode,
+  setQaMode,
+  qaStatus,
+  setQaStatus,
   onSaveNew,
-  observations, obsQuery, setObsQuery, obsSelectedId, setObsSelectedId,
-  onDuplicate, onReassign,
+  observations,
+  obsQuery,
+  setObsQuery,
+  obsSelectedId,
+  setObsSelectedId,
+  onDuplicate,
+  onReassign,
 }: {
   player: Player;
   onBack: () => void;
   quickTab: "new" | "existing";
   setQuickTab: (t: "new" | "existing") => void;
-  qaMatch: string; setQaMatch: (v: string) => void;
-  qaDate: string; setQaDate: (v: string) => void;
-  qaTime: string; setQaTime: (v: string) => void;
-  qaMode: "live"|"tv"; setQaMode: (v: "live"|"tv") => void;
-  qaStatus: Observation["status"]; setQaStatus: (v: Observation["status"]) => void;
+  qaMatch: string;
+  setQaMatch: (v: string) => void;
+  qaDate: string;
+  setQaDate: (v: string) => void;
+  qaTime: string;
+  setQaTime: (v: string) => void;
+  qaMode: "live" | "tv";
+  setQaMode: (v: "live" | "tv") => void;
+  qaStatus: Observation["status"];
+  setQaStatus: (v: Observation["status"]) => void;
   onSaveNew: () => void;
   observations: Observation[];
-  obsQuery: string; setObsQuery: (v: string) => void;
-  obsSelectedId: number | null; setObsSelectedId: (v: number | null) => void;
-  onDuplicate: () => void; onReassign: () => void;
+  obsQuery: string;
+  setObsQuery: (v: string) => void;
+  obsSelectedId: number | null;
+  setObsSelectedId: (v: number | null) => void;
+  onDuplicate: () => void;
+  onReassign: () => void;
 }) {
   const parseTeams = (m?: string) => {
     if (!m) return { a: "", b: "" };
     const parts = m.split(/ *vs *| *VS *| *Vs */i);
-    if (parts.length >= 2) return { a: parts[0].trim(), b: parts[1].trim() };
+    if (parts.length >= 2)
+      return { a: parts[0].trim(), b: parts[1].trim() };
     return { a: m.trim(), b: "" };
   };
   const composeMatch = (a: string, b: string) =>
-    a.trim() && b.trim() ? `${a.trim()} vs ${b.trim()}` : (a + " " + b).trim();
+    a.trim() && b.trim()
+      ? `${a.trim()} vs ${b.trim()}`
+      : (a + " " + b).trim();
 
   const chip = (txt: string) => (
     <span className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
@@ -1887,7 +2444,8 @@ function QuickObservation({
   }, [qaMatch]);
 
   function updateMatchFromTeams(a: string, b: string) {
-    setTeamA(a); setTeamB(b);
+    setTeamA(a);
+    setTeamB(b);
     setQaMatch(composeMatch(a, b));
   }
 
@@ -1911,12 +2469,15 @@ function QuickObservation({
     onSaveNew();
   }
 
-  const canSave = qaMatch.trim().length > 0 && qaDate.trim().length > 0;
+  const canSave =
+    qaMatch.trim().length > 0 && qaDate.trim().length > 0;
 
   const existingFiltered = useMemo(() => {
     const q = obsQuery.trim().toLowerCase();
     const arr = [...observations].sort((a, b) =>
-      ((b.date || "") + (b.time || "")).localeCompare((a.date || "") + (a.time || ""))
+      ((b.date || "") + (b.time || "")).localeCompare(
+        (a.date || "") + (a.time || "")
+      )
     );
     if (!q) return arr;
     return arr.filter(
@@ -1948,10 +2509,16 @@ function QuickObservation({
                   : "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-800/50"
               }`}
             >
-              {saveState === "saving" ? "Zapisywanie…" : "Zapisano szkic lokalnie"}
+              {saveState === "saving"
+                ? "Zapisywanie…"
+                : "Zapisano szkic lokalnie"}
             </span>
           )}
-          <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={onBack}>
+          <Button
+            variant="outline"
+            className="border-gray-300 dark:border-neutral-700"
+            onClick={onBack}
+          >
             <ArrowLeft className="mr-0 md:mr-2 h-4 w-4" />
             Wróć
           </Button>
@@ -1960,7 +2527,12 @@ function QuickObservation({
 
       {/* Tabs */}
       <div className="px-4 pt-3">
-        <Tabs value={quickTab} onValueChange={(v)=>setQuickTab(v as "new"|"existing")}>
+        <Tabs
+          value={quickTab}
+          onValueChange={(v) =>
+            setQuickTab(v as "new" | "existing")
+          }
+        >
           <TabsList className="mb-2 inline-flex h-9 items-center rounded-md bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
             <TabsTrigger
               value="new"
@@ -1981,9 +2553,12 @@ function QuickObservation({
           {/* NEW */}
           <TabsContent value="new" className="mt-2 space-y-4">
             <div className="rounded-md border border-gray-200 p-4 dark:border-neutral-800">
-              <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">Mecz</div>
+              <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
+                Mecz
+              </div>
               <div className="mb-3 text-xs text-dark dark:text-neutral-400">
-                Wpisz drużyny — pole „Mecz” składa się automatycznie.
+                Wpisz drużyny — pole „Mecz” składa się
+                automatycznie.
               </div>
 
               <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
@@ -1991,39 +2566,66 @@ function QuickObservation({
                   <Label>Drużyna A</Label>
                   <Input
                     value={teamA}
-                    onChange={(e) => updateMatchFromTeams(e.target.value, teamB)}
+                    onChange={(e) =>
+                      updateMatchFromTeams(e.target.value, teamB)
+                    }
                     placeholder="np. Lech U19"
                     className="mt-1"
                   />
                 </div>
-                <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">vs</div>
+                <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">
+                  vs
+                </div>
                 <div>
                   <Label>Drużyna B</Label>
                   <Input
                     value={teamB}
-                    onChange={(e) => updateMatchFromTeams(teamA, e.target.value)}
+                    onChange={(e) =>
+                      updateMatchFromTeams(teamA, e.target.value)
+                    }
                     placeholder="np. Wisła U19"
                     className="mt-1"
                   />
                 </div>
-                <div className="sm:hidden text-center text-sm text-dark">vs</div>
+                <div className="sm:hidden text-center text-sm text-dark">
+                  vs
+                </div>
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
                   <Label>Data meczu</Label>
-                  <Input type="date" value={qaDate} onChange={(e) => setQaDate(e.target.value)} className="mt-1" />
+                  <Input
+                    type="date"
+                    value={qaDate}
+                    onChange={(e) =>
+                      setQaDate(e.target.value)
+                    }
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <Label>Godzina meczu</Label>
-                  <Input type="time" value={qaTime} onChange={(e) => setQaTime(e.target.value)} className="mt-1" />
+                  <Input
+                    type="time"
+                    value={qaTime}
+                    onChange={(e) =>
+                      setQaTime(e.target.value)
+                    }
+                    className="mt-1"
+                  />
                 </div>
               </div>
 
               <div className="mt-3 text-xs text-dark dark:text-neutral-300">
-                Mecz: <span className="font-medium">{qaMatch || "—"}</span>
+                Mecz:{" "}
+                <span className="font-medium">
+                  {qaMatch || "—"}
+                </span>
                 <span className="ml-2">
-                  {chip(qaMode === "tv" ? "TV" : "Live")}
+                  {chip(
+                    qaMode === "tv" ? "TV" : "Live"
+                  )}
                 </span>
               </div>
             </div>
@@ -2042,7 +2644,15 @@ function QuickObservation({
                           : "bg-white text-gray-700 hover:bg-stone-100 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                       }`}
                     >
-                      {m === "live" ? <span className="inline-flex items-center gap-1"><Radio className="h-3.5 w-3.5" /> Live</span> : <span className="inline-flex items-center gap-1"><Tv className="h-3.5 w-3.5" /> TV</span>}
+                      {m === "live" ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Radio className="h-3.5 w-3.5" /> Live
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <Tv className="h-3.5 w-3.5" /> TV
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -2070,19 +2680,32 @@ function QuickObservation({
             <div className="sticky bottom-0 mt-1 -mx-4 border-t border-gray-200 bg-white/90 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
               <div className="flex items-center justify-end gap-2">
                 <div className="mr-auto hidden text-[11px] text-dark sm:block dark:text-neutral-400">
-                  Skróty: <span className="font-medium">Enter</span> — Zapisz, <span className="font-medium">Esc</span> — Wróć
+                  Skróty:{" "}
+                  <span className="font-medium">Enter</span> —
+                  Zapisz,{" "}
+                  <span className="font-medium">Esc</span> — Wróć
                 </div>
-                <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={onBack}>
+                <Button
+                  variant="outline"
+                  className="border-gray-300 dark:border-neutral-700"
+                  onClick={onBack}
+                >
                   Anuluj
                 </Button>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={handleSave} disabled={!canSave}>
+                    <Button
+                      className="bg-gray-900 text-white hover:bg-gray-800"
+                      onClick={handleSave}
+                      disabled={!canSave}
+                    >
                       Zapisz
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {canSave ? "Zapisz nową obserwację" : "Uzupełnij: Drużyna A/B i Datę"}
+                    {canSave
+                      ? "Zapisz nową obserwację"
+                      : "Uzupełnij: Drużyna A/B i Datę"}
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -2105,12 +2728,24 @@ function QuickObservation({
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                   <tr>
-                    <th className="p-2 text-left font-medium">#</th>
-                    <th className="p-2 text-left font-medium">Mecz</th>
-                    <th className="p-2 text-left font-medium">Zawodnik</th>
-                    <th className="p-2 text-left font-medium">Data</th>
-                    <th className="p-2 text-left font-medium">Tryb</th>
-                    <th className="p-2 text-left font-medium">Status</th>
+                    <th className="p-2 text-left font-medium">
+                      #
+                    </th>
+                    <th className="p-2 text-left font-medium">
+                      Mecz
+                    </th>
+                    <th className="p-2 text-left font-medium">
+                      Zawodnik
+                    </th>
+                    <th className="p-2 text-left font-medium">
+                      Data
+                    </th>
+                    <th className="p-2 text-left font-medium">
+                      Tryb
+                    </th>
+                    <th className="p-2 text-left font-medium">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2118,7 +2753,9 @@ function QuickObservation({
                     <tr
                       key={o.id}
                       className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
-                        obsSelectedId === o.id ? "bg-blue-50/60 dark:bg-blue-900/20" : ""
+                        obsSelectedId === o.id
+                          ? "bg-blue-50/60 dark:bg-blue-900/20"
+                          : ""
                       }`}
                       onClick={() => setObsSelectedId(o.id)}
                     >
@@ -2127,12 +2764,22 @@ function QuickObservation({
                           type="radio"
                           name="obsPick"
                           checked={obsSelectedId === o.id}
-                          onChange={() => setObsSelectedId(o.id)}
+                          onChange={() =>
+                            setObsSelectedId(o.id)
+                          }
                         />
                       </td>
-                      <td className="p-2">{o.match || "—"}</td>
-                      <td className="p-2">{o.player || "—"}</td>
-                      <td className="p-2">{[o.date || "—", o.time || ""].filter(Boolean).join(" ")}</td>
+                      <td className="p-2">
+                        {o.match || "—"}
+                      </td>
+                      <td className="p-2">
+                        {o.player || "—"}
+                      </td>
+                      <td className="p-2">
+                        {[o.date || "—", o.time || ""]
+                          .filter(Boolean)
+                          .join(" ")}
+                      </td>
                       <td className="p-2">
                         <span
                           className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
@@ -2142,7 +2789,9 @@ function QuickObservation({
                               : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
                           }`}
                         >
-                          {(o as any).mode === "tv" ? "TV" : "Live"}
+                          {(o as any).mode === "tv"
+                            ? "TV"
+                            : "Live"}
                         </span>
                       </td>
                       <td className="p-2">
@@ -2153,14 +2802,19 @@ function QuickObservation({
                               : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
                           }`}
                         >
-                          {o.status === "final" ? "Finalna" : "Szkic"}
+                          {o.status === "final"
+                            ? "Finalna"
+                            : "Szkic"}
                         </span>
                       </td>
                     </tr>
                   ))}
                   {existingFiltered.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
+                      <td
+                        colSpan={6}
+                        className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                      >
                         Brak obserwacji dla podanych kryteriów.
                       </td>
                     </tr>
@@ -2170,7 +2824,11 @@ function QuickObservation({
             </div>
 
             <div className="flex flex-wrap items-start justify-between">
-              <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={onBack}>
+              <Button
+                variant="outline"
+                className="border-gray-300 dark:border-neutral-700"
+                onClick={onBack}
+              >
                 <ArrowLeft className="mr-0 md:mr-2 h-4 w-4" />
                 Wróć
               </Button>
@@ -2186,7 +2844,9 @@ function QuickObservation({
                       Skopiuj do zawodnika
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Utwórz kopię wskazanej obserwacji</TooltipContent>
+                  <TooltipContent>
+                    Utwórz kopię wskazanej obserwacji
+                  </TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -2198,7 +2858,9 @@ function QuickObservation({
                       Przypisz do zawodnika
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Zmień przypisanie bez kopiowania</TooltipContent>
+                  <TooltipContent>
+                    Zmień przypisanie bez kopiowania
+                  </TooltipContent>
                 </Tooltip>
               </div>
             </div>

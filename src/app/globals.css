@@ -18,8 +18,8 @@ html, body { height: 100%; }
     @apply focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0;
   }
 
-  .primary {background:#87D4A1 !important; color:#000 !important;}
-  .secondary {background: #FFBD90 !important;}
+  .primary {background:#089569 !important;}
+  .secondary {background: #4F47E6 !important; color:#fff !important;}
 }
 
 @layer components {
@@ -256,3 +256,6 @@ html, body { height: 100%; }
       focus-visible:ring focus-visible:ring-indigo-500/60;
   }
 }
+
+
+.width-fit {width: fit-content !important;}

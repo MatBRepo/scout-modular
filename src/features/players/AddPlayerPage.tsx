@@ -10,6 +10,9 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
+import { Checkbox } from "@/components/ui/checkbox";
+
+
 import { Toolbar } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +87,10 @@ import { getSupabase } from "@/lib/supabaseClient";
 import { format } from "date-fns";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { RadioChipGroup } from "@/components/ui/RadioChipGroup";
+
+// NEW: RAC fields
+import { BirthDatePicker } from "@/components/ui/birthdate-picker-rac";
+import { NumericField } from "@/components/ui/numeric-field-rac";
 
 // header actions (global)
 import { useHeaderActions } from "@/app/ClientRoot";
@@ -307,51 +314,66 @@ function CountryCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
+          role="combobox"
           aria-expanded={open}
           className={cn(
-            "relative flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
-            "border-gray-300 dark:border-neutral-700",
+            "relative flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm transition",
+            "hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+            "dark:border-neutral-700 dark:bg-neutral-950",
             chip ? "pr-24" : ""
           )}
         >
           <span
             className={cn(
-              "flex min-w-0 items-center gap-2",
+              "flex min-w-0 items-center gap-2 truncate",
               !selected && "text-muted-foreground"
             )}
           >
             {selected ? (
               <>
-                <span className="text-base leading-none">{selected.flag}</span>
+                <span className="text-lg leading-none">{selected.flag}</span>
                 <span className="truncate">{selected.name}</span>
               </>
             ) : (
               "Wybierz kraj"
             )}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown
+            aria-hidden="true"
+            className="ml-2 h-4 w-4 shrink-0 text-muted-foreground/80"
+          />
           {chip ? <Chip text={chip} /> : null}
         </button>
       </PopoverTrigger>
+
       <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
         align="start"
+        className={cn(
+          "w-[--radix-popover-trigger-width] p-0",
+          "border border-gray-300 dark:border-neutral-700"
+        )}
       >
-        <Command shouldFilter>
+        <Command>
           <CommandInput
-            placeholder="Szukaj kraju…"
-            className="border-0 bg-transparent px-3 py-2 text-sm shadow-none focus:border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            placeholder="Szukaj kraju..."
+            className={cn(
+              "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-slate-200 bg-background px-3 text-sm",
+              "shadow-none outline-none",
+              "focus-visible: focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+              "dark:border-neutral-700 dark:bg-neutral-950"
+            )}
           />
-          <CommandList>
+          <CommandList className="max-h-64">
             <CommandEmpty>Brak wyników.</CommandEmpty>
             <CommandGroup>
               {COUNTRIES.map((c) => {
-                const active = c.name === value;
+                const isActive = c.name === value;
                 return (
                   <CommandItem
                     key={c.code}
@@ -360,17 +382,13 @@ function CountryCombobox({
                       onChange(c.name);
                       setOpen(false);
                     }}
+                    className="flex cursor-pointer items-center gap-2 text-sm"
                   >
-                    <span className="mr-2 text-base">{c.flag}</span>
-                    <span className="mr-2">{c.name}</span>
-                    <span
-                      className={cn(
-                        "ml-auto",
-                        active ? "opacity-100" : "opacity-0"
-                      )}
-                    >
-                      <Check className="h-4 w-4" />
-                    </span>
+                    <span className="text-lg leading-none">{c.flag}</span>
+                    <span className="truncate">{c.name}</span>
+                    {isActive && (
+                      <Check className="ml-auto h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+                    )}
                   </CommandItem>
                 );
               })}
@@ -404,7 +422,7 @@ function CountrySearchCombobox({
           aria-expanded={open}
           className={cn(
             "flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm transition",
-            "hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+            "hover:bg:white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
             "dark:border-neutral-700 dark:bg-neutral-950"
           )}
         >
@@ -437,7 +455,7 @@ function CountrySearchCombobox({
             className={cn(
               "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-slate-200 bg-background px-3 text-sm",
               "shadow-none outline-none",
-              "focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+              "focus-visible: focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
               "dark:border-neutral-700 dark:bg-neutral-950"
             )}
           />
@@ -491,7 +509,7 @@ type DateTimeValue = {
   time: string;
 };
 
-/* Boisko – główna pozycja (identycznie jak w PlayerEditorPage) */
+/* Boisko – główna pozycja (responsywne, poprawione linie i kolory) */
 function MainPositionPitch({
   value,
   onChange,
@@ -507,30 +525,30 @@ function MainPositionPitch({
     : null;
 
   return (
-    <section className="mt-2 mb-2 bg-transparent border-none  dark:bg-neutral-950 dark:ring-neutral-800">
-      <div className="mb-3 flex items-center justify-between gap-2">
+    <section className="mt-2 mb-2 bg-transparent border-none dark:bg-neutral-950 dark:ring-neutral-800">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+          <div className="font-medium text-foreground text-sm">
             Boisko – główna pozycja
           </div>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
-            Kliknij na znacznik na boisku, aby ustawić główną pozycję
-            zawodnika.
+            Kliknij na znacznik na boisku, aby ustawić główną pozycję zawodnika.
           </p>
         </div>
         {activeMeta && (
-          <span className="inline-flex items-center rounded bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
+          <span className="inline-flex items-center self-start rounded bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700  ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
             {activeMeta.code} · {activeMeta.name}
           </span>
         )}
       </div>
 
       <div className="mx-auto w-full max-w-[700px] rounded border-none bg-transparent">
-        <div className="relative w-full overflow-hidden rounded-[20px] bg-[#248604] aspect-[590/350]">
+        <div className="relative w-full overflow-hidden rounded-[20px] bg-[#248604] aspect-[4/3] sm:aspect-[590/350]">
           <svg
             viewBox="0 0 590 350"
-            className="pointer-events-none absolute inset-0 h-full w-full p-2"
+            className="pointer-events-none absolute inset-0 h-full w-full p-2 sm:p-3"
             preserveAspectRatio="xMidYMid meet"
+            shapeRendering="geometricPrecision"
           >
             <rect
               x="2"
@@ -540,7 +558,7 @@ function MainPositionPitch({
               rx="0"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
 
             <rect
@@ -550,7 +568,7 @@ function MainPositionPitch({
               height="317.482"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
             <rect
               x="18.5139"
@@ -559,7 +577,7 @@ function MainPositionPitch({
               height="192.55"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
             <rect
               x="18.5139"
@@ -568,7 +586,7 @@ function MainPositionPitch({
               height="124.839"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
             <rect
               x="8.66235"
@@ -577,7 +595,7 @@ function MainPositionPitch({
               height="124.839"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
 
             <path
@@ -599,7 +617,7 @@ function MainPositionPitch({
               transform="matrix(-1 0 0 1 570.486 15.2588)"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
             <rect
               x="-1"
@@ -609,7 +627,7 @@ function MainPositionPitch({
               transform="matrix(-1 0 0 1 570.486 78.2017)"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
             <rect
               x="-1"
@@ -619,7 +637,7 @@ function MainPositionPitch({
               transform="matrix(-1 0 0 1 570.486 111.58)"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
             <rect
               x="-1"
@@ -629,7 +647,7 @@ function MainPositionPitch({
               transform="matrix(-1 0 0 1 580.338 111.58)"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
 
             <path
@@ -647,13 +665,13 @@ function MainPositionPitch({
               d="M122 106.618C139.904 124.296 151 148.852 151 176C151 203.148 139.903 227.703 122 245.381V106.618Z"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
             <path
               d="M468 106.618C450.096 124.296 439 148.852 439 176C439 203.148 450.097 227.703 468 245.381V106.618Z"
               fill="none"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
 
             <line
@@ -662,7 +680,7 @@ function MainPositionPitch({
               x2="295"
               y2="334"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
 
             <circle cx="496" cy="174" r="1" fill="white" />
@@ -679,10 +697,11 @@ function MainPositionPitch({
                 key={pos.value}
                 type="button"
                 className={cn(
-                  "absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-xs font-semibold shadow-sm transition-transform",
+                  "absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-[10px] font-semibold shadow-sm transition-transform duration-150",
+                  "h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9",
                   isSelected
-                    ? "border-emerald-500 bg-[#6CC78F] text-black shadow-[0_0_0_4px_rgba(16,185,129,0.55)]"
-                    : "border-white bg-[#87D4A1] text-black hover:scale-[1.03]"
+                    ? "border-emerald-500 bg-white text-black shadow-[0_0_0_2px_rgba(16,185,129,0.7)]"
+                    : "border-white/80 bg-black text-white hover:scale-[1.05] hover:bg-black/90"
                 )}
                 style={{ top: layout.top, left: layout.left }}
                 onClick={() => onChange(pos.value)}
@@ -698,7 +717,7 @@ function MainPositionPitch({
         </div>
       </div>
 
-      <div className="mt-3 text-[11px] leading-relaxed text-slate-600 dark:text-neutral-300">
+      <div className="mt-3 text-center text-[11px] leading-relaxed text-slate-600 dark:text-neutral-300 sm:text-left">
         {activeMeta ? (
           <>
             <span className="font-semibold">
@@ -717,6 +736,7 @@ function MainPositionPitch({
     </section>
   );
 }
+
 
 /* ===== Editor-like Add page ===== */
 type Choice = "known" | "unknown" | null;
@@ -1111,86 +1131,115 @@ export default function AddPlayerPage() {
       case "profile":
         return (
           <div className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div>
-                <Label className="text-sm">Wzrost (cm)</Label>
-                <Input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={ext.height}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, height: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Waga (kg)</Label>
-                <Input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={ext.weight}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, weight: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Dominująca noga</Label>
-                <Select
-                  value={ext.dominantFoot || undefined}
-                  onValueChange={(val) =>
-                    setExt((s) => ({ ...s, dominantFoot: val }))
-                  }
-                >
-                  <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
-                    <SelectValue placeholder="Wybierz" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="R">Prawa (R)</SelectItem>
-                    <SelectItem value="L">Lewa (L)</SelectItem>
-                    <SelectItem value="Both">Obunożny</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+  <div>
+    <Label className="text-sm">Wzrost (cm)</Label>
+    <NumericField
+      value={ext.height === "" ? undefined : Number(ext.height)}
+      onChange={(val) =>
+        setExt((s) => ({
+          ...s,
+          height: val == null ? "" : String(val),
+        }))
+      }
+      placeholder="np. 182"
+    />
+  </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <Label className="text-sm">Pozycje alternatywne</Label>
-                <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-                  {POS_DATA.map((opt) => {
-                    const checked = ext.altPositions.includes(opt.value);
-                    return (
-                      <label
-                        key={opt.value}
-                        className={cn(
-                          "flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs",
-                          checked
-                            ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-950/40"
-                            : "border-slate-200 bg-white dark:border-neutral-700 dark:bg-neutral-950"
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-3 w-3"
-                          checked={checked}
-                          onChange={() =>
-                            setExt((s) => {
-                              const current = s.altPositions;
-                              const next = checked
-                                ? current.filter((x) => x !== opt.value)
-                                : [...current, opt.value];
-                              return { ...s, altPositions: next };
-                            })
-                          }
-                        />
-                        <span>{opt.code}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
+  <div>
+    <Label className="text-sm">Waga (kg)</Label>
+    <NumericField
+      value={ext.weight === "" ? undefined : Number(ext.weight)}
+      onChange={(val) =>
+        setExt((s) => ({
+          ...s,
+          weight: val == null ? "" : String(val),
+        }))
+      }
+      placeholder="np. 76"
+    />
+  </div>
+
+  <div>
+    <Label className="text-sm">Dominująca noga</Label>
+    <Select
+      value={ext.dominantFoot || undefined}
+      onValueChange={(val) =>
+        setExt((s) => ({ ...s, dominantFoot: val }))
+      }
+    >
+      <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
+        <SelectValue placeholder="Wybierz" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="R">Prawa (R)</SelectItem>
+        <SelectItem value="L">Lewa (L)</SelectItem>
+        <SelectItem value="Both">Obunożny</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+</div>
+
+
+<div className="grid grid-cols-1 gap-4 md:grid-cols-1">
+  <div>
+    <Label className="text-sm">Pozycje alternatywne</Label>
+    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {POS_DATA.map((opt) => {
+        const checked = ext.altPositions.includes(opt.value);
+        const itemId = `alt-pos-${opt.value}`;
+
+        return (
+          <div
+            key={opt.value}
+            className={cn(
+              "relative flex w-full items-start gap-2 rounded-md border border-input p-3 text-xs shadow-xs outline-none",
+              "has-[data-state=checked]:border-primary/60 has-[data-state=checked]:bg-primary/5"
+            )}
+          >
+            <Checkbox
+              id={itemId}
+              aria-describedby={`${itemId}-description`}
+              className="order-1 mt-0.5 after:absolute after:inset-0"
+              checked={checked}
+              onCheckedChange={(next) => {
+                const isChecked = Boolean(next);
+                setExt((s) => {
+                  const current = s.altPositions;
+                  const nextPositions = isChecked
+                    ? [...current, opt.value]
+                    : current.filter((x) => x !== opt.value);
+                  return { ...s, altPositions: nextPositions };
+                });
+              }}
+            />
+            <div className="grid grow gap-1">
+              <Label
+                htmlFor={itemId}
+                className="text-xs font-medium text-foreground"
+              >
+                {opt.code}{" "}
+                <span className="font-normal text-muted-foreground text-[11px] leading-[inherit]">
+                  ({opt.name})
+                </span>
+              </Label>
+              <p
+                className="text-[11px] text-muted-foreground"
+                id={`${itemId}-description`}
+              >
+                {opt.desc}
+              </p>
             </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</div>
+
+
+
+
           </div>
         );
 
@@ -1368,68 +1417,65 @@ export default function AddPlayerPage() {
                 className="mt-1"
               />
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-              <div>
-                <Label className="text-sm">
-                  Minuty w ostatnich 365 dniach
-                </Label>
-                <Input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={ext.minutes365}
-                  onChange={(e) =>
-                    setExt((s) => ({
-                      ...s,
-                      minutes365: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Mecze jako starter</Label>
-                <Input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={ext.starts365}
-                  onChange={(e) =>
-                    setExt((s) => ({
-                      ...s,
-                      starts365: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Mecze jako rezerwowy</Label>
-                <Input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={ext.subs365}
-                  onChange={(e) =>
-                    setExt((s) => ({
-                      ...s,
-                      subs365: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div>
-                <Label className="text-sm">
-                  Gole w ostatnich 365 dniach
-                </Label>
-                <Input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={ext.goals365}
-                  onChange={(e) =>
-                    setExt((s) => ({
-                      ...s,
-                      goals365: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
+         <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+  <div>
+    <NumericField
+    label = "Minuty w ostatnich 365 dniach"
+      value={ext.minutes365 === "" ? undefined : Number(ext.minutes365)}
+      onChange={(val) =>
+        setExt((s) => ({
+          ...s,
+          minutes365: val == null ? "" : String(val),
+        }))
+      }
+      placeholder="0"
+    />
+  </div>
+
+  <div>
+    <NumericField
+    label = "Mecze jako starter"
+      value={ext.starts365 === "" ? undefined : Number(ext.starts365)}
+      onChange={(val) =>
+        setExt((s) => ({
+          ...s,
+          starts365: val == null ? "" : String(val),
+        }))
+      }
+      placeholder="0"
+    />
+  </div>
+
+  <div>
+    <NumericField
+    label="Mecze jako rezerwowy"
+      value={ext.subs365 === "" ? undefined : Number(ext.subs365)}
+      onChange={(val) =>
+        setExt((s) => ({
+          ...s,
+          subs365: val == null ? "" : String(val),
+        }))
+      }
+      placeholder="0"
+    />
+  </div>
+
+  <div>
+
+    <NumericField
+      label="Gole w ostatnich 365 dniach"
+      value={ext.goals365 === "" ? undefined : Number(ext.goals365)}
+      onChange={(val) =>
+        setExt((s) => ({
+          ...s,
+          goals365: val == null ? "" : String(val),
+        }))
+      }
+       placeholder="0"
+    />
+  </div>
+</div>
+
           </div>
         );
 
@@ -1514,7 +1560,7 @@ export default function AddPlayerPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-slate-300 text-[10px] text-slate-600 hover:bg-slate-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-slate-300 text-[10px] text-slate-600 hover:bg-stone-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
                       >
                         i
                       </button>
@@ -1757,7 +1803,7 @@ export default function AddPlayerPage() {
   ]);
 
   const stepPillClass =
-    "inline-flex h-6 items-center rounded-md bg-slate-100 px-2.5 text-[11px] tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
+    "inline-flex h-6 items-center rounded-md bg-stone-100 px-2.5 text-[11px] tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
 
   // Helper to avoid infinite loop in observations onChange
   function mapTableRowsToObservations(rows: any[]): ObsRec[] {
@@ -1833,7 +1879,7 @@ export default function AddPlayerPage() {
 
       {/* KROK 0 – tryb profilu (ustalany automatycznie na podstawie pól) */}
       <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
-        <CardHeader className="group hidden items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:flex md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+        <CardHeader className="group hidden items-center justify-between  border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:flex md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
           <div className="flex w-full items-center justify-between gap-3">
             <div>
               <div className={stepPillClass}>Krok 0 · Tryb profilu</div>
@@ -1852,7 +1898,7 @@ export default function AddPlayerPage() {
           <div className="grid grid-cols-2 gap-3">
             <div
               className={cn(
-                "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
+                "cursor-default rounded-lg p-4 text-left border bg-white dark:bg-neutral-950 ",
                 choice === "known"
                   ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
                   : "ring-gray-200 dark:ring-neutral-800"
@@ -1898,7 +1944,7 @@ export default function AddPlayerPage() {
 
             <div
               className={cn(
-                "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
+                "cursor-default rounded-lg p-4 text-left border bg-white dark:bg-neutral-950 ",
                 choice === "unknown"
                   ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
                   : "ring-gray-200 dark:ring-neutral-800"
@@ -1950,7 +1996,7 @@ export default function AddPlayerPage() {
         <Card ref={basicRef} className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex rounded-md items-center justify-between  border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               basicOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2014,26 +2060,22 @@ export default function AddPlayerPage() {
                       </div>
                       <div>
                         <Label className="text-sm">Rok urodzenia</Label>
-                        <Input
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={birthYear}
-                          onChange={(e) => setBirthYear(e.target.value)}
-                          placeholder="np. 2006"
-                        />
+<BirthDatePicker
+  value={birthYear}
+  onChange={(val: string | null | undefined) =>
+    setBirthYear(val || "")
+  }
+/>
                       </div>
                       <div>
-                        <Label className="text-sm">
-                          Numer na koszulce
-                          <span className="ml-1 text-[11px] text-slate-400">
-                            (może być użyty także w profilu anonimowym)
-                          </span>
-                        </Label>
-                        <Input
-                          value={jerseyNumber}
-                          onChange={(e) => setJerseyNumber(e.target.value)}
-                          placeholder="np. 27"
-                        />
+
+                      <NumericField
+                        label="Numer na koszulce"
+                        value={jerseyNumber === "" ? undefined : Number(jerseyNumber)}
+                        onChange={(val) => setJerseyNumber(val == null ? "" : String(val))}
+                        placeholder="np. 27"
+                      />
+
                       </div>
                       <div>
                         <Label className="text-sm">Aktualny klub</Label>
@@ -2087,7 +2129,7 @@ export default function AddPlayerPage() {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex rounded-md items-center justify-between  border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               extOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2172,7 +2214,7 @@ export default function AddPlayerPage() {
                       onValueChange={(v: any) => setExtView(v)}
                       className="w-full"
                     >
-                      <TabsList className="inline-flex w-auto gap-1 rounded-md bg-slate-100 p-1 dark:bg-neutral-900">
+                      <TabsList className="inline-flex w-auto gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-900">
                         <TabsTrigger value="profile">
                           Profil boiskowy
                         </TabsTrigger>
@@ -2211,7 +2253,7 @@ export default function AddPlayerPage() {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex rounded-md items-center justify-between  border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               gradeOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2363,7 +2405,7 @@ export default function AddPlayerPage() {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between border-b border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex rounded-md items-center justify-between  border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               obsOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >

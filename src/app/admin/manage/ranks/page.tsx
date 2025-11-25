@@ -68,7 +68,7 @@ const rankBadgeClass: Record<RankKey, string> = {
   bronze:
     "bg-orange-100 text-orange-800 ring-1 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-100 dark:ring-orange-800/70",
   silver:
-    "bg-slate-100 text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-100 dark:ring-slate-700/70",
+    "bg-stone-100 text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-100 dark:ring-slate-700/70",
   gold:
     "bg-amber-100 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-800/70",
   platinum:
@@ -309,7 +309,7 @@ export default function RankSettingsPage() {
           <CardHeader className="pb-3 space-y-3">
             <CardTitle className="flex items-center justify-between text-md font-semibold">
               <span>Konfiguracja poziomów</span>
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 dark:bg-neutral-800 dark:text-neutral-300">
+              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[11px] text-slate-600 dark:bg-neutral-800 dark:text-neutral-300">
                 Bronze / Silver / Gold / Platinum:{" "}
                 <span className="font-semibold text-slate-900 dark:text-neutral-50">
                   {thresholdsSummary}
