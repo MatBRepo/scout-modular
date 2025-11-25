@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useId,
 } from "react";
 import { useRouter } from "next/navigation";
 
@@ -36,6 +37,7 @@ import {
   Loader2,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
 } from "lucide-react";
 
 import { Calendar } from "@/components/ui/calendar";
@@ -173,22 +175,20 @@ const POS_DATA: Array<{
 ];
 
 const POS_LAYOUT: Record<DetailedPos, { top: string; left: string }> = {
-  // GK – approx. in front of goal, centred on the box
   GK: { top: "50%", left: "10%" },
 
-  // Coords taken from the SVG circles (cx, cy -> % of 590x350 viewBox)
-  LB: { top: "22.3%", left: "24.1%" }, // (142, 78)
-  CB: { top: "50%", left: "24.1%" }, // (142, 175)
-  RB: { top: "78%", left: "24.1%" }, // (142, 273)
+  LB: { top: "22.3%", left: "24.1%" },
+  CB: { top: "50%", left: "24.1%" },
+  RB: { top: "78%", left: "24.1%" },
 
-  CDM: { top: "50%", left: "36.95%" }, // (218, 175)
-  CM: { top: "50%", left: "49.83%" }, // (294, 175)
-  CAM: { top: "50%", left: "63.05%" }, // (372, 175)
+  CDM: { top: "50%", left: "36.95%" },
+  CM: { top: "50%", left: "49.83%" },
+  CAM: { top: "50%", left: "63.05%" },
 
-  LW: { top: "22.3%", left: "63.05%" }, // (372, 78)
-  RW: { top: "78%", left: "63.05%" }, // (372, 273)
+  LW: { top: "22.3%", left: "63.05%" },
+  RW: { top: "78%", left: "63.05%" },
 
-  ST: { top: "50%", left: "76.27%", }, // (450, 175)
+  ST: { top: "50%", left: "76.27%" },
 };
 
 const toBucket = (p: DetailedPos): BucketPos => {
@@ -274,13 +274,13 @@ function SavePill({
     <span className={cn(base, map[state])} aria-live="polite">
       {state === "saving" ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Autozapis…
+          <Loader2 className="h-4 w-4 animate-spin md:mr-2" />
+          <span className="hidden md:inline">Autozapis…</span>
         </>
       ) : (
         <>
-          <CheckCircle2 className="mr-2 h-4 w-4" />
-          Zapisano
+          <CheckCircle2 className="h-4 w-4 md:mr-2" />
+          <span className="hidden md:inline">Zapisano</span>
         </>
       )}
     </span>
@@ -295,7 +295,7 @@ function Chip({ text }: { text: string }) {
   );
 }
 
-/* Country combobox – z wyszukiwarką z obramowaniem */
+/* Country combobox (old – np. kraj urodzenia) */
 function CountryCombobox({
   value,
   onChange,
@@ -307,7 +307,6 @@ function CountryCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -315,9 +314,8 @@ function CountryCombobox({
           type="button"
           aria-expanded={open}
           className={cn(
-            "relative flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-sm shadow-sm transition",
-            "hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
-            "dark:border-neutral-700 dark:bg-neutral-950",
+            "relative flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
+            "border-gray-300 dark:border-neutral-700",
             chip ? "pr-24" : ""
           )}
         >
@@ -341,23 +339,15 @@ function CountryCombobox({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className={cn(
-          "w-[--radix-popover-trigger-width] p-0",
-          "border border-gray-300 dark:border-neutral-700"
-        )}
+        className="w-[--radix-popover-trigger-width] p-0"
         align="start"
       >
         <Command shouldFilter>
           <CommandInput
             placeholder="Szukaj kraju…"
-            className={cn(
-              "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-slate-200 bg-background px-3 text-sm",
-              "shadow-none outline-none",
-              "focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
-              "dark:border-neutral-700 dark:bg-neutral-950"
-            )}
+            className="border-0 bg-transparent px-3 py-2 text-sm shadow-none focus:border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
           />
-          <CommandList className="max-h-64">
+          <CommandList>
             <CommandEmpty>Brak wyników.</CommandEmpty>
             <CommandGroup>
               {COUNTRIES.map((c) => {
@@ -370,7 +360,6 @@ function CountryCombobox({
                       onChange(c.name);
                       setOpen(false);
                     }}
-                    className="flex cursor-pointer items-center gap-2 text-sm"
                   >
                     <span className="mr-2 text-base">{c.flag}</span>
                     <span className="mr-2">{c.name}</span>
@@ -382,6 +371,98 @@ function CountryCombobox({
                     >
                       <Check className="h-4 w-4" />
                     </span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* NOWY: CountrySearchCombobox – taki jak w PlayerEditorPage dla kraju klubu */
+function CountrySearchCombobox({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const selected = COUNTRIES.find((c) => c.name === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          id={id}
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            "flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm transition",
+            "hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+            "dark:border-neutral-700 dark:bg-neutral-950"
+          )}
+        >
+          <span className="flex min-w-0 items-center gap-2 truncate">
+            {selected ? (
+              <>
+                <span className="text-lg leading-none">{selected.flag}</span>
+                <span className="truncate">{selected.name}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Wybierz kraj</span>
+            )}
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className="ml-2 h-4 w-4 shrink-0 text-muted-foreground/80"
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className={cn(
+          "w-[--radix-popover-trigger-width] p-0",
+          "border border-gray-300 dark:border-neutral-700"
+        )}
+      >
+        <Command>
+          <CommandInput
+            placeholder="Szukaj kraju..."
+            className={cn(
+              "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-slate-200 bg-background px-3 text-sm",
+              "shadow-none outline-none",
+              "focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+              "dark:border-neutral-700 dark:bg-neutral-950"
+            )}
+          />
+          <CommandList className="max-h-64">
+            <CommandEmpty>Brak wyników.</CommandEmpty>
+            <CommandGroup>
+              {COUNTRIES.map((country) => {
+                const isActive = selected?.code === country.code;
+                return (
+                  <CommandItem
+                    key={country.code}
+                    value={country.name}
+                    onSelect={() => {
+                      onChange(country.name);
+                      setOpen(false);
+                    }}
+                    className="flex cursor-pointer items-center gap-2 text-sm"
+                  >
+                    <span className="text-lg leading-none">
+                      {country.flag}
+                    </span>
+                    <span className="truncate">{country.name}</span>
+                    {isActive && (
+                      <Check className="ml-auto h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+                    )}
                   </CommandItem>
                 );
               })}
@@ -410,7 +491,7 @@ type DateTimeValue = {
   time: string;
 };
 
-/* Boisko – główna pozycja */
+/* Boisko – główna pozycja (identycznie jak w PlayerEditorPage) */
 function MainPositionPitch({
   value,
   onChange,
@@ -444,16 +525,13 @@ function MainPositionPitch({
         )}
       </div>
 
-      {/* Pitch wrapper – the GREEN background comes from here */}
       <div className="mx-auto w-full max-w-[700px] rounded border-none bg-transparent">
         <div className="relative w-full overflow-hidden rounded-[20px] bg-[#248604] aspect-[590/350]">
-          {/* SVG lines – no fill, pointer-events disabled */}
           <svg
             viewBox="0 0 590 350"
             className="pointer-events-none absolute inset-0 h-full w-full p-2"
             preserveAspectRatio="xMidYMid meet"
           >
-            {/* outer white line, no fill */}
             <rect
               x="2"
               y="2"
@@ -465,7 +543,6 @@ function MainPositionPitch({
               strokeWidth="2"
             />
 
-            {/* left half */}
             <rect
               x="18.5139"
               y="16.2588"
@@ -503,7 +580,6 @@ function MainPositionPitch({
               strokeWidth="2"
             />
 
-            {/* left corner arcs (kept as in your SVG, shortened masks) */}
             <path
               d="M31.7444 15.2588C31.7444 21.5792 25.9524 26.7031 18.8079 26.7031C18.3711 26.7031 17.9395 26.6819 17.5139 26.6445V15.2588H31.7444Z"
               fill="white"
@@ -515,7 +591,6 @@ function MainPositionPitch({
               fillOpacity="0.1"
             />
 
-            {/* right half (mirrored) */}
             <rect
               x="-1"
               y="1"
@@ -568,7 +643,6 @@ function MainPositionPitch({
               fillOpacity="0.1"
             />
 
-            {/* penalty arcs */}
             <path
               d="M122 106.618C139.904 124.296 151 148.852 151 176C151 203.148 139.903 227.703 122 245.381V106.618Z"
               fill="none"
@@ -582,7 +656,6 @@ function MainPositionPitch({
               strokeWidth="2"
             />
 
-            {/* centre line */}
             <line
               x1="295"
               y1="16"
@@ -592,12 +665,10 @@ function MainPositionPitch({
               strokeWidth="2"
             />
 
-            {/* two little white dots */}
             <circle cx="496" cy="174" r="1" fill="white" />
             <circle cx="94" cy="174" r="1" fill="white" />
           </svg>
 
-          {/* Position markers – scale with the container */}
           {POS_DATA.map((pos) => {
             const layout = POS_LAYOUT[pos.value];
             if (!layout) return null;
@@ -609,7 +680,7 @@ function MainPositionPitch({
                 type="button"
                 className={cn(
                   "absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-xs font-semibold shadow-sm transition-transform",
-                isSelected
+                  isSelected
                     ? "border-emerald-500 bg-[#6CC78F] text-black shadow-[0_0_0_4px_rgba(16,185,129,0.55)]"
                     : "border-white bg-[#87D4A1] text-black hover:scale-[1.03]"
                 )}
@@ -768,8 +839,8 @@ export default function AddPlayerPage() {
 
     const hasAnon =
       jerseyNumber.trim() !== "" ||
-      (!hasPersonal && (club.trim() !== "" || clubCountry.trim() !== "")) ||
-      uNote.trim() !== "";
+      uNote.trim() !== "" ||
+      (!hasPersonal && (club.trim() !== "" || clubCountry.trim() !== ""));
 
     let next: Choice;
     if (hasPersonal && !hasAnon) {
@@ -1526,11 +1597,12 @@ export default function AddPlayerPage() {
       !!club.trim() &&
       !!clubCountry.trim();
 
+    // Zmienione: anonimowy profil zapisuje się już jeśli JAKIEKOLWIEK z tych pól jest uzupełnione
     const unknownValid =
       !isKnown &&
-      !!jerseyNumber.trim() &&
-      !!club.trim() &&
-      !!clubCountry.trim();
+      (jerseyNumber.trim() !== "" ||
+        club.trim() !== "" ||
+        clubCountry.trim() !== "");
 
     if (!knownValid && !unknownValid) {
       setSaveState("idle");
@@ -1573,19 +1645,9 @@ export default function AddPlayerPage() {
             const c = club.trim();
             const cc = clubCountry.trim();
 
-            // Nigdy nie zapisujemy "Nieznany zawodnik" w bazie
-            // Zawsze jakaś etykieta anonimowa:
-            if (num && c) {
-              name = `#${num} – ${c}`;
-            } else if (num && !c) {
-              name = `#${num} – Profil anonimowy`;
-            } else if (!num && c) {
-              name = `Profil anonimowy – ${c}`;
-            } else {
-              name = "Profil anonimowy";
-            }
-
-            clubFinal = c || "Bez klubu";
+            // Zachowanie jak w PlayerEditorPage: może powstać "Nieznany zawodnik"
+            name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
+            clubFinal = c;
             posBucket = toBucket(uPosDet || posDet);
             clubCountryFinal = cc || null;
           }
@@ -1731,18 +1793,29 @@ export default function AddPlayerPage() {
     return true;
   }
 
-  // GLOBAL HEADER ACTIONS – identyczne jak w PlayerEditorPage
+  // NEW: push "Zapisano / Wróć do listy" into global header via ClientRoot
   useEffect(() => {
     const node = (
       <div className="flex items-center gap-2">
         <SavePill state={saveState} size="compact" />
+
         <Button
           variant="outline"
           size="sm"
-          className="h-8 px-3 text-xs"
+          className="hidden h-8 px-3 text-xs md:inline-flex"
           onClick={() => router.push("/players")}
         >
           Wróć do listy
+        </Button>
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="inline-flex h-8 w-8 p-0 md:hidden"
+          aria-label="Wróć do listy"
+          onClick={() => router.push("/players")}
+        >
+          <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
     );
@@ -1760,14 +1833,14 @@ export default function AddPlayerPage() {
 
       {/* KROK 0 – tryb profilu (ustalany automatycznie na podstawie pól) */}
       <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
-        <CardHeader className="group flex items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+        <CardHeader className="group hidden items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:flex md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
           <div className="flex w-full items-center justify-between gap-3">
             <div>
               <div className={stepPillClass}>Krok 0 · Tryb profilu</div>
-              <h2 className="mt-1 text-base font-semibold tracking-tight">
+              <h2 className="mt-1 hidden text-base font-semibold tracking-tight md:block">
                 Tryb przechowywania danych zawodnika
               </h2>
-              <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+              <p className="mt-1 hidden text-xs text-slate-500 dark:text-neutral-400 md:block">
                 System automatycznie określa, czy profil jest <b>pełny</b> czy{" "}
                 <b>anonimowy</b> na podstawie uzupełnionych pól – Ty po prostu
                 wypełniasz dane.
@@ -1776,16 +1849,16 @@ export default function AddPlayerPage() {
           </div>
         </CardHeader>
         <CardContent className="px-4 py-4 md:px-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <div
               className={cn(
-                "w-full cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
+                "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
                 choice === "known"
                   ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
                   : "ring-gray-200 dark:ring-neutral-800"
               )}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
                 <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
                   <KnownPlayerIcon
                     className={cn(
@@ -1825,13 +1898,13 @@ export default function AddPlayerPage() {
 
             <div
               className={cn(
-                "w-full cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
+                "cursor-default rounded-lg p-4 text-left shadow-sm bg-white dark:bg-neutral-950 ring-1",
                 choice === "unknown"
                   ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
                   : "ring-gray-200 dark:ring-neutral-800"
               )}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
                 <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
                   <UnknownPlayerIcon
                     className={cn(
@@ -1950,7 +2023,12 @@ export default function AddPlayerPage() {
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">Numer na koszulce</Label>
+                        <Label className="text-sm">
+                          Numer na koszulce
+                          <span className="ml-1 text-[11px] text-slate-400">
+                            (może być użyty także w profilu anonimowym)
+                          </span>
+                        </Label>
                         <Input
                           value={jerseyNumber}
                           onChange={(e) => setJerseyNumber(e.target.value)}
@@ -1958,9 +2036,7 @@ export default function AddPlayerPage() {
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">
-                          Aktualny klub
-                        </Label>
+                        <Label className="text-sm">Aktualny klub</Label>
                         <Input
                           value={club}
                           onChange={(e) => setClub(e.target.value)}
@@ -1968,10 +2044,10 @@ export default function AddPlayerPage() {
                         />
                       </div>
                       <div>
-                        <Label className="text-sm pb-2">
-                          Kraj aktualnego klubu
+                        <Label className="pb-2 text-sm">
+                          Kraj klubu / aktualnego klubu
                         </Label>
-                        <CountryCombobox
+                        <CountrySearchCombobox
                           value={clubCountry}
                           onChange={(val) => setClubCountry(val)}
                         />
@@ -2357,10 +2433,9 @@ export default function AddPlayerPage() {
                     />
                   </div>
 
-                  {/* Stary, ukryty UI dodawania/edytowania obserwacji – zostawiony jako dead-code dla TS */}
                   {false && (
                     <>
-                      <div className="space-y-8">{/* ... */}</div>
+                      <div className="space-y-8">{/* ... stary QA ... */}</div>
                       <Dialog open={editOpen} onOpenChange={setEditOpen}>
                         <DialogContent>
                           <DialogHeader>
