@@ -963,15 +963,6 @@ setActions(
               </button>
             </div>
 
-            {/* Status zapisu + akcje (lokalnie, pod tytułem) */}
-            <div className="ml-0 flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:gap-3">
-              {/* Zapisano */}
-              <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
-                <div className="flex h-10 items-center justify-center">
-                  <SavePill state={saveState} />
-                </div>
-              </div>
-            </div>
           </div>
         }
       />
