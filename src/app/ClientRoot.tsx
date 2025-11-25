@@ -1,7 +1,13 @@
 // src/app/ClientRoot.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  createContext,
+  useContext,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { ThemeProvider } from "next-themes";
 import AppSidebar from "@/widgets/app-sidebar/AppSidebar";
@@ -35,9 +41,9 @@ const colVariants: Variants = {
 // ---- helpers (module-scope): available to all components ----
 export const titleCaseAll = (input: string) =>
   String(input ?? "")
-    .replace(/[-_/]+/g, " ") // treat -, _, / as word breaks
+    .replace(/[-_/]+/g, " ")
     .trim()
-    .split(/\s+/) // split on spaces
+    .split(/\s+/)
     .map((w) => (w ? w[0].toLocaleUpperCase() + w.slice(1) : ""))
     .join(" ");
 
@@ -99,11 +105,40 @@ const SEGMENT_LABELS: Record<string, string> = {
   edit: "Edycja",
 };
 
-function getCrumbLabel(fullPath: string, segment: string, index: number) {
-  // pierwszy crumb zawsze: Strona główna
+function getCrumbLabel(
+  fullPath: string,
+  segment: string,
+  index: number,
+  searchParams: URLSearchParams | null
+) {
   if (index === 0) return "Strona główna";
 
   const segmentKey = segment.toLowerCase();
+
+  // ID w ścieżce (np. /players/1763416879293)
+  if (/^\d+$/.test(segment)) {
+    if (fullPath.startsWith("/players/")) {
+      const playerName =
+        searchParams?.get("playerName") || searchParams?.get("n") || "";
+      if (playerName.trim().length > 0) {
+        return playerName;
+      }
+      return "Zawodnik";
+    }
+
+    if (fullPath.startsWith("/observations/")) {
+      const obsLabel =
+        searchParams?.get("observationName") ||
+        searchParams?.get("title") ||
+        "";
+      if (obsLabel.trim().length > 0) {
+        return obsLabel;
+      }
+      return "Obserwacja";
+    }
+
+    return "Szczegóły";
+  }
 
   // 1) priorytet: konkretna pełna ścieżka
   if (PATH_LABELS[fullPath]) return PATH_LABELS[fullPath];
@@ -118,7 +153,10 @@ function getCrumbLabel(fullPath: string, segment: string, index: number) {
 /* ===== Simple breadcrumb builder ===== */
 type Crumb = { label: string; href: string; isEllipsis?: boolean };
 
-function buildBreadcrumb(pathname: string): Crumb[] {
+function buildBreadcrumb(
+  pathname: string,
+  searchParams: URLSearchParams | null
+): Crumb[] {
   const parts = pathname
     .split("?")[0]
     .split("#")[0]
@@ -127,14 +165,13 @@ function buildBreadcrumb(pathname: string): Crumb[] {
 
   const items: Crumb[] = [];
 
-  // Zawsze pierwszy element: Strona główna
   items.push({ label: "Strona główna", href: "/" });
 
   let acc = "";
   parts.forEach((p, index) => {
     acc += "/" + p;
     const decoded = decodeURIComponent(p);
-    const label = getCrumbLabel(acc, decoded, index + 1);
+    const label = getCrumbLabel(acc, decoded, index + 1, searchParams);
     items.push({
       label,
       href: acc,
@@ -142,6 +179,24 @@ function buildBreadcrumb(pathname: string): Crumb[] {
   });
 
   return items;
+}
+
+/* ===== Header actions context (for top-right bar) ===== */
+type HeaderActionsCtx = {
+  actions: ReactNode | null;
+  setActions: (node: ReactNode | null) => void;
+};
+
+const HeaderActionsContext = createContext<HeaderActionsCtx | undefined>(
+  undefined
+);
+
+export function useHeaderActions() {
+  const ctx = useContext(HeaderActionsContext);
+  if (!ctx) {
+    throw new Error("useHeaderActions must be used within ClientRoot");
+  }
+  return ctx;
 }
 
 /* ===== Shell with Sidebar & Topbar ===== */
@@ -152,34 +207,39 @@ function AppShell({
   onAddObservation,
   isAuthed,
   pathname,
+  headerActions,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   onOpenMobile: () => void;
   onAddPlayer: () => void;
   onAddObservation: () => void;
   isAuthed: boolean;
   pathname: string;
+  headerActions?: ReactNode | null;
 }) {
-  const crumbs = buildBreadcrumb(pathname);
   const search = useSearchParams();
+  const crumbs = buildBreadcrumb(pathname, search as unknown as URLSearchParams);
   const prefersReduced = useReducedMotion();
 
   const [breadcrumbsExpanded, setBreadcrumbsExpanded] = useState(false);
 
   useEffect(() => {
-    // przy zmianie ścieżki zwin breadcrumbs z powrotem
     setBreadcrumbsExpanded(false);
   }, [pathname]);
 
   const isObsCreateQuery =
     pathname.startsWith("/observations") && search.get("create") === "1";
 
+  const isPlayersRoot = pathname === "/players";
+  const isObservationsRoot = pathname === "/observations";
+
+  const isPlayersSubpage =
+    pathname.startsWith("/players/") && !isPlayersRoot;
+  const isObservationsSubpage =
+    pathname.startsWith("/observations/") && !isObservationsRoot;
+
   const hideHeaderActions =
-    /^\/players\/new(?:\/|$)/.test(pathname) || // add player
-    /^\/players\/\d+(?:\/|$)/.test(pathname) || // player details
-    /^\/observations\/new(?:\/|$)/.test(pathname) || // add observation
-    /^\/observations\/\d+(?:\/|$)/.test(pathname) || // observation details
-    isObsCreateQuery;
+    isPlayersSubpage || isObservationsSubpage || isObsCreateQuery;
 
   const totalCrumbs = crumbs.length;
   const canCollapse = totalCrumbs > 4;
@@ -187,7 +247,6 @@ function AppShell({
 
   let displayedCrumbs: Crumb[] = crumbs;
 
-  // Wzór: First > Second > [...] > Last (gdy łańcuch jest długi i nie jest rozwinięty)
   if (shouldCollapse) {
     displayedCrumbs = [
       crumbs[0],
@@ -199,14 +258,12 @@ function AppShell({
 
   return (
     <>
-      <div className="pl-80 max-lg:pl-0">
-        {/* Sticky top bar */}
+      <div className="pl-64 max-lg:pl-0">
         <header
           className="sticky top-0 z-40 border-b border-transparent bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent dark:bg-transparent"
           role="banner"
         >
           <div className="relative mx-auto w-full">
-            {/* Hamburger (mobile) */}
             {isAuthed && (
               <button
                 className="lg:hidden absolute left-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60"
@@ -217,7 +274,6 @@ function AppShell({
               </button>
             )}
 
-            {/* Breadcrumbs */}
             <nav
               aria-label="Breadcrumb"
               className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
@@ -227,7 +283,6 @@ function AppShell({
                   const last = i === displayedCrumbs.length - 1;
                   const label = c.label || "Strona główna";
 
-                  // Specjalne renderowanie ellipsis
                   if (c.isEllipsis) {
                     return (
                       <li
@@ -288,60 +343,65 @@ function AppShell({
               </ol>
             </nav>
 
-            {/* Actions row */}
             <div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] px-3 md:px-0">
               {isAuthed ? (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, ease: easeOutCustom }}
-                  className={`ml-2 flex shrink-0 items-center gap-2 min-h-[36px] ${
-                    hideHeaderActions ? "invisible pointer-events-none" : ""
-                  }`}
+                  className="ml-2 flex shrink-0 items-center gap-2 min-h-[36px]"
                 >
-                  {/* Mobile: icon-only buttons, tight paddings */}
-                  <div className="flex items-center gap-2 md:hidden">
-                    <Button
-                      className="h-9 w-9 rounded-md bg-gray-900 text-white hover:bg-gray-800"
-                      aria-label="Dodaj zawodnika"
-                      onClick={onAddPlayer}
-                      title="Dodaj zawodnika"
-                    >
-                      <AddPlayerIcon className="h-4 w-4 text-white" />
-                    </Button>
+                  {headerActions ? (
+                    <div className="flex items-center gap-2">
+                      {headerActions}
+                    </div>
+                  ) : hideHeaderActions ? (
+                    <div className="min-h-[36px]" />
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 md:hidden">
+                        <Button
+                          className="h-9 w-9 rounded-md bg-gray-900 text-white hover:bg-gray-800"
+                          aria-label="Dodaj zawodnika"
+                          onClick={onAddPlayer}
+                          title="Dodaj zawodnika"
+                        >
+                          <AddPlayerIcon className="h-4 w-4 text-white" />
+                        </Button>
 
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-9 w-9 rounded-md border-gray-300 dark:border-neutral-700"
-                      aria-label="Dodaj obserwacje"
-                      onClick={onAddObservation}
-                      title="Dodaj obserwacje"
-                    >
-                      <AddObservationIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-9 w-9 rounded-md border-none dark:border-neutral-700"
+                          aria-label="Dodaj obserwację"
+                          onClick={onAddObservation}
+                          title="Dodaj obserwację"
+                        >
+                          <AddObservationIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
 
-                  {/* Desktop: full buttons */}
-                  <div className="hidden items-center gap-2 md:flex">
-                    <Button
-                      onClick={onAddPlayer}
-                      className="h-9 rounded-md bg-gray-900 text-white hover:bg-gray-800"
-                      aria-label="Dodaj zawodnika"
-                    >
-                      <AddPlayerIcon className="mr-2 h-4 w-4" />
-                      Dodaj zawodnika
-                    </Button>
-                    <Button
-                      onClick={onAddObservation}
-                      variant="outline"
-                      className="h-9 rounded-md border-gray-300 dark:border-neutral-700"
-                      aria-label="Dodaj obserwacje"
-                    >
-                      <AddObservationIcon className="mr-2 h-4 w-4" />
-                      Dodaj obserwacje
-                    </Button>
-                  </div>
+                      <div className="hidden items-center gap-2 md:flex">
+                        <Button
+                          onClick={onAddPlayer}
+                          className="h-9 rounded-md bg-gray-900 text-white hover:bg-gray-800 primary"
+                          aria-label="Dodaj zawodnika"
+                        >
+                          <AddPlayerIcon className="mr-2 h-4 w-4" />
+                          Dodaj zawodnika
+                        </Button>
+                        <Button
+                          onClick={onAddObservation}
+                          variant="outline"
+                          className="h-9 rounded-md border-none dark:border-neutral-700 secondary"
+                          aria-label="Dodaj obserwację"
+                        >
+                          <AddObservationIcon className="mr-2 h-4 w-4" />
+                          Dodaj obserwację
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               ) : (
                 <div className="min-h-[36px]" />
@@ -350,7 +410,6 @@ function AppShell({
           </div>
         </header>
 
-        {/* Content */}
         <main
           id="content"
           className="min-h-screen px-3 py-4 md:px-6 md:py-6"
@@ -383,7 +442,7 @@ function AppShell({
 export default function ClientRoot({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -392,7 +451,8 @@ export default function ClientRoot({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
 
-  // prosta animacja paska przy zmianie routa
+  const [headerActions, setHeaderActions] = useState<ReactNode | null>(null);
+
   useEffect(() => {
     if (prefersReduced) return;
     setRouteLoading(true);
@@ -400,12 +460,16 @@ export default function ClientRoot({
     return () => clearTimeout(t);
   }, [pathname, prefersReduced]);
 
+  useEffect(() => {
+    setHeaderActions(null);
+  }, [pathname]);
+
   const handleAddPlayer = () => router.push("/players/new");
-  const handleAddObservation = () => router.push("/observations?create=1");
+  const handleAddObservation = () =>
+    router.push("/observations?create=1");
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      {/* Top progress bar */}
       <div
         className={`fixed inset-x-0 top-0 z-[60] h-0.5 bg-indigo-500 transition-opacity ${
           routeLoading ? "opacity-100" : "opacity-0"
@@ -413,7 +477,6 @@ export default function ClientRoot({
         aria-hidden
       />
 
-      {/* Sidebars */}
       <AppSidebar
         variant="mobile"
         open={mobileOpen}
@@ -423,16 +486,20 @@ export default function ClientRoot({
         <AppSidebar />
       </div>
 
-      {/* Shell */}
-      <AppShell
-        onOpenMobile={() => setMobileOpen(true)}
-        onAddPlayer={handleAddPlayer}
-        onAddObservation={handleAddObservation}
-        isAuthed={true} // AuthGate (Supabase) siedzi wyżej i przepuszcza tylko zalogowanych
-        pathname={pathname || "/"}
+      <HeaderActionsContext.Provider
+        value={{ actions: headerActions, setActions: setHeaderActions }}
       >
-        {children}
-      </AppShell>
+        <AppShell
+          onOpenMobile={() => setMobileOpen(true)}
+          onAddPlayer={handleAddPlayer}
+          onAddObservation={handleAddObservation}
+          isAuthed={true}
+          pathname={pathname || "/"}
+          headerActions={headerActions}
+        >
+          {children}
+        </AppShell>
+      </HeaderActionsContext.Provider>
     </ThemeProvider>
   );
 }

@@ -14,6 +14,7 @@ import {
   Eye,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabaseClient";
+import { Button } from "@/components/ui/button";
 
 /* ======================== Types ======================== */
 type Role = "admin" | "scout" | "scout-agent";
@@ -199,6 +200,9 @@ export default function DuplicatesPage() {
   const [canonicalByKey, setCanonicalByKey] = useState<
     Record<string, CanonicalData>
   >({});
+  const [selectedDuplicatesByKey, setSelectedDuplicatesByKey] = useState<
+    Record<string, AllPlayer["id"][]>
+  >({});
   const [includeTrashed, setIncludeTrashed] = useState(false);
   const [showOnlyUnresolved, setShowOnlyUnresolved] = useState(true);
   const [details, setDetails] = useState<AllPlayer | null>(null);
@@ -291,6 +295,7 @@ export default function DuplicatesPage() {
       // reset helper state – odświeżone dane = nowe grupy
       setKeeperByKey({});
       setCanonicalByKey({});
+      setSelectedDuplicatesByKey({});
     } catch (e: any) {
       console.error("Error loading duplicates data:", e);
       setError(
@@ -404,6 +409,23 @@ export default function DuplicatesPage() {
     });
   }, [groups, keeperByKey]);
 
+  // inicjalna lista zaznaczonych duplikatów: domyślnie wszystkie poza keeperem
+  useEffect(() => {
+    setSelectedDuplicatesByKey((prev) => {
+      const next: Record<string, AllPlayer["id"][]> = { ...prev };
+      for (const g of groups) {
+        if (!next[g.key]) {
+          const keeperId = keeperByKey[g.key];
+          const defaults = g.list
+            .filter((p) => p.id !== keeperId)
+            .map((p) => p.id);
+          next[g.key] = defaults;
+        }
+      }
+      return next;
+    });
+  }, [groups, keeperByKey]);
+
   async function runRefresh() {
     await loadData();
   }
@@ -423,6 +445,25 @@ export default function DuplicatesPage() {
         photo: player.photo,
       },
     }));
+    setSelectedDuplicatesByKey((prev) => ({
+      ...prev,
+      [groupKey]: (prev[groupKey] ?? []).filter((id) => id !== player.id),
+    }));
+  }
+
+  function toggleDuplicateSelection(groupKey: string, playerId: AllPlayer["id"]) {
+    setSelectedDuplicatesByKey((prev) => {
+      const current = new Set(prev[groupKey] ?? []);
+      if (current.has(playerId)) {
+        current.delete(playerId);
+      } else {
+        current.add(playerId);
+      }
+      return {
+        ...prev,
+        [groupKey]: Array.from(current),
+      };
+    });
   }
 
   async function markDuplicatesToKeeper(key: string) {
@@ -436,11 +477,16 @@ export default function DuplicatesPage() {
     setError(null);
 
     try {
-      const otherIds = g.list
-        .filter((p) => p.id !== keeperId)
-        .map((p) => p.id);
+      const selectedIds = (selectedDuplicatesByKey[key] ?? []).filter(
+        (id) => id !== keeperId
+      );
 
-      // 1) others -> duplicate_of = keeperId
+      // jeśli nic nie zaznaczone – fallback jak dawniej: wszystkie poza keeperem
+      const otherIds =
+        selectedIds.length > 0
+          ? selectedIds
+          : g.list.filter((p) => p.id !== keeperId).map((p) => p.id);
+
       if (otherIds.length > 0) {
         const { error: upd1 } = await supabase
           .from("players")
@@ -449,7 +495,6 @@ export default function DuplicatesPage() {
         if (upd1) throw upd1;
       }
 
-      // 2) keeper -> duplicate_of = null
       const { error: upd2 } = await supabase
         .from("players")
         .update({ duplicate_of: null })
@@ -729,7 +774,6 @@ export default function DuplicatesPage() {
 
   /* ======================== Render ======================== */
 
-  // najpierw stan ładowania roli – nie pokazujemy błędnego "Dostęp tylko dla Administratora"
   if (authLoading) {
     return (
       <div className="w-full p-4 text-sm text-dark dark:text-neutral-300">
@@ -739,8 +783,8 @@ export default function DuplicatesPage() {
   }
 
   return (
-    <div className="w-full p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between">
+    <div className="w-full max-w-[1200px] mx-auto px-3 py-4 md:px-0">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Duplikaty</h1>
           <p className="text-sm text-dark">
@@ -751,8 +795,9 @@ export default function DuplicatesPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            className="inline-flex flex-wrap items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+          <Button
+            variant="outline"
+            className="btn-soft-hover h-9 border-gray-300 text-sm dark:border-neutral-700"
             onClick={runRefresh}
             title={
               lastRefreshAt
@@ -768,20 +813,21 @@ export default function DuplicatesPage() {
             />
             {loading ? "Ładuję…" : "Odśwież"}
             {lastRefreshAt ? ` (${fmtTime(lastRefreshAt)})` : ""}
-          </button>
-          <Link
-            href="/scouts"
-            className="inline-flex flex-wrap items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800"
-            title="Lista scoutów"
+          </Button>
+          <Button
+            asChild
+            className="btn-soft-hover h-9 bg-gray-900 text-sm text-white hover:bg-gray-800"
           >
-            <UserCircle2 className="h-4 w-4" />
-            Scoutsi
-          </Link>
+            <Link href="/scouts" title="Lista scoutów">
+              <UserCircle2 className="mr-1 h-4 w-4" />
+              Scoutsi
+            </Link>
+          </Button>
         </div>
       </div>
 
       {isAdmin && groups.length > 0 && (
-        <div className="mb-3 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-100">
+        <div className="mb-3 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 shadow-sm dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-100">
           <div className="flex items-start gap-2">
             <InfoIcon className="mt-[2px] h-4 w-4" />
             <div>
@@ -794,22 +840,20 @@ export default function DuplicatesPage() {
                   traktujesz jako bazowy.
                 </li>
                 <li>
-                  W panelu <b>„Dane końcowe”</b> nad tabelą możesz poprawić
-                  nazwę, imię, nazwisko, datę urodzenia, pozycję itp. Te dane
-                  zostaną:
-                  <br />
-                  • zapisane w <code>global_players</code>,<br />
-                  • <b>nadpisane</b> we wszystkich rekordach{" "}
-                  <code>players</code> tej grupy (u wszystkich scoutów).
+                  W kolumnie <b>„Duplikat?”</b> możesz zaznaczyć tylko te
+                  rekordy, które chcesz oznaczyć jako duplikaty keepera (może
+                  być kilka, nie wszystkie).
                 </li>
                 <li>
-                  Kliknij <b>„Scal i dodaj do Globalnej bazy”</b> albo{" "}
-                  <b>„Powiąż z globalnym”</b>, aby zapisać zmiany.
+                  W panelu <b>„Dane końcowe”</b> nad tabelą możesz poprawić
+                  dane. Zostaną one zapisane w{" "}
+                  <code>global_players</code> i <b>nadpiszą</b> rekordy{" "}
+                  <code>players</code> w tej grupie.
                 </li>
               </ol>
               <p className="mt-1 text-[11px] text-indigo-900/70 dark:text-indigo-200/80">
-                Zmiany w polach „Dane końcowe” nie zapisują się od razu w
-                bazie – dopiero w momencie scalania/powiązania.
+                Zmiany w „Dane końcowe” zapisują się dopiero przy scalaniu /
+                powiązaniu z globalem.
               </p>
             </div>
           </div>
@@ -823,13 +867,13 @@ export default function DuplicatesPage() {
       )}
 
       {error && (
-        <div className="mb-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+        <div className="mb-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
           {error}
         </div>
       )}
 
       {!isAdmin ? (
-        <div className="rounded-md border border-dashed border-gray-300 p-6 text-center dark:border-neutral-700">
+        <div className="rounded-md border border-dashed border-gray-300 bg-white p-6 text-center shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
           <div className="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
             <Lock className="h-5 w-5" />
           </div>
@@ -845,7 +889,7 @@ export default function DuplicatesPage() {
       ) : (
         <>
           {/* Toolbar */}
-          <div className="mb-3 flex flex-wrap items-center gap-3">
+          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-gray-200 bg-white p-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
             <div className="relative">
               <input
                 value={q}
@@ -855,7 +899,7 @@ export default function DuplicatesPage() {
               />
               <Search className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             </div>
-            <label className="inline-flex flex-wrap items-center gap-2 text-sm">
+            <label className="inline-flex flex-wrap items-center gap-2 text-xs md:text-sm">
               <input
                 type="checkbox"
                 checked={includeTrashed}
@@ -863,7 +907,7 @@ export default function DuplicatesPage() {
               />
               Pokaż także „Kosz”
             </label>
-            <label className="inline-flex flex-wrap items-center gap-2 text-sm">
+            <label className="inline-flex flex-wrap items-center gap-2 text-xs md:text-sm">
               <input
                 type="checkbox"
                 checked={showOnlyUnresolved}
@@ -871,7 +915,7 @@ export default function DuplicatesPage() {
               />
               Tylko nierozwiązane
             </label>
-            <div className="ml-auto text-sm text-dark dark:text-neutral-300">
+            <div className="ml-auto text-xs md:text-sm text-dark dark:text-neutral-300">
               Grupy: <b>{groups.length}</b>
             </div>
           </div>
@@ -898,6 +942,8 @@ export default function DuplicatesPage() {
                   (p) => !!p.globalId
                 );
                 const canonical = canonicalByKey[g.key];
+                const selectedDupIds = selectedDuplicatesByKey[g.key] ?? [];
+                const selectedCount = selectedDupIds.length;
 
                 return (
                   <div
@@ -922,12 +968,17 @@ export default function DuplicatesPage() {
                             </span>
                           )}
                         </div>
+                        {selectedCount > 0 && (
+                          <div className="mt-0.5 text-[11px] text-emerald-700 dark:text-emerald-300">
+                            Zaznaczone duplikaty: <b>{selectedCount}</b>
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {/* merge / link to global */}
                         {existingGlobal ? (
-                          <button
-                            className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                          <Button
+                            className="btn-soft-hover h-9 bg-indigo-600 text-xs sm:text-sm text-white hover:bg-indigo-700"
                             onClick={() =>
                               linkGroupToExistingGlobal(
                                 g.key,
@@ -938,31 +989,38 @@ export default function DuplicatesPage() {
                             title="Powiąż wszystkie rekordy z istniejącym wpisem globalnym (z nadpisaniem danych wg „Danych końcowych”)"
                           >
                             <CheckCircle2 className="h-4 w-4" />
-                            Powiąż z globalnym #{existingGlobal.id}
-                          </button>
+                            <span className="hidden sm:inline">
+                              Powiąż z globalnym #{existingGlobal.id}
+                            </span>
+                            <span className="sm:hidden">Powiąż</span>
+                          </Button>
                         ) : (
-                          <button
-                            className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                          <Button
+                            className="btn-soft-hover h-9 bg-indigo-600 text-xs sm:text-sm text-white hover:bg-indigo-700"
                             onClick={() => mergeGroupToGlobal(g.key)}
                             disabled={saving}
                             title="Scal i dodaj do Globalnej bazy (z nadpisaniem danych wg „Danych końcowych”)"
                           >
                             <CheckCircle2 className="h-4 w-4" />
-                            Scal i dodaj do Globalnej bazy
-                          </button>
+                            <span className="hidden sm:inline">
+                              Scal i dodaj do Globalnej bazy
+                            </span>
+                            <span className="sm:hidden">Scal do global</span>
+                          </Button>
                         )}
 
                         {/* classic duplicate marking to keeper */}
-                        <button
-                          className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                        <Button
+                          className="btn-soft-hover h-9 bg-emerald-600 text-xs sm:text-sm text-white hover:bg-emerald-700"
                           onClick={() => markDuplicatesToKeeper(g.key)}
                           disabled={!keeperId || saving}
-                          title="Ustaw wskazaną pozycję jako główną, resztę oznacz jako duplikat (bez global)"
+                          title="Oznacz zaznaczone rekordy jako duplikaty keepera"
                         >
                           Oznacz duplikaty (keeper)
-                        </button>
-                        <button
-                          className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="btn-soft-hover h-9 border-gray-300 text-xs sm:text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                           onClick={() => {
                             setKeeperByKey((prev) => ({
                               ...prev,
@@ -973,12 +1031,17 @@ export default function DuplicatesPage() {
                               delete copy[g.key];
                               return copy;
                             });
+                            setSelectedDuplicatesByKey((prev) => {
+                              const copy = { ...prev };
+                              delete copy[g.key];
+                              return copy;
+                            });
                           }}
-                          title="Wyczyść wybór keepera i dane końcowe"
+                          title="Wyczyść wybór keepera, duplikatów i dane końcowe"
                         >
                           <XCircle className="h-4 w-4" />
                           Wyczyść keepera
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
@@ -992,8 +1055,8 @@ export default function DuplicatesPage() {
                           <div className="text-[11px] text-gray-500 dark:text-neutral-400">
                             Te wartości trafią do{" "}
                             <code>global_players</code> i nadpiszą{" "}
-                            <code>players</code> u wszystkich scoutów
-                            w tej grupie.
+                            <code>players</code> u wszystkich scoutów w tej
+                            grupie.
                           </div>
                         </div>
                         <div className="grid gap-2 sm:grid-cols-4">
@@ -1162,6 +1225,9 @@ export default function DuplicatesPage() {
                             <th className="p-3 text-left font-medium">
                               Keeper
                             </th>
+                            <th className="p-3 text-left font-medium">
+                              Duplikat?
+                            </th>
                             <th className="p-3 text-left font-medium">Scout</th>
                             <th className="p-3 text-left font-medium">
                               Nazwisko i imię
@@ -1197,26 +1263,40 @@ export default function DuplicatesPage() {
                             .map((p) => {
                               const comp = completenessScore(p);
                               const isKeeper = p.id === keeperId;
+                              const isSelectedDuplicate =
+                                (selectedDuplicatesByKey[g.key] ?? []).includes(
+                                  p.id
+                                );
+
                               return (
                                 <tr
                                   key={String(p.id)}
-                                  className={`border-t border-gray-200 dark:border-neutral-800 ${
+                                  className={`border-t border-gray-200 align-middle dark:border-neutral-800 ${
                                     isKeeper
                                       ? "bg-emerald-50/60 dark:bg-emerald-900/20"
-                                      : ""
+                                      : "hover:bg-stone-50/60 dark:hover:bg-neutral-900/60"
                                   }`}
                                 >
-                                  <td className="p-3 align-middle">
+                                  <td className="p-3">
                                     <input
                                       type="radio"
                                       name={`keeper-${idx}`}
                                       checked={isKeeper}
+                                      onChange={() => selectKeeper(g.key, p)}
+                                    />
+                                  </td>
+                                  <td className="p-3">
+                                    <input
+                                      type="checkbox"
+                                      disabled={isKeeper}
+                                      checked={isSelectedDuplicate}
                                       onChange={() =>
-                                        selectKeeper(g.key, p)
+                                        !isKeeper &&
+                                        toggleDuplicateSelection(g.key, p.id)
                                       }
                                     />
                                   </td>
-                                  <td className="p-3 align-middle">
+                                  <td className="p-3">
                                     <div className="font-medium text-gray-900 dark:text-neutral-100">
                                       {p.scoutName || p.scoutId}
                                     </div>
@@ -1224,7 +1304,7 @@ export default function DuplicatesPage() {
                                       {p.scoutId}
                                     </div>
                                   </td>
-                                  <td className="p-3 align-middle">
+                                  <td className="p-3">
                                     <div className="font-medium text-gray-900 dark:text-neutral-100">
                                       {p.name}
                                     </div>
@@ -1234,15 +1314,15 @@ export default function DuplicatesPage() {
                                         (p.lastName || "")}
                                     </div>
                                   </td>
-                                  <td className="p-3 align-middle">
+                                  <td className="p-3">
                                     {prettyDate(p.birthDate)}
                                   </td>
-                                  <td className="p-3 align-middle">
+                                  <td className="p-3">
                                     <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
                                       {p.pos}
                                     </span>
                                   </td>
-                                  <td className="p-3 align-middle">
+                                  <td className="p-3">
                                     <span
                                       className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
                                         (p.status ?? "active") === "active"
@@ -1255,7 +1335,7 @@ export default function DuplicatesPage() {
                                         : "kosz"}
                                     </span>
                                   </td>
-                                  <td className="p-3 align-middle">
+                                  <td className="p-3">
                                     <div className="w-40 rounded-md bg-gray-100 dark:bg-neutral-800">
                                       <div
                                         className={`h-2 rounded-md ${
@@ -1272,7 +1352,7 @@ export default function DuplicatesPage() {
                                       {comp}/4
                                     </div>
                                   </td>
-                                  <td className="p-3 align-middle text-xs">
+                                  <td className="p-3 text-xs">
                                     {p.globalId ? (
                                       <span className="inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
                                         #{p.globalId}
@@ -1281,15 +1361,19 @@ export default function DuplicatesPage() {
                                       "—"
                                     )}
                                   </td>
-                                  <td className="p-3 align-middle text-right">
-                                    <button
-                                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                  <td className="p-3 text-right">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="btn-soft-hover h-8 border-gray-300 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                       onClick={() => setDetails(p)}
                                       title="Podgląd szczegółów rekordu skauta"
                                     >
                                       <Eye className="h-3.5 w-3.5" />
-                                      Szczegóły
-                                    </button>
+                                      <span className="hidden sm:inline">
+                                        Szczegóły
+                                      </span>
+                                    </Button>
                                   </td>
                                 </tr>
                               );
@@ -1317,12 +1401,14 @@ export default function DuplicatesPage() {
               <div className="text-sm font-semibold">
                 Szczegóły zawodnika skauta
               </div>
-              <button
-                className="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+              <Button
+                variant="outline"
+                size="sm"
+                className="btn-soft-hover h-8 border-gray-300 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                 onClick={() => setDetails(null)}
               >
                 Zamknij
-              </button>
+              </Button>
             </div>
             <div className="max-h-[70vh] overflow-auto p-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
@@ -1374,9 +1460,9 @@ export default function DuplicatesPage() {
                   Uwaga dot. scalania i przyszłych duplikatów
                 </div>
                 Po scaleniu do globalnej bazy, kolejne wpisy scoutów o tym samym
-                zawodniku zostaną wykryte jako grupa o tym samym kluczu. Wystarczy
-                użyć akcji <b>„Powiąż z globalnym”</b>, aby dopiąć nowy wpis do
-                istniejącego rekordu globalnego.
+                zawodniku zostaną wykryte jako grupa o tym samym kluczu.
+                Wystarczy użyć akcji <b>„Powiąż z globalnym”</b>, aby dopiąć
+                nowy wpis do istniejącego rekordu globalnego.
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between border-t border-gray-200 bg-stone-100 px-4 py-2 text-xs dark:border-neutral-800 dark:bg-neutral-900">

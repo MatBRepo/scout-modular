@@ -667,7 +667,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      
+      flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] px-3 md:px-0
     </>
   );
 }

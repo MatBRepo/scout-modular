@@ -1,3 +1,7 @@
+
+// + autroscroll change view
+
+
 // src/widgets/app-sidebar/AppSidebar.tsx
 "use client";
 
@@ -545,7 +549,7 @@ export default function AppSidebar({
                 duration: prefersReduced ? 0 : 0.12,
                 ease: [0.2, 0.7, 0.2, 1],
               }}
-              className="inline-flex h-5 w-5 mr-3 items-center justify-center rounded border border-gray-300 text-xs text-gray-700 dark:border-neutral-600 dark:text-neutral-100"
+              className="inline-flex h-5 w-5 items-center justify-center rounded border border-gray-300 text-xs text-gray-700 dark:border-neutral-600 dark:text-neutral-100"
             >
               {accountOpen ? "−" : "+"}
             </motion.span>
@@ -553,17 +557,24 @@ export default function AppSidebar({
 
           <AnimatePresence initial={false}>
             {accountOpen && (
-              <motion.div
-                role="menu"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{
-                  duration: prefersReduced ? 0 : 0.14,
-                  ease: "easeOut",
-                }}
-                className="absolute bottom-[65px] left-0 right-0 z-40 w-auto max-w-full overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
-              >
+<motion.div
+  role="menu"
+  initial={{ opacity: 0, y: -4 }}
+  animate={{ opacity: 1, y: 0 }}
+  exit={{ opacity: 0, y: -4 }}
+  transition={{
+    duration: prefersReduced ? 0 : 0.14,
+    ease: "easeOut",
+  }}
+  className="
+    absolute bottom-[40px] left-0 right-0 z-40 w-auto max-w-full
+    overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl
+    dark:border-neutral-800 dark:bg-neutral-950
+
+    lg:left-full lg:right-auto lg:ml-3
+    lg:min-w-[260px] lg:max-w-[420px]
+  "
+>
                 {/* Rank card */}
                 <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
                   <div className="mb-1 flex flex-wrap items-center justify-between">
@@ -710,7 +721,8 @@ export default function AppSidebar({
 
   /* ====== PANEL STYLES ====== */
   const asideDesktop =
-    "h-screen w-80 overflow-hidden border-r border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
+  "h-screen w-64 overflow-visible border-r border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
+
 
   const asideMobile =
     "h-screen w-full max-w-[380px] overflow-hidden border-r border-slate-200 bg-white p-3 shadow-xl ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";

@@ -37,6 +37,7 @@ import { AddPlayerIcon } from "@/components/icons";
 import { getSupabase } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
 import { DateTimePicker24h } from "@/shared/ui/DateTimePicker24h";
+import { useHeaderActions } from "@/app/ClientRoot";
 
 /* ------------ Types ------------ */
 type Mode = "live" | "tv" | "mix";
@@ -231,18 +232,19 @@ export function ObservationEditor({
   onSave: (o: XO) => void;
   onClose: () => void;
 }) {
+  const { setActions } = useHeaderActions();
+
   /** Freeze initial, żeby nie nadpisywać w trakcie edycji */
-const frozenInitialRef = useRef<XO>(initial);
+  const frozenInitialRef = useRef<XO>(initial);
 
-// wyciągamy ID z initial (top-level lub z __listMeta)
-const initialIdRef =
-  (frozenInitialRef.current as any)?.id ??
-  (frozenInitialRef.current as any)?.__listMeta?.id ??
-  0;
+  // wyciągamy ID z initial (top-level lub z __listMeta)
+  const initialIdRef =
+    (frozenInitialRef.current as any)?.id ??
+    (frozenInitialRef.current as any)?.__listMeta?.id ??
+    0;
 
-// Czy ta instancja edytora startowała jako "nowa" czy "istniejąca"?
-const isNewObservation = !initialIdRef || initialIdRef === 0;
-
+  // Czy ta instancja edytora startowała jako "nowa" czy "istniejąca"?
+  const isNewObservation = !initialIdRef || initialIdRef === 0;
 
   const [o, setO] = useState<XO>(() => {
     const base = frozenInitialRef.current;
@@ -666,172 +668,215 @@ const isNewObservation = !initialIdRef || initialIdRef === 0;
   /* ===== Duplikat obserwacji (data + godzina + drużyny + rozgrywki + użytkownik) ===== */
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
-  /* ========= ZAPIS OBSERWACJI DO SUPABASE (ręczny, bez localStorage) ========= */
-  async function handleSaveToSupabase() {
-    if (!canSaveObservation) return;
+  /* ===== Header actions in global topbar (ClientRoot) =====
+     Moved save logic INSIDE this effect to avoid infinite loop. */
+  useEffect(() => {
+    const onClickSave = async () => {
+      if (!canSaveObservation) return;
 
-    const supabase = getSupabase();
-    setSaveState("saving");
-    setDuplicateError(null);
+      const supabase = getSupabase();
+      setSaveState("saving");
+      setDuplicateError(null);
 
-    // 0) pobierz usera (do checku duplikatu)
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+      // 0) pobierz usera (do checku duplikatu)
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      console.error("[ObservationEditor] Brak użytkownika przy zapisie", {
-        userError,
-      });
-      setSaveState("idle");
-      return;
-    }
+      if (userError || !user) {
+        console.error("[ObservationEditor] Brak użytkownika przy zapisie", {
+          userError,
+        });
+        setSaveState("idle");
+        return;
+      }
 
-    // 1) UPEWNIJ SIĘ, ŻE MAMY ID (dla nowych – generujemy)
+      // 1) UPEWNIJ SIĘ, ŻE MAMY ID (dla nowych – generujemy)
+      let id =
+        (o.id as number | undefined) ??
+        ((o.__listMeta as any)?.id as number | undefined) ??
+        initialIdRef;
 
-// najpierw próbujemy: stan edytora -> meta -> initial
-let id =
-  (o.id as number | undefined) ??
-  ((o.__listMeta as any)?.id as number | undefined) ??
-  initialIdRef;
+      if (!id || id === 0) {
+        id = Date.now();
+      }
 
-if (!id || id === 0) {
-  id = Date.now();
-}
+      const baseMeta =
+        o.__listMeta ??
+        ({
+          id,
+          status: (o as any).status ?? "draft",
+          bucket: "active",
+          time: (o as any).time ?? "",
+          player: (o as any).player ?? "",
+        } as XO["__listMeta"]);
 
-const baseMeta =
-  o.__listMeta ??
-  ({
-    id,
-    status: (o as any).status ?? "draft",
-    bucket: "active",
-    time: (o as any).time ?? "",
-    player: (o as any).player ?? "",
-  } as XO["__listMeta"]);
+      // Główny zawodnik – wymagany przez Supabase (player)
+      const primaryPlayerName =
+        (baseMeta?.player && baseMeta.player.trim().length > 0
+          ? baseMeta.player
+          : (o.players && o.players[0]
+              ? (o.players[0].name ||
+                  (o.players[0].shirtNo
+                    ? `#${o.players[0].shirtNo}`
+                    : "")) ?? ""
+              : "")) || "";
 
-    // Główny zawodnik – wymagany przez Supabase (player)
-    const primaryPlayerName =
-      (baseMeta?.player && baseMeta.player.trim().length > 0
-        ? baseMeta.player
-        : (o.players && o.players[0]
-            ? (o.players[0].name ||
-                (o.players[0].shirtNo
-                  ? `#${o.players[0].shirtNo}`
-                  : "")) ?? ""
-            : "")) || "";
+      const meta: XO["__listMeta"] = {
+        ...baseMeta,
+        id,
+        player: primaryPlayerName,
+      };
 
-    const meta: XO["__listMeta"] = {
-      ...baseMeta,
-      id,
-      player: primaryPlayerName,
-    };
-
-    const payload: XO = {
-      ...o,
-      id,
-      reportDate: matchDate || undefined,
-      __listMeta: {
-        ...meta,
-        time: matchTime || "",
-      },
-    };
-
-    const rowDate = payload.reportDate ?? (payload as any).date ?? null;
-    const rowTime = payload.__listMeta?.time || null;
-    const rowTeamA = payload.teamA ?? null;
-    const rowTeamB = payload.teamB ?? null;
-    const rowCompetition = payload.competition ?? null;
-
-// 2) SPRAWDŹ, czy jest już taka sama obserwacja
-try {
-  // osobno zapytanie dla "nowej" i dla "edytowanej"
-  const baseQuery = supabase
-    .from("observations")
-    .select("id", { count: "exact" })
-    .eq("user_id", user.id)
-    .eq("date", rowDate)
-    .eq("time", rowTime)
-    .eq("team_a", rowTeamA)
-    .eq("team_b", rowTeamB)
-    .eq("competition", rowCompetition);
-
-  const { data: dupRows, count, error: dupError } = isNewObservation
-    ? await baseQuery
-    : await baseQuery.neq("id", id); // przy edycji pomijamy bieżący rekord
-
-  if (dupError) {
-    console.error(
-      "[ObservationEditor] Błąd przy sprawdzaniu duplikatu:",
-      dupError
-    );
-  } else if ((count ?? 0) > 0) {
-    // tu już WIEMY, czy to:
-    // - nowa obserwacja (kopiowanie meczu)
-    // - edycja, która zderzyła się z inną obserwacją
-    setDuplicateError(
-      isNewObservation
-        ? "Masz już obserwację dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Edytuj istniejącą, zamiast dodawać kolejną."
-        : "Istnieje już inna obserwacja dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Zmień dane meczu lub wróć do tamtej obserwacji."
-    );
-    setSaveState("idle");
-    return;
-  }
-} catch (err) {
-  console.error(
-    "[ObservationEditor] Wyjątek przy sprawdzaniu duplikatu:",
-    err
-  );
-  // opcjonalnie: możesz tutaj przerwać zapis, jeśli chcesz być super-ostrożny
-}
-
-
-    // 3) Upsert
-    const row: any = {
-      id,
-      player: primaryPlayerName || null,
-      match: payload.match ?? null,
-      team_a: rowTeamA,
-      team_b: rowTeamB,
-      competition: rowCompetition,
-      date: rowDate,
-      time: rowTime,
-      status: meta.status,
-      bucket: meta.bucket,
-      mode: (payload.conditions ?? "live") as string,
-      note: payload.note ?? null,
-      players: (payload.players ?? []) as any,
-      payload,
-    };
-
-    const { data, error } = await supabase
-      .from("observations")
-      .upsert(row, { onConflict: "id" })
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("[ObservationEditor] Supabase upsert error:", error);
-      setSaveState("idle");
-      return;
-    }
-
-    if (!o.id && data?.id) {
-      setO((prev) => ({
-        ...prev,
-        id: data.id,
+      const payload: XO = {
+        ...o,
+        id,
+        reportDate: matchDate || undefined,
         __listMeta: {
-          ...(prev.__listMeta ?? meta),
-          id: data.id,
-          player: primaryPlayerName,
+          ...meta,
+          time: matchTime || "",
         },
-      }));
-    }
+      };
 
-    setSaveState("saved");
-    onSave(payload);
-    onClose();
-  }
+      const rowDate = payload.reportDate ?? (payload as any).date ?? null;
+      const rowTime = payload.__listMeta?.time || null;
+      const rowTeamA = payload.teamA ?? null;
+      const rowTeamB = payload.teamB ?? null;
+      const rowCompetition = payload.competition ?? null;
+
+      // 2) SPRAWDŹ, czy jest już taka sama obserwacja
+      try {
+        const baseQuery = supabase
+          .from("observations")
+          .select("id", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("date", rowDate)
+          .eq("time", rowTime)
+          .eq("team_a", rowTeamA)
+          .eq("team_b", rowTeamB)
+          .eq("competition", rowCompetition);
+
+        const { count, error: dupError } = isNewObservation
+          ? await baseQuery
+          : await baseQuery.neq("id", id); // przy edycji pomijamy bieżący rekord
+
+        if (dupError) {
+          console.error(
+            "[ObservationEditor] Błąd przy sprawdzaniu duplikatu:",
+            dupError
+          );
+        } else if ((count ?? 0) > 0) {
+          setDuplicateError(
+            isNewObservation
+              ? "Masz już obserwację dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Edytuj istniejącą, zamiast dodawać kolejną."
+              : "Istnieje już inna obserwacja dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Zmień dane meczu lub wróć do tamtej obserwacji."
+          );
+          setSaveState("idle");
+          return;
+        }
+      } catch (err) {
+        console.error(
+          "[ObservationEditor] Wyjątek przy sprawdzaniu duplikatu:",
+          err
+        );
+      }
+
+      // 3) Upsert
+      const row: any = {
+        id,
+        player: primaryPlayerName || null,
+        match: payload.match ?? null,
+        team_a: rowTeamA,
+        team_b: rowTeamB,
+        competition: rowCompetition,
+        date: rowDate,
+        time: rowTime,
+        status: meta.status,
+        bucket: meta.bucket,
+        mode: (payload.conditions ?? "live") as string,
+        note: payload.note ?? null,
+        players: (payload.players ?? []) as any,
+        payload,
+      };
+
+      const { data, error } = await supabase
+        .from("observations")
+        .upsert(row, { onConflict: "id" })
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error("[ObservationEditor] Supabase upsert error:", error);
+        setSaveState("idle");
+        return;
+      }
+
+      if (!o.id && data?.id) {
+        setO((prev) => ({
+          ...prev,
+          id: data.id,
+          __listMeta: {
+            ...(prev.__listMeta ?? meta),
+            id: data.id,
+            player: primaryPlayerName,
+          },
+        }));
+      }
+
+      setSaveState("saved");
+      onSave(payload);
+      onClose();
+    };
+
+    // wstawiamy do globalnego headera: Zapisano + Zapisz i wróć + Wróć do listy
+    setActions(
+      <div className="flex items-center gap-2">
+        <div className="hidden sm:flex">
+          <SavePill state={saveState} />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 px-3 text-xs rounded-md bg-gray-900 text-white hover:bg-gray-900 hover:text-white"
+          onClick={onClickSave}
+          disabled={
+            saveState === "saving" || !canSaveObservation || requiredLoading
+          }
+        >
+          {saveState === "saving" && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
+          Zapisz i wróć
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={onClose}
+        >
+          Wróć do listy
+        </Button>
+      </div>
+    );
+
+    return () => {
+      // po wyjściu z edytora czyścimy akcje
+      setActions(null);
+    };
+  }, [
+    setActions,
+    saveState,
+    canSaveObservation,
+    requiredLoading,
+    o,
+    isNewObservation,
+    matchDate,
+    matchTime,
+    initialIdRef,
+    onSave,
+    onClose,
+  ]);
 
   /* ===== Sticky mini-header jak w AddPlayerPage ===== */
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -865,31 +910,12 @@ try {
   return (
     <div className="w-full">
       {/* Sticky mini actions under header when scroll */}
-      <div
-        className={cn(
-          "pointer-events-none sticky z-30 flex justify-end transition-all duration-200",
-          isScrolled ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
-        )}
-        style={{ top: headerHeight || 64 }}
-      >
-        <div className="pointer-events-auto mr-2 mt-2 flex items-center gap-2 rounded-md bg-white/90 px-2 py-1 dark:bg-neutral-950/90 dark:ring-neutral-800">
-          <SavePill state={saveState} size="compact" />
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-3 text-xs"
-            onClick={onClose}
-          >
-            Wróć do listy
-          </Button>
-        </div>
-      </div>
 
       {/* TOP BAR */}
       <Toolbar
         title={
           <div className="mb-3 flex flex-col gap-1">
-            <span className="text-lg font-semibold">
+            <span className="text-2xl font-semibold">
               Mecz:&nbsp;{o.match || "—"}
             </span>
             <span className="text-xs text-dark dark:text-neutral-300">
@@ -899,7 +925,7 @@ try {
         }
         right={
           <div className="mb-4 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 md:flex-nowrap">
-            {/* Szkic / Finalna – mobile: 50/50, desktop: kompakt */}
+            {/* Szkic / Finalna */}
             <div className="inline-flex w-full rounded-md border border-slate-300 bg-white p-0.5 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-900 sm:w-auto">
               <button
                 type="button"
@@ -927,31 +953,13 @@ try {
               </button>
             </div>
 
-            {/* Status zapisu + akcje */}
+            {/* Status zapisu + akcje (lokalnie, pod tytułem) */}
             <div className="ml-0 flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:gap-3">
               {/* Zapisano */}
               <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
                 <div className="flex h-10 items-center justify-center">
                   <SavePill state={saveState} />
                 </div>
-              </div>
-
-              {/* Zapisz */}
-              <div className="flex-1 basis-1/3 sm:basis-auto sm:flex-none">
-                <Button
-                  className="h-10 w-full rounded-md bg-gray-900 text-white hover:bg-gray-800 sm:w-auto"
-                  onClick={handleSaveToSupabase}
-                  disabled={
-                    saveState === "saving" ||
-                    !canSaveObservation ||
-                    requiredLoading
-                  }
-                >
-                  {saveState === "saving" && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Zapisz i wróć
-                </Button>
               </div>
             </div>
           </div>
@@ -1179,7 +1187,7 @@ try {
                   className="rounded-md pl-8 pr-24"
                 />
                 <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-gray-400">
-                  Dodaj zawodnika
+                  Enter ↵, aby dodać
                 </div>
               </div>
 
@@ -1210,10 +1218,10 @@ try {
               className="mt-1 h-10 rounded-md border-gray-300 dark:border-neutral-700 sm:mt-6"
               onClick={() => addPlayerFromInput()}
               disabled={!quickInput.trim()}
-              title="Dodaj zawodnika"
+              title="Dodaj do listy"
             >
               <Plus className="mr-1 h-4 w-4" />
-              Dodaj
+              Dodaj do listy
             </Button>
           </div>
 
@@ -1583,7 +1591,7 @@ try {
                     >
                       {isRequired("players")
                         ? "Musisz dodać przynajmniej jednego zawodnika, aby zapisać obserwację (pole ustawione jako wymagane)."
-                        : "Brak zawodników — wpisz numer lub nazwisko i kliknij „Dodaj”."}
+                        : "Brak zawodników — wpisz numer lub nazwisko i kliknij Enter lub przycisk dodawania."}
                     </td>
                   </tr>
                 )}

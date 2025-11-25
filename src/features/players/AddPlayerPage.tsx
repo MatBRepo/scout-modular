@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useHeaderActions } from "@/app/ClientRoot";
 
 import { Toolbar } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
@@ -197,8 +198,6 @@ const POS_LAYOUT: Record<DetailedPos, { top: string; left: string }> = {
   // Napastnik – blisko prawej bramki, centralnie
   ST: { top: "50%", left: "86%" },
 };
-
-
 
 const toBucket = (p: DetailedPos): BucketPos => {
   switch (p) {
@@ -537,7 +536,9 @@ function DateTimePicker24h({
                         : "ghost"
                     }
                     className="aspect-square shrink-0 sm:w-full"
-                    onClick={() => handleTimeChange("minute", minute.toString())}
+                    onClick={() =>
+                      handleTimeChange("minute", minute.toString())
+                    }
                   >
                     {minute.toString().padStart(2, "0")}
                   </Button>
@@ -552,7 +553,6 @@ function DateTimePicker24h({
   );
 }
 
-/* Boisko – główna pozycja */
 /* Boisko – główna pozycja */
 function MainPositionPitch({
   value,
@@ -590,7 +590,8 @@ function MainPositionPitch({
       <div
         className="mx-auto max-h-[300px] max-w-[560px] overflow-hidden rounded-xl border border-emerald-500/40 bg-repeat p-3"
         style={{
-          backgroundImage: "url('/textures/grass-texture.jpg')",
+          // Ujednolicone z PlayerEditorPage – używamy .png
+          backgroundImage: "url('/textures/grass-texture.png')",
           backgroundSize: "80px 80px",
         }}
       >
@@ -679,8 +680,6 @@ function MainPositionPitch({
   );
 }
 
-
-
 /* ===== Add page ===== */
 type Choice = "known" | "unknown" | null;
 
@@ -732,6 +731,7 @@ function getDefaultExt() {
 
 export default function AddPlayerPage() {
   const router = useRouter();
+  const { setActions } = useHeaderActions();
 
   const [choice, setChoice] = useState<Choice>(null);
 
@@ -1147,10 +1147,7 @@ export default function AddPlayerPage() {
                       ? "no"
                       : ""
                   }
-                  options={[
-                    { value: "yes", label: "Tak" },
-                    { value: "no", label: "Nie" },
-                  ]}
+                  options={[{ value: "yes", label: "Tak" }, { value: "no", label: "Nie" }]}
                   onChange={(val) =>
                     setExt((s) => ({
                       ...s,
@@ -1171,10 +1168,7 @@ export default function AddPlayerPage() {
                       ? "no"
                       : ""
                   }
-                  options={[
-                    { value: "yes", label: "Tak" },
-                    { value: "no", label: "Nie" },
-                  ]}
+                  options={[{ value: "yes", label: "Tak" }, { value: "no", label: "Nie" }]}
                   onChange={(val) =>
                     setExt((s) => ({
                       ...s,
@@ -1518,6 +1512,7 @@ export default function AddPlayerPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // AUTOSAVE – zlogika z PlayerEditorPage (znormalizowane unknownValid + fallback club/clubCountry)
   useEffect(() => {
     let cancelled = false;
 
@@ -1535,11 +1530,13 @@ export default function AddPlayerPage() {
       !!club.trim() &&
       !!clubCountry.trim();
 
+    // Ujednolicone z PlayerEditorPage:
+    // profil anonimowy – numer + (uClub lub club) + (uClubCountry lub clubCountry)
     const unknownValid =
       !isKnown &&
       !!jerseyNumber.trim() &&
-      !!uClub.trim() &&
-      !!uClubCountry.trim();
+      !!(uClub.trim() || club.trim()) &&
+      !!(uClubCountry.trim() || clubCountry.trim());
 
     if (!knownValid && !unknownValid) {
       setSaveState("idle");
@@ -1579,11 +1576,13 @@ export default function AddPlayerPage() {
             }
           } else {
             const num = jerseyNumber.trim();
-            const c = uClub.trim();
+            const c = uClub.trim() || club.trim();
+            const cc = uClubCountry.trim() || clubCountry.trim();
+
             name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
             clubFinal = c;
-            posBucket = toBucket(uPosDet);
-            clubCountryFinal = uClubCountry.trim();
+            posBucket = toBucket(uPosDet || posDet);
+            clubCountryFinal = cc;
           }
 
           const nationalityVal =
@@ -1612,6 +1611,7 @@ export default function AddPlayerPage() {
           };
 
           if (!playerId) {
+            // INSERT – pierwszy zapis nowego zawodnika
             const insertPayload: any = {
               name,
               pos: posBucket,
@@ -1648,6 +1648,7 @@ export default function AddPlayerPage() {
               setSaveState("saved");
             }
           } else {
+            // UPDATE – kolejne autozapisy
             const updatePayload: any = {
               name,
               pos: posBucket,
@@ -1720,9 +1721,47 @@ export default function AddPlayerPage() {
   ]);
 
   const stepPillClass =
-    "inline-flex h-6 items-center rounded-md bg-slate-100 px-2.5 text-[11px] tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
+    "inline-flex h-6 items-center rounded-md bg-slate-100 px-2 text-[11px] tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
 
   const hasChoice = !!choice;
+
+  // === handlers for top actions (clientRoot) ===
+  const handleBackClick = () => {
+    router.push("/players");
+  };
+
+  const handleSaveClick = () => {
+    // autozapis już działa, więc przycisk głównie sygnalizuje akcję
+    // i przewija do góry / do podstawowych danych
+    if (basicRef.current) {
+      basicRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    } else if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  // Global header actions – tak samo jak w PlayerEditorPage
+  useEffect(() => {
+    setActions(
+      <div className="flex items-center gap-2">
+        <SavePill state={saveState} size="compact" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 px-3 text-xs"
+          type="button"
+          onClick={handleBackClick}
+        >
+          Wróć do listy
+        </Button>
+      </div>
+    );
+
+    return () => setActions(null);
+  }, [setActions, saveState, handleBackClick]);
 
   /* ========================================= UI ========================================= */
   return (
@@ -1735,13 +1774,23 @@ export default function AddPlayerPage() {
         )}
         style={{ top: headerHeight || 64 }}
       >
-        <div className="pointer-events-auto mr-2 mt-2 flex items-center gap-2  bg-white/90 px-2 py-1   dark:bg-neutral-950/90 dark:ring-neutral-800">
+        <div className="pointer-events-auto mr-2 mt-2 flex items-center gap-2 bg-white/90 px-2 py-1 dark:bg-neutral-950/90 dark:ring-neutral-800">
           <SavePill state={saveState} size="compact" />
+          <Button
+            variant="default"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            type="button"
+            onClick={handleSaveClick}
+          >
+            Zapisz
+          </Button>
           <Button
             variant="outline"
             size="sm"
             className="h-8 px-3 text-xs"
-            onClick={() => router.push("/players")}
+            type="button"
+            onClick={handleBackClick}
           >
             Wróć do listy
           </Button>
@@ -1754,9 +1803,17 @@ export default function AddPlayerPage() {
           <div className="flex w-full items-center justify-end gap-2 sm:gap-3 md:flex-nowrap">
             <SavePill state={saveState} />
             <Button
+              className="h-10"
+              type="button"
+              onClick={handleSaveClick}
+            >
+              Zapisz
+            </Button>
+            <Button
               variant="outline"
               className="h-10"
-              onClick={() => router.push("/players")}
+              type="button"
+              onClick={handleBackClick}
             >
               Wróć do listy
             </Button>
@@ -2412,198 +2469,221 @@ export default function AddPlayerPage() {
                     )}
 
                     <div className="space-y-8">
-                     {/* Nowa obserwacja */}
-<section className="space-y-4 rounded-md border border-gray-200 bg-white/90 px-3 py-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
-  <div className="flex items-center justify-between gap-2">
-    <div className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700 dark:bg-neutral-900 dark:text-neutral-200">
-      <span className="h-1.5 w-1.5 rounded-md bg-slate-500" />
-      Nowa obserwacja
-    </div>
-    <span className="text-[11px] text-slate-500 dark:text-neutral-400">
-      Ustaw drużyny, datę, tryb i poziom przeciwnika – poniższy „scoreboard”
-      złoży mecz automatycznie.
-    </span>
-  </div>
+                      {/* Nowa obserwacja */}
+                      <section className="space-y-4 rounded-md border border-gray-200 bg-white/90 px-3 py-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700 dark:bg-neutral-900 dark:text-neutral-200">
+                            <span className="h-1.5 w-1.5 rounded-md bg-slate-500" />
+                            Nowa obserwacja
+                          </div>
+                          <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                            Ustaw drużyny, datę, tryb i poziom przeciwnika – poniższy
+                            „scoreboard” złoży mecz automatycznie.
+                          </span>
+                        </div>
 
-  {/* SCOREBOARD PREVIEW */}
-  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
-    <div className="flex flex-col items-center gap-3 md:flex-row md:justify-between">
-      <div className="flex items-center gap-4 text-center md:text-left">
-        <div className="min-w-[120px]">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-            Drużyna A
-          </p>
-          <p className="mt-0.5 truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
-            {qaTeamA || "Nie ustawiono"}
-          </p>
-        </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[11px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 dark:bg-neutral-950 dark:text-neutral-100 dark:ring-neutral-700">
-          VS
-        </div>
-        <div className="min-w-[120px]">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-            Drużyna B
-          </p>
-          <p className="mt-0.5 truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
-            {qaTeamB || "Nie ustawiono"}
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600 dark:text-neutral-300">
-        {qaDate && (
-          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
-            {qaDate}
-          </span>
-        )}
-        {qaTime && (
-          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
-            {qaTime}
-          </span>
-        )}
-        <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
-          {qaMode === "live" ? "Live (boisko)" : "TV / wideo"}
-        </span>
-        {qaOpponentLevel && (
-          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
-            Poziom: {qaOpponentLevel}
-          </span>
-        )}
-      </div>
-    </div>
-    <p className="mt-2 text-[11px] text-slate-500 dark:text-neutral-400">
-      Nazwa meczu do zapisu:{" "}
-      <span className="font-medium text-slate-800 dark:text-neutral-50">
-        {qaMatch || "uzupełni się automatycznie po wpisaniu obu drużyn"}
-      </span>
-      .
-    </p>
-  </div>
+                        {/* SCOREBOARD PREVIEW */}
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
+                          <div className="flex flex-col items-center gap-3 md:flex-row md:justify-between">
+                            <div className="flex items-center gap-4 text-center md:text-left">
+                              <div className="min-w-[120px]">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                  Drużyna A
+                                </p>
+                                <p className="mt-0.5 truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                                  {qaTeamA || "Nie ustawiono"}
+                                </p>
+                              </div>
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[11px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm ring-1 ring-slate-200 dark:bg-neutral-950 dark:text-neutral-100 dark:ring-neutral-700">
+                                VS
+                              </div>
+                              <div className="min-w-[120px]">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                  Drużyna B
+                                </p>
+                                <p className="mt-0.5 truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                                  {qaTeamB || "Nie ustawiono"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600 dark:text-neutral-300">
+                              {qaDate && (
+                                <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                  {qaDate}
+                                </span>
+                              )}
+                              {qaTime && (
+                                <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                  {qaTime}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                {qaMode === "live"
+                                  ? "Live (boisko)"
+                                  : "TV / wideo"}
+                              </span>
+                              {qaOpponentLevel && (
+                                <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                  Poziom: {qaOpponentLevel}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="mt-2 text-[11px] text-slate-500 dark:text-neutral-400">
+                            Nazwa meczu do zapisu:{" "}
+                            <span className="font-medium text-slate-800 dark:text-neutral-50">
+                              {qaMatch ||
+                                "uzupełni się automatycznie po wpisaniu obu drużyn"}
+                            </span>
+                            .
+                          </p>
+                        </div>
 
-  {/* Drużyny – wejścia */}
-  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950">
-      <Label className="text-sm">Drużyna A</Label>
-      <Input
-        className="mt-1"
-        value={qaTeamA}
-        onChange={(e) => updateQaMatchFromTeams(e.target.value, qaTeamB)}
-        placeholder="np. Lech U19"
-      />
-      <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
-        Wpisz nazwę gospodarzy lub drużyny, którą obserwujesz „bliżej”.
-      </p>
-    </div>
+                        {/* Drużyny – wejścia */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950">
+                            <Label className="text-sm">Drużyna A</Label>
+                            <Input
+                              className="mt-1"
+                              value={qaTeamA}
+                              onChange={(e) =>
+                                updateQaMatchFromTeams(
+                                  e.target.value,
+                                  qaTeamB
+                                )
+                              }
+                              placeholder="np. Lech U19"
+                            />
+                            <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
+                              Wpisz nazwę gospodarzy lub drużyny, którą
+                              obserwujesz „bliżej”.
+                            </p>
+                          </div>
 
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950">
-      <Label className="text-sm">Drużyna B</Label>
-      <Input
-        className="mt-1"
-        value={qaTeamB}
-        onChange={(e) => updateQaMatchFromTeams(qaTeamA, e.target.value)}
-        placeholder="np. Wisła U19"
-      />
-      <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
-        Wpisz nazwę rywala – vs wyświetli się w „scoreboardzie” powyżej.
-      </p>
-    </div>
-  </div>
+                          <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950">
+                            <Label className="text-sm">Drużyna B</Label>
+                            <Input
+                              className="mt-1"
+                              value={qaTeamB}
+                              onChange={(e) =>
+                                updateQaMatchFromTeams(
+                                  qaTeamA,
+                                  e.target.value
+                                )
+                              }
+                              placeholder="np. Wisła U19"
+                            />
+                            <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
+                              Wpisz nazwę rywala – vs wyświetli się w
+                              „scoreboardzie” powyżej.
+                            </p>
+                          </div>
+                        </div>
 
-  {/* Data + godzina – DateTimePicker */}
-  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-    <div className="md:col-span-2">
-      <Label className="text-sm">Data i godzina meczu</Label>
-      <div className="mt-1">
-        <DateTimePicker24h
-          value={{ date: qaDate, time: qaTime }}
-          onChange={({ date, time }) => {
-            setQaDate(date);
-            setQaTime(time);
-          }}
-        />
-      </div>
-      <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
-        Ustaw precyzyjnie dzień i godzinę meczu. To pomaga później filtrować
-        obserwacje.
-      </p>
-    </div>
-  </div>
+                        {/* Data + godzina – DateTimePicker */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="md:col-span-2">
+                            <Label className="text-sm">
+                              Data i godzina meczu
+                            </Label>
+                            <div className="mt-1">
+                              <DateTimePicker24h
+                                value={{ date: qaDate, time: qaTime }}
+                                onChange={({ date, time }) => {
+                                  setQaDate(date);
+                                  setQaTime(time);
+                                }}
+                              />
+                            </div>
+                            <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
+                              Ustaw precyzyjnie dzień i godzinę meczu. To
+                              pomaga później filtrować obserwacje.
+                            </p>
+                          </div>
+                        </div>
 
-  {/* Tryb meczu */}
-  <div>
-    <Label className="text-sm">Tryb meczu</Label>
-    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-      {QA_CONDITIONS.map((mode) => {
-        const isActive = qaMode === mode;
-        const isLive = mode === "live";
-        return (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => setQaMode(mode)}
-            className={cn(
-              "flex w-full items-center justify-between rounded border px-3 py-2 text-left text-xs transition",
-              isActive
-                ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200 dark:border-indigo-400 dark:bg-indigo-900/30 dark:ring-indigo-500/60"
-                : "border-gray-200 bg-white hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-            )}
-          >
-            <div className="flex items-center gap-2">
-              {isLive ? (
-                <PlayCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-              ) : (
-                <Monitor className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-              )}
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-800 dark:text-neutral-50">
-                  {isLive ? "Live" : "TV"}
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-neutral-400">
-                  {isLive ? "Na żywo z boiska" : "Transmisja / wideo"}
-                </div>
-              </div>
-            </div>
-            {isActive && (
-              <span className="ml-2 h-2 w-2 rounded bg-indigo-500 shadow-[0_0_0_4px_rgba(79,70,229,0.25)] dark:bg-indigo-300" />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  </div>
+                        {/* Tryb meczu */}
+                        <div>
+                          <Label className="text-sm">Tryb meczu</Label>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            {QA_CONDITIONS.map((mode) => {
+                              const isActive = qaMode === mode;
+                              const isLive = mode === "live";
+                              return (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  onClick={() => setQaMode(mode)}
+                                  className={cn(
+                                    "flex w-full items-center justify-between rounded border px-3 py-2 text-left text-xs transition",
+                                    isActive
+                                      ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200 dark:border-indigo-400 dark:bg-indigo-900/30 dark:ring-indigo-500/60"
+                                      : "border-gray-200 bg-white hover:bg-gray-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {isLive ? (
+                                      <PlayCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                                    ) : (
+                                      <Monitor className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                                    )}
+                                    <div>
+                                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-800 dark:text-neutral-50">
+                                        {isLive ? "Live" : "TV"}
+                                      </div>
+                                      <div className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                        {isLive
+                                          ? "Na żywo z boiska"
+                                          : "Transmisja / wideo"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {isActive && (
+                                    <span className="ml-2 h-2 w-2 rounded bg-indigo-500 shadow-[0_0_0_4px_rgba(79,70,229,0.25)] dark:bg-indigo-300" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
 
-  {/* Poziom przeciwnika */}
-  <div>
-    <Label className="text-sm">Poziom przeciwnika</Label>
-    <Input
-      value={qaOpponentLevel}
-      onChange={(e) => setQaOpponentLevel(e.target.value)}
-      placeholder="np. CLJ U17, 3 liga, top akademia…"
-      className="mt-1"
-    />
-    <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
-      Krótka informacja o poziomie rywala – pomaga w późniejszej analizie.
-    </p>
-  </div>
+                        {/* Poziom przeciwnika */}
+                        <div>
+                          <Label className="text-sm">Poziom przeciwnika</Label>
+                          <Input
+                            value={qaOpponentLevel}
+                            onChange={(e) =>
+                              setQaOpponentLevel(e.target.value)
+                            }
+                            placeholder="np. CLJ U17, 3 liga, top akademia…"
+                            className="mt-1"
+                          />
+                          <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
+                            Krótka informacja o poziomie rywala – pomaga w
+                            późniejszej analizie.
+                          </p>
+                        </div>
 
-  {/* Sticky przycisk dodawania */}
-  <div className="sticky bottom-0 mt-1 -mx-3 border-t border-gray-200 bg-white/90 px-3 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
-    <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-[11px] text-slate-500 dark:text-neutral-400">
-        Do zapisu wymagane są: dwie drużyny i data meczu.
-      </p>
-      <Button
-        className="bg-gray-900 text-white hover:bg-gray-800"
-        onClick={addObservation}
-        disabled={
-          !qaTeamA.trim() || !qaTeamB.trim() || !qaDate.trim()
-        }
-      >
-        Dodaj obserwację tego zawodnika
-      </Button>
-    </div>
-  </div>
-</section>
-
+                        {/* Sticky przycisk dodawania */}
+                        <div className="sticky bottom-0 mt-1 -mx-3 border-t border-gray-200 bg-white/90 px-3 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
+                          <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                              Do zapisu wymagane są: dwie drużyny i data meczu.
+                            </p>
+                            <Button
+                              className="bg-gray-900 text-white hover:bg-gray-800"
+                              onClick={addObservation}
+                              disabled={
+                                !qaTeamA.trim() ||
+                                !qaTeamB.trim() ||
+                                !qaDate.trim()
+                              }
+                            >
+                              Dodaj obserwację tego zawodnika
+                            </Button>
+                          </div>
+                        </div>
+                      </section>
 
                       {/* Istniejące obserwacje */}
                       <section className="space-y-3 rounded-md border border-gray-200 bg-white/90 px-3 py-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
@@ -2633,115 +2713,117 @@ export default function AddPlayerPage() {
                           </p>
                         </div>
 
-                     <div className="max-h-80 space-y-2 overflow-auto">
-  {(() => {
-    const list = existingFiltered;
-    if (list.length === 0) {
-      return (
-        <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50/60 text-center text-sm text-slate-500 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-400">
-          Brak obserwacji dla podanych kryteriów. Zapisz nową lub zmień
-          filtr wyszukiwania.
-        </div>
-      );
-    }
+                        <div className="max-h-80 space-y-2 overflow-auto">
+                          {(() => {
+                            const list = existingFiltered;
+                            if (list.length === 0) {
+                              return (
+                                <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50/60 text-center text-sm text-slate-500 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-400">
+                                  Brak obserwacji dla podanych kryteriów.
+                                  Zapisz nową lub zmień filtr wyszukiwania.
+                                </div>
+                              );
+                            }
 
-    return list.map((o) => {
-      const selected = obsSelectedId === o.id;
-      const matchLabel = o.match || "Bez nazwy meczu";
+                            return list.map((o) => {
+                              const selected = obsSelectedId === o.id;
+                              const matchLabel =
+                                o.match || "Bez nazwy meczu";
 
-      const dateTime = [o.date || "—", o.time || ""]
-        .filter(Boolean)
-        .join(" · ");
+                              const dateTime = [o.date || "—", o.time || ""]
+                                .filter(Boolean)
+                                .join(" · ");
 
-      return (
-        <button
-          key={o.id}
-          type="button"
-          onClick={() => setObsSelectedId(o.id)}
-          className={cn(
-            "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition",
-            selected
-              ? "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-200 dark:border-emerald-500/80 dark:bg-emerald-900/20 dark:ring-emerald-700/70"
-              : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
-          )}
-        >
-          {/* pseudo-radio */}
-          <div className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center">
-            <span
-              className={cn(
-                "flex h-4 w-4 items-center justify-center rounded-full border",
-                selected
-                  ? "border-emerald-500 bg-emerald-500/10"
-                  : "border-slate-300 bg-white dark:border-neutral-700 dark:bg-neutral-900"
-              )}
-            >
-              {selected && (
-                <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300" />
-              )}
-            </span>
-          </div>
+                              return (
+                                <button
+                                  key={o.id}
+                                  type="button"
+                                  onClick={() => setObsSelectedId(o.id)}
+                                  className={cn(
+                                    "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition",
+                                    selected
+                                      ? "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-200 dark:border-emerald-500/80 dark:bg-emerald-900/20 dark:ring-emerald-700/70"
+                                      : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-neutral-600 dark:hover:bg-neutral-900"
+                                  )}
+                                >
+                                  {/* pseudo-radio */}
+                                  <div className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                                    <span
+                                      className={cn(
+                                        "flex h-4 w-4 items-center justify-center rounded-full border",
+                                        selected
+                                          ? "border-emerald-500 bg-emerald-500/10"
+                                          : "border-slate-300 bg-white dark:border-neutral-700 dark:bg-neutral-900"
+                                      )}
+                                    >
+                                      {selected && (
+                                        <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300" />
+                                      )}
+                                    </span>
+                                  </div>
 
-          {/* main content */}
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-              <p className="truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
-                {matchLabel}
-              </p>
-              <span className="text-[11px] text-slate-500 dark:text-neutral-400">
-                {dateTime || "Brak daty"}
-              </span>
-            </div>
+                                  {/* main content */}
+                                  <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                                        {matchLabel}
+                                      </p>
+                                      <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                        {dateTime || "Brak daty"}
+                                      </span>
+                                    </div>
 
-            <div className="flex flex-wrap items-center gap-1 text-[11px]">
-              {o.opponentLevel && (
-                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
-                  Poziom: {o.opponentLevel}
-                </span>
-              )}
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                  o.mode === "tv"
-                    ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
-                    : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                )}
-              >
-                {o.mode === "tv" ? "TV" : "Live"}
-              </span>
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                  o.status === "final"
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                )}
-              >
-                {o.status === "final" ? "Finalna" : "Szkic"}
-              </span>
-            </div>
-          </div>
+                                    <div className="flex flex-wrap items-center gap-1 text-[11px]">
+                                      {o.opponentLevel && (
+                                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
+                                          Poziom: {o.opponentLevel}
+                                        </span>
+                                      )}
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                          o.mode === "tv"
+                                            ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                                            : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                                        )}
+                                      >
+                                        {o.mode === "tv" ? "TV" : "Live"}
+                                      </span>
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                          o.status === "final"
+                                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                        )}
+                                      >
+                                        {o.status === "final"
+                                          ? "Finalna"
+                                          : "Szkic"}
+                                      </span>
+                                    </div>
+                                  </div>
 
-          {/* action */}
-          <div className="ml-2 flex flex-shrink-0 items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-2 text-xs"
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openEditModal(o);
-              }}
-            >
-              Edytuj
-            </Button>
-          </div>
-        </button>
-      );
-    });
-  })()}
-</div>
-
+                                  {/* action */}
+                                  <div className="ml-2 flex flex-shrink-0 items-center">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 px-2 text-xs"
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openEditModal(o);
+                                      }}
+                                    >
+                                      Edytuj
+                                    </Button>
+                                  </div>
+                                </button>
+                              );
+                            });
+                          })()}
+                        </div>
                       </section>
                     </div>
 

@@ -1340,24 +1340,36 @@ export default function MyPlayersFeature({
           {content === "table" ? (
             <>
               <div className="relative">
-                <div
-                  className="pointer-events-none absolute inset-y-0 right-0 hidden w-8 bg-gradient-to-l from-white to-transparent dark:from-neutral-950 sm:block"
-                  aria-hidden
-                />
-                <div
-                  className="pointer-events-none absolute inset-y-0 left-0 hidden w-8 bg-gradient-to-r from-white to-transparent dark:from-neutral-950 sm:block"
-                  style={{ opacity: 0 }}
-                  aria-hidden
-                />
-                <PlayersTable
-                  rows={paginated as any}
-                  observations={ownedObservations}
-                  visibleCols={visibleCols}
-                  selected={selected}
-                  setSelected={setSelected}
-                  scope={scope}
-                  onOpen={(id) => router.push(`/players/${id}`)}
-                  onTrash={trash}
+                
+               
+<PlayersTable
+  rows={paginated as any}
+  observations={ownedObservations}
+  visibleCols={visibleCols}
+  selected={selected}
+  setSelected={setSelected}
+  scope={scope}
+  onOpen={(id) => {
+    const p = (players as any[]).find((pl) => pl.id === id);
+    let label: string | undefined;
+
+    if (p) {
+      const fn = (p.firstName ?? p.imie ?? "").toString().trim();
+      const ln = (p.lastName ?? p.nazwisko ?? "").toString().trim();
+
+      // jeśli masz rozbite firstName/lastName – użyj tego
+      if (fn || ln) {
+        label = `${fn} ${ln}`.trim();
+      } else {
+        // fallback: to co masz w p.name (np. "#9 Lech U19")
+        label = p.name;
+      }
+    }
+
+    const qs = label ? `?playerName=${encodeURIComponent(label)}` : "";
+    router.push(`/players/${id}${qs}`);
+  }}
+                    onTrash={trash}
                   onRestore={restore}
                   onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
                   sortKey={sortKey}
@@ -1367,7 +1379,7 @@ export default function MyPlayersFeature({
                   rowH={rowH}
                   pageSliceCount={paginated.length}
                   wrapRef={tableWrapRef}
-                />
+/>
 
                 {showScrollHint && (
                   <div className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 sm:hidden">
