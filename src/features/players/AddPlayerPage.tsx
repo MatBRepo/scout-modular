@@ -409,7 +409,7 @@ function MainPositionPitch({
     : null;
 
   return (
-    <section className="mt-2 rounded-xl bg-white px-3 py-3 shadow-sm ring-1 ring-slate-200/70 dark:bg-neutral-950 dark:ring-neutral-800">
+    <section className="mt-2 rounded-md bg-white px-3 py-3 shadow-sm ring-1 ring-slate-200/70 dark:bg-neutral-950 dark:ring-neutral-800">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
@@ -420,14 +420,14 @@ function MainPositionPitch({
           </p>
         </div>
         {activeMeta && (
-          <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
+          <span className="inline-flex items-center rounded-md bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
             {activeMeta.code} · {activeMeta.name}
           </span>
         )}
       </div>
 
       <div
-        className="mx-auto max-h-[300px] w-full overflow-hidden rounded-xl border border-emerald-500/40 bg-repeat p-3"
+        className="mx-auto max-h-[300px] w-full overflow-hidden rounded-md border border-emerald-500/40 bg-repeat p-3"
         style={{
           backgroundImage: "url('/textures/grass-texture.png')",
           backgroundSize: "80px 80px",
@@ -436,7 +436,7 @@ function MainPositionPitch({
         <TooltipProvider delayDuration={0}>
           <div className="relative h-[220px] w-full rounded-[20px] border border-white/40">
             <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/40" />
-            <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/40" />
+            <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-md border border-white/40" />
             <div className="absolute left-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-r border-white/40" />
             <div className="absolute left-0 top-1/2 h-20 w-14 -translate-y-1/2 border-y border-r border-white/40" />
             <div className="absolute right-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-l border-white/40" />
@@ -453,7 +453,7 @@ function MainPositionPitch({
                     <button
                       type="button"
                       className={cn(
-                        "group absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-xs font-semibold text-white shadow-sm transition-transform",
+                        "group absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border text-xs font-semibold text-white shadow-sm transition-transform",
                         isSelected
                           ? "border-emerald-300 bg-emerald-500/90 shadow-[0_0_0_4px_rgba(16,185,129,0.45)]"
                           : "border-white/70 bg-white/10 hover:scale-[1.03] hover:bg-white/25"
@@ -1311,7 +1311,7 @@ export default function AddPlayerPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-600 hover:bg-slate-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-slate-300 text-[10px] text-slate-600 hover:bg-slate-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
                       >
                         i
                       </button>
