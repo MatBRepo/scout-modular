@@ -1438,14 +1438,26 @@ export default function AddPlayerPage() {
             }
           } else {
             const num = jerseyNumber.trim();
-            const c = uClub.trim() || club.trim();
-            const cc = uClubCountry.trim() || clubCountry.trim();
+            const c = (uClub.trim() || club.trim()).trim();
+            const cc = (uClubCountry.trim() || clubCountry.trim()).trim();
 
-            name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
-            clubFinal = c;
+            // Nigdy nie zapisujemy "Nieznany zawodnik" w bazie
+            // Zawsze jakaś etykieta anonimowa:
+            if (num && c) {
+              name = `#${num} – ${c}`;
+            } else if (num && !c) {
+              name = `#${num} – Profil anonimowy`;
+            } else if (!num && c) {
+              name = `Profil anonimowy – ${c}`;
+            } else {
+              name = "Profil anonimowy";
+            }
+
+            clubFinal = c || "Bez klubu";
             posBucket = toBucket(uPosDet || posDet);
-            clubCountryFinal = cc;
+            clubCountryFinal = cc || null;
           }
+
 
           const nationalityVal =
             ext.birthCountry.trim() || clubCountryFinal || null;
