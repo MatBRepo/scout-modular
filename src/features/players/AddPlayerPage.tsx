@@ -177,18 +177,18 @@ const POS_LAYOUT: Record<DetailedPos, { top: string; left: string }> = {
   GK: { top: "50%", left: "10%" },
 
   // Coords taken from the SVG circles (cx, cy -> % of 590x350 viewBox)
-  LB:  { top: "22.3%", left: "24.1%" }, // (142, 78)
-  CB:  { top: "50%",   left: "24.1%" }, // (142, 175)
-  RB:  { top: "78%",   left: "24.1%" }, // (142, 273)
+  LB: { top: "22.3%", left: "24.1%" }, // (142, 78)
+  CB: { top: "50%", left: "24.1%" }, // (142, 175)
+  RB: { top: "78%", left: "24.1%" }, // (142, 273)
 
-  CDM: { top: "50%",   left: "36.95%" }, // (218, 175)
-  CM:  { top: "50%",   left: "49.83%" }, // (294, 175)
-  CAM: { top: "50%",   left: "63.05%" }, // (372, 175)
+  CDM: { top: "50%", left: "36.95%" }, // (218, 175)
+  CM: { top: "50%", left: "49.83%" }, // (294, 175)
+  CAM: { top: "50%", left: "63.05%" }, // (372, 175)
 
-  LW:  { top: "22.3%", left: "63.05%" }, // (372, 78)
-  RW:  { top: "78%",   left: "63.05%" }, // (372, 273)
+  LW: { top: "22.3%", left: "63.05%" }, // (372, 78)
+  RW: { top: "78%", left: "63.05%" }, // (372, 273)
 
-  ST:  { top: "50%",   left: "76.27%" }, // (450, 175)
+  ST: { top: "50%", left: "76.27%", }, // (450, 175)
 };
 
 const toBucket = (p: DetailedPos): BucketPos => {
@@ -295,7 +295,7 @@ function Chip({ text }: { text: string }) {
   );
 }
 
-/* Country combobox */
+/* Country combobox – z wyszukiwarką z obramowaniem */
 function CountryCombobox({
   value,
   onChange,
@@ -307,6 +307,7 @@ function CountryCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -314,8 +315,9 @@ function CountryCombobox({
           type="button"
           aria-expanded={open}
           className={cn(
-            "relative flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
-            "border-gray-300 dark:border-neutral-700",
+            "relative flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-sm shadow-sm transition",
+            "hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+            "dark:border-neutral-700 dark:bg-neutral-950",
             chip ? "pr-24" : ""
           )}
         >
@@ -339,15 +341,23 @@ function CountryCombobox({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
+        className={cn(
+          "w-[--radix-popover-trigger-width] p-0",
+          "border border-gray-300 dark:border-neutral-700"
+        )}
         align="start"
       >
         <Command shouldFilter>
           <CommandInput
             placeholder="Szukaj kraju…"
-            className="border-0 bg-transparent px-3 py-2 text-sm shadow-none focus:border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            className={cn(
+              "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-slate-200 bg-background px-3 text-sm",
+              "shadow-none outline-none",
+              "focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+              "dark:border-neutral-700 dark:bg-neutral-950"
+            )}
           />
-          <CommandList>
+          <CommandList className="max-h-64">
             <CommandEmpty>Brak wyników.</CommandEmpty>
             <CommandGroup>
               {COUNTRIES.map((c) => {
@@ -360,6 +370,7 @@ function CountryCombobox({
                       onChange(c.name);
                       setOpen(false);
                     }}
+                    className="flex cursor-pointer items-center gap-2 text-sm"
                   >
                     <span className="mr-2 text-base">{c.flag}</span>
                     <span className="mr-2">{c.name}</span>
@@ -598,7 +609,7 @@ function MainPositionPitch({
                 type="button"
                 className={cn(
                   "absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-xs font-semibold shadow-sm transition-transform",
-                  isSelected
+                isSelected
                     ? "border-emerald-500 bg-[#6CC78F] text-black shadow-[0_0_0_4px_rgba(16,185,129,0.55)]"
                     : "border-white bg-[#87D4A1] text-black hover:scale-[1.03]"
                 )}
@@ -707,8 +718,6 @@ export default function AddPlayerPage() {
   const [clubCountry, setClubCountry] = useState("");
 
   const [jerseyNumber, setJerseyNumber] = useState("");
-  const [uClub, setUClub] = useState("");
-  const [uClubCountry, setUClubCountry] = useState("");
   const [uNote, setUNote] = useState("");
 
   const [posDet, setPosDet] = useState<DetailedPos>("CM");
@@ -759,10 +768,7 @@ export default function AddPlayerPage() {
 
     const hasAnon =
       jerseyNumber.trim() !== "" ||
-      uClub.trim() !== "" ||
-      uClubCountry.trim() !== "" ||
-      (!hasPersonal &&
-        (club.trim() !== "" || clubCountry.trim() !== "")) ||
+      (!hasPersonal && (club.trim() !== "" || clubCountry.trim() !== "")) ||
       uNote.trim() !== "";
 
     let next: Choice;
@@ -784,8 +790,6 @@ export default function AddPlayerPage() {
     club,
     clubCountry,
     jerseyNumber,
-    uClub,
-    uClubCountry,
     uNote,
   ]);
 
@@ -798,12 +802,12 @@ export default function AddPlayerPage() {
       return full || "Nieznany zawodnik";
     }
     const num = jerseyNumber.trim();
-    const clubLabel = (uClub || club || "").trim();
+    const clubLabel = club.trim();
     if (num) {
       return `#${num} – ${clubLabel || "Bez klubu"}`;
     }
     return clubLabel || "Nieznany zawodnik";
-  }, [choice, firstName, lastName, jerseyNumber, uClub, club]);
+  }, [choice, firstName, lastName, jerseyNumber, club]);
 
   const countTruthy = (vals: Array<unknown>) =>
     vals.filter((v) => {
@@ -820,8 +824,8 @@ export default function AddPlayerPage() {
   ]);
   const cntBasicUnknown = countTruthy([
     jerseyNumber,
-    uClub,
-    uClubCountry,
+    club,
+    clubCountry,
     uNote,
   ]);
   const badgeBasic =
@@ -1525,8 +1529,8 @@ export default function AddPlayerPage() {
     const unknownValid =
       !isKnown &&
       !!jerseyNumber.trim() &&
-      !!(uClub.trim() || club.trim()) &&
-      !!(uClubCountry.trim() || clubCountry.trim());
+      !!club.trim() &&
+      !!clubCountry.trim();
 
     if (!knownValid && !unknownValid) {
       setSaveState("idle");
@@ -1548,7 +1552,7 @@ export default function AddPlayerPage() {
           let name: string;
           let clubFinal: string;
           let posBucket: BucketPos;
-          let clubCountryFinal: string;
+          let clubCountryFinal: string | null;
           let age = 0;
 
           if (isKnownX) {
@@ -1566,8 +1570,8 @@ export default function AddPlayerPage() {
             }
           } else {
             const num = jerseyNumber.trim();
-            const c = (uClub.trim() || club.trim()).trim();
-            const cc = (uClubCountry.trim() || clubCountry.trim()).trim();
+            const c = club.trim();
+            const cc = clubCountry.trim();
 
             // Nigdy nie zapisujemy "Nieznany zawodnik" w bazie
             // Zawsze jakaś etykieta anonimowa:
@@ -1585,7 +1589,6 @@ export default function AddPlayerPage() {
             posBucket = toBucket(uPosDet || posDet);
             clubCountryFinal = cc || null;
           }
-
 
           const nationalityVal =
             ext.birthCountry.trim() || clubCountryFinal || null;
@@ -1680,8 +1683,6 @@ export default function AddPlayerPage() {
     club,
     clubCountry,
     jerseyNumber,
-    uClub,
-    uClubCountry,
     posDet,
     uPosDet,
     ext,
@@ -1958,7 +1959,7 @@ export default function AddPlayerPage() {
                       </div>
                       <div>
                         <Label className="text-sm">
-                          Aktualny klub (imienny)
+                          Aktualny klub
                         </Label>
                         <Input
                           value={club}
@@ -1968,30 +1969,11 @@ export default function AddPlayerPage() {
                       </div>
                       <div>
                         <Label className="text-sm pb-2">
-                          Kraj aktualnego klubu (imienny)
+                          Kraj aktualnego klubu
                         </Label>
                         <CountryCombobox
                           value={clubCountry}
                           onChange={(val) => setClubCountry(val)}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm">
-                          Aktualny klub (gdy anonimowo)
-                        </Label>
-                        <Input
-                          value={uClub}
-                          onChange={(e) => setUClub(e.target.value)}
-                          placeholder="np. Klub bez danych osobowych"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm pb-2">
-                          Kraj aktualnego klubu (gdy anonimowo)
-                        </Label>
-                        <CountryCombobox
-                          value={uClubCountry}
-                          onChange={(val) => setUClubCountry(val)}
                         />
                       </div>
 

@@ -296,7 +296,7 @@ function Chip({ text }: { text: string }) {
   );
 }
 
-/* Country combobox (old – still used in other fields) */
+/* Country combobox (old – still used in other fields, e.g. birth country) */
 function CountryCombobox({
   value,
   onChange,
@@ -383,7 +383,7 @@ function CountryCombobox({
   );
 }
 
-/* NEW: Search combobox (shadcn-style) – used for Kraj aktualnego klubu (wspólny) */
+/* NOWY: CountrySearchCombobox z wyszukiwarką z obramowaniem */
 function CountrySearchCombobox({
   value,
   onChange,
@@ -398,64 +398,75 @@ function CountrySearchCombobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
+        <button
           id={id}
-          variant="outline"
+          type="button"
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-normal shadow-sm outline-none outline-offset-0 transition",
-            "hover:bg-white focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+            "flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm transition",
+            "hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
             "dark:border-neutral-700 dark:bg-neutral-950"
           )}
         >
-          <span
-            className={cn(
-              "flex min-w-0 items-center gap-2 truncate",
-              !selected && "text-muted-foreground"
-            )}
-          >
+          <span className="flex min-w-0 items-center gap-2 truncate">
             {selected ? (
               <>
-                <span className="text-base leading-none">{selected.flag}</span>
+                <span className="text-lg leading-none">{selected.flag}</span>
                 <span className="truncate">{selected.name}</span>
               </>
             ) : (
-              "Wybierz kraj"
+              <span className="text-muted-foreground">Wybierz kraj</span>
             )}
           </span>
           <ChevronDown
             aria-hidden="true"
-            className="shrink-0 text-muted-foreground/80"
-            size={16}
+            className="ml-2 h-4 w-4 shrink-0 text-muted-foreground/80"
           />
-        </Button>
+        </button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-full min-w-[var(--radix-popper-anchor-width)] border-gray-300 p-0 dark:border-neutral-700"
+        className={cn(
+          "w-[--radix-popover-trigger-width] p-0",
+          "border border-gray-300 dark:border-neutral-700"
+        )}
       >
         <Command>
-          <CommandInput placeholder="Szukaj kraju..." />
-          <CommandList>
+          <CommandInput
+            placeholder="Szukaj kraju..."
+            className={cn(
+              "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-slate-200 bg-background px-3 text-sm",
+              "shadow-none outline-none",
+              "focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+              "dark:border-neutral-700 dark:bg-neutral-950"
+            )}
+          />
+          <CommandList className="max-h-64">
             <CommandEmpty>Brak wyników.</CommandEmpty>
             <CommandGroup>
-              {COUNTRIES.map((country) => (
-                <CommandItem
-                  key={country.code}
-                  value={country.name}
-                  onSelect={() => {
-                    onChange(country.name);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="mr-2 text-base">{country.flag}</span>
-                  <span className="mr-2">{country.name}</span>
-                  {value === country.name && (
-                    <Check className="ml-auto h-4 w-4" />
-                  )}
-                </CommandItem>
-              ))}
+              {COUNTRIES.map((country) => {
+                const isActive = selected?.code === country.code;
+                return (
+                  <CommandItem
+                    key={country.code}
+                    value={country.name}
+                    onSelect={() => {
+                      onChange(country.name);
+                      setOpen(false);
+                    }}
+                    className="flex cursor-pointer items-center gap-2 text-sm"
+                  >
+                    <span className="text-lg leading-none">
+                      {country.flag}
+                    </span>
+                    <span className="truncate">{country.name}</span>
+                    {isActive && (
+                      <Check className="ml-auto h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+                    )}
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>
@@ -463,6 +474,7 @@ function CountrySearchCombobox({
     </Popover>
   );
 }
+
 
 /* Utility: safe text-normalizer for possibly object values */
 function safeText(val: any): string {
@@ -532,6 +544,7 @@ function MainPositionPitch({
               stroke="white"
               strokeWidth="2"
             />
+
             <rect
               x="18.5139"
               y="16.2588"
@@ -785,7 +798,6 @@ export default function PlayerEditorPage() {
   const [clubCountry, setClubCountry] = useState("");
 
   const [jerseyNumber, setJerseyNumber] = useState("");
-  const [uClub, setUClub] = useState("");
   const [uNote, setUNote] = useState("");
 
   const [posDet, setPosDet] = useState<DetailedPos>("CM");
@@ -866,29 +878,19 @@ export default function PlayerEditorPage() {
 
           setChoice(mode);
 
-          if (mode === "known") {
-            setFirstName(basicMeta.firstName ?? data.firstName ?? "");
-            setLastName(basicMeta.lastName ?? data.lastName ?? "");
-            setBirthYear(basicMeta.birthYear ?? data.birthDate ?? "");
-            setClub(basicMeta.club ?? data.club ?? "");
-            setClubCountry(
-              basicMeta.clubCountry ??
-                extended.birthCountry ??
-                data.nationality ??
-                ""
-            );
-            setJerseyNumber(basicMeta.jerseyNumber ?? "");
-          } else {
-            setJerseyNumber(basicMeta.jerseyNumber ?? "");
-            setUClub(basicMeta.club ?? data.club ?? "");
-            setClubCountry(
-              basicMeta.clubCountry ??
-                extended.birthCountry ??
-                data.nationality ??
-                ""
-            );
-            setUNote(meta.unknownNote ?? "");
-          }
+          // Pola wspólne dla obu trybów
+          setFirstName(basicMeta.firstName ?? data.firstName ?? "");
+          setLastName(basicMeta.lastName ?? data.lastName ?? "");
+          setBirthYear(basicMeta.birthYear ?? data.birthDate ?? "");
+          setJerseyNumber(basicMeta.jerseyNumber ?? "");
+          setClub(basicMeta.club ?? data.club ?? "");
+          setClubCountry(
+            basicMeta.clubCountry ??
+              extended.birthCountry ??
+              data.nationality ??
+              ""
+          );
+          setUNote(meta.unknownNote ?? "");
 
           const mergedExt = {
             ...getDefaultExt(),
@@ -934,10 +936,9 @@ export default function PlayerEditorPage() {
 
     const hasAnon =
       jerseyNumber.trim() !== "" ||
-      uClub.trim() !== "" ||
+      uNote.trim() !== "" ||
       (!hasPersonal &&
-        (club.trim() !== "" || clubCountry.trim() !== "")) ||
-      uNote.trim() !== "";
+        (club.trim() !== "" || clubCountry.trim() !== ""));
 
     let next: Choice;
     if (hasPersonal && !hasAnon) {
@@ -951,16 +952,7 @@ export default function PlayerEditorPage() {
     }
 
     setChoice((prev) => (prev === next ? prev : next));
-  }, [
-    firstName,
-    lastName,
-    birthYear,
-    club,
-    clubCountry,
-    jerseyNumber,
-    uClub,
-    uNote,
-  ]);
+  }, [firstName, lastName, birthYear, club, clubCountry, jerseyNumber, uNote]);
 
   // Nazwa wyświetlana w tabeli obserwacji zawodnika
   const playerDisplayName = useMemo(() => {
@@ -971,12 +963,12 @@ export default function PlayerEditorPage() {
       return full || "Nieznany zawodnik";
     }
     const num = jerseyNumber.trim();
-    const clubLabel = (uClub || club || "").trim();
+    const clubLabel = club.trim();
     if (num) {
       return `#${num} – ${clubLabel || "Bez klubu"}`;
     }
     return clubLabel || "Nieznany zawodnik";
-  }, [choice, firstName, lastName, jerseyNumber, uClub, club]);
+  }, [choice, firstName, lastName, jerseyNumber, club]);
 
   const countTruthy = (vals: Array<unknown>) =>
     vals.filter((v) => {
@@ -993,7 +985,7 @@ export default function PlayerEditorPage() {
   ]);
   const cntBasicUnknown = countTruthy([
     jerseyNumber,
-    uClub,
+    club,
     clubCountry,
     uNote,
   ]);
@@ -1698,7 +1690,7 @@ export default function PlayerEditorPage() {
     const unknownValid =
       !isKnown &&
       !!jerseyNumber.trim() &&
-      !!(uClub.trim() || club.trim()) &&
+      !!club.trim() &&
       !!clubCountry.trim();
 
     if (!knownValid && !unknownValid) {
@@ -1739,12 +1731,13 @@ export default function PlayerEditorPage() {
             }
           } else {
             const num = jerseyNumber.trim();
-            const c = uClub.trim() || club.trim();
+            const c = club.trim();
+            const cc = clubCountry.trim();
 
             name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
             clubFinal = c;
             posBucket = toBucket(uPosDet || posDet);
-            clubCountryFinal = clubCountry.trim();
+            clubCountryFinal = cc;
           }
 
           const nationalityVal =
@@ -1829,7 +1822,6 @@ export default function PlayerEditorPage() {
     club,
     clubCountry,
     jerseyNumber,
-    uClub,
     posDet,
     uPosDet,
     ext,
@@ -1938,7 +1930,7 @@ export default function PlayerEditorPage() {
         <p className="text-sm text-red-600">{loadError}</p>
       )}
 
-      {/* KROK 0 – tryb profilu */}
+      {/* KROK 0 – tryb profilu (ustalany automatycznie na podstawie pól) */}
       <Card className="border-dashed border-slate-300 bg-gradient-to-r from-slate-50 to-white dark:border-neutral-800 dark:from-neutral-950 dark:to-neutral-950">
         <CardHeader className="group hidden items-center justify-between border-b border-slate-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:flex md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
           <div className="flex w-full items-center justify-between gap-3">
@@ -2043,8 +2035,7 @@ export default function PlayerEditorPage() {
                         : "text-black/70 dark:text-neutral-300"
                     )}
                   >
-                    Numer, klub i wspólny kraj – gdy nie podajesz danych
-                    osobowych.
+                    Numer, klub i kraj – gdy nie podajesz danych osobowych.
                   </div>
                 </div>
               </div>
@@ -2053,9 +2044,9 @@ export default function PlayerEditorPage() {
         </CardContent>
       </Card>
 
-      {/* Kroki 1–4 */}
+      {/* Kroki 1–4 – zawsze dostępne; tryb profilu wyliczany automatycznie */}
       <div className="space-y-4">
-        {/* KROK 1 – Podstawowe informacje + Główna pozycja */}
+        {/* KROK 1 – Podstawowe informacje + Główna pozycja (pitch) */}
         <Card ref={basicRef} className="mt-1">
           <CardHeader
             className={cn(
@@ -2145,9 +2136,7 @@ export default function PlayerEditorPage() {
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">
-                          Aktualny klub (imienny)
-                        </Label>
+                        <Label className="text-sm">Aktualny klub</Label>
                         <Input
                           value={club}
                           onChange={(e) => setClub(e.target.value)}
@@ -2155,27 +2144,13 @@ export default function PlayerEditorPage() {
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">
-                          Aktualny klub (gdy anonimowo)
-                        </Label>
-                        <Input
-                          value={uClub}
-                          onChange={(e) => setUClub(e.target.value)}
-                          placeholder="np. klub bez danych osobowych"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <Label className="pb-1 text-sm">
-                          Kraj aktualnego klubu
+                        <Label className="pb-2 text-sm">
+                          Kraj klubu / aktualnego klubu
                         </Label>
                         <CountrySearchCombobox
                           value={clubCountry}
                           onChange={(val) => setClubCountry(val)}
                         />
-                        <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
-                          Jeden wspólny kraj dla profilu imiennego i anonimowego.
-                        </p>
                       </div>
 
                       <div className="md:col-span-1">
@@ -2538,8 +2513,9 @@ export default function PlayerEditorPage() {
                 <AccordionContent id="obs-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
-                      Możesz tworzyć obserwacje również dla profilu anonimowego
-                      – ważne, by zachować spójność meczu i poziomu.
+                      Możesz tworzyć obserwacje również dla profilu
+                      anonimowego – ważne, by zachować spójność meczu i
+                      poziomu.
                     </p>
                   )}
 
