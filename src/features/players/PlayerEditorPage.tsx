@@ -940,10 +940,9 @@ setUPosDet(mainPos);
 
   // AUTOMATYCZNE wyliczanie trybu profilu (known / unknown) na podstawie pól
   useEffect(() => {
-    const hasPersonal =
-      firstName.trim() !== "" ||
-      lastName.trim() !== "" ||
-      birthYear.trim() !== "";
+const hasPersonal =
+  firstName.trim() !== "" && lastName.trim() !== "";
+
 
     const hasAnon =
       jerseyNumber.trim() !== "" ||
@@ -1707,28 +1706,21 @@ setUPosDet(mainPos);
   useEffect(() => {
     let cancelled = false;
 
-    if (!choice || !playerId) {
+    if (!playerId) {
       setSaveState("idle");
       return;
     }
 
-    const isKnown = choice === "known";
+    // Jeżeli kompletnie brak danych bazowych – nie zapisujemy
+    const hasAnyBasic =
+      firstName.trim() ||
+      lastName.trim() ||
+      birthYear.trim() ||
+      jerseyNumber.trim() ||
+      club.trim() ||
+      clubCountry.trim();
 
-    const knownValid =
-      isKnown &&
-      !!firstName.trim() &&
-      !!lastName.trim() &&
-      !!birthYear.trim() &&
-      !!club.trim() &&
-      !!clubCountry.trim();
-
-    const unknownValid =
-      !isKnown &&
-      !!jerseyNumber.trim() &&
-      !!club.trim() &&
-      !!clubCountry.trim();
-
-    if (!knownValid && !unknownValid) {
+    if (!hasAnyBasic) {
       setSaveState("idle");
       return;
     }
@@ -1752,12 +1744,14 @@ setUPosDet(mainPos);
           let age = 0;
 
           if (isKnownX) {
-            const fn = firstName.trim();
-            const ln = lastName.trim();
-            name = `${fn} ${ln}`.trim() || "Bez imienia";
+const fn = firstName.trim();
+const ln = lastName.trim();
+const fullName = `${fn} ${ln}`.trim();
+name = fullName || "Nieznany zawodnik";
             clubFinal = club.trim();
-            posBucket = toBucket(posDet);
             clubCountryFinal = clubCountry.trim();
+            posBucket = toBucket(posDet || "CM");
+
             if (birthYear.trim()) {
               const by = parseInt(birthYear.trim(), 10);
               if (!Number.isNaN(by)) {
@@ -1766,13 +1760,12 @@ setUPosDet(mainPos);
             }
           } else {
             const num = jerseyNumber.trim();
-            const c = club.trim();
-            const cc = clubCountry.trim();
-
-            name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
-            clubFinal = c;
-            posBucket = toBucket(uPosDet || posDet);
-            clubCountryFinal = cc;
+            clubFinal = club.trim();
+            clubCountryFinal = clubCountry.trim();
+            name = num
+              ? `#${num} – ${clubFinal || "Bez klubu"}`
+              : clubFinal || "Nieznany zawodnik";
+            posBucket = toBucket(uPosDet || posDet || "CM");
           }
 
           const nationalityVal =
@@ -1867,6 +1860,7 @@ setUPosDet(mainPos);
     playerId,
     uNote,
   ]);
+
 
  // PROGRESS: global completion percent – wspólny algorytm jak w tabeli
 const completionPercent = useMemo(() => {
