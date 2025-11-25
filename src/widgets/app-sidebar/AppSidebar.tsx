@@ -1,4 +1,3 @@
-
 // + autroscroll change view
 
 
@@ -256,7 +255,7 @@ export default function AppSidebar({
   /* ===== Load counts (players & observations) from Supabase =====
    * Only "fully filled":
    *  - players: status = 'active'
-   *  - observations: status = 'final'
+   *  - observations: status = 'final' AND bucket = 'active'
    */
   const readCounts = async () => {
     if (!userId) return;
@@ -272,7 +271,8 @@ export default function AppSidebar({
           .from("observations")
           .select("*", { count: "exact", head: true })
           .eq("user_id", userId)
-          .eq("status", "final"),
+          .eq("status", "final")
+          .eq("bucket", "active"),
       ]);
 
       setPlayersCount(playersRes.count ?? 0);
@@ -339,6 +339,7 @@ export default function AppSidebar({
   );
 
   const playersBadge = playersCount > 0 ? String(playersCount) : undefined;
+  const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
 
   /* ===== Logout via Supabase ===== */
   async function handleLogout() {
@@ -381,6 +382,8 @@ export default function AppSidebar({
           pathname === "/observations" ||
           pathname?.startsWith("/observations/")
         }
+        badge={obsBadge}
+        badgeTitle="Zakończone obserwacje (final, active)"
       />
     </nav>
   );
@@ -557,24 +560,22 @@ export default function AppSidebar({
 
           <AnimatePresence initial={false}>
             {accountOpen && (
-<motion.div
-  role="menu"
-  initial={{ opacity: 0, y: -4 }}
-  animate={{ opacity: 1, y: 0 }}
-  exit={{ opacity: 0, y: -4 }}
-  transition={{
-    duration: prefersReduced ? 0 : 0.14,
-    ease: "easeOut",
-  }}
-  className="
-    absolute bottom-[40px] left-0 right-0 z-40 w-auto max-w-full
-    overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl
-    dark:border-neutral-800 dark:bg-neutral-950
-
+              <motion.div
+                role="menu"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{
+                  duration: prefersReduced ? 0 : 0.14,
+                  ease: "easeOut",
+                }}
+                className="
+  absolute bottom-[40px] left-0 right-0 z-40 w-auto max-w-full
+  overflow-x-hidden rounded-md rounded-l-none border border-gray-200 bg-white p-2 shadow-2xl
     lg:left-full lg:right-auto lg:ml-3
     lg:min-w-[260px] lg:max-w-[420px]
   "
->
+              >
                 {/* Rank card */}
                 <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
                   <div className="mb-1 flex flex-wrap items-center justify-between">
@@ -721,8 +722,7 @@ export default function AppSidebar({
 
   /* ====== PANEL STYLES ====== */
   const asideDesktop =
-  "h-screen w-64 overflow-visible border-r border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
-
+    "h-screen w-64 overflow-visible border-r border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
 
   const asideMobile =
     "h-screen w-full max-w-[380px] overflow-hidden border-r border-slate-200 bg-white p-3 shadow-xl ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
@@ -830,7 +830,7 @@ function NavItem({
       <span className="truncate">{label}</span>
       {badge && (
         <span
-          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded-md  px-2 py-0.5 text-[10px] font-medium text-slate-700  dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
           title={badgeTitle}
         >
           <span className="truncate">{badge}</span>

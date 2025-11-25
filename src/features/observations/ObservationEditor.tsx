@@ -754,7 +754,8 @@ export function ObservationEditor({
         .eq("time", rowTime)
         .eq("team_a", rowTeamA)
         .eq("team_b", rowTeamB)
-        .eq("competition", rowCompetition);
+        .eq("competition", rowCompetition)
+        .eq("bucket", "active");
 
       const { count, error: dupError } = isNewObservation
         ? await baseQuery
@@ -1367,7 +1368,7 @@ export function ObservationEditor({
                                             | undefined,
                                         })
                                       }
-                                      className="w-[11rem] rounded-md border border-gray-300 bg-white p-2 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                                      className="w-[11rem] h-8 flex items-start rounded-md border border-gray-300 bg-white p-1 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
                                       title={
                                         p.position
                                           ? `${p.position} — ${
