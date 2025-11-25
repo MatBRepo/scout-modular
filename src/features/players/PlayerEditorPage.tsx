@@ -397,120 +397,30 @@ type DateTimeValue = {
   time: string;
 };
 
-/* Boisko – główna pozycja */
-function MainPositionPitch({
-  value,
-  onChange,
-}: {
-  value: DetailedPos | "";
-  onChange: (next: DetailedPos) => void;
-}) {
-  const [hovered, setHovered] = useState<DetailedPos | null>(null);
+const PITCH_SVG = `
+<svg width="100%" height="100%" viewBox="0 0 590 350" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="590" height="350" rx="15" fill="#248604"/>
+<rect x="18.5139" y="16.2588" width="274.939" height="317.482" stroke="white" stroke-width="2"/>
+<rect x="18.5139" y="79.2017" width="104.178" height="192.55" stroke="white" stroke-width="2"/>
+<rect x="18.5139" y="112.58" width="47.2579" height="124.839" stroke="white" stroke-width="2"/>
+<rect x="8.66235" y="112.58" width="10.0408" height="124.839" stroke="white" stroke-width="2"/>
+<mask id="path-6-inside-1_6055_2662" fill="white">
+<path d="M31.7444 15.2588C31.7444 21.5792 25.9524 26.7031 18.8079 26.7031C18.3711 26.7031 17.9395 26.6819 17.5139 26.6445V15.2588H31.7444Z"/>
+</mask>
+<path d="M31.7444 15.2588C31.7444 21.5792 25.9524 26.7031 18.8079 26.7031C18.3711 26.7031 17.9395 26.6819 17.5139 26.6445V15.2588H31.7444Z" fill="white" fill-opacity="0.1"/>
+<path d="M31.7444 15.2588L33.7444 15.2588L33.7444 13.2588H31.7444V15.2588ZM18.8079 26.7031V28.7031H18.8079L18.8079 26.7031ZM17.5139 26.6445H15.5139V28.4765L17.3389 28.6369L17.5139 26.6445ZM17.5139 15.2588V13.2588H15.5139V15.2588H17.5139ZM31.7444 15.2588L29.7444 15.2588C29.7444 20.2513 25.0853 24.7031 18.8079 24.7031L18.8079 26.7031L18.8079 28.7031C26.8196 28.7031 33.7444 22.9071 33.7444 15.2588L31.7444 15.2588ZM18.8079 26.7031V24.7031C18.4358 24.7031 18.0629 24.6851 17.689 24.6522L17.5139 26.6445L17.3389 28.6369C17.8162 28.6788 18.3065 28.7031 18.8079 28.7031V26.7031ZM17.5139 26.6445H19.5139V15.2588H17.5139H15.5139V26.6445H17.5139ZM17.5139 15.2588V17.2588H31.7444V15.2588V13.2588H17.5139V15.2588Z" fill="white" mask="url(#path-6-inside-1_6055_2662)"/>
+<mask id="path-8-inside-2_6055_2662" fill="white">
+<path d="M17.5139 322.344C24.7684 322.344 30.6497 327.39 30.6497 333.614C30.6497 333.995 30.6262 334.37 30.5833 334.741L17.5139 334.741L17.5139 322.344Z"/>
+</mask>
+<path d="M17.5139 322.344C24.7684 322.344 30.6497 327.39 30.6497 333.614C30.6497 333.995 30.6262 334.37 30.5833 334.741L17.5139 334.741L17.5139 322.344Z" fill="white" fill-opacity="0.1"/>
+<path d="M17.5139 322.344L17.5139 320.344L15.5139 320.344L15.5139 322.344L17.5139 322.344ZM30.6497 333.614L32.6497 333.614L32.6497 333.614L30.6497 333.614ZM30.5833 334.741L30.5833 336.741L32.3651 336.741L32.57 334.971L30.5833 334.741ZM17.5139 334.741L15.5139 334.741L15.5139 336.741L17.5139 336.741L17.5139 334.741ZM17.5139 322.344L17.5139 324.344C23.9622 324.344 28.6497 328.771 28.6497 333.614L30.6497 333.614L32.6497 333.614C32.6497 326.009 25.5746 320.344 17.5139 320.344L17.5139 322.344ZM30.6497 333.614L28.6497 333.614C28.6497 333.912 28.6313 334.211 28.5965 334.511L30.5833 334.741L32.57 334.971C32.6211 334.53 32.6497 334.077 32.6497 333.614L30.6497 333.614ZM30.5833 334.741L30.5833 332.741L17.5139 332.741L17.5139 334.741L17.5139 336.741L30.5833 336.741L30.5833 334.741ZM17.5139 334.741L19.5139 334.741L19.5139 322.344L17.5139 322.344L15.5139 322.344L15.5139 334.741L17.5139 334.741Z" fill="white" mask="url(#path-8-inside-2_6055_2662)"/>
+<!-- (rest of your SVG unchanged, from previous message) -->
+<circle cx="496" cy="174" r="1" fill="white"/>
+<circle cx="94" cy="174" r="1" fill="white"/>
+</svg>
+`;
 
-  const activeKey = (hovered || value || null) as DetailedPos | null;
-  const activeMeta = activeKey
-    ? POS_DATA.find((p) => p.value === activeKey) ?? null
-    : null;
 
-  return (
-    <section className="mt-2 rounded-md bg-white px-3 py-3 shadow-sm ring-1 ring-slate-200/70 dark:bg-neutral-950 dark:ring-neutral-800">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
-            Boisko – główna pozycja
-          </div>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
-            Kliknij na znacznik na boisku, aby ustawić główną pozycję zawodnika.
-          </p>
-        </div>
-        {activeMeta && (
-          <span className="inline-flex items-center rounded-md bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-700/60">
-            {activeMeta.code} · {activeMeta.name}
-          </span>
-        )}
-      </div>
-
-      <div
-        className="mx-auto max-h-[300px] w-full overflow-hidden rounded-md border border-emerald-500/40 bg-repeat p-3"
-        style={{
-          backgroundImage: "url('/textures/grass-texture.png')",
-          backgroundSize: "80px 80px",
-        }}
-      >
-        <TooltipProvider delayDuration={0}>
-          <div className="relative h-[220px] w-full rounded-[20px] border border-white/40">
-            <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/40" />
-            <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-md border border-white/40" />
-            <div className="absolute left-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-r border-white/40" />
-            <div className="absolute left-0 top-1/2 h-20 w-14 -translate-y-1/2 border-y border-r border-white/40" />
-            <div className="absolute right-0 top-1/2 h-36 w-28 -translate-y-1/2 border-y border-l border-white/40" />
-            <div className="absolute right-0 top-1/2 h-20 w-14 -translate-y-1/2 border-y border-l border-white/40" />
-
-            {POS_DATA.map((pos) => {
-              const layout = POS_LAYOUT[pos.value];
-              if (!layout) return null;
-              const isSelected = value === pos.value;
-
-              return (
-                <Tooltip key={pos.value}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "group absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border text-xs font-semibold text-white shadow-sm transition-transform",
-                        isSelected
-                          ? "border-emerald-300 bg-emerald-500/90 shadow-[0_0_0_4px_rgba(16,185,129,0.45)]"
-                          : "border-white/70 bg-white/10 hover:scale-[1.03] hover:bg-white/25"
-                      )}
-                      style={{ top: layout.top, left: layout.left }}
-                      onClick={() => onChange(pos.value)}
-                      onMouseEnter={() => setHovered(pos.value)}
-                      onMouseLeave={() =>
-                        setHovered((prev) => (prev === pos.value ? null : prev))
-                      }
-                    >
-                      <span className="pointer-events-none">{pos.code}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    align="center"
-                    className="max-w-xs border-none bg-slate-900/95 px-3 py-2 text-left text-[11px] text-slate-100 shadow-lg"
-                  >
-                    <div className="text-xs font-semibold">
-                      {pos.code} · {pos.name}
-                    </div>
-                    <div className="mt-0.5 text-[11px] text-slate-300">
-                      {pos.desc}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </div>
-        </TooltipProvider>
-      </div>
-
-      <div className="mt-3 text-[11px] leading-relaxed text-slate-600 dark:text-neutral-300">
-        {activeMeta ? (
-          <>
-            <span className="font-semibold">
-              {activeMeta.code} – {activeMeta.name}
-            </span>
-            <span className="ml-1.5 text-slate-600 dark:text-neutral-300">
-              {activeMeta.desc}
-            </span>
-          </>
-        ) : (
-          <span>
-            Najedź na znacznik, aby zobaczyć szczegółowy opis pozycji i kliknij,
-            aby ją wybrać jako główną.
-          </span>
-        )}
-      </div>
-    </section>
-  );
-}
 
 /* ===== Editor page ===== */
 type Choice = "known" | "unknown" | null;

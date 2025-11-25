@@ -605,7 +605,7 @@ export default function MyPlayersFeature({
   const overflowChips = activeChips.slice(MAX_INLINE_CHIPS);
 
   // CONSISTENT HEIGHTS
-  const controlH = "h-10";
+  const controlH = "h-9";
   const cellPad = "p-2";
   const rowH = "h-12";
 
@@ -684,12 +684,12 @@ export default function MyPlayersFeature({
     };
   }, [isMobile, paginated.length, JSON.stringify(visibleCols)]);
 
-  // Helpers for chips (desktop height = h-10)
+  // Helpers for chips (desktop height = h-9)
   const Chip = ({
     label,
     onClear,
   }: { label: string; onClear: () => void }) => (
-    <span className="inline-flex h-10 items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
+    <span className="inline-flex h-9 items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
       <span className="max-w-[200px] truncate">{label}</span>
       <button
         className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
@@ -726,44 +726,50 @@ export default function MyPlayersFeature({
         {/* TOOLBAR */}
         <Toolbar
           title={
-            <div className="flex items-center gap-3 w-full min-h-10">
+            <div className="flex items-start gap-3 w-full min-h-9">
               {/* Left: Title */}
-              <span className="font-semibold text-xl md:text-2xl shrink-0 leading-none h-10 flex items-center">
+              <span className="font-semibold text-xl md:text-2xl shrink-0 leading-none h-9 flex items-center">
                 Baza zawodników
               </span>
 
               {/* Right: tabs block (desktop) */}
-              <div className="hidden md:block shrink-0 h-10">
-                <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-                  <TabsList className="h-10 rounded-md inline-flex items-center justify-center text-muted-foreground bg-stone-200 p-1 shadow-sm dark:bg-stone-900">
-                    <TabsTrigger value="all" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                      Wszyscy
-                      <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
-                        {tabCounts.all}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger value="known" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                      Znani
-                      <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
-                        {tabCounts.known}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger value="unknown" className="h-9 inline-flex items-center px-2 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                      Nieznani
-                      <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
-                        {tabCounts.unknown}
-                      </span>
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="all" />
-                  <TabsContent value="known" />
-                  <TabsContent value="unknown" />
-                </Tabs>
-              </div>
+{/* Right: tabs block (desktop) */}
+<div className="hidden md:block shrink-0">
+  <Tabs
+    className="items-center"
+    value={knownScope}
+    onValueChange={(v) => changeKnownScope(v as KnownScope)}
+  >
+    <TabsList>
+      <TabsTrigger value="all" className="flex items-center gap-2">
+        <span>Wszyscy</span>
+        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+          {tabCounts.all}
+        </span>
+      </TabsTrigger>
+      <TabsTrigger value="known" className="flex items-center gap-2">
+        <span>Znani</span>
+        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+          {tabCounts.known}
+        </span>
+      </TabsTrigger>
+      <TabsTrigger value="unknown" className="flex items-center gap-2">
+        <span>Nieznani</span>
+        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+          {tabCounts.unknown}
+        </span>
+      </TabsTrigger>
+    </TabsList>
+    <TabsContent value="all" />
+    <TabsContent value="known" />
+    <TabsContent value="unknown" />
+  </Tabs>
+</div>
+
 
               {/* Center: Active filter chips (desktop) */}
-              <div className="hidden md:flex flex-1 items-center justify-center h-10">
-                <div className="flex items-center gap-1 h-10">
+              <div className="hidden md:flex flex-1 items-start justify-center h-9">
+                <div className="flex items-center gap-1 h-9">
                   {inlineChips.map(c => (
                     <Chip key={c.key} label={c.label} onClear={c.clear} />
                   ))}
@@ -773,7 +779,7 @@ export default function MyPlayersFeature({
                       <button
                         ref={chipsMoreBtnRef}
                         type="button"
-                        className="inline-flex h-10 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
+                        className="inline-flex h-9 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
                         onClick={() => setChipsOpen((v) => !v)}
                         onMouseEnter={() => {
                           if (chipsHoverTimer.current) window.clearTimeout(chipsHoverTimer.current);
@@ -824,12 +830,12 @@ export default function MyPlayersFeature({
             </div>
           }
           right={
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between min-h-10 w-full">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between min-h-9">
               <div />
 
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
                 {/* Search */}
-                <div className="relative order-1 w-full min-w-0 sm:order-none sm:w-64 h-10">
+                <div className="relative order-1 w-full min-w-0 sm:order-none sm:w-64 h-9">
                   <Search
                     className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
                     aria-hidden="true"
@@ -901,48 +907,69 @@ export default function MyPlayersFeature({
           }
         />
 
-        {/* Tabs for mobile */}
-        <div className="mt-2 md:hidden">
-          <Tabs value={knownScope} onValueChange={(v) => changeKnownScope(v as KnownScope)}>
-            <TabsList className="w-full justify-between rounded-md  bg-stone-100 p-1 shadow-sm dark:bg-neutral-900">
-              <TabsTrigger value="all" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                Wszyscy
-                <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
-                  {tabCounts.all}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger value="known" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                Znani
-                <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
-                  {tabCounts.known}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger value="unknown" className="h-8 flex-1 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800">
-                Nieznani
-                <span className="ml-2 rounded-md bg-stone-100 px-1.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
-                  {tabCounts.unknown}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" />
-            <TabsContent value="known" />
-            <TabsContent value="unknown" />
-          </Tabs>
+{/* Tabs for mobile */}
+<div className="mt-2 md:hidden">
+  <Tabs
+    className="items-center w-full"
+    value={knownScope}
+    onValueChange={(v) => changeKnownScope(v as KnownScope)}
+  >
+    <TabsList className="w-full flex">
+      <TabsTrigger
+        value="all"
+        className="flex-1 flex items-center justify-center gap-2"
+      >
+        <span>Wszyscy</span>
+        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+          {tabCounts.all}
+        </span>
+      </TabsTrigger>
+      <TabsTrigger
+        value="known"
+        className="flex-1 flex items-center justify-center gap-2"
+      >
+        <span>Znani</span>
+        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+          {tabCounts.known}
+        </span>
+      </TabsTrigger>
+      <TabsTrigger
+        value="unknown"
+        className="flex-1 flex items-center justify-center gap-2"
+      >
+        <span>Nieznani</span>
+        <span className="rounded-full bg-stone-100 px-1.5 text-[10px] font-medium">
+          {tabCounts.unknown}
+        </span>
+      </TabsTrigger>
+    </TabsList>
+    <TabsContent value="all" />
+    <TabsContent value="known" />
+    <TabsContent value="unknown" />
+  </Tabs>
 
-          {/* Mobile: compact chips under tabs */}
-          {activeChips.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center gap-1">
-              {activeChips.map(c => (
-                <span key={c.key} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900">
-                  <span className="max-w-[120px] truncate">{c.label}</span>
-                  <button className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800" onClick={c.clear}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+  {/* Mobile: compact chips under tabs */}
+  {activeChips.length > 0 && (
+    <div className="mt-2 flex flex-wrap items-center gap-1">
+      {/* unchanged */}
+      {activeChips.map(c => (
+        <span
+          key={c.key}
+          className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
+        >
+          <span className="max-w-[120px] truncate">{c.label}</span>
+          <button
+            className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
+            onClick={c.clear}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+    </div>
+  )}
+</div>
+
 
         {/* Desktop: anchored popovers */}
         {!isMobile && (
@@ -1178,7 +1205,7 @@ export default function MyPlayersFeature({
                 </div>
               )}
 
-              <div className="mt-4 flex flex-wrap items-center justify-between">
+              <div className="mt-4 flex flex-wrap items-start justify-between">
                 <Button
                   variant="outline"
                   className="border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
@@ -1293,7 +1320,7 @@ export default function MyPlayersFeature({
             <div className="fixed left-1/2 bottom-4 z-[240] -translate-x-1/2">
               <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
                 <button
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
+                  className="inline-flex h-9 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
                   onClick={() => setSelected(new Set())}
                   aria-label="Wyczyść zaznaczenie"
                   title="Wyczyść zaznaczenie"
@@ -1313,7 +1340,7 @@ export default function MyPlayersFeature({
 
                 {anyActiveSelected && scope === "active" ? (
                   <Button
-                    className="h-8 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                    className="h-9 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
                     onClick={bulkTrash}
                     aria-label="Przenieś do kosza"
                     title="Przenieś do kosza"
@@ -1322,7 +1349,7 @@ export default function MyPlayersFeature({
                   </Button>
                 ) : (
                   <Button
-                    className="h-8 w-8 rounded-md bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+                    className="h-9 w-8 rounded-md bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
                     onClick={bulkRestore}
                     aria-label="Przywróć"
                     title="Przywróć"
@@ -1544,11 +1571,16 @@ function PlayersTable({
     return m ? m[1] : null;
   };
 
-  const KnownBadge = ({ known }: { known: boolean }) => (
-    <span className={"inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium " + (known ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200")}>
-      {known ? "znany" : "nieznany"}
+const KnownBadge = ({ known }: { known: boolean }) => {
+  if (known) return null; // znany → no badge
+
+  return (
+    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+      nieznany
     </span>
   );
+};
+
 
   return (
     <div
@@ -1598,7 +1630,7 @@ function PlayersTable({
                   <td className={cellPad}>
                     <div className="relative">
                       {!r._known ? (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
+                        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
                           <PlayerOnlyTshirt className="h-6 w-6"  strokeWidthAll={14} />
                           {jersey && (
                             <span className="absolute -bottom-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-md bg-indigo-600 px-1.5 text-[10px] font-semibold text-white ring-2 ring-white dark:ring-neutral-950">
@@ -1607,9 +1639,9 @@ function PlayersTable({
                           )}
                         </div>
                       ) : r.photo ? (
-                        <img src={r.photo} alt={r.name} className="h-10 w-10 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm" loading="lazy" />
+                        <img src={r.photo} alt={r.name} className="h-9 w-10 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm" loading="lazy" />
                       ) : (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
+                        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
                           {getInitials(r.name)}
                         </div>
                       )}
@@ -1667,7 +1699,7 @@ function PlayersTable({
                           <Button
                             size="icon"
                             variant="outline"
-                            className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                            className="h-9 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                             onClick={(e) => { e.stopPropagation(); onOpen(r.id); }}
                             aria-label={r._known ? "Edytuj" : "Uzupełnij dane"}
                           >
@@ -1682,7 +1714,7 @@ function PlayersTable({
                           <div className="flex items-center gap-1">
                             <Button
                               size="sm"
-                              className="h-8 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                              className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onTrash(r.id);
@@ -1694,7 +1726,7 @@ function PlayersTable({
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8 px-2 text-xs border-gray-300 dark:border-neutral-700"
+                              className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setConfirmTrashId(null);
@@ -1709,7 +1741,7 @@ function PlayersTable({
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                className="h-9 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setConfirmTrashId(r.id);
@@ -1728,7 +1760,7 @@ function PlayersTable({
                             <Button
                               size="icon"
                               variant="outline"
-                              className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                              className="h-9 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                               onClick={(e) => { e.stopPropagation(); onRestore(r.id); }}
                               aria-label="Przywróć"
                             >
@@ -1891,17 +1923,17 @@ function QuickObservation({
       {/* Tabs */}
       <div className="px-4 pt-3">
         <Tabs value={quickTab} onValueChange={(v)=>setQuickTab(v as "new"|"existing")}>
-          <TabsList className="mb-2 inline-flex h-10 items-center rounded-md bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
+          <TabsList className="mb-2 inline-flex h-9 items-center rounded-md bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
             <TabsTrigger
               value="new"
-              className="h-10 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+              className="h-9 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
               <PlusSquare className="mr-0 md:mr-2 h-4 w-4" />
               Nowa
             </TabsTrigger>
             <TabsTrigger
               value="existing"
-              className="h-10 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
+              className="h-9 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
               <Download className="mr-0 md:mr-2 h-4 w-4" />
               Istniejąca
@@ -2031,7 +2063,7 @@ function QuickObservation({
               />
             </div>
 
-            <div className="max-h-80 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
+            <div className="max-h-90 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                   <tr>
@@ -2099,7 +2131,7 @@ function QuickObservation({
               </table>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between">
+            <div className="flex flex-wrap items-start justify-between">
               <Button variant="outline" className="border-gray-300 dark:border-neutral-700" onClick={onBack}>
                 <ArrowLeft className="mr-0 md:mr-2 h-4 w-4" />
                 Wróć
