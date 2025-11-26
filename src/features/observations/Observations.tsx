@@ -672,18 +672,18 @@ export default function ObservationsFeature({
     setPageMode("editor");
   }
 
-  function save(obs: XO) {
-    const exists = rows.some((x) => x.id === obs.id);
-    let next: XO[];
-    if (exists) next = rows.map((x) => (x.id === obs.id ? obs : x));
-    else {
-      const nextId = Math.max(0, ...rows.map((x) => x.id)) + 1;
-      next = [{ ...obs, id: nextId }, ...rows];
-    }
-    onChange(next as unknown as Observation[]);
-    setPageMode("list");
-    setEditing(null);
-  }
+function save(obs: XO) {
+  const exists = rows.some((x) => x.id === obs.id);
+
+  const next: XO[] = exists
+    ? rows.map((x) => (x.id === obs.id ? obs : x))
+    : [obs, ...rows];
+
+  onChange(next as unknown as Observation[]);
+  setPageMode("list");
+  setEditing(null);
+}
+
 
   function moveToTrash(id: number) {
     const next = rows.map((x) =>

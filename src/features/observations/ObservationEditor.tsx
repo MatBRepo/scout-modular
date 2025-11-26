@@ -959,13 +959,14 @@ export function ObservationEditor({
       window.clearTimeout(autoSaveTimerRef.current);
     }
 
-    autoSaveTimerRef.current = window.setTimeout(() => {
-      void saveObservation({ closeAfter: false, externalSave: false }).then(
-        () => {
-          autoSaveLastKeyRef.current = autoSaveKey;
-        }
-      );
-    }, 1200) as unknown as number;
+autoSaveTimerRef.current = window.setTimeout(() => {
+  void saveObservation({ closeAfter: false, externalSave: true }).then(
+    () => {
+      autoSaveLastKeyRef.current = autoSaveKey;
+    }
+  );
+}, 1200) as unknown as number;
+
 
     return () => {
       if (autoSaveTimerRef.current) {
