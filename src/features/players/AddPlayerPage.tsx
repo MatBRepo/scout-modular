@@ -1296,7 +1296,7 @@ useEffect(() => {
               )}
             </div>
             {aspect.tooltip && (
-              <p className="mt-1 line-clamp-3 text-[11px] text-slate-500 dark:text-neutral-400">
+              <p className="mt-1  text-[11px] text-slate-500 dark:text-neutral-400">
                 {aspect.tooltip}
               </p>
             )}
@@ -1332,7 +1332,7 @@ useEffect(() => {
           <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
           {title}
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {aspects.map((aspect) => (
             <RatingRow key={aspect.id} aspect={aspect} />
           ))}

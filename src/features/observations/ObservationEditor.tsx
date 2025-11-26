@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   Fragment,
+  type ReactNode,
 } from "react";
 import { Toolbar } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
@@ -189,7 +190,7 @@ function MetricItem({
 }) {
   return (
     <div
-      className="group flex flex-wrap items-center justify-between gap-3 rounded-md border border-stone-200 bg-white px-3 py-2 text-xs shadow-sm transition hover:bg-stone-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+      className="group flex flex-wrap items-center justify-between gap-3 rounded-md border border-stone-200 bg-white px-3 py-2 text-xs shadow-sm transition  dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
       title={label}
     >
       <div className="w-full break-words pr-2 text-[12px] text-gray-700 dark:text-neutral-300">
@@ -242,14 +243,12 @@ function VoiceNoteButton({
       (window as any).webkitSpeechRecognition;
 
     if (!SR) {
-      // Teoretycznie nie powinno się zdarzyć, bo isSupported byłby false
       alert(
         "Twoja przeglądarka nie obsługuje rozpoznawania mowy. Spróbuj w Chrome na desktopie."
       );
       return;
     }
 
-    // START nagrywania
     if (!isRecording) {
       const recognition = new SR();
       recognition.lang = "pl-PL";
@@ -269,7 +268,10 @@ function VoiceNoteButton({
 
       recognition.onerror = (event: any) => {
         console.error("[VoiceNoteButton] Błąd rozpoznawania:", event);
-        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        if (
+          event.error === "not-allowed" ||
+          event.error === "service-not-allowed"
+        ) {
           alert(
             "Brak dostępu do mikrofonu lub funkcja jest zablokowana. Sprawdź uprawnienia przeglądarki i HTTPS."
           );
@@ -282,7 +284,6 @@ function VoiceNoteButton({
       };
 
       recognition.onend = () => {
-        // zakończenie sesji (po wypowiedzeniu frazy)
         setIsRecording(false);
       };
 
@@ -290,7 +291,6 @@ function VoiceNoteButton({
       setIsRecording(true);
       recognition.start();
     } else {
-      // STOP nagrywania (drugi klik)
       if (recognitionRef.current && recognitionRef.current.stop) {
         recognitionRef.current.stop();
       }
@@ -326,7 +326,11 @@ function VoiceNoteButton({
       )}
     >
       <Mic className="h-3.5 w-3.5" />
-      <span>{isRecording ? "Nagrywanie… kliknij, aby zatrzymać" : "Nagraj notatkę głosową"}</span>
+      <span>
+        {isRecording
+          ? "Nagrywanie… kliknij, aby zatrzymać"
+          : "Nagraj notatkę głosową"}
+      </span>
     </button>
   );
 }
@@ -346,16 +350,13 @@ export function ObservationEditor({
   const stepPillClass =
     "inline-flex items-center rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-stone-700 dark:bg-neutral-900 dark:text-neutral-200";
 
-  /** Freeze initial, żeby nie nadpisywać w trakcie edycji */
   const frozenInitialRef = useRef<XO>(initial);
 
-  // wyciągamy ID z initial (top-level lub z __listMeta)
   const initialIdRef =
     (frozenInitialRef.current as any)?.id ??
     (frozenInitialRef.current as any)?.__listMeta?.id ??
     0;
 
-  // Czy ta instancja edytora startowała jako "nowa" czy "istniejąca"?
   const isNewObservation = !initialIdRef || initialIdRef === 0;
 
   const [o, setO] = useState<XO>(() => {
@@ -380,12 +381,10 @@ export function ObservationEditor({
     };
   });
 
-  /* ===== Wymagalność pól z Supabase (observations_main) ===== */
   const { isRequiredField, loading: requiredLoading } = useRequiredFields();
   const isRequired = (fieldKey: string) =>
     isRequiredField("observations_main", fieldKey);
 
-  /* ===== Players: tylko zawodnicy zalogowanego scouta ===== */
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
 
   useEffect(() => {
@@ -429,7 +428,6 @@ export function ObservationEditor({
     };
   }, []);
 
-  /* ===== Metrics (konfiguracja z Supabase, bez localStorage) ===== */
   const [metrics, setMetrics] = useState<MetricsConfig>({
     BASE: [],
     GK: [],
@@ -533,7 +531,6 @@ export function ObservationEditor({
     });
   }
 
-  /** Positions */
   const POSITIONS: PositionKey[] = [
     "GK",
     "CB",
@@ -566,7 +563,6 @@ export function ObservationEditor({
     }));
   }
 
-  /* Team vs Team */
   const [teamA, setTeamA] = useState(o.teamA ?? "");
   const [teamB, setTeamB] = useState(o.teamB ?? "");
 
@@ -592,19 +588,16 @@ export function ObservationEditor({
     o.__listMeta?.time || (o as any).time
   )} • ${(o.players?.length ?? 0)} zawodników`;
 
-  /* Save state Supabase (ręczny przycisk + autosave) */
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle"
   );
 
-  // po krótkim czasie chowamy znacznik "Zapisano"
   useEffect(() => {
     if (saveState !== "saved") return;
     const t = setTimeout(() => setSaveState("idle"), 1500);
     return () => clearTimeout(t);
   }, [saveState]);
 
-  /* Quick add */
   const [quickInput, setQuickInput] = useState("");
   const filteredPlayers = useMemo(() => {
     const q = quickInput.trim().toLowerCase();
@@ -658,13 +651,11 @@ export function ObservationEditor({
     setQuickInput("");
   }
 
-  /** Accordion / delete-confirm */
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const CONDITIONS: Mode[] = ["live", "tv", "mix"];
 
-  /* Modal: nowy zawodnik do bazy (players) */
   const [promotePlayer, setPromotePlayer] = useState<ObsPlayer | null>(null);
   const [newPlayerClub, setNewPlayerClub] = useState("");
   const [newPlayerPosition, setNewPlayerPosition] =
@@ -724,7 +715,6 @@ export function ObservationEditor({
     setNewPlayerPosition("");
   }
 
-  /* ===== Walidacja wymaganych pól (Supabase-config) ===== */
   const playerCount = o.players?.length ?? 0;
   const hasTeamA = !!teamA.trim();
   const hasTeamB = !!teamB.trim();
@@ -775,14 +765,11 @@ export function ObservationEditor({
     isRequired,
   ]);
 
-  /* Status automatyczny: Szkic / Finalna na podstawie drużyn */
   const autoStatus: "draft" | "final" =
     hasTeamA && hasTeamB ? "final" : "draft";
 
-  /* ===== Duplikat obserwacji (data + godzina + drużyny + rozgrywki + użytkownik) ===== */
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
-  /* ===== AUTOSAVE – sygnatura stanu ===== */
   const autoSaveKey = JSON.stringify({
     id: o.id ?? initialIdRef,
     teamA,
@@ -798,7 +785,6 @@ export function ObservationEditor({
   const autoSaveLastKeyRef = useRef<string | null>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
 
-  /* ===== Wspólny zapis do Supabase (używany przez autosave + zewnętrzny onSave) ===== */
   async function saveObservation(opts: {
     closeAfter: boolean;
     externalSave: boolean;
@@ -809,7 +795,6 @@ export function ObservationEditor({
     setSaveState("saving");
     setDuplicateError(null);
 
-    // 0) pobierz usera (do checku duplikatu)
     const {
       data: { user },
       error: userError,
@@ -823,7 +808,6 @@ export function ObservationEditor({
       return;
     }
 
-    // 1) UPEWNIJ SIĘ, ŻE MAMY ID (dla nowych – generujemy)
     let id =
       (o.id as number | undefined) ??
       ((o.__listMeta as any)?.id as number | undefined) ??
@@ -843,7 +827,6 @@ export function ObservationEditor({
         player: (o as any).player ?? "",
       } as XO["__listMeta"]);
 
-    // Główny zawodnik – wymagany przez Supabase (player)
     const primaryPlayerName =
       (baseMeta?.player && baseMeta.player.trim().length > 0
         ? baseMeta.player
@@ -877,7 +860,6 @@ export function ObservationEditor({
     const rowTeamB = payload.teamB ?? null;
     const rowCompetition = payload.competition ?? null;
 
-    // 2) SPRAWDŹ, czy jest już taka sama obserwacja
     try {
       const baseQuery = supabase
         .from("observations")
@@ -891,7 +873,7 @@ export function ObservationEditor({
 
       const { count, error: dupError } = isNewObservation
         ? await baseQuery
-        : await baseQuery.neq("id", id); // przy edycji pomijamy bieżący rekord
+        : await baseQuery.neq("id", id);
 
       if (dupError) {
         console.error(
@@ -914,9 +896,9 @@ export function ObservationEditor({
       );
     }
 
-    // 3) Upsert
     const row: any = {
       id,
+      user_id: user.id,
       player: primaryPlayerName || null,
       match: payload.match ?? null,
       team_a: rowTeamA,
@@ -958,7 +940,6 @@ export function ObservationEditor({
 
     setSaveState("saved");
 
-    // Zapis do zewnętrznej listy
     if (opts.externalSave) {
       onSave(payload);
       if (opts.closeAfter) {
@@ -969,12 +950,9 @@ export function ObservationEditor({
     return payload;
   }
 
-  /* ===== AUTOSAVE EFFECT ===== */
   useEffect(() => {
-    // autosave tylko gdy spełnione warunki zapisu
     if (!canSaveObservation || requiredLoading) return;
 
-    // nic nowego do zapisania
     if (autoSaveKey === autoSaveLastKeyRef.current) return;
 
     if (autoSaveTimerRef.current) {
@@ -996,14 +974,26 @@ export function ObservationEditor({
     };
   }, [autoSaveKey, canSaveObservation, requiredLoading]);
 
-  /* ===== Header actions in global topbar (ClientRoot) ===== */
+  const infoCardRef = useRef<HTMLDivElement | null>(null);
+
+  const [infoOpen, setInfoOpen] = useState(true);
+  const [playersOpen, setPlayersOpen] = useState(true);
+  const [noteOpen, setNoteOpen] = useState(true);
+
+const openPositionSelect = (playerId: string) => {
+  if (typeof document === "undefined") return;
+  const trigger = document.getElementById(`pos-${playerId}`);
+  if (trigger instanceof HTMLElement) {
+    trigger.focus();
+    trigger.click(); // otworzy Radix Select (combobox)
+  }
+};
+
+
   useEffect(() => {
     setActions(
       <div className="flex items-center gap-2">
-        {/* Save pill – pokazuje się przy zapisie / zapisano */}
         <SavePill state={saveState} size="compact" />
-
-        {/* Tylko przycisk „Wróć do listy” – bez „Zapisz i wróć” */}
         <Button
           variant="outline"
           size="sm"
@@ -1017,31 +1007,20 @@ export function ObservationEditor({
     );
 
     return () => {
-      // po wyjściu z edytora czyścimy akcje
       setActions(null);
     };
   }, [setActions, saveState, onClose]);
 
-  /* ===== Accordion open states (Krok 1–3) ===== */
-  const [infoOpen, setInfoOpen] = useState(true);
-  const [playersOpen, setPlayersOpen] = useState(true);
-  const [noteOpen, setNoteOpen] = useState(true);
-
-  /* Obsługa transkrypcji notatki głosowej */
   const handleVoiceTranscription = (text: string) => {
     setO((prev) => {
       const prevNote = prev.note ?? "";
-      const next = prevNote
-        ? `${prevNote.trim()}\n${text}`
-        : text;
+      const next = prevNote ? `${prevNote.trim()}\n${text}` : text;
       return { ...prev, note: next };
     });
   };
 
-  /* Render */
   return (
     <div className="w-full">
-      {/* TOP BAR */}
       <Toolbar
         title={
           <div className="mb-3 flex flex-col gap-1">
@@ -1055,7 +1034,6 @@ export function ObservationEditor({
         }
       />
 
-      {/* Podpowiedź wymagań */}
       {!requiredLoading &&
         !canSaveObservation &&
         missingRequirements.length > 0 && (
@@ -1071,17 +1049,15 @@ export function ObservationEditor({
           </div>
         )}
 
-      {/* Komunikat o duplikacie */}
       {duplicateError && (
         <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
           {duplicateError}
         </div>
       )}
 
-      {/* ===== KROKI – INFORMACJE, ZAWODNICY, NOTATKA ===== */}
       <div className="mt-4 space-y-4">
         {/* KROK 1 – Informacje ogólne */}
-        <Card className="mt-1">
+        <Card className="mt-1" ref={infoCardRef}>
           <CardHeader
             className={cn(
               "group flex itemscenter justify-between rounded-md border-gray-200 transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
@@ -1126,7 +1102,6 @@ export function ObservationEditor({
               <AccordionItem value="info" className="border-0">
                 <AccordionContent id="info-panel" className="pt-4 pb-5">
                   <div className="space-y-6">
-                    {/* Drużyna A / B / Data i godzina w jednej linii (3 kolumny) */}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       <div>
                         <Label className="text-sm">Drużyna A</Label>
@@ -1182,7 +1157,6 @@ export function ObservationEditor({
                       </div>
                     </div>
 
-                    {/* Tryb meczu */}
                     <div>
                       <Label className="text-sm">Tryb meczu</Label>
                       <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -1237,7 +1211,6 @@ export function ObservationEditor({
                       </div>
                     </div>
 
-                    {/* Liga / turniej */}
                     <div>
                       <Label className="text-sm">Liga / turniej</Label>
                       <div className="relative mt-1">
@@ -1320,7 +1293,6 @@ export function ObservationEditor({
               <AccordionItem value="players" className="border-0">
                 <AccordionContent id="players-panel" className="pt-4 pb-5">
                   <div className="space-y-4 sm:space-y-5">
-                    {/* Searcher */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                       <div className="relative flex-1">
                         <Label className="text-sm">
@@ -1379,7 +1351,6 @@ export function ObservationEditor({
                       </Button>
                     </div>
 
-                    {/* Tabela zawodników */}
                     <div className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
                       <table className="w-full table-auto text-sm">
                         <thead className="bg-stone-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
@@ -1416,9 +1387,22 @@ export function ObservationEditor({
                             const showATT =
                               pos === "LW" || pos === "RW" || pos === "ST";
 
+                            const hasPosition = !!p.position;
+
+                            const displayName =
+                              p.type === "known"
+                                ? p.name ?? "—"
+                                : p.name ?? (p.shirtNo ? `#${p.shirtNo}` : "—");
+
+                            const isUnknownPlayer =
+                              p.type === "unknown" ||
+                              (displayName &&
+                                displayName.trim().startsWith("#"));
+
                             const normalizedName = (p.name || "")
                               .replace(/^#/, "")
                               .trim();
+
                             const inBase =
                               !!normalizedName &&
                               allPlayers.some(
@@ -1433,12 +1417,19 @@ export function ObservationEditor({
                                   <td className="p-2 sm:p-3">
                                     <div className="flex items-start gap-2">
                                       <div className="min-w-0">
-                                        <div className="truncate text-sm font-medium text-gray-900 dark:text-neutral-100">
-                                          {p.type === "known"
-                                            ? p.name ?? "—"
-                                            : p.name ??
-                                              `#${p.shirtNo ?? ""}`}
+                                        <div className="flex flex-wrap items-center gap-1">
+                                          <div className="truncate text-sm font-medium text-gray-900 dark:text-neutral-100">
+                                            {displayName}
+                                          </div>
+
+                                          {isUnknownPlayer && (
+                                            <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                              nieznany
+                                            </span>
+                                          )}
                                         </div>
+
+
 
                                         {p.shirtNo && (
                                           <div className="mt-0.5 text-[11px] text-stone-700 dark:text-stone-200">
@@ -1542,22 +1533,22 @@ export function ObservationEditor({
                                           }}
                                           title={
                                             isOpen
-                                              ? "Ukryj szczegóły"
-                                              : "Pokaż szczegóły"
+                                              ? "Ukryj oceny"
+                                              : "Pokaż oceny"
                                           }
                                         >
                                           {isOpen ? (
                                             <>
                                               <ChevronUp className="mr-1 h-4 w-4" />
                                               <span className="hidden sm:inline">
-                                                Szczegóły
+                                                Ukryj oceny
                                               </span>
                                             </>
                                           ) : (
                                             <>
                                               <ChevronDown className="mr-1 h-4 w-4" />
                                               <span className="hidden sm:inline">
-                                                Szczegóły
+                                                Oceny
                                               </span>
                                             </>
                                           )}
@@ -1624,144 +1615,167 @@ export function ObservationEditor({
                                   </td>
                                 </tr>
 
-                                {isOpen && (
-                                  <tr>
-                                    <td
-                                      colSpan={5}
-                                      className="border-t border-gray-200 bg-stone-50/80 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/70"
-                                    >
-                                      <div className="space-y-4">
-                                        <Group title="Kategorie bazowe">
-                                          {metrics.BASE.filter(
-                                            (m) => m.enabled
-                                          ).map((m) => (
-                                            <MetricItem
-                                              key={m.id}
-                                              label={m.label}
-                                              value={p.base?.[m.key]}
-                                              onChange={(v) =>
-                                                updateMetric(
-                                                  "base",
-                                                  m.id,
-                                                  m.key,
-                                                  v,
-                                                  p
-                                                )
+{isOpen && (
+  <tr>
+    <td
+      colSpan={5}
+      className="border-t border-gray-200 bg-stone-50/80 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/70"
+    >
+      <div className="relative">
+        {!hasPosition && (
+          <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
+            <p className="mb-3 text-xs text-slate-700 dark:text-neutral-200 sm:text-sm">
+              Aby wprowadzić oceny, najpierw uzupełnij{" "}
+              <b>Pozycja w meczu</b>.
+            </p>
+            <button
+              type="button"
+              onClick={() => openPositionSelect(p.id)}
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 rounded-md px-3 btn-soft-hover bg-gray-900 text-white hover:bg-gray-800"
+            >
+              Pozycja w meczu
+            </button>
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "space-y-4",
+            !hasPosition && "pointer-events-none blur-[1.5px]"
+          )}
+        >
+                                          <Group title="Kategorie bazowe">
+                                            {metrics.BASE.filter(
+                                              (m) => m.enabled
+                                            ).map((m) => (
+                                              <MetricItem
+                                                key={m.id}
+                                                label={m.label}
+                                                value={p.base?.[m.key]}
+                                                onChange={(v) =>
+                                                  updateMetric(
+                                                    "base",
+                                                    m.id,
+                                                    m.key,
+                                                    v,
+                                                    p
+                                                  )
+                                                }
+                                              />
+                                            ))}
+                                          </Group>
+
+                                          {showGK && (
+                                            <Group title="Bramkarz (GK)">
+                                              {metrics.GK.filter(
+                                                (m) => m.enabled
+                                              ).map((m) => (
+                                                <MetricItem
+                                                  key={m.id}
+                                                  label={m.label}
+                                                  value={p.gk?.[m.key]}
+                                                  onChange={(v) =>
+                                                    updateMetric(
+                                                      "gk",
+                                                      m.id,
+                                                      m.key,
+                                                      v,
+                                                      p
+                                                    )
+                                                  }
+                                                />
+                                              ))}
+                                            </Group>
+                                          )}
+
+                                          {showDEF && (
+                                            <Group title="Obrońca (CB/FB/WB)">
+                                              {metrics.DEF.filter(
+                                                (m) => m.enabled
+                                             ).map((m) => (
+                                                <MetricItem
+                                                  key={m.id}
+                                                  label={m.label}
+                                                  value={p.def?.[m.key]}
+                                                  onChange={(v) =>
+                                                    updateMetric(
+                                                      "def",
+                                                      m.id,
+                                                      m.key,
+                                                      v,
+                                                      p
+                                                    )
+                                                  }
+                                                />
+                                              ))}
+                                            </Group>
+                                          )}
+
+                                          {showMID && (
+                                            <Group title="Pomocnik (6/8/10)">
+                                              {metrics.MID.filter(
+                                                (m) => m.enabled
+                                              ).map((m) => (
+                                                <MetricItem
+                                                  key={m.id}
+                                                  label={m.label}
+                                                  value={p.mid?.[m.key]}
+                                                  onChange={(v) =>
+                                                    updateMetric(
+                                                      "mid",
+                                                      m.id,
+                                                      m.key,
+                                                      v,
+                                                      p
+                                                    )
+                                                  }
+                                                />
+                                              ))}
+                                            </Group>
+                                          )}
+
+                                          {showATT && (
+                                            <Group title="Napastnik (9/7/11)">
+                                              {metrics.ATT.filter(
+                                                (m) => m.enabled
+                                              ).map((m) => (
+                                                <MetricItem
+                                                  key={m.id}
+                                                  label={m.label}
+                                                  value={p.att?.[m.key]}
+                                                  onChange={(v) =>
+                                                    updateMetric(
+                                                      "att",
+                                                      m.id,
+                                                      m.key,
+                                                      v,
+                                                      p
+                                                    )
+                                                  }
+                                                />
+                                              ))}
+                                            </Group>
+                                          )}
+
+                                          <div className="mt-2 rounded-md bg-none p-0 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
+                                            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
+                                              Notatka do zawodnika
+                                            </div>
+                                            <Textarea
+                                              value={p.note ?? ""}
+                                              onChange={(e) =>
+                                                updatePlayer(p.id, {
+                                                  note: e.target.value,
+                                                })
                                               }
+                                              placeholder="Notatka o zawodniku…"
+                                              className="min-h-[80px] rounded-md bg-white/90 text-sm dark:bg-neutral-950"
                                             />
-                                          ))}
-                                        </Group>
-
-                                        {showGK && (
-                                          <Group title="Bramkarz (GK)">
-                                            {metrics.GK.filter(
-                                              (m) => m.enabled
-                                            ).map((m) => (
-                                              <MetricItem
-                                                key={m.id}
-                                                label={m.label}
-                                                value={p.gk?.[m.key]}
-                                                onChange={(v) =>
-                                                  updateMetric(
-                                                    "gk",
-                                                    m.id,
-                                                    m.key,
-                                                    v,
-                                                    p
-                                                  )
-                                                }
-                                              />
-                                            ))}
-                                          </Group>
-                                        )}
-
-                                        {showDEF && (
-                                          <Group title="Obrońca (CB/FB/WB)">
-                                            {metrics.DEF.filter(
-                                              (m) => m.enabled
-                                            ).map((m) => (
-                                              <MetricItem
-                                                key={m.id}
-                                                label={m.label}
-                                                value={p.def?.[m.key]}
-                                                onChange={(v) =>
-                                                  updateMetric(
-                                                    "def",
-                                                    m.id,
-                                                    m.key,
-                                                    v,
-                                                    p
-                                                  )
-                                                }
-                                              />
-                                            ))}
-                                          </Group>
-                                        )}
-
-                                        {showMID && (
-                                          <Group title="Pomocnik (6/8/10)">
-                                            {metrics.MID.filter(
-                                              (m) => m.enabled
-                                            ).map((m) => (
-                                              <MetricItem
-                                                key={m.id}
-                                                label={m.label}
-                                                value={p.mid?.[m.key]}
-                                                onChange={(v) =>
-                                                  updateMetric(
-                                                    "mid",
-                                                    m.id,
-                                                    m.key,
-                                                    v,
-                                                    p
-                                                  )
-                                                }
-                                              />
-                                            ))}
-                                          </Group>
-                                        )}
-
-                                        {showATT && (
-                                          <Group title="Napastnik (9/7/11)">
-                                            {metrics.ATT.filter(
-                                              (m) => m.enabled
-                                            ).map((m) => (
-                                              <MetricItem
-                                                key={m.id}
-                                                label={m.label}
-                                                value={p.att?.[m.key]}
-                                                onChange={(v) =>
-                                                  updateMetric(
-                                                    "att",
-                                                    m.id,
-                                                    m.key,
-                                                    v,
-                                                    p
-                                                  )
-                                                }
-                                              />
-                                            ))}
-                                          </Group>
-                                        )}
-
-                                        <div className="mt-2 rounded-md bg-none p-0 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
-                                          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
-                                            Notatka do zawodnika
+                                            <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
+                                              Wewnętrzna notatka – widoczna
+                                              tylko w tej obserwacji.
+                                            </p>
                                           </div>
-                                          <Textarea
-                                            value={p.note ?? ""}
-                                            onChange={(e) =>
-                                              updatePlayer(p.id, {
-                                                note: e.target.value,
-                                              })
-                                            }
-                                            placeholder="Notatka o zawodniku…"
-                                            className="min-h-[80px] rounded-md bg-white/90 text-sm dark:bg-neutral-950"
-                                          />
-                                          <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
-                                            Wewnętrzna notatka – widoczna tylko
-                                            w tej obserwacji.
-                                          </p>
                                         </div>
                                       </div>
                                     </td>
@@ -1866,7 +1880,6 @@ export function ObservationEditor({
         </Card>
       </div>
 
-      {/* Modal: dodaj zawodnika do bazy */}
       {promotePlayer && (
         <>
           <div
@@ -1960,7 +1973,7 @@ function Group({
   children,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="mt-3 rounded-md bg-none p-0 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
