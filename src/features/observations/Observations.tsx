@@ -1833,7 +1833,7 @@ export default function ObservationsFeature({
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-9 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                 onClick={() => {
                                   setEditing(r);
                                   setPageMode("editor");
@@ -1872,7 +1872,7 @@ export default function ObservationsFeature({
                                   <Button
                                     size="icon"
                                     variant="outline"
-                                    className="h-9 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                    className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                     onClick={() => setConfirmTrashId(r.id)}
                                     aria-label="Przenieś do kosza"
                                   >
@@ -1890,7 +1890,7 @@ export default function ObservationsFeature({
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-9 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                   onClick={() => restoreFromTrash(r.id)}
                                   aria-label="Przywróć z kosza"
                                 >
@@ -1997,7 +1997,7 @@ export default function ObservationsFeature({
           <div className="fixed left-1/2 bottom-4 z-[240] -translate-x-1/2">
             <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
               <button
-                className="inline-flex h-9 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
                 onClick={() => setSelected(new Set())}
                 aria-label="Wyczyść zaznaczenie"
                 title="Wyczyść zaznaczenie"
@@ -2019,7 +2019,7 @@ export default function ObservationsFeature({
                 (r) => selected.has(r.id) && (r.bucket ?? "active") === "active"
               ) && scope === "active" ? (
                 <Button
-                  className="h-9 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                  className="h-8 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
                   onClick={bulkTrash}
                   aria-label="Przenieś do kosza"
                   title="Przenieś do kosza"
@@ -2028,7 +2028,7 @@ export default function ObservationsFeature({
                 </Button>
               ) : (
                 <Button
-                  className="h-9 w-8 rounded-md bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+                  className="h-8 w-8 rounded-md bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
                   onClick={bulkRestore}
                   aria-label="Przywróć"
                   title="Przywróć"
