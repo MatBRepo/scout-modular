@@ -830,7 +830,7 @@ function NavItem({
       <span className="truncate">{label}</span>
       {badge && (
         <span
-          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center rounded-md  px-2 py-0.5 text-[10px] font-medium text-slate-700  dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
           title={badgeTitle}
         >
           <span className="truncate">{badge}</span>

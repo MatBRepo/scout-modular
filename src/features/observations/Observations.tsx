@@ -235,8 +235,8 @@ const HINT_DISMISS_KEY = "s4s.observations.scrollHintDismissed";
 
 /* shared layout tokens (align with MyPlayersFeature) */
 const controlH = "h-9";
-const cellPad = "p-2";
-const rowH = "h-12";
+const cellPad = "p-1";
+const rowH = "h-10";
 
 /* ----------------------------- Small helpers ---------------------------- */
 
@@ -779,7 +779,7 @@ export default function ObservationsFeature({
       "Data",
       "Godzina",
       "Tryb",
-      "Status",
+      "Liga",
       "Kosz",
       "Zawodnicy",
     ];
@@ -907,7 +907,7 @@ export default function ObservationsFeature({
 
   /* -------- Pagination -------- */
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10); // 10/20/50
+  const [pageSize, setPageSize] = useState(1000); // 10/20/50
 
   useEffect(() => {
     setPage(1);
@@ -994,7 +994,7 @@ export default function ObservationsFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Aktywne</span>
-                      <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                         {counts.all}
                       </span>
                     </TabsTrigger>
@@ -1003,7 +1003,7 @@ export default function ObservationsFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Szkice</span>
-                      <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                         {counts.draft}
                       </span>
                     </TabsTrigger>
@@ -1111,30 +1111,43 @@ export default function ObservationsFeature({
                   />
                 </div>
 
-                {/* Filtry */}
-                <Button
-                  ref={filtersBtnRef}
-                  size="sm"
-                  variant="outline"
-                  className={`${controlH} border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
-                  onClick={() => {
-                    setFiltersOpen((v) => !v);
-                    setColsOpen(false);
-                    setMoreOpen(false);
-                  }}
-                  aria-pressed={filtersOpen}
-                  type="button"
-                >
-                  <ListFilter className="mr-0 md:mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    Filtry{filtersCount ? ` (${filtersCount})` : ""}
-                  </span>
-                </Button>
+{/* Filtry */}
+<div className="relative inline-flex">
+  <span
+    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-slate-500 
+               dark:bg-neutral-950 dark:text-neutral-300"
+  >
+    Filtry
+  </span>
+
+  <Button
+    ref={filtersBtnRef}
+    size="sm"
+    variant="outline"
+    className={`${controlH} border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+    onClick={() => {
+      setFiltersOpen((v) => !v);
+      setColsOpen(false);
+      setMoreOpen(false);
+    }}
+    aria-pressed={filtersOpen}
+    type="button"
+    title="Filtry"
+  >
+    <ListFilter className="h-4 w-4" />
+    {filtersCount ? (
+      <span className="hidden sm:inline">
+        {` (${filtersCount})`}
+      </span>
+    ) : null}
+  </Button>
+</div>
+
 
                 {/* Dodaj */}
                 <Button
                   size="sm"
-                  className={`${controlH} inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
+                  className={`${controlH} inline-flex secondary items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
                   onClick={addNew}
                   title="Skrót: N"
                   type="button"
@@ -1176,7 +1189,7 @@ export default function ObservationsFeature({
                 className="flex-1 flex items-center justify-center gap-2"
               >
                 <span>Aktywne</span>
-                <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                   {counts.all}
                 </span>
               </TabsTrigger>
@@ -1185,7 +1198,7 @@ export default function ObservationsFeature({
                 className="flex-1 flex items-center justify-center gap-2"
               >
                 <span>Szkice</span>
-                <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                   {counts.draft}
                 </span>
               </TabsTrigger>
@@ -1302,7 +1315,7 @@ export default function ObservationsFeature({
                     </select>
                   </div>
                   <div>
-                    <Label className="text-xs">Status</Label>
+                    <Label className="text-xs">Liga</Label>
                     <select
                       value={lifecycleFilter}
                       onChange={(e) =>
@@ -1718,7 +1731,7 @@ export default function ObservationsFeature({
                 )}
                 {visibleCols.status && (
                   <th className={`${cellPad} text-left`}>
-                    <SortHeader k="status">Status</SortHeader>
+                    <SortHeader k="status">Liga</SortHeader>
                   </th>
                 )}
                 {visibleCols.players && (
@@ -1766,37 +1779,31 @@ export default function ObservationsFeature({
                     )}
 
 {visibleCols.match && (
-  <td className={`${cellPad} align-top`}>
+  <td className={`${cellPad} align-center`}>
     <div className="min-w-0">
       <div className="truncate font-medium text-gray-900 dark:text-neutral-100">
         {r.match || "—"}
       </div>
 
-      {/* ONLY data/time under the match */}
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-        <span className="inline-flex items-center gap-1 text-gray-600 dark:text-neutral-400">
-          <CalendarIcon className="h-3.5 w-3.5" />
-          {fmtDate(r.date)} {r.time || "—"}
-        </span>
-      </div>
+     
     </div>
   </td>
 )}
 
 
                     {visibleCols.date && (
-                      <td className={`${cellPad} hidden align-top sm:table-cell`}>
+                      <td className={`${cellPad} hidden align-center sm:table-cell`}>
                         {fmtDate(r.date)}
                       </td>
                     )}
                     {visibleCols.time && (
-                      <td className={`${cellPad} hidden align-top sm:table-cell`}>
+                      <td className={`${cellPad} hidden align-center sm:table-cell`}>
                         {r.time || "—"}
                       </td>
                     )}
 
 {visibleCols.mode && (
-  <td className={`${cellPad} hidden align-top sm:table-cell`}>
+  <td className={`${cellPad} hidden align-center sm:table-cell`}>
     <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-neutral-800 dark:text-neutral-100">
       {mode === "live" ? "Live" : "TV"}
     </span>
@@ -1804,7 +1811,7 @@ export default function ObservationsFeature({
 )}
 
 {visibleCols.status && (
-  <td className={`${cellPad} align-top`}>
+  <td className={`${cellPad} align-center`}>
     <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-neutral-800 dark:text-neutral-100">
       {status === "final" ? "Finalna" : "Szkic"}
     </span>
@@ -1812,13 +1819,13 @@ export default function ObservationsFeature({
 )}
 
                     {visibleCols.players && (
-                      <td className={`${cellPad} hidden align-top sm:table-cell`}>
+                      <td className={`${cellPad} hidden align-center sm:table-cell`}>
                         <GrayTag>{pCount}</GrayTag>
                       </td>
                     )}
 
                     {visibleCols.actions && (
-                      <td className={`${cellPad} text-right align-top`}>
+                      <td className={`${cellPad} text-right align-center`}>
                         <div className="inline-flex items-center gap-2">
                           {/* Edycja */}
                           <Tooltip>

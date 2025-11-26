@@ -784,8 +784,8 @@ export default function MyPlayersFeature({
 
   // CONSISTENT HEIGHTS
   const controlH = "h-9";
-  const cellPad = "p-2";
-  const rowH = "h-12";
+  const cellPad = "p-1";
+  const rowH = "h-10";
 
   // Keyboard shortcuts (+ Esc closes panels)
   useEffect(() => {
@@ -945,7 +945,7 @@ export default function MyPlayersFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Wszyscy</span>
-                      <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                         {tabCounts.all}
                       </span>
                     </TabsTrigger>
@@ -954,7 +954,7 @@ export default function MyPlayersFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Znani</span>
-                      <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                         {tabCounts.known}
                       </span>
                     </TabsTrigger>
@@ -963,7 +963,7 @@ export default function MyPlayersFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Nieznani</span>
-                      <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                         {tabCounts.unknown}
                       </span>
                     </TabsTrigger>
@@ -1089,33 +1089,45 @@ export default function MyPlayersFeature({
                 </div>
 
                 {/* Filtry */}
-                <Button
-                  ref={filterBtnRef}
-                  type="button"
-                  variant="outline"
-                  className={`${controlH} border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
-                  aria-pressed={filtersOpen}
-                  onClick={() => {
-                    setFiltersOpen((v) => !v);
-                    setColsOpen(false);
-                    setMoreOpen(false);
-                    setMoreSheetOpen(false);
-                  }}
-                  title="Filtry"
-                >
-                  <ListFilter className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    Filtry
-                    {filtersCount ? ` (${filtersCount})` : ""}
-                  </span>
-                </Button>
+<div className="relative inline-flex">
+  <span
+    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-slate-500 
+               dark:bg-neutral-950 dark:text-neutral-300"
+  >
+    Filtry
+  </span>
+
+    <Button
+    ref={filterBtnRef}
+    type="button"
+    variant="outline"
+    className={`${controlH} border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+    aria-pressed={filtersOpen}
+    onClick={() => {
+      setFiltersOpen((v) => !v);
+      setColsOpen(false);
+      setMoreOpen(false);
+      setMoreSheetOpen(false);
+    }}
+    title="Filtry"
+  >
+    <ListFilter className="h-4 w-4" />
+    {filtersCount ? (
+      <span className="hidden sm:inline">
+        {` (${filtersCount})`}
+      </span>
+    ) : null}
+  </Button>
+
+</div>
+
 
                 {/* Dodaj */}
                 <Button
                   type="button"
                   title="Skrót: N"
                   onClick={() => router.push("/players/new")}
-                  className={`${controlH} inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
+                  className={`${controlH} primary inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
                 >
                   <AddPlayerIcon className="mr-0  h-4 w-4" />
                 </Button>
@@ -1161,7 +1173,7 @@ export default function MyPlayersFeature({
                 className="flex-1 flex items-center justify-center gap-2"
               >
                 <span>Wszyscy</span>
-                <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                   {tabCounts.all}
                 </span>
               </TabsTrigger>
@@ -1170,7 +1182,7 @@ export default function MyPlayersFeature({
                 className="flex-1 flex items-center justify-center gap-2"
               >
                 <span>Znani</span>
-                <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                   {tabCounts.known}
                 </span>
               </TabsTrigger>
@@ -1179,7 +1191,7 @@ export default function MyPlayersFeature({
                 className="flex-1 flex items-center justify-center gap-2"
               >
                 <span>Nieznani</span>
-                <span className="rounded-full bg-transparent  px-1.5 text-[10px] font-medium">
+                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
                   {tabCounts.unknown}
                 </span>
               </TabsTrigger>
@@ -2029,338 +2041,339 @@ function PlayersTable({
       ref={wrapRef as any}
       className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
     >
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 z-10 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-          <tr>
-            {visibleCols.photo && (
-              <th
-                className={`${cellPad} text-left font-medium w-16`}
-              ></th>
-            )}
-            {visibleCols.select && (
-              <th
-                className={`${cellPad} text-left font-medium w-10`}
-              >
-                <Checkbox
-                  checked={
-                    rows.length === 0
-                      ? false
-                      : allChecked
-                      ? true
-                      : someChecked
-                      ? "indeterminate"
-                      : false
-                  }
-                  onCheckedChange={(v) => {
-                    if (v)
-                      setSelected(
-                        new Set([
-                          ...selected,
-                          ...rows.map((f) => f.id),
-                        ])
-                      );
-                    else {
-                      const set = new Set(selected);
-                      rows.forEach((r) => set.delete(r.id));
-                      setSelected(set);
-                    }
-                  }}
-                  aria-label="Zaznacz wszystkie widoczne"
-                />
-              </th>
-            )}
-            {visibleCols.name && (
-              <th className={`${cellPad} text-left`}>
-                <SortHeader k="name">Nazwa</SortHeader>
-              </th>
-            )}
-            {visibleCols.club && (
-              <th className={`${cellPad} text-left`}>
-                <SortHeader k="club">Klub</SortHeader>
-              </th>
-            )}
-            {visibleCols.pos && (
-              <th className={`${cellPad} text-left`}>
-                <SortHeader k="pos">Pozycja</SortHeader>
-              </th>
-            )}
-            {visibleCols.age && (
-              <th className={`${cellPad} text-left`}>
-                <SortHeader k="age">Wiek</SortHeader>
-              </th>
-            )}
-            {visibleCols.progress && (
-              <th className={`${cellPad} text-left`}>
-                <SortHeader k="progress">Wypełnienie profilu</SortHeader>
-              </th>
-            )}
-            {visibleCols.obs && (
-              <th className={`${cellPad} text-left`}>
-                <SortHeader k="obs">Obserwacje</SortHeader>
-              </th>
-            )}
-            {visibleCols.actions && (
-              <th
-                className={`${cellPad} text-right font-medium`}
-              >
-                Akcje
-              </th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            const jersey = getJerseyNo(r.name);
-            const isConfirmingTrash = confirmTrashId === r.id;
+<table className="w-full table-auto text-sm">
+  <thead className="sticky top-0 z-10 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+    <tr>
+      {visibleCols.photo && (
+        <th
+          className={`${cellPad} w-px whitespace-nowrap text-left font-medium`}
+        ></th>
+      )}
+      {visibleCols.select && (
+        <th
+          className={`${cellPad} text-left font-medium w-10`}
+        >
+          <Checkbox
+            checked={
+              rows.length === 0
+                ? false
+                : allChecked
+                ? true
+                : someChecked
+                ? "indeterminate"
+                : false
+            }
+            onCheckedChange={(v) => {
+              if (v)
+                setSelected(
+                  new Set([
+                    ...selected,
+                    ...rows.map((f) => f.id),
+                  ])
+                );
+              else {
+                const set = new Set(selected);
+                rows.forEach((r) => set.delete(r.id));
+                setSelected(set);
+              }
+            }}
+            aria-label="Zaznacz wszystkie widoczne"
+          />
+        </th>
+      )}
+      {visibleCols.name && (
+        <th className={`${cellPad} text-left`}>
+          <SortHeader k="name">Nazwa</SortHeader>
+        </th>
+      )}
+      {visibleCols.club && (
+        <th className={`${cellPad} text-left`}>
+          <SortHeader k="club">Klub</SortHeader>
+        </th>
+      )}
+      {visibleCols.pos && (
+        <th className={`${cellPad} text-left`}>
+          <SortHeader k="pos">Pozycja</SortHeader>
+        </th>
+      )}
+      {visibleCols.age && (
+        <th className={`${cellPad} text-left`}>
+          <SortHeader k="age">Wiek</SortHeader>
+        </th>
+      )}
+      {visibleCols.progress && (
+        <th className={`${cellPad} text-left`}>
+          <SortHeader k="progress">Wypełnienie profilu</SortHeader>
+        </th>
+      )}
+      {visibleCols.obs && (
+        <th className={`${cellPad} text-left`}>
+          <SortHeader k="obs">Obserwacje</SortHeader>
+        </th>
+      )}
+      {visibleCols.actions && (
+        <th
+          className={`${cellPad} text-right font-medium`}
+        >
+          Akcje
+        </th>
+      )}
+    </tr>
+  </thead>
+  <tbody>
+    {rows.map((r) => {
+      const jersey = getJerseyNo(r.name);
+      const isConfirmingTrash = confirmTrashId === r.id;
 
-            return (
-              <tr
-                key={r.id}
-                className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
-                onDoubleClick={() => onOpen(r.id)}
-              >
-                {visibleCols.photo && (
-                  <td className={cellPad}>
-                    <div className="relative">
-                      {r._known ? (
-                        r.photo ? (
-                          <img
-                            src={r.photo}
-                            alt={r.name}
-                            className="h-9 w-10 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
-                            {getInitials(r.name)}
-                          </div>
-                        )
-                      ) : jersey ? (
-                        // NIEZNANY + jest numer koszulki → pokazujemy sam numer
-                        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
-                          {jersey}
-                        </div>
-                      ) : (
-                        // NIEZNANY + brak numeru → sama koszulka
-                        <div className="flex h-9 w-10 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
-                          <PlayerOnlyTshirt
-                            className="h-6 w-6"
-                            strokeWidthAll={14}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                )}
-
-                {visibleCols.select && (
-                  <td className={cellPad}>
-                    <Checkbox
-                      checked={selected.has(r.id)}
-                      onCheckedChange={(v) => {
-                        const copy = new Set(selected);
-                        if (v) copy.add(r.id);
-                        else copy.delete(r.id);
-                        setSelected(copy);
-                      }}
-                      aria-label={`Zaznacz ${r.name}`}
+      return (
+        <tr
+          key={r.id}
+          className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
+          onDoubleClick={() => onOpen(r.id)}
+        >
+          {visibleCols.photo && (
+            <td className={`${cellPad} w-px whitespace-nowrap`}>
+              <div className="relative">
+                {r._known ? (
+                  r.photo ? (
+                    <img
+                      src={r.photo}
+                      alt={r.name}
+                      className="h-9 w-9 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
+                      loading="lazy"
                     />
-                  </td>
-                )}
-
-                {visibleCols.name && (
-                  <td
-                    className={`${cellPad} max-w-[260px] text-gray-900 dark:text-neutral-100`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="truncate"
-                        title={r.name}
-                      >
-                        {r.name}
-                      </span>
-                      <KnownBadge known={r._known} />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
+                      {getInitials(r.name)}
                     </div>
-                  </td>
+                  )
+                ) : jersey ? (
+                  // NIEZNANY + jest numer koszulki → pokazujemy sam numer
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
+                    {jersey}
+                  </div>
+                ) : (
+                  // NIEZNANY + brak numeru → sama koszulka
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
+                    <PlayerOnlyTshirt
+                      className="h-6 w-6"
+                      strokeWidthAll={14}
+                    />
+                  </div>
                 )}
-                {visibleCols.club && (
-                  <td
-                    className={`${cellPad} max-w-[220px] text-gray-700 dark:text-neutral-200`}
-                  >
-                    <span
-                      className="truncate"
-                      title={r.club}
-                    >
-                      {r.club}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.pos && (
-                  <td className={cellPad}>
-                    <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
-                      {r.pos}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.age && (
-                  <td
-                    className={`${cellPad} text-gray-700 dark:text-neutral-200`}
-                  >
-                    {r.age}
-                  </td>
-                )}
-
-                {visibleCols.progress && (
-                  <td className={cellPad}>
-                    <div className="flex items-center gap-2">
-                      <div className="relative h-2 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-800">
-                        <div
-                          className={`h-full ${progressBarColor(
-                            r._progress
-                          )} transition-[width] duration-300`}
-                          style={{
-                            width: `${r._progress}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-[11px] font-medium text-gray-700 dark:text-neutral-300 tabular-nums">
-                        {r._progress}%
-                      </span>
-                    </div>
-                  </td>
-                )}
-
-                {visibleCols.obs && (
-                  <td className={cellPad}>
-                    <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-                      {r._obs}
-                    </span>
-                  </td>
-                )}
-                {visibleCols.actions && (
-                  <td
-                    className={`${cellPad} text-right`}
-                  >
-                    <div className="flex justify-end gap-1.5">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-9 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpen(r.id);
-                            }}
-                            aria-label={
-                              r._known
-                                ? "Edytuj"
-                                : "Uzupełnij dane"
-                            }
-                          >
-                            {r._known ? (
-                              <Pencil className="h-4 w-4" />
-                            ) : (
-                              <FileEdit className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {r._known
-                            ? "Edytuj"
-                            : "Uzupełnij dane"}
-                        </TooltipContent>
-                      </Tooltip>
-
-                      {scope === "active" ? (
-                        isConfirmingTrash ? (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onTrash(r.id);
-                                setConfirmTrashId(null);
-                              }}
-                            >
-                              Tak
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setConfirmTrashId(null);
-                              }}
-                            >
-                              Nie
-                            </Button>
-                          </div>
-                        ) : (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-9 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setConfirmTrashId(r.id);
-                                }}
-                                aria-label="Przenieś do kosza"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              Przenieś do kosza
-                            </TooltipContent>
-                          </Tooltip>
-                        )
-                      ) : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="h-9 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onRestore(r.id);
-                              }}
-                              aria-label="Przywróć"
-                            >
-                              <Undo2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Przywróć
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                    </div>
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-          {rows.length === 0 && (
-            <tr>
-              <td
-                colSpan={
-                  Object.values(visibleCols).filter(Boolean)
-                    .length || 1
-                }
-                className={`${cellPad} text-center text-sm text-dark dark:text-neutral-400`}
-              >
-                Brak wyników dla bieżących filtrów.
-              </td>
-            </tr>
+              </div>
+            </td>
           )}
-        </tbody>
-      </table>
+
+          {visibleCols.select && (
+            <td className={cellPad}>
+              <Checkbox
+                checked={selected.has(r.id)}
+                onCheckedChange={(v) => {
+                  const copy = new Set(selected);
+                  if (v) copy.add(r.id);
+                  else copy.delete(r.id);
+                  setSelected(copy);
+                }}
+                aria-label={`Zaznacz ${r.name}`}
+              />
+            </td>
+          )}
+
+          {visibleCols.name && (
+            <td
+              className={`${cellPad} max-w-[260px] text-gray-900 dark:text-neutral-100`}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="truncate"
+                  title={r.name}
+                >
+                  {r.name}
+                </span>
+                <KnownBadge known={r._known} />
+              </div>
+            </td>
+          )}
+          {visibleCols.club && (
+            <td
+              className={`${cellPad} max-w-[220px] text-gray-700 dark:text-neutral-200`}
+            >
+              <span
+                className="truncate"
+                title={r.club}
+              >
+                {r.club}
+              </span>
+            </td>
+          )}
+          {visibleCols.pos && (
+            <td className={cellPad}>
+              <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                {r.pos}
+              </span>
+            </td>
+          )}
+          {visibleCols.age && (
+            <td
+              className={`${cellPad} text-gray-700 dark:text-neutral-200`}
+            >
+              {r.age}
+            </td>
+          )}
+
+          {visibleCols.progress && (
+            <td className={cellPad}>
+              <div className="flex items-center gap-2">
+                <div className="relative h-2 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-800">
+                  <div
+                    className={`h-full ${progressBarColor(
+                      r._progress
+                    )} transition-[width] duration-300`}
+                    style={{
+                      width: `${r._progress}%`,
+                    }}
+                  />
+                </div>
+                <span className="text-[11px] font-medium text-gray-700 dark:text-neutral-300 tabular-nums">
+                  {r._progress}%
+                </span>
+              </div>
+            </td>
+          )}
+
+          {visibleCols.obs && (
+            <td className={cellPad}>
+              <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                {r._obs}
+              </span>
+            </td>
+          )}
+          {visibleCols.actions && (
+            <td
+              className={`${cellPad} text-right`}
+            >
+              <div className="flex justify-end gap-1.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-9 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpen(r.id);
+                      }}
+                      aria-label={
+                        r._known
+                          ? "Edytuj"
+                          : "Uzupełnij dane"
+                      }
+                    >
+                      {r._known ? (
+                        <Pencil className="h-4 w-4" />
+                      ) : (
+                        <FileEdit className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {r._known
+                      ? "Edytuj"
+                      : "Uzupełnij dane"}
+                  </TooltipContent>
+                </Tooltip>
+
+                {scope === "active" ? (
+                  isConfirmingTrash ? (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTrash(r.id);
+                          setConfirmTrashId(null);
+                        }}
+                      >
+                        Tak
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmTrashId(null);
+                        }}
+                      >
+                        Nie
+                      </Button>
+                    </div>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-9 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmTrashId(r.id);
+                          }}
+                          aria-label="Przenieś do kosza"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Przenieś do kosza
+                      </TooltipContent>
+                    </Tooltip>
+                  )
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-9 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRestore(r.id);
+                        }}
+                        aria-label="Przywróć"
+                      >
+                        <Undo2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Przywróć
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </td>
+          )}
+        </tr>
+      );
+    })}
+    {rows.length === 0 && (
+      <tr>
+        <td
+          colSpan={
+            Object.values(visibleCols).filter(Boolean)
+              .length || 1
+          }
+          className={`${cellPad} text-center text-sm text-dark dark:text-neutral-400`}
+        >
+          Brak wyników dla bieżących filtrów.
+        </td>
+      </tr>
+    )}
+  </tbody>
+</table>
+
     </div>
   );
 }
@@ -2725,102 +2738,95 @@ function QuickObservation({
             </div>
 
             <div className="max-h-90 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-                  <tr>
-                    <th className="p-2 text-left font-medium">
-                      #
-                    </th>
-                    <th className="p-2 text-left font-medium">
-                      Mecz
-                    </th>
-                    <th className="p-2 text-left font-medium">
-                      Zawodnik
-                    </th>
-                    <th className="p-2 text-left font-medium">
-                      Data
-                    </th>
-                    <th className="p-2 text-left font-medium">
-                      Tryb
-                    </th>
-                    <th className="p-2 text-left font-medium">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {existingFiltered.map((o) => (
-                    <tr
-                      key={o.id}
-                      className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
-                        obsSelectedId === o.id
-                          ? "bg-blue-50/60 dark:bg-blue-900/20"
-                          : ""
-                      }`}
-                      onClick={() => setObsSelectedId(o.id)}
-                    >
-                      <td className="p-2">
-                        <input
-                          type="radio"
-                          name="obsPick"
-                          checked={obsSelectedId === o.id}
-                          onChange={() =>
-                            setObsSelectedId(o.id)
-                          }
-                        />
-                      </td>
-                      <td className="p-2">
-                        {o.match || "—"}
-                      </td>
-                      <td className="p-2">
-                        {o.player || "—"}
-                      </td>
-                      <td className="p-2">
-                        {[o.date || "—", o.time || ""]
-                          .filter(Boolean)
-                          .join(" ")}
-                      </td>
-                      <td className="p-2">
-                        <span
-                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
-                            // @ts-ignore
-                            (o as any).mode === "tv"
-                              ? "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200"
-                              : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                          }`}
-                        >
-                          {(o as any).mode === "tv"
-                            ? "TV"
-                            : "Live"}
-                        </span>
-                      </td>
-                      <td className="p-2">
-                        <span
-                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
-                            o.status === "final"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
-                              : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-                          }`}
-                        >
-                          {o.status === "final"
-                            ? "Finalna"
-                            : "Szkic"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {existingFiltered.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+            <table className="table-auto w-fit text-sm">
+              <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                <tr>
+                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                    #
+                  </th>
+                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                    Mecz
+                  </th>
+                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                    Zawodnik
+                  </th>
+                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                    Data
+                  </th>
+                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                    Tryb
+                  </th>
+                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {existingFiltered.map((o) => (
+                  <tr
+                    key={o.id}
+                    className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
+                      obsSelectedId === o.id
+                        ? "bg-blue-50/60 dark:bg-blue-900/20"
+                        : ""
+                    }`}
+                    onClick={() => setObsSelectedId(o.id)}
+                  >
+                    <td className="w-px whitespace-nowrap p-2">
+                      <input
+                        type="radio"
+                        name="obsPick"
+                        checked={obsSelectedId === o.id}
+                        onChange={() => setObsSelectedId(o.id)}
+                      />
+                    </td>
+                    <td className="w-px whitespace-nowrap p-2">
+                      {o.match || "—"}
+                    </td>
+                    <td className="w-px whitespace-nowrap p-2">
+                      {o.player || "—"}
+                    </td>
+                    <td className="w-px whitespace-nowrap p-2">
+                      {[o.date || "—", o.time || ""].filter(Boolean).join(" ")}
+                    </td>
+                    <td className="w-px whitespace-nowrap p-2">
+                      <span
+                        className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
+                          // @ts-ignore
+                          (o as any).mode === "tv"
+                            ? "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
+                        }`}
                       >
-                        Brak obserwacji dla podanych kryteriów.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                        {(o as any).mode === "tv" ? "TV" : "Live"}
+                      </span>
+                    </td>
+                    <td className="w-px whitespace-nowrap p-2">
+                      <span
+                        className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
+                          o.status === "final"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+                        }`}
+                      >
+                        {o.status === "final" ? "Finalna" : "Szkic"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {existingFiltered.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                    >
+                      Brak obserwacji dla podanych kryteriów.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
             </div>
 
             <div className="flex flex-wrap items-start justify-between">

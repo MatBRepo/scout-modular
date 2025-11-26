@@ -247,7 +247,7 @@ html, body { height: 100%; }
 }
 
 
-@layer components {
+/* @layer components {
   .btn-soft-hover {
     @apply transition-transform duration-150 ease-out
       hover:scale-[1.01]
@@ -255,7 +255,7 @@ html, body { height: 100%; }
       hover:shadow-md
       focus-visible:ring focus-visible:ring-indigo-500/60;
   }
-}
+} */
 
 
 .width-fit {width: fit-content !important;}

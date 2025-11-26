@@ -25,6 +25,7 @@ import {
   Loader2,
   CheckCircle2,
   PlayCircle,
+  GitCompare,
   Monitor,
   Search,
   Plus,
@@ -755,7 +756,6 @@ export function ObservationEditor({
         .eq("team_a", rowTeamA)
         .eq("team_b", rowTeamB)
         .eq("competition", rowCompetition)
-        .eq("bucket", "active");
 
       const { count, error: dupError } = isNewObservation
         ? await baseQuery
@@ -1109,11 +1109,13 @@ export function ObservationEditor({
                               )}
                             >
                               <div className="flex items-center gap-2">
-                                {isLive ? (
-                                  <PlayCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-                                ) : (
-                                  <Monitor className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-                                )}
+                               {isLive ? (
+  <PlayCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+) : isTv ? (
+  <Monitor className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+) : (
+  <GitCompare className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+)}
                                 <div>
                                   <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-800 dark:text-neutral-50">
                                     {title}

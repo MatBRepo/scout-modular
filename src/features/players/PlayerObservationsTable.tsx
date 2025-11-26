@@ -398,10 +398,10 @@ export default function PlayerObservationsTable({
                 >
                   Ten zawodnik nie ma jeszcze żadnych obserwacji.
                   <br />
-                  <Button size="sm" className="mt-3" onClick={addNew}>
+                  {/* <Button size="sm" className="mt-3" onClick={addNew}>
                     <Plus className="mr-1 h-4 w-4" />
                     Dodaj pierwszą obserwację
-                  </Button>
+                  </Button> */}
                 </td>
               </tr>
             )}

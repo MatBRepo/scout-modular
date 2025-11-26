@@ -18,7 +18,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 import type { ReadonlyURLSearchParams } from "next/navigation";
-import { Menu, ChevronRight } from "lucide-react";
+import { Menu, ChevronRight, ChevronDown } from "lucide-react";
 import { HomeIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import {
@@ -156,7 +156,7 @@ function getCrumbLabel(
 }
 
 /* ===== Simple breadcrumb builder ===== */
-type Crumb = { label: string; href: string; isEllipsis?: boolean };
+type Crumb = { label: string; href: string };
 
 function buildBreadcrumb(
   pathname: string,
@@ -245,23 +245,6 @@ function AppShell({
   const hideHeaderActions =
     isPlayersSubpage || isObservationsSubpage || isObsCreateQuery;
 
-  const totalCrumbs = crumbs.length;
-  const shouldCollapse = totalCrumbs > 2 && !breadcrumbsExpanded;
-
-  let displayedCrumbs: Crumb[] = crumbs;
-
-  if (shouldCollapse) {
-    displayedCrumbs = [
-      crumbs[0],
-      { label: "[...]", href: "#", isEllipsis: true },
-      crumbs[totalCrumbs - 1],
-    ];
-  }
-
-  // Crumbs that are hidden inside the tooltip (middle path)
-  const hiddenCrumbs =
-    totalCrumbs > 2 ? crumbs.slice(1, totalCrumbs - 1) : [];
-
   return (
     <>
       <div className="pl-64 max-lg:pl-0">
@@ -280,102 +263,16 @@ function AppShell({
               </button>
             )}
 
-            {/* SHORT BREADCRUMB IN HEADER */}
+            {/* BREADCRUMB W HEADERZE */}
             <nav
               aria-label="Breadcrumb"
               className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
             >
-              <ol className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300">
-                {displayedCrumbs.map((c, i) => {
-                  const last = i === displayedCrumbs.length - 1;
+              {/* DESKTOP: pełna ścieżka */}
+              <ol className="hidden items-center gap-1 text-sm text-slate-600 dark:text-neutral-300 md:flex">
+                {crumbs.map((c, i) => {
+                  const last = i === crumbs.length - 1;
                   const label = c.label || "Strona główna";
-
-                  if (c.isEllipsis) {
-                    return (
-                      <li
-                        key="breadcrumb-ellipsis"
-                        className="relative flex min-w-0 items-center"
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setBreadcrumbsExpanded((prev) => !prev)
-                          }
-                          className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-neutral-300 dark:ring-neutral-700 dark:hover:bg-neutral-900"
-                          aria-label="Pokaż ukrytą ścieżkę nawigacji"
-                          title="Pokaż ukrytą ścieżkę nawigacji"
-                        >
-                          [...]
-                        </button>
-                        <ChevronRight
-                          className="mx-1 h-4 w-4 opacity-60"
-                          aria-hidden="true"
-                        />
-
-                        {/* TOOLTIP WITH HIDDEN PATH – MOBILE ONLY */}
-                        {breadcrumbsExpanded && hiddenCrumbs.length > 0 && (
-                          <>
-                            {/* click outside area */}
-                            <button
-                              type="button"
-                              className="fixed inset-0 z-[70] cursor-default md:hidden"
-                              aria-hidden="true"
-                              onClick={() =>
-                                setBreadcrumbsExpanded(false)
-                              }
-                            />
-                            <div className="absolute left-0 top-full z-[71] mt-1 max-w-[80vw] rounded-md border border-slate-200 bg-white px-2 py-1 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900 md:hidden">
-                              <ol className="flex flex-wrap items-center gap-1 text-slate-700 dark:text-neutral-100">
-                                {hiddenCrumbs.map((hc, idx) => {
-                                  const lastHidden =
-                                    idx === hiddenCrumbs.length - 1;
-                                  const hiddenLabel =
-                                    hc.label || "Strona główna";
-
-                                  return (
-                                    <li
-                                      key={hc.href}
-                                      className="flex min-w-0 items-center"
-                                    >
-                                      {!lastHidden ? (
-                                        <>
-                                          <Link
-                                            href={hc.href}
-                                            className="truncate hover:underline normal-case"
-                                            title={hiddenLabel}
-                                            onClick={() =>
-                                              setBreadcrumbsExpanded(
-                                                false
-                                              )
-                                            }
-                                          >
-                                            <span className="normal-case">
-                                              {hiddenLabel}
-                                            </span>
-                                          </Link>
-                                          <ChevronRight
-                                            className="mx-1 h-3.5 w-3.5 opacity-60"
-                                            aria-hidden="true"
-                                          />
-                                        </>
-                                      ) : (
-                                        <span
-                                          className="truncate font-medium text-slate-900 dark:text-neutral-50 normal-case"
-                                          title={hiddenLabel}
-                                        >
-                                          {hiddenLabel}
-                                        </span>
-                                      )}
-                                    </li>
-                                  );
-                                })}
-                              </ol>
-                            </div>
-                          </>
-                        )}
-                      </li>
-                    );
-                  }
 
                   return (
                     <li key={c.href} className="flex min-w-0 items-center">
@@ -412,9 +309,108 @@ function AppShell({
                   );
                 })}
               </ol>
+
+              {/* MOBILE: tylko home + przycisk do rozwinięcia pełnej ścieżki */}
+              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300 md:hidden">
+                <Link
+                  href="/"
+                  className="flex items-center"
+                  aria-label="Strona główna"
+                >
+                  <HomeIcon className="h-4 w-4" aria-hidden="true" />
+                </Link>
+                <ChevronRight
+                  className="h-4 w-4 opacity-60"
+                  aria-hidden="true"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setBreadcrumbsExpanded((prev) => !prev)
+                  }
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white/70 text-slate-600 shadow-sm hover:bg-slate-50 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                  aria-label={
+                    breadcrumbsExpanded
+                      ? "Ukryj pełną ścieżkę nawigacji"
+                      : "Pokaż pełną ścieżkę nawigacji"
+                  }
+                >
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${
+                      breadcrumbsExpanded ? "rotate-180" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+
+              {/* MOBILE: panel z pełnym breadcrumbem pod headerem */}
+              {breadcrumbsExpanded && (
+                <>
+                  {/* klik poza zamyka panel */}
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-[70] cursor-default md:hidden"
+                    aria-hidden="true"
+                    onClick={() => setBreadcrumbsExpanded(false)}
+                  />
+                  <div className="absolute left-[40px] top-full z-[71] mt-2 max-w-[90vw] rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900 md:hidden">
+                    <ol className="flex flex-wrap items-center gap-1 text-slate-700 dark:text-neutral-100">
+                      {crumbs.map((c, i) => {
+                        const last = i === crumbs.length - 1;
+                        const label = c.label || "Strona główna";
+
+                        return (
+                          <li
+                            key={c.href}
+                            className="flex min-w-0 items-center"
+                          >
+                            {!last ? (
+                              <>
+                                <Link
+                                  href={c.href}
+                                  className="truncate hover:underline normal-case"
+                                  title={label}
+                                  onClick={() =>
+                                    setBreadcrumbsExpanded(false)
+                                  }
+                                >
+                                  {i === 0 ? (
+                                    <HomeIcon
+                                      className="h-4 w-4"
+                                      aria-hidden="true"
+                                    />
+                                  ) : (
+                                    <span className="normal-case">
+                                      {label}
+                                    </span>
+                                  )}
+                                </Link>
+                                <ChevronRight
+                                  className="mx-1 h-3.5 w-3.5 opacity-60"
+                                  aria-hidden="true"
+                                />
+                              </>
+                            ) : (
+                              <span
+                                className="truncate font-medium text-slate-900 dark:text-neutral-50 normal-case"
+                                title={label}
+                              >
+                                {label}
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                </>
+              )}
             </nav>
 
-            <div className="flex items-end mx-auto justify-end py-2 md:py-3 w-full max-w-[1400px] pr-0 sm:px-0">
+<div
+  className="flex items-end mx-auto justify-end w-full max-w-[1400px] py-2 md:py-3 pr-0 md:pr-5 2xl:pr-0"
+>
               {isAuthed ? (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
@@ -432,7 +428,7 @@ function AppShell({
                     <>
                       <div className="flex items-center gap-2 md:hidden">
                         <Button
-                          className="h-9 w-9 rounded-md bg-gray-900 text-white hover:bg-gray-800"
+                          className="h-9 w-9 primary rounded-md bg-gray-900 text-white hover:bg-gray-800"
                           aria-label="Dodaj zawodnika"
                           onClick={onAddPlayer}
                           title="Dodaj zawodnika"
@@ -443,7 +439,7 @@ function AppShell({
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-9 w-9 rounded-md border-none dark:border-neutral-700"
+                          className="h-9 w-9 rounded-md  dark:border-neutral-70 border border-stone-300"
                           aria-label="Dodaj obserwację"
                           onClick={onAddObservation}
                           title="Dodaj obserwację"

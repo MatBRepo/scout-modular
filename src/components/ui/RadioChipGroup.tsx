@@ -40,7 +40,7 @@ export function RadioChipGroup({
     layout === "wrap"
       ? "flex flex-wrap gap-2 !mt-0"
       : cn(
-          "grid gap-2 !mt-0",
+          "grid gap-2 !mt-0 w-fit",
           layout === "grid-2" && "grid-cols-2",
           layout === "grid-3" && "grid-cols-3",
           layout === "grid-4" && "grid-cols-4"
