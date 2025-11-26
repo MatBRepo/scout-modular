@@ -960,7 +960,7 @@ export function ObservationEditor({
     }
 
 autoSaveTimerRef.current = window.setTimeout(() => {
-  void saveObservation({ closeAfter: false, externalSave: true }).then(
+  void saveObservation({ closeAfter: false, externalSave: false }).then(
     () => {
       autoSaveLastKeyRef.current = autoSaveKey;
     }

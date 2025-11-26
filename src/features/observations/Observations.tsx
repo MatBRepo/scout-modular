@@ -685,6 +685,7 @@ function save(obs: XO) {
 }
 
 
+
   function moveToTrash(id: number) {
     const next = rows.map((x) =>
       x.id === id ? { ...x, bucket: "trash" as Bucket } : x
