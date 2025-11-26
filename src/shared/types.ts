@@ -21,4 +21,5 @@ export type Observation = {
   date: string; // yyyy-mm-dd
   time: string; // hh:mm
   status: "draft" | "final";
+   competition: string | null;
 };

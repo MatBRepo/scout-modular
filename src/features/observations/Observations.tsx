@@ -209,7 +209,7 @@ const DEFAULT_COLS = {
   date: true,
   time: true,
   mode: true,
-  status: true,
+  status: true, // używamy tego klucza dla kolumny „Liga”
   players: true,
   actions: true,
 };
@@ -221,7 +221,7 @@ const COL_PL: Record<ColKey, string> = {
   date: "Data",
   time: "Godzina",
   mode: "Tryb",
-  status: "Status",
+  status: "Liga", // etykieta dla kolumny z competition
   players: "Zawodnicy",
   actions: "Akcje",
 };
@@ -278,7 +278,7 @@ function toEditorXO(row: XO): EditorXO {
   const editorObj: any = {
     id: row.id,
     reportDate: row.date || "",
-    competition: "",
+    competition: row.competition ?? "", // <- Liga / turniej do edytora
     teamA: teamA || "",
     teamB: teamB || "",
     conditions: row.mode ?? "live",
@@ -302,7 +302,9 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
   const teamA = anyE.teamA ?? "";
   const teamB = anyE.teamB ?? "";
   const match =
-    teamA && teamB ? `${teamA} vs ${teamB}` : teamA || teamB || (prev?.match ?? "");
+    teamA && teamB
+      ? `${teamA} vs ${teamB}`
+      : teamA || teamB || (prev?.match ?? "");
 
   const players: ObsPlayer[] = (anyE.players ?? []).map((p: any) => ({
     id: p.id,
@@ -326,6 +328,7 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     status: meta.status ?? prev?.status ?? "draft",
     bucket: meta.bucket ?? prev?.bucket ?? "active",
     mode: (anyE.conditions ?? prev?.mode ?? "live") as Mode,
+    competition: anyE.competition ?? prev?.competition ?? null, // <- Liga / turniej z edytora
     note: anyE.note ?? anyE.contextNote ?? prev?.note ?? "",
     voiceUrl: prev?.voiceUrl ?? null,
     players,
@@ -438,7 +441,7 @@ export default function ObservationsFeature({
   // MASS SELECTION
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  // --- NEW: transient inline status note ---
+  // --- NEW: transient inline status note (zostawione, choć kolumna statusu to teraz liga) ---
   const [statusNote, setStatusNote] = useState<Record<number, string>>({});
   function flashStatus(id: number, nextStatus: Observation["status"]) {
     setStatusNote((prev) => ({
@@ -578,7 +581,8 @@ export default function ObservationsFeature({
           case "mode":
             return a.mode ?? "live";
           case "status":
-            return a.status;
+            // sort key „status” używamy teraz do sortowania po lidze (competition)
+            return (a.competition ?? "").toLowerCase();
           case "players":
             return a.players?.length ?? 0;
         }
@@ -594,13 +598,14 @@ export default function ObservationsFeature({
           case "mode":
             return b.mode ?? "live";
           case "status":
-            return b.status;
+            return (b.competition ?? "").toLowerCase();
           case "players":
             return b.players?.length ?? 0;
         }
       })();
 
-      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      if (typeof av === "number" && typeof bv === "number")
+        return (av - bv) * dir;
       const aStr = String(av);
       const bStr = String(bv);
       return aStr < bStr ? -1 * dir : aStr > bStr ? 1 * dir : 0;
@@ -659,6 +664,7 @@ export default function ObservationsFeature({
       status: "draft",
       bucket: "active",
       mode: "live",
+      competition: null, // nowa obserwacja bez ligi
       note: "",
       voiceUrl: null,
       players: [],
@@ -723,7 +729,7 @@ export default function ObservationsFeature({
     onChange(next as unknown as Observation[]);
   }
 
-  // --- UPDATED: also flashes inline note in Status cell (handled by rendering) ---
+  // (pozostawione – jeśli będziesz znów mieć kolumnę statusu)
   function toggleStatusInline(id: number) {
     let nextStatusForNote: Observation["status"] = "draft";
     const next = rows.map((x) => {
@@ -743,7 +749,7 @@ export default function ObservationsFeature({
       "date",
       "time",
       "mode",
-      "status",
+      "competition", // Liga
       "bucket",
       "players",
     ];
@@ -753,7 +759,7 @@ export default function ObservationsFeature({
       r.date ?? "",
       r.time ?? "",
       r.mode ?? "live",
-      r.status,
+      r.competition ?? "", // Liga
       r.bucket ?? "active",
       r.players?.length ?? 0,
     ]);
@@ -779,7 +785,7 @@ export default function ObservationsFeature({
       "Data",
       "Godzina",
       "Tryb",
-      "Liga",
+      "Liga", // nagłówek w XLS
       "Kosz",
       "Zawodnicy",
     ];
@@ -789,7 +795,7 @@ export default function ObservationsFeature({
       r.date ?? "",
       r.time ?? "",
       r.mode ?? "live",
-      r.status,
+      r.competition ?? "", // Liga
       r.bucket ?? "active",
       r.players?.length ?? 0,
     ]);
@@ -1111,38 +1117,37 @@ export default function ObservationsFeature({
                   />
                 </div>
 
-{/* Filtry */}
-<div className="relative inline-flex">
-  <span
-    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-slate-500 
+                {/* Filtry */}
+                <div className="relative inline-flex">
+                  <span
+                    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-slate-500 
                dark:bg-neutral-950 dark:text-neutral-300"
-  >
-    Filtry
-  </span>
+                  >
+                    Filtry
+                  </span>
 
-  <Button
-    ref={filtersBtnRef}
-    size="sm"
-    variant="outline"
-    className={`${controlH} h-9 w-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
-    onClick={() => {
-      setFiltersOpen((v) => !v);
-      setColsOpen(false);
-      setMoreOpen(false);
-    }}
-    aria-pressed={filtersOpen}
-    type="button"
-    title="Filtry"
-  >
-    <ListFilter className="h-4 w-4" />
-    {filtersCount ? (
-      <span className="hidden sm:inline">
-        {` (${filtersCount})`}
-      </span>
-    ) : null}
-  </Button>
-</div>
-
+                  <Button
+                    ref={filtersBtnRef}
+                    size="sm"
+                    variant="outline"
+                    className={`${controlH} h-9 w-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+                    onClick={() => {
+                      setFiltersOpen((v) => !v);
+                      setColsOpen(false);
+                      setMoreOpen(false);
+                    }}
+                    aria-pressed={filtersOpen}
+                    type="button"
+                    title="Filtry"
+                  >
+                    <ListFilter className="h-4 w-4" />
+                    {filtersCount ? (
+                      <span className="hidden sm:inline">
+                        {` (${filtersCount})`}
+                      </span>
+                    ) : null}
+                  </Button>
+                </div>
 
                 {/* Dodaj */}
                 <Button
@@ -1315,7 +1320,7 @@ export default function ObservationsFeature({
                     </select>
                   </div>
                   <div>
-                    <Label className="text-xs">Liga</Label>
+                    <Label className="text-xs">Status</Label>
                     <select
                       value={lifecycleFilter}
                       onChange={(e) =>
@@ -1748,7 +1753,6 @@ export default function ObservationsFeature({
             </thead>
             <tbody>
               {pageRows.map((r, idx) => {
-                const status = r.status;
                 const mode = r.mode ?? "live";
                 const pCount = r.players?.length ?? 0;
 
@@ -1778,48 +1782,53 @@ export default function ObservationsFeature({
                       </td>
                     )}
 
-{visibleCols.match && (
-  <td className={`${cellPad} align-center`}>
-    <div className="min-w-0">
-      <div className="truncate font-medium text-gray-900 dark:text-neutral-100">
-        {r.match || "—"}
-      </div>
-
-     
-    </div>
-  </td>
-)}
-
+                    {visibleCols.match && (
+                      <td className={`${cellPad} align-center`}>
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-gray-900 dark:text-neutral-100">
+                            {r.match || "—"}
+                          </div>
+                        </div>
+                      </td>
+                    )}
 
                     {visibleCols.date && (
-                      <td className={`${cellPad} hidden align-center sm:table-cell`}>
+                      <td
+                        className={`${cellPad} hidden align-center sm:table-cell`}
+                      >
                         {fmtDate(r.date)}
                       </td>
                     )}
                     {visibleCols.time && (
-                      <td className={`${cellPad} hidden align-center sm:table-cell`}>
+                      <td
+                        className={`${cellPad} hidden align-center sm:table-cell`}
+                      >
                         {r.time || "—"}
                       </td>
                     )}
 
-{visibleCols.mode && (
-  <td className={`${cellPad} hidden align-center sm:table-cell`}>
-    <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-neutral-800 dark:text-neutral-100">
-      {mode === "live" ? "Live" : "TV"}
-    </span>
-  </td>
-)}
+                    {visibleCols.mode && (
+                      <td
+                        className={`${cellPad} hidden align-center sm:table-cell`}
+                      >
+                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-neutral-800 dark:text-neutral-100">
+                          {mode === "live" ? "Live" : "TV"}
+                        </span>
+                      </td>
+                    )}
 
-{visibleCols.status && (
-  <td className={`${cellPad} align-center`}>
-    <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-neutral-800 dark:text-neutral-100">
-      {status === "final" ? "Finalna" : "Szkic"}
-    </span>
-  </td>
-)}
+                    {visibleCols.status && (
+                      <td className={`${cellPad} align-center`}>
+                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-neutral-800 dark:text-neutral-100">
+                          {r.competition || "—"}
+                        </span>
+                      </td>
+                    )}
 
                     {visibleCols.players && (
-                      <td className={`${cellPad} hidden align-center sm:table-cell`}>
+                      <td
+                        className={`${cellPad} hidden align-center sm:table-cell`}
+                      >
                         <GrayTag>{pCount}</GrayTag>
                       </td>
                     )}
@@ -1957,7 +1966,9 @@ export default function ObservationsFeature({
             </select>
 
             <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
-              {totalItems === 0 ? "0" : `${startIdx + 1}–${endIdx} z ${totalItems}`}
+              {totalItems === 0
+                ? "0"
+                : `${startIdx + 1}–${endIdx} z ${totalItems}`}
             </span>
           </div>
 
