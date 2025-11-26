@@ -1896,7 +1896,7 @@ export default function PlayerEditorPage() {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex rounded-md items-center justify-between  border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               extOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1905,7 +1905,7 @@ export default function PlayerEditorPage() {
               aria-expanded={extOpen}
               aria-controls="ext-panel"
               onClick={() => setExtOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
+              className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
                 <div className={stepPillClass}>Krok 2 · Profil boiskowy</div>
@@ -2020,7 +2020,7 @@ export default function PlayerEditorPage() {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex rounded-md items-center justify-between  border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               gradeOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2029,7 +2029,7 @@ export default function PlayerEditorPage() {
               aria-expanded={gradeOpen}
               aria-controls="grade-panel"
               onClick={() => setGradeOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
+              className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
                 <div className={stepPillClass}>Krok 3 · Ocena</div>
@@ -2172,7 +2172,7 @@ export default function PlayerEditorPage() {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex rounded-md items-center justify-between  border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               obsOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2181,7 +2181,7 @@ export default function PlayerEditorPage() {
               aria-expanded={obsOpen}
               aria-controls="obs-panel"
               onClick={() => setObsOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
+              className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
                 <div className={stepPillClass}>Krok 4 · Obserwacje</div>
