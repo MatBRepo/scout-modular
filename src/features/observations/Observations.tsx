@@ -939,7 +939,7 @@ export default function ObservationsFeature({
 
   // CHIP atom (desktop height = h-9)
   const Chip = ({ label, onClear }: { label: string; onClear: () => void }) => (
-    <span className="inline-flex h-9 items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
+    <span className="inline-flex h-9 w-9 items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
       <span className="max-w-[200px] truncate">{label}</span>
       <button
         className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
@@ -1025,7 +1025,7 @@ export default function ObservationsFeature({
                       <button
                         ref={chipsMoreBtnRef}
                         type="button"
-                        className="inline-flex h-9 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
+                        className="inline-flex h-9 w-9 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
                         onClick={() => setChipsOpen((v) => !v)}
                         onMouseEnter={() => {
                           if (chipsHoverTimer.current)
@@ -1124,7 +1124,7 @@ export default function ObservationsFeature({
     ref={filtersBtnRef}
     size="sm"
     variant="outline"
-    className={`${controlH} border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+    className={`${controlH} h-9 w-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
     onClick={() => {
       setFiltersOpen((v) => !v);
       setColsOpen(false);
@@ -1147,7 +1147,7 @@ export default function ObservationsFeature({
                 {/* Dodaj */}
                 <Button
                   size="sm"
-                  className={`${controlH} inline-flex secondary items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
+                  className={`${controlH} h-9 w-9 inline-flex secondary items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
                   onClick={addNew}
                   title="Skrót: N"
                   type="button"
@@ -1159,7 +1159,7 @@ export default function ObservationsFeature({
                 <Button
                   ref={moreBtnRef}
                   variant="outline"
-                  className={`${controlH} w-10 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 ml-auto sm:ml-0`}
+                  className={`${controlH} h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 ml-auto sm:ml-0`}
                   onClick={() => {
                     setMoreOpen((o) => !o);
                     setFiltersOpen(false);

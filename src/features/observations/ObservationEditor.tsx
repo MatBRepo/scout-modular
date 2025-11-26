@@ -30,6 +30,7 @@ import {
   Search,
   Plus,
   Trash2,
+  Mic,
 } from "lucide-react";
 import StarRating from "@/shared/ui/StarRating";
 import {
@@ -47,6 +48,13 @@ import {
   AccordionContent,
   AccordionItem,
 } from "@/components/ui/accordion";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 /* ------------ Types ------------ */
 type Mode = "live" | "tv" | "mix";
@@ -181,7 +189,7 @@ function MetricItem({
 }) {
   return (
     <div
-      className="group flex flex-wrap items-center justify-between gap-3 rounded-md border border-stone-200 bg-stone-50/90 px-3 py-2 text-xs shadow-sm transition hover:bg-stone-100 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+      className="group flex flex-wrap items-center justify-between gap-3 rounded-md border border-stone-200 bg-white px-3 py-2 text-xs shadow-sm transition hover:bg-stone-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
       title={label}
     >
       <div className="w-full break-words pr-2 text-[12px] text-gray-700 dark:text-neutral-300">
@@ -196,6 +204,130 @@ function MetricItem({
         />
       </div>
     </div>
+  );
+}
+
+/* Przycisk do nagrywania notatki głosowej i transkrypcji do pola */
+function VoiceNoteButton({
+  onTranscription,
+}: {
+  onTranscription: (text: string) => void;
+}) {
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSupported, setIsSupported] = useState(false);
+  const recognitionRef = useRef<any | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SR =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+      if (SR) {
+        setIsSupported(true);
+      }
+    }
+
+    return () => {
+      const rec = recognitionRef.current;
+      if (rec && rec.stop) {
+        rec.stop();
+      }
+    };
+  }, []);
+
+  const handleClick = () => {
+    if (typeof window === "undefined") return;
+    const SR =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SR) {
+      // Teoretycznie nie powinno się zdarzyć, bo isSupported byłby false
+      alert(
+        "Twoja przeglądarka nie obsługuje rozpoznawania mowy. Spróbuj w Chrome na desktopie."
+      );
+      return;
+    }
+
+    // START nagrywania
+    if (!isRecording) {
+      const recognition = new SR();
+      recognition.lang = "pl-PL";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event: any) => {
+        try {
+          const text = event.results[0][0].transcript;
+          if (text) {
+            onTranscription(text);
+          }
+        } catch (e) {
+          console.error("[VoiceNoteButton] Błąd w onresult:", e);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("[VoiceNoteButton] Błąd rozpoznawania:", event);
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          alert(
+            "Brak dostępu do mikrofonu lub funkcja jest zablokowana. Sprawdź uprawnienia przeglądarki i HTTPS."
+          );
+        } else if (event.error === "network") {
+          alert(
+            "Wystąpił problem sieciowy podczas rozpoznawania mowy. Spróbuj ponownie."
+          );
+        }
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        // zakończenie sesji (po wypowiedzeniu frazy)
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+      setIsRecording(true);
+      recognition.start();
+    } else {
+      // STOP nagrywania (drugi klik)
+      if (recognitionRef.current && recognitionRef.current.stop) {
+        recognitionRef.current.stop();
+      }
+      setIsRecording(false);
+    }
+  };
+
+  if (!isSupported) {
+    return (
+      <button
+        type="button"
+        disabled
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px]",
+          "border-gray-300 text-gray-400 opacity-60 cursor-not-allowed dark:border-neutral-700 dark:text-neutral-500"
+        )}
+      >
+        <Mic className="h-3.5 w-3.5" />
+        <span>Notatka głosowa niedostępna w tej przeglądarce</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px]",
+        "border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800",
+        isRecording &&
+          "border-red-500 text-red-600 bg-red-50 dark:border-red-500 dark:text-red-200 dark:bg-red-950/40"
+      )}
+    >
+      <Mic className="h-3.5 w-3.5" />
+      <span>{isRecording ? "Nagrywanie… kliknij, aby zatrzymać" : "Nagraj notatkę głosową"}</span>
+    </button>
   );
 }
 
@@ -666,7 +798,7 @@ export function ObservationEditor({
   const autoSaveLastKeyRef = useRef<string | null>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
 
-  /* ===== Wspólny zapis do Supabase (używany przez autosave + Zapisz i wróć) ===== */
+  /* ===== Wspólny zapis do Supabase (używany przez autosave + zewnętrzny onSave) ===== */
   async function saveObservation(opts: {
     closeAfter: boolean;
     externalSave: boolean;
@@ -755,7 +887,7 @@ export function ObservationEditor({
         .eq("time", rowTime)
         .eq("team_a", rowTeamA)
         .eq("team_b", rowTeamB)
-        .eq("competition", rowCompetition)
+        .eq("competition", rowCompetition);
 
       const { count, error: dupError } = isNewObservation
         ? await baseQuery
@@ -826,7 +958,7 @@ export function ObservationEditor({
 
     setSaveState("saved");
 
-    // Zapis do zewnętrznej listy + zamknięcie tylko z przycisku „Zapisz i wróć”
+    // Zapis do zewnętrznej listy
     if (opts.externalSave) {
       onSave(payload);
       if (opts.closeAfter) {
@@ -866,38 +998,12 @@ export function ObservationEditor({
 
   /* ===== Header actions in global topbar (ClientRoot) ===== */
   useEffect(() => {
-    const onClickSave = async () => {
-      await saveObservation({ closeAfter: true, externalSave: true });
-    };
-
-    // wstawiamy do globalnego headera: Zapisano + Zapisz i wróć + Wróć do listy
     setActions(
       <div className="flex items-center gap-2">
-        {/* Save pill – icon only on mobile, text on md+ (handled inside SavePill) */}
+        {/* Save pill – pokazuje się przy zapisie / zapisano */}
         <SavePill state={saveState} size="compact" />
 
-        {/* Zapisz i wróć */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex h-8 items-center justify-center rounded-md bg-gray-900 px-2 text-xs text-white hover:bg-gray-900 hover:text-white"
-          onClick={onClickSave}
-          disabled={
-            saveState === "saving" || !canSaveObservation || requiredLoading
-          }
-        >
-          {saveState === "saving" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              {/* icon always, text only md+ */}
-              <CheckCircle2 className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">Zapisz i wróć</span>
-            </>
-          )}
-        </Button>
-
-        {/* Wróć do listy */}
+        {/* Tylko przycisk „Wróć do listy” – bez „Zapisz i wróć” */}
         <Button
           variant="outline"
           size="sm"
@@ -914,24 +1020,23 @@ export function ObservationEditor({
       // po wyjściu z edytora czyścimy akcje
       setActions(null);
     };
-  }, [
-    setActions,
-    saveState,
-    canSaveObservation,
-    requiredLoading,
-    o,
-    isNewObservation,
-    matchDate,
-    matchTime,
-    initialIdRef,
-    onSave,
-    onClose,
-  ]);
+  }, [setActions, saveState, onClose]);
 
   /* ===== Accordion open states (Krok 1–3) ===== */
   const [infoOpen, setInfoOpen] = useState(true);
   const [playersOpen, setPlayersOpen] = useState(true);
   const [noteOpen, setNoteOpen] = useState(true);
+
+  /* Obsługa transkrypcji notatki głosowej */
+  const handleVoiceTranscription = (text: string) => {
+    setO((prev) => {
+      const prevNote = prev.note ?? "";
+      const next = prevNote
+        ? `${prevNote.trim()}\n${text}`
+        : text;
+      return { ...prev, note: next };
+    });
+  };
 
   /* Render */
   return (
@@ -948,7 +1053,6 @@ export function ObservationEditor({
             </span>
           </div>
         }
-      
       />
 
       {/* Podpowiedź wymagań */}
@@ -980,7 +1084,7 @@ export function ObservationEditor({
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex items-center justify-between rounded-md border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex itemscenter justify-between rounded-md border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               infoOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1075,7 +1179,6 @@ export function ObservationEditor({
                             }}
                           />
                         </div>
-                        
                       </div>
                     </div>
 
@@ -1109,13 +1212,13 @@ export function ObservationEditor({
                               )}
                             >
                               <div className="flex items-center gap-2">
-                               {isLive ? (
-  <PlayCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-) : isTv ? (
-  <Monitor className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-) : (
-  <GitCompare className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-)}
+                                {isLive ? (
+                                  <PlayCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                                ) : isTv ? (
+                                  <Monitor className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                                ) : (
+                                  <GitCompare className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
+                                )}
                                 <div>
                                   <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-800 dark:text-neutral-50">
                                     {title}
@@ -1132,7 +1235,6 @@ export function ObservationEditor({
                           );
                         })}
                       </div>
-                    
                     </div>
 
                     {/* Liga / turniej */}
@@ -1279,7 +1381,7 @@ export function ObservationEditor({
 
                     {/* Tabela zawodników */}
                     <div className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-                      <table className="w-full text-sm">
+                      <table className="w-full table-auto text-sm">
                         <thead className="bg-stone-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                           <tr className="text-xs sm:text-sm">
                             <th className="p-2 text-left font-medium sm:p-3">
@@ -1330,7 +1432,6 @@ export function ObservationEditor({
                                 <tr className="border-t border-gray-200 align-middle hover:bg-stone-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
                                   <td className="p-2 sm:p-3">
                                     <div className="flex items-start gap-2">
-                                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-gray-400 sm:mt-1" />
                                       <div className="min-w-0">
                                         <div className="truncate text-sm font-medium text-gray-900 dark:text-neutral-100">
                                           {p.type === "known"
@@ -1338,11 +1439,7 @@ export function ObservationEditor({
                                             : p.name ??
                                               `#${p.shirtNo ?? ""}`}
                                         </div>
-                                        <div className="text-[11px] text-dark dark:text-neutral-400">
-                                          {p.type === "known"
-                                            ? "znany"
-                                            : "nieznany"}
-                                        </div>
+
                                         {p.shirtNo && (
                                           <div className="mt-0.5 text-[11px] text-stone-700 dark:text-stone-200">
                                             Nr: {p.shirtNo}
@@ -1359,35 +1456,45 @@ export function ObservationEditor({
                                     >
                                       Pozycja
                                     </label>
-                                    <select
-                                      id={`pos-${p.id}`}
-                                      value={p.position ?? ""}
-                                      onChange={(e) =>
-                                        updatePlayer(p.id, {
-                                          position: (e.target.value ||
-                                            undefined) as
-                                            | PositionKey
-                                            | undefined,
-                                        })
-                                      }
-                                      className="w-[11rem] h-8 flex items-start rounded-md border border-gray-300 bg-white p-1 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
-                                      title={
-                                        p.position
-                                          ? `${p.position} — ${
-                                              POS_INFO[p.position]
-                                            }`
-                                          : "Wybierz pozycję"
-                                      }
-                                    >
-                                      <option value="">
-                                        — wybierz pozycję —
-                                      </option>
-                                      {POSITIONS.map((posKey) => (
-                                        <option key={posKey} value={posKey}>
-                                          {posKey} — {POS_INFO[posKey]}
-                                        </option>
-                                      ))}
-                                    </select>
+                                    <div className="w-full max-w-[11rem]">
+                                      <Select
+                                        value={p.position ?? "__none"}
+                                        onValueChange={(value) =>
+                                          updatePlayer(p.id, {
+                                            position:
+                                              value === "__none"
+                                                ? undefined
+                                                : (value as PositionKey),
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger
+                                          id={`pos-${p.id}`}
+                                          className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                                          title={
+                                            p.position
+                                              ? `${p.position} — ${POS_INFO[p.position]}`
+                                              : "Wybierz pozycję"
+                                          }
+                                        >
+                                          <SelectValue placeholder="— wybierz pozycję —" />
+                                        </SelectTrigger>
+
+                                        <SelectContent className="w-[16rem] max-w-xs bg-white dark:bg-neutral-950">
+                                          <SelectItem value="__none">
+                                            — bez pozycji —
+                                          </SelectItem>
+                                          {POSITIONS.map((posKey) => (
+                                            <SelectItem
+                                              key={posKey}
+                                              value={posKey}
+                                            >
+                                              {posKey} — {POS_INFO[posKey]}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
                                   </td>
 
                                   <td className="p-2 sm:p-3">
@@ -1498,7 +1605,7 @@ export function ObservationEditor({
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="h-8 w-fit rounded-md border-black bg-black px-3 text-white hover:bg-zinc-900 hover:text-white dark:border-black dark:bg-black dark:hover:bg-zinc-900"
+                                          className="h-8 w-fit rounded-md border-black bg-black text-white hover:bg-zinc-900 hover:text-white dark:border-black dark:bg-black dark:hover:bg-zinc-900"
                                           onClick={() => {
                                             setPromotePlayer(p);
                                             setNewPlayerClub("");
@@ -1508,10 +1615,9 @@ export function ObservationEditor({
                                           }}
                                         >
                                           <AddPlayerIcon
-                                            className="mr-1.5 h-7 w-7"
+                                            className="h-7 w-7"
                                             strokeColorAll="#ffffff"
                                           />
-                                          Dodaj do mojej bazy
                                         </Button>
                                       )}
                                     </div>
@@ -1748,6 +1854,9 @@ export function ObservationEditor({
                         <FileEdit className="h-3.5 w-3.5" />
                         <span>Notatka dot. całej obserwacji.</span>
                       </span>
+                      <VoiceNoteButton
+                        onTranscription={handleVoiceTranscription}
+                      />
                     </div>
                   </div>
                 </AccordionContent>

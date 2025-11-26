@@ -215,7 +215,7 @@ export default function GlobalSearchPage() {
             </Button>
 
             {/* === Unified-height chip with shadcn Checkbox === */}
-            <div className="ml-2 inline-flex h-9 items-center gap-2 rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-neutral-700 dark:bg-neutral-950">
+            <div className="ml-2 inline-flex h-9 w-9 items-center gap-2 rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-neutral-700 dark:bg-neutral-950">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="only-new"

@@ -874,7 +874,7 @@ export default function DuplicatesPage() {
 
       {!isAdmin ? (
         <div className="rounded-md border border-dashed border-gray-300 bg-white p-6 text-center shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
-          <div className="mx-auto mb-2 inline-flex h-9 w-9 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+          <div className="mx-auto mb-2 inline-flex h-9 w-9 w-9 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
             <Lock className="h-5 w-5" />
           </div>
           <div className="text-sm font-medium">
