@@ -21,6 +21,8 @@ import {
 } from "@/shared/MainPositionPitch";
 
 import { Toolbar } from "@/shared/ui/atoms";
+import { ToolbarFull } from "@/shared/ui/atoms";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,7 +52,6 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
-import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -91,9 +92,6 @@ import {
 } from "@/components/ui/tooltip";
 
 import { getSupabase } from "@/lib/supabaseClient";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
-import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { RadioChipGroup } from "@/components/ui/RadioChipGroup";
 
 // RAC fields
@@ -206,23 +204,13 @@ function SavePill({
   );
 }
 
-function Chip({ text }: { text: string }) {
-  return (
-    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
-      {text}
-    </span>
-  );
-}
-
-/* Country combobox (old – still used in other fields, e.g. birth country) */
+/* Country combobox (old – zostawiony na przyszłość, nieużywany tu) */
 function CountryCombobox({
   value,
   onChange,
-  chip,
 }: {
   value: string;
   onChange: (next: string) => void;
-  chip?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = COUNTRIES.find((c) => c.name === value);
@@ -234,8 +222,7 @@ function CountryCombobox({
           aria-expanded={open}
           className={cn(
             "relative flex w-full items-center justify-between rounded-md border bg-white px-3 py-2 text-left text-sm dark:bg-neutral-950",
-            "border-gray-300 dark:border-neutral-700",
-            chip ? "pr-24" : ""
+            "border-gray-300 dark:border-neutral-700"
           )}
         >
           <span
@@ -254,7 +241,6 @@ function CountryCombobox({
             )}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          {chip ? <Chip text={chip} /> : null}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -467,7 +453,7 @@ export default function PlayerEditorPage() {
   const { setActions } = useHeaderActions();
 
   const initialId = params?.id ? Number(params.id) : NaN;
-  const [playerId, setPlayerId] = useState<number | null>(
+  const [playerId] = useState<number | null>(
     Number.isNaN(initialId) ? null : initialId
   );
 
@@ -592,7 +578,6 @@ export default function PlayerEditorPage() {
             (basicMeta.posDet as DetailedPos | "") ||
             "CM";
 
-          // Zapisujemy mainPos również w extended, żeby boisko i Ocena widziały tę wartość
           const mergedWithMainPos = { ...mergedExt, mainPos };
 
           setExt(mergedWithMainPos);
@@ -751,6 +736,7 @@ export default function PlayerEditorPage() {
   const [observations, setObservations] = useState<ObsRec[]>([]);
   const [obsQuery, setObsQuery] = useState("");
   const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
+
   const [qaMatch, setQaMatch] = useState("");
   const [qaDate, setQaDate] = useState("");
   const [qaTime, setQaTime] = useState("");
@@ -888,10 +874,32 @@ export default function PlayerEditorPage() {
 
   const [extView, setExtView] = useState<ExtKey>("profile");
 
-  /* ===== ExtContent – skopiowane style z AddPlayerPage ===== */
+  /* ===== ExtContent ===== */
   function ExtContent({ view }: { view: ExtKey }) {
     switch (view) {
-      case "profile":
+      case "profile": {
+        const bucketLabels: Record<BucketPos, string> = {
+          GK: "Bramkarz",
+          DF: "Obrona",
+          MF: "Pomoc",
+          FW: "Atak",
+        };
+
+        const byBucket: Record<BucketPos, typeof POS_DATA> = {
+          GK: [],
+          DF: [],
+          MF: [],
+          FW: [],
+        };
+
+        POS_DATA.forEach((opt) => {
+          const bucket = toBucket(opt.value as DetailedPos);
+          byBucket[bucket] = [...byBucket[bucket], opt];
+        });
+
+        // Nie pokazujemy bramkarza w pozycjach alternatywnych
+        const bucketOrder: BucketPos[] = ["DF", "MF", "FW"];
+
         return (
           <div className="space-y-5">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -943,63 +951,83 @@ export default function PlayerEditorPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <Label className="text-sm">Pozycje alternatywne</Label>
-                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {POS_DATA.map((opt) => {
-                    const checked = ext.altPositions.includes(opt.value);
-                    const itemId = `alt-pos-${opt.value}`;
+            <div>
+              <Label className="text-sm">Pozycje alternatywne</Label>
+              <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {bucketOrder.map((bucket) => {
+                  const group = byBucket[bucket];
+                  if (!group.length) return null;
 
-                    return (
-                      <div
-                        key={opt.value}
-                        className={cn(
-                          "relative flex w-full items-start gap-2 rounded-md border border-input p-3 text-xs shadow-xs outline-none",
-                          "has-[data-state=checked]:border-primary/60 has-[data-state=checked]:bg-primary/5"
-                        )}
-                      >
-                        <Checkbox
-                          id={itemId}
-                          aria-describedby={`${itemId}-description`}
-                          className="order-1 mt-0.5 after:absolute after:inset-0"
-                          checked={checked}
-                          onCheckedChange={(next) => {
-                            const isChecked = Boolean(next);
-                            setExt((s) => {
-                              const current = s.altPositions;
-                              const nextPositions = isChecked
-                                ? [...current, opt.value]
-                                : current.filter((x) => x !== opt.value);
-                              return { ...s, altPositions: nextPositions };
-                            });
-                          }}
-                        />
-                        <div className="grid grow gap-1">
-                          <Label
-                            htmlFor={itemId}
-                            className="text-xs font-medium text-foreground"
-                          >
-                            {opt.code}{" "}
-                            <span className="font-normal text-muted-foreground text-[11px] leading-[inherit]">
-                              ({opt.name})
-                            </span>
-                          </Label>
-                          <p
-                            className="text-[11px] text-muted-foreground"
-                            id={`${itemId}-description`}
-                          >
-                            {opt.desc}
-                          </p>
-                        </div>
+                  return (
+                    <div key={bucket} className="space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+                        {bucketLabels[bucket]}
+                      </p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {group.map((opt) => {
+                          const checked = ext.altPositions.includes(
+                            opt.value
+                          );
+                          const itemId = `alt-pos-${opt.value}`;
+
+                          return (
+                            <div
+                              key={opt.value}
+                              className={cn(
+                                "relative flex w-full items-start gap-2 rounded-md border border-input p-3 text-xs shadow-xs outline-none",
+                                "has-[data-state=checked]:border-primary/60 has-[data-state=checked]:bg-primary/5"
+                              )}
+                            >
+                              <Checkbox
+                                id={itemId}
+                                aria-describedby={`${itemId}-description`}
+                                className="order-1 mt-0.5 after:absolute after:inset-0"
+                                checked={checked}
+                                onCheckedChange={(next) => {
+                                  const isChecked = Boolean(next);
+                                  setExt((s) => {
+                                    const current = s.altPositions;
+                                    const nextPositions = isChecked
+                                      ? [...current, opt.value]
+                                      : current.filter(
+                                          (x) => x !== opt.value
+                                        );
+                                    return {
+                                      ...s,
+                                      altPositions: nextPositions,
+                                    };
+                                  });
+                                }}
+                              />
+                              <div className="grid grow gap-1">
+                                <Label
+                                  htmlFor={itemId}
+                                  className="text-xs font-medium text-foreground"
+                                >
+                                  {opt.code}{" "}
+                                  <span className="font-normal text-muted-foreground text-[11px] leading-[inherit]">
+                                    ({opt.name})
+                                  </span>
+                                </Label>
+                                <p
+                                  className="text-[11px] text-muted-foreground"
+                                  id={`${itemId}-description`}
+                                >
+                                  {opt.desc}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         );
+      }
 
       case "eligibility":
         return (
@@ -1055,7 +1083,7 @@ export default function PlayerEditorPage() {
               </div>
               <div>
                 <Label className="text-sm">Kraj urodzenia</Label>
-                <CountryCombobox
+                <CountrySearchCombobox
                   value={ext.birthCountry}
                   onChange={(val) =>
                     setExt((s) => ({ ...s, birthCountry: val }))
@@ -1318,7 +1346,7 @@ export default function PlayerEditorPage() {
                 <TooltipProvider delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      {/* tooltip trigger removed */}
+                      {/* optional trigger here */}
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs text-xs leading-snug">
                       {aspect.tooltip}
@@ -1364,7 +1392,7 @@ export default function PlayerEditorPage() {
           <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
           {title}
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-4">
           {aspects.map((aspect) => (
             <RatingRow key={aspect.id} aspect={aspect} />
           ))}
@@ -1388,7 +1416,6 @@ export default function PlayerEditorPage() {
       return;
     }
 
-    // Jeżeli kompletnie brak danych bazowych – nie zapisujemy
     const hasAnyBasic =
       firstName.trim() ||
       lastName.trim() ||
@@ -1666,10 +1693,39 @@ export default function PlayerEditorPage() {
     };
   }, [setActions, saveState, router, completionPercent]);
 
+  // Title with badge + icon (only current stage)
+  const editorTitle = (
+    <div className="w-full">
+      <div className="flex items-center gap-2 w-full">
+        <h2 className="mt-1 text-xl font-semibold leading-none tracking-tight">
+          Edycja zawodnika
+        </h2>
+        {choice === "known" && (
+          <span className="ml-auto inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-100">
+            <KnownPlayerIcon
+              className="mr-1.5 h-4 w-4 text-emerald-700"
+              strokeWidth={1.4}
+            />
+            Zawodnik znany
+          </span>
+        )}
+        {choice === "unknown" && (
+          <span className="ml-auto inline-flex items-center rounded px-2 py-0.5 text-[12px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+            <UnknownPlayerIcon
+              className="mr-1.5 h-4 w-4 text-rose-700"
+              strokeWidth={1.4}
+            />
+           Zawodnik nieznany
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
   if (!playerId) {
     return (
-      <div className="w-full space-y-4">
-        <Toolbar title="Edycja zawodnika" right={null} />
+      <div className="w-full space-y-4 w-full">
+        <Toolbar title={editorTitle} right={null} />
         <p className="text-sm text-red-600">
           Brak poprawnego identyfikatora zawodnika w adresie URL.
         </p>
@@ -1679,7 +1735,7 @@ export default function PlayerEditorPage() {
 
   return (
     <div className="w-full space-y-4">
-      <Toolbar title="Edycja zawodnika" right={null} />
+      <ToolbarFull title={editorTitle} right={null} />
 
       {loading && (
         <Card className="border-dashed border-slate-300 bg-slate-50/80 dark:border-neutral-800 dark:bg-neutral-950/60">
@@ -1693,113 +1749,13 @@ export default function PlayerEditorPage() {
         <p className="text-sm text-red-600">{loadError}</p>
       )}
 
-      {/* KROK 0 – tryb profilu (ustalany automatycznie na podstawie pól) */}
-      <Card className="p-0 border-none">
-
-
-        <CardContent className="p-0">
-          <div className="grid grid-cols-2 gap-3">
-            <div
-              className={cn(
-                "cursor-default rounded-lg p-4 text-left border bg-white dark:bg-neutral-950 ",
-                choice === "known"
-                  ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
-                  : "ring-gray-200 dark:ring-neutral-800"
-              )}
-            >
-              <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
-                  <KnownPlayerIcon
-                    className={cn(
-                      "h-7 w-7",
-                      choice === "known"
-                        ? "text-emerald-800"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                    strokeWidth={1.0}
-                  />
-                </span>
-                <div className="min-w-0">
-                  <div
-                    className={cn(
-                      "mb-1 text-sm font-semibold",
-                      choice === "known"
-                        ? "text-emerald-900"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                  >
-                    Pełne dane zawodnika
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xs leading-relaxed",
-                      choice === "known"
-                        ? "text-emerald-900/80"
-                        : "text-black/70 dark:text-neutral-300"
-                    )}
-                  >
-                    Imię, nazwisko, rok urodzenia, klub i kraj – profil{" "}
-                    <b>imienny</b>.
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className={cn(
-                "cursor-default rounded-lg p-4 text-left border bg-white dark:bg-neutral-950 ",
-                choice === "unknown"
-                  ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
-                  : "ring-gray-200 dark:ring-neutral-800"
-              )}
-            >
-              <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
-                  <UnknownPlayerIcon
-                    className={cn(
-                      "h-7 w-7",
-                      choice === "unknown"
-                        ? "text-rose-900"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                    strokeWidth={1.0}
-                  />
-                </span>
-                <div className="min-w-0">
-                  <div
-                    className={cn(
-                      "mb-1 text-sm font-semibold",
-                      choice === "unknown"
-                        ? "text-rose-900"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                  >
-                    Profil anonimowy
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xs leading-relaxed",
-                      choice === "unknown"
-                        ? "text-rose-900/80"
-                        : "text-black/70 dark:text-neutral-300"
-                    )}
-                  >
-                    Numer, klub i kraj – gdy nie podajesz danych osobowych.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Kroki 1–4 – identyczny layout jak w AddPlayerPage */}
+      {/* Kroki 1–4 – jak w AddPlayerPage */}
       <div className="space-y-4">
         {/* KROK 1 – Podstawowe informacje + Główna pozycja (pitch) */}
         <Card ref={basicRef} className="mt-1">
           <CardHeader
             className={cn(
-              "group flex rounded-md items-center justify-between  border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               basicOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1808,7 +1764,7 @@ export default function PlayerEditorPage() {
               aria-expanded={basicOpen}
               aria-controls="basic-panel"
               onClick={() => setBasicOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
+              className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
                 <div className={stepPillClass}>Krok 1 · Dane bazowe</div>
@@ -1861,15 +1817,17 @@ export default function PlayerEditorPage() {
                           placeholder="np. Kowalski"
                         />
                       </div>
-                      <div>
-                        <Label className="text-sm">Rok urodzenia</Label>
-                        <BirthDatePicker
-                          value={birthYear}
-                          onChange={(val: string | null | undefined) =>
-                            setBirthYear(val || "")
-                          }
-                        />
-                      </div>
+                     <div>
+  <Label className="text-sm">Rok urodzenia</Label>
+  <NumericField
+    value={birthYear === "" ? undefined : Number(birthYear)}
+    onChange={(val) =>
+      setBirthYear(val == null ? "" : String(val))
+    }
+    placeholder="np. 2006"
+  />
+</div>
+
                       <div>
                         <NumericField
                           label="Numer na koszulce"

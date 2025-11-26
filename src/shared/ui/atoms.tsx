@@ -44,6 +44,25 @@ export function Toolbar({ title, subtitle, right }: ToolbarProps) {
   );
 }
 
+export function ToolbarFull({ title, subtitle, right }: ToolbarProps) {
+  return (
+    <div className="flex flex-wrap items-center justify-between w-full">
+      <div className="w-full">
+        {/* If you had <h2> here, keep it, but render the node */}
+        {typeof title === "string" ? <h2 className="text-2xl font-semibold mb-2">{title}</h2> : title}
+        {subtitle ? (
+          typeof subtitle === "string" ? (
+            <div className="text-sm text-muted-foreground">{subtitle}</div>
+          ) : (
+            subtitle
+          )
+        ) : null}
+      </div>
+      {right}
+    </div>
+  );
+}
+
 export function GrayTag({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">{children}</span>;
 }

@@ -885,7 +885,7 @@ export default function MyPlayersFeature({
     label: string;
     onClear: () => void;
   }) => (
-    <span className="inline-flex h-9 w-9 items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
+    <span className="inline-flex h-9  items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
       <span className="max-w-[200px] truncate">
         {label}
       </span>
@@ -990,7 +990,7 @@ export default function MyPlayersFeature({
                       <button
                         ref={chipsMoreBtnRef}
                         type="button"
-                        className="inline-flex h-9 w-9 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
+                        className="inline-flex h-9  items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
                         onClick={() => setChipsOpen((v) => !v)}
                         onMouseEnter={() => {
                           if (chipsHoverTimer.current)
@@ -1101,7 +1101,7 @@ export default function MyPlayersFeature({
     ref={filterBtnRef}
     type="button"
     variant="outline"
-    className={`${controlH} h-9 w-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+    className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
     aria-pressed={filtersOpen}
     onClick={() => {
       setFiltersOpen((v) => !v);
@@ -2139,7 +2139,7 @@ function PlayersTable({
                     <img
                       src={r.photo}
                       alt={r.name}
-                      className="h-9 w-9 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
+                      className="h-9  rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
                       loading="lazy"
                     />
                   ) : (
@@ -2546,7 +2546,7 @@ function QuickObservation({
             setQuickTab(v as "new" | "existing")
           }
         >
-          <TabsList className="mb-2 inline-flex h-9 w-9 items-center rounded-md bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
+          <TabsList className="mb-2 inline-flex h-9  items-center rounded-md bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
             <TabsTrigger
               value="new"
               className="h-9 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"

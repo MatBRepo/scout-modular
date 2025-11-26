@@ -1084,7 +1084,7 @@ export function ObservationEditor({
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex itemscenter justify-between rounded-md border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex itemscenter justify-between rounded-md border-gray-200 transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               infoOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1093,7 +1093,7 @@ export function ObservationEditor({
               aria-expanded={infoOpen}
               aria-controls="info-panel"
               onClick={() => setInfoOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left"
+              className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
                 <div className={stepPillClass}>Krok 1 · Informacje ogólne</div>

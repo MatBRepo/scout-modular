@@ -8,7 +8,6 @@ import {
   Calendar as CalendarIcon,
   PlayCircle,
   Monitor,
-  CheckCircle2,
   Plus,
   Pencil,
 } from "lucide-react";
@@ -85,7 +84,7 @@ function toEditorXO(row: XO): EditorXO {
   const editorObj: any = {
     id: row.id,
     reportDate: row.date || "",
-    competition: "",
+    competition: row.competition ?? "", // <- Liga do edytora
     teamA: teamA || "",
     teamB: teamB || "",
     conditions: row.mode ?? "live",
@@ -135,6 +134,7 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     status: meta.status ?? prev?.status ?? "draft",
     bucket: meta.bucket ?? prev?.bucket ?? "active",
     mode: (anyE.conditions ?? prev?.mode ?? "live") as Mode,
+    competition: anyE.competition ?? prev?.competition ?? null, // <- Liga z edytora
     note: anyE.note ?? anyE.contextNote ?? prev?.note ?? "",
     voiceUrl: prev?.voiceUrl ?? null,
     players,
@@ -217,6 +217,7 @@ export default function PlayerObservationsTable({
       status: "draft",
       bucket: "active",
       mode: "live",
+      competition: null, // <- startowo brak ligi
       note: "",
       voiceUrl: null,
       players: [
@@ -306,14 +307,13 @@ export default function PlayerObservationsTable({
               <th className="hidden px-2 py-2 text-left sm:table-cell sm:px-3">
                 Tryb
               </th>
-              <th className="px-2 py-2 text-left sm:px-3">Status</th>
+              <th className="px-2 py-2 text-left sm:px-3">Liga</th>
               <th className="px-2 py-2 text-right sm:px-3">Akcje</th>
             </tr>
           </thead>
           <tbody>
             {playerRows.map((r) => {
               const mode = r.mode ?? "live";
-              const status = r.status ?? "draft";
 
               return (
                 <tr
@@ -356,18 +356,10 @@ export default function PlayerObservationsTable({
                     {mode === "live" ? "Live" : "TV"}
                   </td>
 
-                  {/* Status */}
+                  {/* Liga */}
                   <td className="px-2 py-2 sm:px-3">
-                    <span
-                      className={
-                        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium " +
-                        (status === "final"
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300")
-                      }
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      {status === "final" ? "Finalna" : "Szkic"}
+                    <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-neutral-800 dark:text-neutral-100">
+                      {r.competition || "—"}
                     </span>
                   </td>
 

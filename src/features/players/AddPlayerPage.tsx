@@ -1,6 +1,8 @@
 // src/app/(players)/players/add/AddPlayerPage.tsx
 "use client";
 
+import { computePlayerProfileProgress } from "@/shared/playerProfileProgress";
+
 import {
   useEffect,
   useMemo,
@@ -18,9 +20,7 @@ import {
   type DetailedPos,
 } from "@/shared/MainPositionPitch";
 
-
-
-import { Toolbar } from "@/shared/ui/atoms";
+import { ToolbarFull } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,7 +96,6 @@ import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { RadioChipGroup } from "@/components/ui/RadioChipGroup";
 
 // NEW: RAC fields
-import { BirthDatePicker } from "@/components/ui/birthdate-picker-rac";
 import { NumericField } from "@/components/ui/numeric-field-rac";
 
 // header actions (global)
@@ -108,8 +107,6 @@ const SCOUT_DEFAULT_COUNTRY =
 
 /* ===== Positions ===== */
 type BucketPos = "GK" | "DF" | "MF" | "FW";
-
-
 
 const toBucket = (p: DetailedPos): BucketPos => {
   switch (p) {
@@ -422,8 +419,6 @@ type DateTimeValue = {
   time: string;
 };
 
-
-
 /* ===== Editor-like Add page ===== */
 type Choice = "known" | "unknown" | null;
 
@@ -531,44 +526,47 @@ export default function AddPlayerPage() {
     };
   }, []);
 
-  const enabledRatingAspects = useMemo<RatingAspect[]>(
-    () => ratingConfig.filter((r) => r.enabled !== false),
-    [ratingConfig]
-  );
+  const enabledRatingAspects = useMemo<RatingAspect[]>(() => {
+    return ratingConfig.filter((r) => r.enabled !== false);
+  }, [ratingConfig]);
 
-  // AUTOMATYCZNE wyliczanie trybu profilu (known / unknown) na podstawie pól
-  useEffect(() => {
-    const hasPersonal =
-      firstName.trim() !== "" ||
-      lastName.trim() !== "" ||
-      birthYear.trim() !== "";
+// AUTOMATYCZNE wyliczanie trybu profilu (known / unknown)
+// Zawodnik znany = jest imię lub nazwisko
+// Zawodnik nieznany = brak imienia i nazwiska, ale są inne dane (np. numer, klub itd.)
+useEffect(() => {
+  const hasName =
+    firstName.trim() !== "" && lastName.trim() !== "";
 
-    const hasAnon =
-      jerseyNumber.trim() !== "" ||
-      uNote.trim() !== "" ||
-      (!hasPersonal && (club.trim() !== "" || clubCountry.trim() !== ""));
+  const hasAnyOtherData =
+    jerseyNumber.trim() !== "" ||
+    birthYear.trim() !== "" ||
+    club.trim() !== "" ||
+    clubCountry.trim() !== "" ||
+    uNote.trim() !== "";
 
-    let next: Choice;
-    if (hasPersonal && !hasAnon) {
-      next = "known";
-    } else if (!hasPersonal && hasAnon) {
-      next = "unknown";
-    } else if (hasPersonal && hasAnon) {
-      next = "known";
-    } else {
-      next = null;
-    }
+  let next: Choice = null;
 
-    setChoice((prev) => (prev === next ? prev : next));
-  }, [
-    firstName,
-    lastName,
-    birthYear,
-    club,
-    clubCountry,
-    jerseyNumber,
-    uNote,
-  ]);
+  if (hasName) {
+    // jak tylko pojawi się imię lub nazwisko – traktujemy jako "znany"
+    next = "known";
+  } else if (hasAnyOtherData) {
+    // brak imienia/nazwiska, ale jest numer/rok/klub/notatka -> "nieznany"
+    next = "unknown";
+  } else {
+    next = null;
+  }
+
+  setChoice((prev) => (prev === next ? prev : next));
+}, [
+  firstName,
+  lastName,
+  birthYear,
+  club,
+  clubCountry,
+  jerseyNumber,
+  uNote,
+]);
+
 
   // Nazwa wyświetlana w tabeli obserwacji zawodnika
   const playerDisplayName = useMemo(() => {
@@ -812,122 +810,156 @@ export default function AddPlayerPage() {
 
   const [extView, setExtView] = useState<ExtKey>("profile");
 
+  /* ===== ExtContent – zsynchronizowane z PlayerEditorPage ===== */
   function ExtContent({ view }: { view: ExtKey }) {
     switch (view) {
-      case "profile":
+      case "profile": {
+        const bucketLabels: Record<BucketPos, string> = {
+          GK: "Bramkarz",
+          DF: "Obrona",
+          MF: "Pomoc",
+          FW: "Atak",
+        };
+
+        const byBucket: Record<BucketPos, typeof POS_DATA> = {
+          GK: [],
+          DF: [],
+          MF: [],
+          FW: [],
+        };
+
+        POS_DATA.forEach((opt) => {
+          const bucket = toBucket(opt.value as DetailedPos);
+          byBucket[bucket] = [...byBucket[bucket], opt];
+        });
+
+        // Nie pokazujemy bramkarza w pozycjach alternatywnych
+        const bucketOrder: BucketPos[] = ["DF", "MF", "FW"];
+
         return (
           <div className="space-y-5">
-<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-  <div>
-    <Label className="text-sm">Wzrost (cm)</Label>
-    <NumericField
-      value={ext.height === "" ? undefined : Number(ext.height)}
-      onChange={(val) =>
-        setExt((s) => ({
-          ...s,
-          height: val == null ? "" : String(val),
-        }))
-      }
-      placeholder="np. 182"
-    />
-  </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <Label className="text-sm">Wzrost (cm)</Label>
+                <NumericField
+                  value={ext.height === "" ? undefined : Number(ext.height)}
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      height: val == null ? "" : String(val),
+                    }))
+                  }
+                  placeholder="np. 182"
+                />
+              </div>
 
-  <div>
-    <Label className="text-sm">Waga (kg)</Label>
-    <NumericField
-      value={ext.weight === "" ? undefined : Number(ext.weight)}
-      onChange={(val) =>
-        setExt((s) => ({
-          ...s,
-          weight: val == null ? "" : String(val),
-        }))
-      }
-      placeholder="np. 76"
-    />
-  </div>
+              <div>
+                <Label className="text-sm">Waga (kg)</Label>
+                <NumericField
+                  value={ext.weight === "" ? undefined : Number(ext.weight)}
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      weight: val == null ? "" : String(val),
+                    }))
+                  }
+                  placeholder="np. 76"
+                />
+              </div>
 
-  <div>
-    <Label className="text-sm">Dominująca noga</Label>
-    <Select
-      value={ext.dominantFoot || undefined}
-      onValueChange={(val) =>
-        setExt((s) => ({ ...s, dominantFoot: val }))
-      }
-    >
-      <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
-        <SelectValue placeholder="Wybierz" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="R">Prawa (R)</SelectItem>
-        <SelectItem value="L">Lewa (L)</SelectItem>
-        <SelectItem value="Both">Obunożny</SelectItem>
-      </SelectContent>
-    </Select>
-  </div>
-</div>
+              <div>
+                <Label className="text-sm">Dominująca noga</Label>
+                <Select
+                  value={ext.dominantFoot || undefined}
+                  onValueChange={(val) =>
+                    setExt((s) => ({ ...s, dominantFoot: val }))
+                  }
+                >
+                  <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
+                    <SelectValue placeholder="Wybierz" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="R">Prawa (R)</SelectItem>
+                    <SelectItem value="L">Lewa (L)</SelectItem>
+                    <SelectItem value="Both">Obunożny</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
+            <div>
+              <Label className="text-sm">Pozycje alternatywne</Label>
+              <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {bucketOrder.map((bucket) => {
+                  const group = byBucket[bucket];
+                  if (!group.length) return null;
 
-<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-  <div>
-    <Label className="text-sm">Pozycje alternatywne</Label>
-    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {POS_DATA.map((opt) => {
-        const checked = ext.altPositions.includes(opt.value);
-        const itemId = `alt-pos-${opt.value}`;
+                  return (
+                    <div key={bucket} className="space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+                        {bucketLabels[bucket]}
+                      </p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {group.map((opt) => {
+                          const checked = ext.altPositions.includes(opt.value);
+                          const itemId = `alt-pos-${opt.value}`;
 
-        return (
-          <div
-            key={opt.value}
-            className={cn(
-              "relative flex w-full items-start gap-2 rounded-md border border-input p-3 text-xs shadow-xs outline-none",
-              "has-[data-state=checked]:border-primary/60 has-[data-state=checked]:bg-primary/5"
-            )}
-          >
-            <Checkbox
-              id={itemId}
-              aria-describedby={`${itemId}-description`}
-              className="order-1 mt-0.5 after:absolute after:inset-0"
-              checked={checked}
-              onCheckedChange={(next) => {
-                const isChecked = Boolean(next);
-                setExt((s) => {
-                  const current = s.altPositions;
-                  const nextPositions = isChecked
-                    ? [...current, opt.value]
-                    : current.filter((x) => x !== opt.value);
-                  return { ...s, altPositions: nextPositions };
-                });
-              }}
-            />
-            <div className="grid grow gap-1">
-              <Label
-                htmlFor={itemId}
-                className="text-xs font-medium text-foreground"
-              >
-                {opt.code}{" "}
-                <span className="font-normal text-muted-foreground text-[11px] leading-[inherit]">
-                  ({opt.name})
-                </span>
-              </Label>
-              <p
-                className="text-[11px] text-muted-foreground"
-                id={`${itemId}-description`}
-              >
-                {opt.desc}
-              </p>
+                          return (
+                            <div
+                              key={opt.value}
+                              className={cn(
+                                "relative flex w-full items-start gap-2 rounded-md border border-input p-3 text-xs shadow-xs outline-none",
+                                "has-[data-state=checked]:border-primary/60 has-[data-state=checked]:bg-primary/5"
+                              )}
+                            >
+                              <Checkbox
+                                id={itemId}
+                                aria-describedby={`${itemId}-description`}
+                                className="order-1 mt-0.5 after:absolute after:inset-0"
+                                checked={checked}
+                                onCheckedChange={(next) => {
+                                  const isChecked = Boolean(next);
+                                  setExt((s) => {
+                                    const current = s.altPositions;
+                                    const nextPositions = isChecked
+                                      ? [...current, opt.value]
+                                      : current.filter((x) => x !== opt.value);
+                                    return {
+                                      ...s,
+                                      altPositions: nextPositions,
+                                    };
+                                  });
+                                }}
+                              />
+                              <div className="grid grow gap-1">
+                                <Label
+                                  htmlFor={itemId}
+                                  className="text-xs font-medium text-foreground"
+                                >
+                                  {opt.code}{" "}
+                                  <span className="font-normal text-muted-foreground text-[11px] leading-[inherit]">
+                                    ({opt.name})
+                                  </span>
+                                </Label>
+                                <p
+                                  className="text-[11px] text-muted-foreground"
+                                  id={`${itemId}-description`}
+                                >
+                                  {opt.desc}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         );
-      })}
-    </div>
-  </div>
-</div>
-
-
-
-
-          </div>
-        );
+      }
 
       case "eligibility":
         return (
@@ -1103,65 +1135,75 @@ export default function AddPlayerPage() {
                 className="mt-1"
               />
             </div>
-<div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-  <div>
-    <NumericField
-    label = "Minuty w ostatnich 365 dniach"
-      value={ext.minutes365 === "" ? undefined : Number(ext.minutes365)}
-      onChange={(val) =>
-        setExt((s) => ({
-          ...s,
-          minutes365: val == null ? "" : String(val),
-        }))
-      }
-      placeholder="0"
-    />
-  </div>
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+              <div>
+                <NumericField
+                  label="Minuty w ostatnich 365 dniach"
+                  value={
+                    ext.minutes365 === ""
+                      ? undefined
+                      : Number(ext.minutes365)
+                  }
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      minutes365: val == null ? "" : String(val),
+                    }))
+                  }
+                  placeholder="0"
+                />
+              </div>
 
-  <div>
-    <NumericField
-    label = "Mecze jako starter"
-      value={ext.starts365 === "" ? undefined : Number(ext.starts365)}
-      onChange={(val) =>
-        setExt((s) => ({
-          ...s,
-          starts365: val == null ? "" : String(val),
-        }))
-      }
-      placeholder="0"
-    />
-  </div>
+              <div>
+                <NumericField
+                  label="Mecze jako starter"
+                  value={
+                    ext.starts365 === ""
+                      ? undefined
+                      : Number(ext.starts365)
+                  }
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      starts365: val == null ? "" : String(val),
+                    }))
+                  }
+                  placeholder="0"
+                />
+              </div>
 
-  <div>
-    <NumericField
-    label="Mecze jako rezerwowy"
-      value={ext.subs365 === "" ? undefined : Number(ext.subs365)}
-      onChange={(val) =>
-        setExt((s) => ({
-          ...s,
-          subs365: val == null ? "" : String(val),
-        }))
-      }
-      placeholder="0"
-    />
-  </div>
+              <div>
+                <NumericField
+                  label="Mecze jako rezerwowy"
+                  value={
+                    ext.subs365 === "" ? undefined : Number(ext.subs365)
+                  }
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      subs365: val == null ? "" : String(val),
+                    }))
+                  }
+                  placeholder="0"
+                />
+              </div>
 
-  <div>
-
-    <NumericField
-      label="Gole w ostatnich 365 dniach"
-      value={ext.goals365 === "" ? undefined : Number(ext.goals365)}
-      onChange={(val) =>
-        setExt((s) => ({
-          ...s,
-          goals365: val == null ? "" : String(val),
-        }))
-      }
-       placeholder="0"
-    />
-  </div>
-</div>
-
+              <div>
+                <NumericField
+                  label="Gole w ostatnich 365 dniach"
+                  value={
+                    ext.goals365 === "" ? undefined : Number(ext.goals365)
+                  }
+                  onChange={(val) =>
+                    setExt((s) => ({
+                      ...s,
+                      goals365: val == null ? "" : String(val),
+                    }))
+                  }
+                  placeholder="0"
+                />
+              </div>
+            </div>
           </div>
         );
 
@@ -1244,12 +1286,7 @@ export default function AddPlayerPage() {
                 <TooltipProvider delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      {/* <button
-                        type="button"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-slate-300 text-[10px] text-slate-600 hover:bg-stone-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                      >
-                        i
-                      </button> */}
+                      {/* optional trigger here */}
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs text-xs leading-snug">
                       {aspect.tooltip}
@@ -1295,7 +1332,7 @@ export default function AddPlayerPage() {
           <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
           {title}
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-4">
           {aspects.map((aspect) => (
             <RatingRow key={aspect.id} aspect={aspect} />
           ))}
@@ -1311,164 +1348,201 @@ export default function AddPlayerPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Autozapis do Supabase – dla nowego rekordu: INSERT, potem UPDATE jak w edytorze
-  useEffect(() => {
-    let cancelled = false;
+useEffect(() => {
+  let cancelled = false;
 
-    if (!choice) {
-      setSaveState("idle");
-      return;
-    }
+  // Czy jest jakikolwiek sensowny input?
+  const hasAnyData =
+    firstName.trim() !== "" ||
+    lastName.trim() !== "" ||
+    birthYear.trim() !== "" ||
+    jerseyNumber.trim() !== "" ||
+    club.trim() !== "" ||
+    clubCountry.trim() !== "";
 
-    const isKnown = choice === "known";
+  if (!hasAnyData) {
+    setSaveState("idle");
+    return;
+  }
 
-    const knownValid =
-      isKnown &&
-      !!firstName.trim() &&
-      !!lastName.trim() &&
-      !!birthYear.trim() &&
-      !!club.trim() &&
-      !!clubCountry.trim();
+  // choice może ci pomóc, ale nie blokuj od razu
+  const isKnown = choice === "known";
 
-    // Zmienione: anonimowy profil zapisuje się już jeśli JAKIEKOLWIEK z tych pól jest uzupełnione
-    const unknownValid =
-      !isKnown &&
-      (jerseyNumber.trim() !== "" ||
-        club.trim() !== "" ||
-        clubCountry.trim() !== "");
+  setSaveError(null);
+  setSaveState("saving");
 
-    if (!knownValid && !unknownValid) {
-      setSaveState("idle");
-      return;
-    }
+  if (saveTimer.current) clearTimeout(saveTimer.current);
 
-    setSaveError(null);
-    setSaveState("saving");
+  saveTimer.current = setTimeout(() => {
+    (async () => {
+      try {
+        const supabase = getSupabase();
+        const currentYear = new Date().getFullYear();
 
-    if (saveTimer.current) clearTimeout(saveTimer.current);
+        const isKnownX = isKnown; // albo choice === "known"
+        let name: string;
+        let clubFinal: string;
+        let posBucket: BucketPos;
+        let clubCountryFinal: string | null;
+        let age = 0;
 
-    saveTimer.current = setTimeout(() => {
-      (async () => {
-        try {
-          const supabase = getSupabase();
-          const currentYear = new Date().getFullYear();
+        if (isKnownX) {
+          const fn = firstName.trim();
+          const ln = lastName.trim();
+          name = `${fn} ${ln}`.trim() || "Bez imienia";
+          clubFinal = club.trim();
+          clubCountryFinal = clubCountry.trim() || null;
+          posBucket = toBucket(posDet);
 
-          const isKnownX = choice === "known";
-          let name: string;
-          let clubFinal: string;
-          let posBucket: BucketPos;
-          let clubCountryFinal: string | null;
-          let age = 0;
-
-          if (isKnownX) {
-            const fn = firstName.trim();
-            const ln = lastName.trim();
-            name = `${fn} ${ln}`.trim() || "Bez imienia";
-            clubFinal = club.trim();
-            posBucket = toBucket(posDet);
-            clubCountryFinal = clubCountry.trim();
-            if (birthYear.trim()) {
-              const by = parseInt(birthYear.trim(), 10);
-              if (!Number.isNaN(by)) {
-                age = Math.max(0, currentYear - by);
-              }
+          if (birthYear.trim()) {
+            const by = parseInt(birthYear.trim(), 10);
+            if (!Number.isNaN(by)) {
+              age = Math.max(0, currentYear - by);
             }
-          } else {
-            const num = jerseyNumber.trim();
-            const c = club.trim();
-            const cc = clubCountry.trim();
-
-            // Zachowanie jak w PlayerEditorPage: może powstać "Nieznany zawodnik"
-            name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
-            clubFinal = c;
-            posBucket = toBucket(uPosDet || posDet);
-            clubCountryFinal = cc || null;
           }
+        } else {
+          const num = jerseyNumber.trim();
+          const c = club.trim();
+          const cc = clubCountry.trim();
 
-          const nationalityVal =
-            ext.birthCountry.trim() || clubCountryFinal || null;
+          name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
+          clubFinal = c;
+          clubCountryFinal = cc || null;
+          posBucket = toBucket(uPosDet || posDet);
+        }
 
-          const meta = {
-            mode: choice,
-            extended: ext,
-            ratings,
-            notes,
-            unknownNote: uNote || null,
-            basic: {
-              firstName: firstName.trim() || null,
-              lastName: lastName.trim() || null,
-              birthYear: birthYear.trim() || null,
-              club: clubFinal,
-              clubCountry: clubCountryFinal || null,
-              jerseyNumber: jerseyNumber.trim() || null,
-              posDet,
-              uPosDet,
-            },
-            observationsMeta: {
-              selectedId: obsSelectedId,
-              list: normalizedObservations,
-            },
-          };
+        const nationalityVal =
+          ext.birthCountry.trim() || clubCountryFinal || null;
 
-          const basePayload: any = {
-            name,
-            pos: posBucket,
-            club: clubFinal,
-            age,
-            status: "active",
-            firstName: isKnownX ? firstName.trim() || null : null,
-            lastName: isKnownX ? lastName.trim() || null : null,
-            birthDate: isKnownX ? birthYear.trim() || null : null,
-            nationality: nationalityVal,
-            photo: null,
-            meta,
-          };
+        const meta = {
+          mode: isKnownX ? "known" : "unknown",
+          extended: ext,
+          ratings,
+          notes,
+          unknownNote: uNote || null,
+          basic: {
+            firstName: firstName.trim() || null,
+            lastName: lastName.trim() || null,
+            birthYear: birthYear.trim() || null,
+            club: club.trim() || null,
+            clubCountry: clubCountry.trim() || null,
+            jerseyNumber: jerseyNumber.trim() || null,
+            posDet,
+            uPosDet,
+          },
+          observationsMeta: {
+            selectedId: obsSelectedId,
+            list: normalizedObservations,
+          },
+        };
 
-          let error;
-          if (!playerId) {
-            const { data, error: insertError } = await supabase
-              .from("players")
-              .insert(basePayload)
-              .select("id")
-              .single();
+        const basePayload: any = {
+          name,
+          pos: posBucket,
+          club: clubFinal,
+          age,
+          status: "active",
+          firstName: isKnownX ? firstName.trim() || null : null,
+          lastName: isKnownX ? lastName.trim() || null : null,
+          birthDate: isKnownX ? birthYear.trim() || null : null,
+          nationality: nationalityVal,
+          photo: null,
+          meta,
+          // tu ew. tenant_id, created_by itd. jeśli RLS tego wymaga
+        };
 
-            error = insertError;
-            if (!insertError && data && !cancelled) {
-              setPlayerId(data.id);
-            }
-          } else {
-            const { error: updateError } = await supabase
-              .from("players")
-              .update(basePayload)
-              .eq("id", playerId);
-            error = updateError;
+        let error;
+        if (!playerId) {
+          const { data, error: insertError } = await supabase
+            .from("players")
+            .insert(basePayload)
+            .select("id")
+            .single();
+
+          error = insertError;
+          if (!insertError && data && !cancelled) {
+            setPlayerId(data.id);
           }
+        } else {
+          const { error: updateError } = await supabase
+            .from("players")
+            .update(basePayload)
+            .eq("id", playerId);
 
-          if (error) {
-            console.error("[AddPlayerPage] Supabase save error:", error);
-            if (!cancelled) {
-              setSaveState("idle");
-              setSaveError("Nie udało się zapisać zawodnika w Supabase.");
-            }
-            return;
-          }
+          error = updateError;
+        }
 
-          if (!cancelled) {
-            setSaveState("saved");
-          }
-        } catch (err) {
-          console.error("[AddPlayerPage] Supabase save exception:", err);
+        if (error) {
+          console.error("[AddPlayerPage] Supabase save error:", error);
           if (!cancelled) {
             setSaveState("idle");
-            setSaveError("Wystąpił błąd podczas zapisu zawodnika do Supabase.");
+            setSaveError("Nie udało się zapisać zawodnika w Supabase.");
           }
+          return;
         }
-      })();
-    }, 700);
 
-    return () => {
-      cancelled = true;
-      if (saveTimer.current) clearTimeout(saveTimer.current);
+        if (!cancelled) {
+          setSaveState("saved");
+        }
+      } catch (err) {
+        console.error("[AddPlayerPage] Supabase save exception:", err);
+        if (!cancelled) {
+          setSaveState("idle");
+          setSaveError("Wystąpił błąd podczas zapisu zawodnika do Supabase.");
+        }
+      }
+    })();
+  }, 700);
+
+  return () => {
+    cancelled = true;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+  };
+}, [
+  choice,
+  firstName,
+  lastName,
+  birthYear,
+  club,
+  clubCountry,
+  jerseyNumber,
+  posDet,
+  uPosDet,
+  ext,
+  ratings,
+  notes,
+  normalizedObservations,
+  obsSelectedId,
+  playerId,
+  uNote,
+]);
+
+  // PROGRESS: global completion percent – jak w PlayerEditorPage
+  const completionPercent = useMemo(() => {
+    const virtualPlayer = {
+      firstName,
+      lastName,
+      birthDate: birthYear,
+      club,
+      nationality: ext.birthCountry || clubCountry,
+      meta: {
+        mode: choice,
+        basic: {
+          firstName,
+          lastName,
+          birthYear,
+          club,
+          clubCountry,
+          jerseyNumber,
+        },
+        extended: ext,
+        ratings,
+        notes,
+        unknownNote: uNote,
+      },
     };
+
+    return computePlayerProfileProgress(virtualPlayer as any);
   }, [
     choice,
     firstName,
@@ -1477,14 +1551,9 @@ export default function AddPlayerPage() {
     club,
     clubCountry,
     jerseyNumber,
-    posDet,
-    uPosDet,
     ext,
     ratings,
     notes,
-    normalizedObservations,
-    obsSelectedId,
-    playerId,
     uNote,
   ]);
 
@@ -1525,11 +1594,29 @@ export default function AddPlayerPage() {
     return true;
   }
 
-  // NEW: push "Zapisano / Wróć do listy" into global header via ClientRoot
+  // Header actions: Autozapis + Postęp profilu + powrót (jak w PlayerEditorPage)
   useEffect(() => {
     const node = (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <SavePill state={saveState} size="compact" />
+
+        {/* PROGRESS BAR (global postęp profilu) */}
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="hidden text-[10px] font-medium uppercase tracking-wide text-muted-foreground md:inline">
+            Postęp profilu
+          </span>
+          <div className="flex items-center gap-2">
+            <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-neutral-800">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-all duration-300"
+                style={{ width: `${completionPercent}%` }}
+              />
+            </div>
+            <span className="text-[11px] tabular-nums text-slate-700 dark:text-neutral-200">
+              {completionPercent}%
+            </span>
+          </div>
+        </div>
 
         <Button
           variant="outline"
@@ -1556,113 +1643,45 @@ export default function AddPlayerPage() {
     return () => {
       setActions(null);
     };
-  }, [setActions, saveState, router]);
+  }, [setActions, saveState, router, completionPercent]);
+
+  // Tytuł z badge jak w PlayerEditorPage (Zawodnik znany / nieznany)
+  const addTitle = (
+    <div className="w-full">
+      <div className="flex items-center gap-2 w-full">
+        <h2 className="mt-1 text-xl font-semibold leading-none tracking-tight">
+          Dodaj zawodnika
+        </h2>
+        {choice === "known" && (
+          <span className="ml-auto inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-100">
+            <KnownPlayerIcon
+              className="mr-1.5 h-4 w-4 text-emerald-700"
+              strokeWidth={1.4}
+            />
+            Zawodnik znany
+          </span>
+        )}
+        {choice === "unknown" && (
+          <span className="ml-auto inline-flex items-center rounded-md px-2 py-0.5 text-[12px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+            <UnknownPlayerIcon
+              className="mr-1.5 h-4 w-4 text-rose-700"
+              strokeWidth={1.4}
+            />
+            Zawodnik nieznany
+          </span>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="w-full space-y-4">
-      {/* Toolbar – bez lokalnych przycisków pod tytułem */}
-      <Toolbar title="Dodaj zawodnika" right={null} />
+      {/* Toolbar – tytuł jako node + badge statusu */}
+      <ToolbarFull title={addTitle} right={null} />
 
-      {/* KROK 0 – tryb profilu (ustalany automatycznie na podstawie pól) */}
-      <Card className="p-0 border-none">
-       
-        <CardContent className="p-0 border-none">
-          <div className="grid grid-cols-2 gap-3">
-            <div
-              className={cn(
-                "cursor-default rounded-lg p-4 text-left border bg-white dark:bg-neutral-950 ",
-                choice === "known"
-                  ? "ring-emerald-600/80 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40"
-                  : "ring-gray-200 dark:ring-neutral-800"
-              )}
-            >
-              <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-emerald-100 dark:border-neutral-700 dark:bg-neutral-900">
-                  <KnownPlayerIcon
-                    className={cn(
-                      "h-7 w-7",
-                      choice === "known"
-                        ? "text-emerald-800"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                    strokeWidth={1.0}
-                  />
-                </span>
-                <div className="min-w-0">
-                  <div
-                    className={cn(
-                      "mb-1 text-sm font-semibold",
-                      choice === "known"
-                        ? "text-emerald-900"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                  >
-                    Pełne dane zawodnika
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xs leading-relaxed",
-                      choice === "known"
-                        ? "text-emerald-900/80"
-                        : "text-black/70 dark:text-neutral-300"
-                    )}
-                  >
-                    Imię, nazwisko, rok urodzenia, klub i kraj – profil{" "}
-                    <b>imienny</b>.
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            <div
-              className={cn(
-                "cursor-default rounded-lg p-4 text-left border bg-white dark:bg-neutral-950 ",
-                choice === "unknown"
-                  ? "ring-rose-600/80 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40"
-                  : "ring-gray-200 dark:ring-neutral-800"
-              )}
-            >
-              <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/80 border border-rose-100 dark:border-neutral-700 dark:bg-neutral-900">
-                  <UnknownPlayerIcon
-                    className={cn(
-                      "h-7 w-7",
-                      choice === "unknown"
-                        ? "text-rose-900"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                    strokeWidth={1.0}
-                  />
-                </span>
-                <div className="min-w-0">
-                  <div
-                    className={cn(
-                      "mb-1 text-sm font-semibold",
-                      choice === "unknown"
-                        ? "text-rose-900"
-                        : "text-black dark:text-neutral-100"
-                    )}
-                  >
-                    Profil anonimowy
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xs leading-relaxed",
-                      choice === "unknown"
-                        ? "text-rose-900/80"
-                        : "text-black/70 dark:text-neutral-300"
-                    )}
-                  >
-                    Numer, klub i kraj – gdy nie podajesz danych osobowych.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Kroki 1–4 – identyczne jak w PlayerEditorPage */}
+      {/* Kroki 1–4 – zsynchronizowane z PlayerEditorPage */}
       <div className="space-y-4">
         {/* KROK 1 – Podstawowe informacje + Główna pozycja (pitch) */}
         <Card ref={basicRef} className="mt-1">
@@ -1732,22 +1751,33 @@ export default function AddPlayerPage() {
                       </div>
                       <div>
                         <Label className="text-sm">Rok urodzenia</Label>
-<BirthDatePicker
-  value={birthYear}
-  onChange={(val: string | null | undefined) =>
-    setBirthYear(val || "")
-  }
-/>
+                        <NumericField
+                          value={
+                            birthYear === "" ? undefined : Number(birthYear)
+                          }
+                          onChange={(val) =>
+                            setBirthYear(
+                              val == null ? "" : String(val)
+                            )
+                          }
+                          placeholder="np. 2006"
+                        />
                       </div>
                       <div>
-
-                      <NumericField
-                        label="Numer na koszulce"
-                        value={jerseyNumber === "" ? undefined : Number(jerseyNumber)}
-                        onChange={(val) => setJerseyNumber(val == null ? "" : String(val))}
-                        placeholder="np. 27"
-                      />
-
+                        <NumericField
+                          label="Numer na koszulce"
+                          value={
+                            jerseyNumber === ""
+                              ? undefined
+                              : Number(jerseyNumber)
+                          }
+                          onChange={(val) =>
+                            setJerseyNumber(
+                              val == null ? "" : String(val)
+                            )
+                          }
+                          placeholder="np. 27"
+                        />
                       </div>
                       <div>
                         <Label className="text-sm">Aktualny klub</Label>
@@ -1767,16 +1797,16 @@ export default function AddPlayerPage() {
                         />
                       </div>
 
-<div className="md:col-span-1">
-  <MainPositionPitch
-    value={(ext.mainPos as DetailedPos | "") || ""}
-    onChange={(pos) => {
-      setExt((s) => ({ ...s, mainPos: pos }));
-      setPosDet(pos);
-      setUPosDet(pos);
-    }}
-  />
-</div>
+                      <div className="md:col-span-1">
+                        <MainPositionPitch
+                          value={(ext.mainPos as DetailedPos | "") || ""}
+                          onChange={(pos) => {
+                            setExt((s) => ({ ...s, mainPos: pos }));
+                            setPosDet(pos);
+                            setUPosDet(pos);
+                          }}
+                        />
+                      </div>
 
                       <div className="md:col-span-1">
                         <Label className="text-sm">
@@ -1988,16 +2018,15 @@ export default function AddPlayerPage() {
                         !effectiveMainPos && "pointer-events-none opacity-40"
                       )}
                     >
-<div>
-  <Label className="text-sm">Notatki ogólne</Label>
-  <Textarea
-    value={notes}
-    onChange={(e) => setNotes(e.target.value)}
-    placeholder="Krótki komentarz o zawodniku…"
-    className="mt-1"
-  />
-</div>
-
+                      <div>
+                        <Label className="text-sm">Notatki ogólne</Label>
+                        <Textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Krótki komentarz o zawodniku…"
+                          className="mt-1"
+                        />
+                      </div>
 
                       <div className="space-y-6">
                         {enabledRatingAspects.length === 0 && (

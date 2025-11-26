@@ -135,137 +135,112 @@ export function MainPositionPitch({ value, onChange }: MainPositionPitchProps) {
       {/* >>> ZAMIANA tej części za <div ...> w dokumencie <<< */}
       <div className="mx-auto w-full max-w-[700px] rounded border-none bg-transparent">
         <div className="relative w-full overflow-hidden rounded-[20px] bg-[#76C35D] aspect-[4/3] sm:aspect-[590/350]">
-          <svg
-            viewBox="0 0 590 350"
-            className="pointer-events-none absolute inset-0 h-full w-full p-2 sm:p-0"
-            preserveAspectRatio="xMidYMid meet"
-            shapeRendering="geometricPrecision"
-          >
-            <rect
-              x="18.5139"
-              y="16.2588"
-              width="274.939"
-              height="317.482"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <rect
-              x="18.5139"
-              y="79.2017"
-              width="104.178"
-              height="192.55"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <rect
-              x="18.5139"
-              y="112.58"
-              width="47.2579"
-              height="124.839"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <rect
-              x="8.66235"
-              y="112.58"
-              width="10.0408"
-              height="124.839"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
+<svg
+  viewBox="0 0 590 350" className="pointer-events-none absolute inset-0 h-full w-full p-2 sm:p-0"
+  preserveAspectRatio="xMidYMid meet"
+  shape-rendering="geometricPrecision"
+>
+  <rect x="18.5139" y="16.2588" width="274.939" height="317.482" fill="none" stroke="white" stroke-width="1.5" />
+  <rect x="18.5139" y="79.2017" width="104.178" height="192.55" fill="none" stroke="white" stroke-width="1.5" />
+  <rect x="18.5139" y="112.58" width="47.2579" height="124.839" fill="none" stroke="white" stroke-width="1.5" />
+  <rect x="8.66235" y="112.58" width="10.0408" height="124.839" fill="none" stroke="white" stroke-width="1.5" />
 
-            <path
-              d="M31.7444 15.2588C31.7444 21.5792 25.9524 26.7031 18.8079 26.7031C18.3711 26.7031 17.9395 26.6819 17.5139 26.6445V15.2588H31.7444Z"
-              fill="white"
-              fillOpacity="0.1"
-            />
-            <path
-              d="M17.5139 322.344C24.7684 322.344 30.6497 327.39 30.6497 333.614C30.6497 333.995 30.6262 334.37 30.5833 334.741L17.5139 334.741L17.5139 322.344Z"
-              fill="white"
-              fillOpacity="0.1"
-            />
+  <path
+    d="M556.256 15.2588 C556.256 21.5792 562.048 26.7031 569.192 26.7031 C569.629 26.7031 570.06 26.6819 570.486 26.6445"
+    fill="none"
+    stroke="white"
+    stroke-opacity="1"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    transform="translate(0, 2)"
+  />
+  <path
+    d="M570.486 322.344 C563.232 322.344 557.35 327.39 557.35 333.614 C557.35 333.995 557.374 334.37 557.417 334.741"
+    fill="none"
+    stroke="white"
+    stroke-opacity="1"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    transform="translate(0, -2)"
+  />
 
-            <rect
-              x="-1"
-              y="1"
-              width="278.223"
-              height="317.482"
-              transform="matrix(-1 0 0 1 570.486 15.2588)"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <rect
-              x="-1"
-              y="1"
-              width="104.178"
-              height="192.55"
-              transform="matrix(-1 0 0 1 570.486 78.2017)"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <rect
-              x="-1"
-              y="1"
-              width="47.2579"
-              height="124.839"
-              transform="matrix(-1 0 0 1 570.486 111.58)"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <rect
-              x="-1"
-              y="1"
-              width="10.0408"
-              height="124.839"
-              transform="matrix(-1 0 0 1 580.338 111.58)"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
+  <path
+    d="M30.65 15.2588 C30.65 21.5792 24.858 26.7031 17.714 26.7031 C17.277 26.7031 16.846 26.6819 16.42 26.6445"
+    fill="none"
+    stroke="white"
+    stroke-opacity="1"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    transform="translate(2, 2)"
+  />
+  <path
+    d="M16.42 322.344 C23.674 322.344 29.556 327.39 29.556 333.614 C29.556 333.995 29.532 334.37 29.489 334.741"
+    fill="none"
+    stroke="white"
+    stroke-opacity="1"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    transform="translate(2, -2)"
+  />
 
-            <path
-              d="M558.256 15.2588C558.256 21.5792 564.048 26.7031 571.192 26.7031C571.629 26.7031 572.06 26.6819 572.486 26.6445V15.2588H558.256Z"
-              fill="white"
-              fillOpacity="0.1"
-            />
-            <path
-              d="M572.486 322.344C565.232 322.344 559.35 327.39 559.35 333.614C559.35 333.995 559.374 334.37 559.417 334.741L572.486 334.741L572.486 322.344Z"
-              fill="white"
-              fillOpacity="0.1"
-            />
+  <rect
+    x="-1"
+    y="1"
+    width="278.223"
+    height="317.482"
+    transform="matrix(-1 0 0 1 570.486 15.2588)"
+    fill="none"
+    stroke="white"
+    stroke-width="1.5"
+  />
+  <rect
+    x="-1"
+    y="1"
+    width="104.178"
+    height="192.55"
+    transform="matrix(-1 0 0 1 570.486 78.2017)"
+    fill="none"
+    stroke="white"
+    stroke-width="1.5"
+  />
+  <rect
+    x="-1"
+    y="1"
+    width="47.2579"
+    height="124.839"
+    transform="matrix(-1 0 0 1 570.486 111.58)"
+    fill="none"
+    stroke="white"
+    stroke-width="1.5"
+  />
+  <rect
+    x="-1"
+    y="1"
+    width="10.0408"
+    height="124.839"
+    transform="matrix(-1 0 0 1 580.338 111.58)"
+    fill="none"
+    stroke="white"
+    stroke-width="1.5"
+  />
 
-            <path
-              d="M122 106.618C139.904 124.296 151 148.852 151 176C151 203.148 139.903 227.703 122 245.381V106.618Z"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M468 106.618C450.096 124.296 439 148.852 439 176C439 203.148 450.097 227.703 468 245.381V106.618Z"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-            />
+  <path
+    d="M558.256 15.2588C558.256 21.5792 564.048 26.7031 571.192 26.7031C571.629 26.7031 572.06 26.6819 572.486 26.6445V15.2588H558.256Z"
+    fill="white"
+    fill-opacity="0"
+  />
+  <path
+    d="M572.486 322.344C565.232 322.344 559.35 327.39 559.35 333.614C559.35 333.995 559.374 334.37 559.417 334.741L572.486 334.741L572.486 322.344Z"
+    fill="white"
+    fill-opacity="0"
+  />
 
-            <line
-              x1="295"
-              y1="16"
-              x2="295"
-              y2="334"
-              stroke="white"
-              strokeWidth="1.5"
-            />
+  <path d="M123 106.618C139.904 124.296 151 148.852 151 176C151 203.148 139.903 227.703 122 245.381" fill="none" stroke="white" stroke-width="1.5" />
+  <path d="M467 106.618C450.096 124.296 439 148.852 439 176C439 203.148 450.097 227.703 468 245.381" fill="none" stroke="white" stroke-width="1.5" />
 
-            <circle cx="496" cy="174" r="1" fill="white" />
-            <circle cx="94" cy="174" r="1" fill="white" />
-          </svg>
+  <circle cx="496" cy="174" r="1" fill="white" />
+  <circle cx="94" cy="174" r="1" fill="white" />
+</svg>
 
           {POS_DATA.map((pos) => {
             const layout = POS_LAYOUT[pos.value];
