@@ -497,7 +497,7 @@ function AppShell({
           className="mx-auto w-full max-w-[1400px] pb-6 pt-2 text-xs text-dark dark:text-neutral-400 md:pb-8 px-3"
           role="contentinfo"
         >
-          © {new Date().getFullYear()} entrisoScouting • v1.0
+          © {new Date().getFullYear()} entrisoScouting
         </footer>
       </div>
       <div id="portal-root" />
