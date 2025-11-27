@@ -21,7 +21,7 @@ className={cn(
   // base box
   "grid place-content-center h-4 w-4 shrink-0 rounded border",
   // colors (light/dark)
-  "border-slate-300 bg-background text-primary dark:border-neutral-700 rounded",
+  "border-stone-300 bg-background text-primary dark:border-neutral-700 rounded",
   // focus
   "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded",
   // disabled

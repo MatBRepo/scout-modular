@@ -706,7 +706,7 @@ export default function RequiredFieldsPage() {
       />
 
       {/* Krótki opis u góry – bez gradientów */}
-      <Card className="rounded-md border border-slate-200 bg-card px-4 py-3 text-sm dark:border-neutral-800">
+      <Card className="rounded-md border border-stone-200 bg-card px-4 py-3 text-sm dark:border-neutral-800">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
             Ustal, które pola w AddPlayer, PlayerEditor i Observations są
@@ -729,7 +729,7 @@ export default function RequiredFieldsPage() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,260px),minmax(0,1fr)]">
         {/* LEFT: konteksty formularzy */}
-        <Card className="h-full rounded-md border border-slate-200 bg-card dark:border-neutral-800">
+        <Card className="h-full rounded-md border border-stone-200 bg-card dark:border-neutral-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-md font-semibold">
               Konteksty formularzy
@@ -741,7 +741,7 @@ export default function RequiredFieldsPage() {
           <CardContent className="space-y-3">
             {FORM_GROUPS.map((group, groupIndex) => (
               <div key={group.id} className="space-y-1.5">
-                <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.09em] text-slate-500 dark:text-neutral-500">
+                <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.09em] text-stone-500 dark:text-neutral-500">
                   {group.label}
                 </p>
                 <div className="space-y-1">
@@ -773,8 +773,8 @@ export default function RequiredFieldsPage() {
                         className={cn(
                           "flex w-full flex-col rounded-md border px-2.5 py-2 text-left text-sm transition",
                           isActive
-                            ? "border-slate-900 bg-background dark:border-neutral-100"
-                            : "border-slate-200 bg-background hover:border-slate-300 dark:border-neutral-800 dark:hover:border-neutral-700"
+                            ? "border-stone-900 bg-background dark:border-neutral-100"
+                            : "border-stone-200 bg-background hover:border-stone-300 dark:border-neutral-800 dark:hover:border-neutral-700"
                         )}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -783,12 +783,12 @@ export default function RequiredFieldsPage() {
                               "line-clamp-1 font-medium",
                               isActive
                                 ? "text-foreground"
-                                : "text-slate-700 dark:text-neutral-200"
+                                : "text-stone-700 dark:text-neutral-200"
                             )}
                           >
                             {form.label}
                           </span>
-                          <span className="inline-flex items-center rounded-md border border-slate-200 px-2 py-0.5 text-[10px] text-slate-600 dark:border-neutral-700 dark:text-neutral-300">
+                          <span className="inline-flex items-center rounded-md border border-stone-200 px-2 py-0.5 text-[10px] text-stone-600 dark:border-neutral-700 dark:text-neutral-300">
                             {requiredCount}/{total} wymagane
                           </span>
                         </div>
@@ -886,7 +886,7 @@ export default function RequiredFieldsPage() {
             {/* Lista pól – minimalne „kafelki” */}
             <div className="space-y-2">
               {activeFormDef.fields.length === 0 ? (
-                <div className="rounded-md border border-dashed border-slate-200 bg-background px-4 py-6 text-center text-sm text-muted-foreground dark:border-neutral-800">
+                <div className="rounded-md border border-dashed border-stone-200 bg-background px-4 py-6 text-center text-sm text-muted-foreground dark:border-neutral-800">
                   Dla tego formularza nie zdefiniowano żadnych pól.
                 </div>
               ) : (
@@ -910,7 +910,7 @@ export default function RequiredFieldsPage() {
                             <span className="font-medium text-foreground">
                               {field.label}
                             </span>
-                            <span className="rounded-md border border-slate-200 px-1.5 py-0.5 text-[9px] text-slate-600 dark:border-neutral-700 dark:text-neutral-300">
+                            <span className="rounded-md border border-stone-200 px-1.5 py-0.5 text-[9px] text-stone-600 dark:border-neutral-700 dark:text-neutral-300">
                               {required ? "Wymagane" : "Opcjonalne"}
                             </span>
                             {changed && (
@@ -919,7 +919,7 @@ export default function RequiredFieldsPage() {
                               </span>
                             )}
                             {isDefaultRequired && !changed && required && (
-                              <span className="rounded-md border border-slate-300 px-1.5 py-0.5 text-[9px] text-slate-600 dark:border-neutral-600 dark:text-neutral-300">
+                              <span className="rounded-md border border-stone-300 px-1.5 py-0.5 text-[9px] text-stone-600 dark:border-neutral-600 dark:text-neutral-300">
                                 Domyślnie wymagane
                               </span>
                             )}
@@ -948,8 +948,8 @@ export default function RequiredFieldsPage() {
                             className={cn(
                               "relative inline-flex h-5 w-9 cursor-pointer items-center rounded-md border px-0.5 transition",
                               required
-                                ? "border-slate-900 bg-slate-900"
-                                : "border-slate-300 bg-background dark:border-neutral-700"
+                                ? "border-stone-900 bg-stone-900"
+                                : "border-stone-300 bg-background dark:border-neutral-700"
                             )}
                           >
                             <span

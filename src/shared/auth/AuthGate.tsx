@@ -248,7 +248,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   // ===== 6. Widok logowania / rejestracji =====
   if (!user) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-stone-100 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <div className="relative min-h-screen overflow-hidden bg-stone-100 text-stone-900 dark:bg-slate-950 dark:text-stone-50">
         {/* Gradient + noise background (może zostać, UI w środku jest zaokrąglony-md) */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.18),transparent_55%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.12),transparent_60%)] dark:bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.18),transparent_55%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.16),transparent_60%)]" />
         <div
@@ -263,15 +263,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <div className="w-full max-w-lg">
             {/* Główny nagłówek */}
             <div className="mb-5 text-center">
-<p className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+<p className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-medium text-stone-700 shadow-sm dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">
   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
   <span>entrisoScouting • panel logowania</span>
 </p>
 
-              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
                 entrisoScouting
               </h1>
-              <p className="mt-2 text-[13px] text-slate-600 dark:text-slate-300">
+              <p className="mt-2 text-[13px] text-stone-600 dark:text-stone-300">
                 Nowoczesne środowisko do zarządzania bazą zawodników,
                 obserwacjami i raportami w jednym spójnym systemie.
               </p>
@@ -286,7 +286,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={toggleMode}
-                className="absolute -left-9 hidden h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-transform duration-200 hover:-translate-x-1 hover:scale-110 hover:text-slate-900 dark:hover:text-slate-50 md:flex"
+                className="absolute -left-9 hidden h-9 w-9 items-center justify-center rounded-md text-stone-400 transition-transform duration-200 hover:-translate-x-1 hover:scale-110 hover:text-stone-900 dark:hover:text-stone-50 md:flex"
                 aria-label="Przełącz widok"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -296,7 +296,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={toggleMode}
-                className="absolute -right-9 hidden h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-transform duration-200 hover:translate-x-1 hover:scale-110 hover:text-slate-900 dark:hover:text-slate-50 md:flex"
+                className="absolute -right-9 hidden h-9 w-9 items-center justify-center rounded-md text-stone-400 transition-transform duration-200 hover:translate-x-1 hover:scale-110 hover:text-stone-900 dark:hover:text-stone-50 md:flex"
                 aria-label="Przełącz widok"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -307,19 +307,19 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 initial={{ opacity: 0, y: 16, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.45, ease: easeOutCustom }}
-                className="w-full rounded-md bg-white/90 p-4 text-slate-900 shadow-[0_18px_60px_rgba(15,23,42,0.18)] ring-1 ring-slate-200/80 backdrop-blur-xl dark:bg-slate-950/70 dark:text-slate-50 dark:ring-slate-800/80 md:p-6"
+                className="w-full rounded-md bg-white/90 p-4 text-stone-900 shadow-[0_18px_60px_rgba(15,23,42,0.18)] ring-1 ring-stone-200/80 backdrop-blur-xl dark:bg-slate-950/70 dark:text-stone-50 dark:ring-stone-800/80 md:p-6"
               >
                 {/* Przełącznik Logowanie / Rejestracja */}
                 <div className="mb-4 flex flex-col gap-2">
                   <div className="flex justify-center">
-                    <div className="inline-flex rounded-md bg-stone-100/80 p-1 text-xs ring-1 ring-slate-200 dark:bg-slate-900/80 dark:ring-slate-700/80">
+                    <div className="inline-flex rounded-md bg-stone-100/80 p-1 text-xs ring-1 ring-stone-200 dark:bg-stone-900/80 dark:ring-stone-700/80">
                       <button
                         type="button"
                         onClick={() => switchMode("login")}
                         className={`rounded-md px-4 py-1.5 text-[11px] transition-all ${
                           mode === "login"
-                            ? "bg-slate-900 text-slate-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
-                            : "text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-50"
+                            ? "bg-stone-900 text-stone-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
+                            : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
                         }`}
                       >
                         Logowanie
@@ -329,8 +329,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         onClick={() => switchMode("register")}
                         className={`rounded-md px-4 py-1.5 text-[11px] transition-all ${
                           mode === "register"
-                            ? "bg-slate-900 text-slate-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
-                            : "text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-50"
+                            ? "bg-stone-900 text-stone-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
+                            : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
                         }`}
                       >
                         Rejestracja
@@ -345,7 +345,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.25, ease: "easeOut" }}
-                      className="pt-3 pb-3 text-center text-[11px] text-slate-600 dark:text-slate-300"
+                      className="pt-3 pb-3 text-center text-[11px] text-stone-600 dark:text-stone-300"
                     >
                       {mode === "login" ? (
                         <>
@@ -382,15 +382,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         transition={{ duration: 0.3, ease: "easeOut" }}
                       >
                         <div>
-                          <label className="mb-1 block text-[11px] text-slate-700 dark:text-slate-200">
+                          <label className="mb-1 block text-[11px] text-stone-700 dark:text-stone-200">
                             E-mail
                           </label>
                           <div className="relative">
-                            <Mail className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                            <Mail className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
                             <Input
                               ref={emailInputRef}
                               type="email"
-                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-slate-300 bg-white/90 px-3 py-2 pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus-visible:ring-slate-300"
+                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-3 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
                               placeholder="np. jan@example.com"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
@@ -401,14 +401,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-[11px] text-slate-700 dark:text-slate-200">
+                          <label className="mb-1 block text-[11px] text-stone-700 dark:text-stone-200">
                             Hasło
                           </label>
                           <div className="relative">
-                            <Lock className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                            <Lock className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
                             <Input
                               type={showPass ? "text" : "password"}
-                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-slate-300 bg-white/90 px-3 py-2 pl-8 pr-9 text-sm text-slate-900 placeholder:text-slate-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus-visible:ring-slate-300"
+                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-9 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
                               placeholder="Hasło"
                               value={pwd}
                               onChange={(e) => setPwd(e.target.value)}
@@ -423,7 +423,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                             <button
                               type="button"
                               onClick={() => setShowPass((s) => !s)}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-stone-500 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-50"
                               aria-label={showPass ? "Ukryj hasło" : "Pokaż hasło"}
                             >
                               {showPass ? (
@@ -433,7 +433,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                               )}
                             </button>
                           </div>
-                          <div className="mt-1 flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                          <div className="mt-1 flex justify-between text-[10px] text-stone-500 dark:text-stone-400">
                             {capsOn && (
                               <span className="text-amber-500">
                                 Włączony Caps Lock – uważaj na wielkość liter.
@@ -467,7 +467,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                           <Button
                             type="submit"
                             disabled={!canSubmit || busy}
-                            className="h-9 w-full rounded-md bg-slate-900 text-[11px] font-semibold uppercase tracking-wide text-slate-50 hover:bg-black disabled:opacity-60 dark:bg-stone-100 dark:text-slate-950 dark:hover:bg-white"
+                            className="h-9 w-full rounded-md bg-stone-900 text-[11px] font-semibold uppercase tracking-wide text-stone-50 hover:bg-black disabled:opacity-60 dark:bg-stone-100 dark:text-slate-950 dark:hover:bg-white"
                           >
                             {busy ? "Logowanie…" : "Zaloguj się"}
                           </Button>
@@ -486,14 +486,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         transition={{ duration: 0.3, ease: "easeOut" }}
                       >
                         <div>
-                          <label className="mb-1 block text-[11px] text-slate-700 dark:text-slate-200">
+                          <label className="mb-1 block text-[11px] text-stone-700 dark:text-stone-200">
                             Imię i nazwisko
                           </label>
                           <div className="relative">
-                            <UserIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                            <UserIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
                             <Input
                               ref={nameInputRef}
-                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-slate-300 bg-white/90 px-3 py-2 pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus-visible:ring-slate-300"
+                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-3 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
                               placeholder="np. Jan Kowalski"
                               value={name}
                               onChange={(e) => setName(e.target.value)}
@@ -503,15 +503,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-[11px] text-slate-700 dark:text-slate-200">
+                          <label className="mb-1 block text-[11px] text-stone-700 dark:text-stone-200">
                             E-mail
                           </label>
                           <div className="relative">
-                            <Mail className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                            <Mail className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
                             <Input
                               ref={emailInputRef}
                               type="email"
-                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-slate-300 bg-white/90 px-3 py-2 pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus-visible:ring-slate-300"
+                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-3 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
                               placeholder="np. jan@example.com"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
@@ -522,14 +522,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-[11px] text-slate-700 dark:text-slate-200">
+                          <label className="mb-1 block text-[11px] text-stone-700 dark:text-stone-200">
                             Hasło
                           </label>
                           <div className="relative">
-                            <Lock className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                            <Lock className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
                             <Input
                               type={showPass ? "text" : "password"}
-                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-slate-300 bg-white/90 px-3 py-2 pl-8 pr-9 text-sm text-slate-900 placeholder:text-slate-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus-visible:ring-slate-300"
+                              className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-9 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
                               placeholder="min. 6 znaków"
                               value={pwd}
                               onChange={(e) => setPwd(e.target.value)}
@@ -544,7 +544,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                             <button
                               type="button"
                               onClick={() => setShowPass((s) => !s)}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-stone-500 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-50"
                               aria-label={showPass ? "Ukryj hasło" : "Pokaż hasło"}
                             >
                               {showPass ? (
@@ -554,7 +554,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                               )}
                             </button>
                           </div>
-                          <div className="mt-1 flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                          <div className="mt-1 flex justify-between text-[10px] text-stone-500 dark:text-stone-400">
                             {capsOn && (
                               <span className="text-amber-500">
                                 Włączony Caps Lock – uważaj na wielkość liter.
@@ -564,7 +564,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
                           {/* Segmentowy wskaźnik siły hasła – rounded-md */}
                           <div className="mt-2">
-                            <div className="mb-1 flex items-center justify-between text-[11px] text-slate-700 dark:text-slate-200">
+                            <div className="mb-1 flex items-center justify-between text-[11px] text-stone-700 dark:text-stone-200">
                               <span className="inline-flex items-center gap-1 opacity-80">
                                 <ShieldCheck className="h-3.5 w-3.5" />
                                 Siła hasła
@@ -590,13 +590,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                                     className={`h-1.5 flex-1 rounded-md transition-colors ${
                                       isActive
                                         ? activeColor
-                                        : "bg-slate-200 dark:bg-slate-800"
+                                        : "bg-stone-200 dark:bg-stone-800"
                                     }`}
                                   />
                                 );
                               })}
                             </div>
-                            <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                            <p className="mt-1 text-[10px] text-stone-500 dark:text-stone-400">
                               Dobre hasło zawiera min. 6 znaków, dużą literę,
                               cyfrę i znak specjalny.
                             </p>
@@ -628,7 +628,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                           <Button
                             type="submit"
                             disabled={!canSubmit || busy}
-                            className="h-9 w-full rounded-md bg-slate-900 text-[11px] font-semibold uppercase tracking-wide text-slate-50 hover:bg-black disabled:opacity-60 dark:bg-stone-100 dark:text-slate-950 dark:hover:bg-white"
+                            className="h-9 w-full rounded-md bg-stone-900 text-[11px] font-semibold uppercase tracking-wide text-stone-50 hover:bg-black disabled:opacity-60 dark:bg-stone-100 dark:text-slate-950 dark:hover:bg-white"
                           >
                             {busy ? "Tworzenie konta…" : "Utwórz konto Scout"}
                           </Button>
@@ -642,12 +642,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           </div>
 
           {/* Mobilny pasek z CTA przyklejony do dołu */}
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 py-2 shadow-[0_-10px_30px_rgba(15,23,42,0.22)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/95 md:hidden">
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 px-3 py-2 shadow-[0_-10px_30px_rgba(15,23,42,0.22)] backdrop-blur-sm dark:border-stone-800/80 dark:bg-slate-950/95 md:hidden">
             <Button
               type="submit"
               form={mode === "login" ? "auth-login-form" : "auth-register-form"}
               disabled={!canSubmit || busy}
-              className="h-10 w-full rounded-md bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-50 hover:bg-black disabled:opacity-50 dark:bg-stone-100 dark:text-slate-950 dark:hover:bg-white"
+              className="h-10 w-full rounded-md bg-stone-900 text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-50 hover:bg-black disabled:opacity-50 dark:bg-stone-100 dark:text-slate-950 dark:hover:bg-white"
             >
               {busy
                 ? mode === "login"

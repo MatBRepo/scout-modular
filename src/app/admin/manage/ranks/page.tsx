@@ -68,7 +68,7 @@ const rankBadgeClass: Record<RankKey, string> = {
   bronze:
     "bg-orange-100 text-orange-800 ring-1 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-100 dark:ring-orange-800/70",
   silver:
-    "bg-stone-100 text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-100 dark:ring-slate-700/70",
+    "bg-stone-100 text-stone-800 ring-1 ring-stone-200 dark:bg-stone-800/40 dark:text-stone-100 dark:ring-stone-700/70",
   gold:
     "bg-amber-100 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-800/70",
   platinum:
@@ -305,13 +305,13 @@ export default function RankSettingsPage() {
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,2.2fr),minmax(0,1.1fr)]">
         {/* Main configuration card */}
-        <Card className="border-slate-200 dark:border-neutral-800">
+        <Card className="border-stone-200 dark:border-neutral-800">
           <CardHeader className="pb-3 space-y-3">
             <CardTitle className="flex items-center justify-between text-md font-semibold">
               <span>Konfiguracja poziomów</span>
-              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[11px] text-slate-600 dark:bg-neutral-800 dark:text-neutral-300">
+              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600 dark:bg-neutral-800 dark:text-neutral-300">
                 Bronze / Silver / Gold / Platinum:{" "}
-                <span className="font-semibold text-slate-900 dark:text-neutral-50">
+                <span className="font-semibold text-stone-900 dark:text-neutral-50">
                   {thresholdsSummary}
                 </span>
               </span>
@@ -369,7 +369,7 @@ export default function RankSettingsPage() {
                   return (
                     <div
                       key={rankKey}
-                      className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white/70 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/60"
+                      className="flex flex-col gap-3 rounded-md border border-stone-200 bg-white/70 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/60"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -453,7 +453,7 @@ export default function RankSettingsPage() {
         </Card>
 
         {/* Right column – szybka ściąga + preview */}
-        <Card className="border-slate-200 bg-stone-100/70 dark:border-neutral-800 dark:bg-neutral-900/40  pt-6">
+        <Card className="border-stone-200 bg-stone-100/70 dark:border-neutral-800 dark:bg-neutral-900/40  pt-6">
           <CardContent className="space-y-3 text-xs text-muted-foreground">
             <div>
               <p className="mb-1 font-medium text-foreground">
@@ -485,7 +485,7 @@ export default function RankSettingsPage() {
               </ul>
             </div>
 
-            <div className="rounded-md bg-white/70 p-2.5 text-[11px] ring-1 ring-slate-200 dark:bg-neutral-950/60 dark:ring-neutral-800">
+            <div className="rounded-md bg-white/70 p-2.5 text-[11px] ring-1 ring-stone-200 dark:bg-neutral-950/60 dark:ring-neutral-800">
               <p className="font-medium text-foreground">
                 Przykład (podgląd poziomu)
               </p>

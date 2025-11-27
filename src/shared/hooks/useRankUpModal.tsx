@@ -65,7 +65,7 @@ function rankTrophyColor(r: Rank) {
     case "gold":
       return "text-amber-400";
     case "silver":
-      return "text-slate-300";
+      return "text-stone-300";
     default:
       return "text-orange-400";
   }
@@ -231,7 +231,7 @@ export function useRankUpModal() {
               exit={{ opacity: 0, scale: 0.9, y: 10 }}
               transition={{ duration: 0.22, ease: [0.2, 0.7, 0.2, 1] }}
             >
-              <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/70 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 p-4 text-slate-50 shadow-2xl">
+              <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-stone-700/70 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 p-4 text-stone-50 shadow-2xl">
                 {/* Glow */}
                 <div className="pointer-events-none absolute inset-0 opacity-40 mix-blend-screen">
                   <div className="absolute -left-10 top-0 h-40 w-40 rounded-full bg-indigo-500/30 blur-3xl" />
@@ -267,7 +267,7 @@ export function useRankUpModal() {
                     </div>
 
                     <div className="flex-1 space-y-1">
-                      <div className="inline-flex items-center gap-2 rounded-full bg-neutral-900/80 px-2 py-0.5 text-[11px] text-slate-300 ring-1 ring-neutral-700/80">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-neutral-900/80 px-2 py-0.5 text-[11px] text-stone-300 ring-1 ring-neutral-700/80">
                         <Sparkles className="h-3 w-3 text-amber-300" />
                         <span>Gratulacje! Awans na nowy poziom</span>
                       </div>
@@ -277,7 +277,7 @@ export function useRankUpModal() {
                           {rankLabel(info.toRank)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300">
+                      <p className="text-xs text-stone-300">
                         {rankSubtitle[info.toRank]} – Twoja aktywność w
                         systemie rośnie, więc odblokowujesz wyższy poziom
                         zaufania i jakości danych.
@@ -287,32 +287,32 @@ export function useRankUpModal() {
 
                   <div className="grid gap-2 rounded-xl bg-neutral-900/80 p-3 ring-1 ring-neutral-800/80">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Poprzedni poziom</span>
-                      <span className="font-medium text-slate-100">
+                      <span className="text-stone-400">Poprzedni poziom</span>
+                      <span className="font-medium text-stone-100">
                         {rankLabel(info.fromRank)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Nowy poziom</span>
+                      <span className="text-stone-400">Nowy poziom</span>
                       <span className="font-semibold text-amber-200">
                         {rankLabel(info.toRank)}
                       </span>
                     </div>
-                    <div className="mt-1 flex items-center justify-between gap-4 text-[11px] text-slate-300">
+                    <div className="mt-1 flex items-center justify-between gap-4 text-[11px] text-stone-300">
                       <div>
-                        <span className="text-slate-400">Aktualny wynik: </span>
+                        <span className="text-stone-400">Aktualny wynik: </span>
                         <span className="font-semibold">{info.score} pkt</span>
                       </div>
                       <div className="flex gap-3">
                         <span>
                           🧍‍♂️ {info.playersCount}{" "}
-                          <span className="text-slate-400 text-[10px]">
+                          <span className="text-stone-400 text-[10px]">
                             aktywnych
                           </span>
                         </span>
                         <span>
                           📝 {info.obsCount}{" "}
-                          <span className="text-slate-400 text-[10px]">
+                          <span className="text-stone-400 text-[10px]">
                             obserwacji
                           </span>
                         </span>
@@ -320,11 +320,11 @@ export function useRankUpModal() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-slate-300">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-stone-300">
                     <button
                       type="button"
                       onClick={closeModal}
-                      className="inline-flex items-center gap-1 rounded-full bg-neutral-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 ring-1 ring-neutral-700/80 hover:bg-neutral-800"
+                      className="inline-flex items-center gap-1 rounded-full bg-neutral-900/80 px-3 py-1.5 text-xs font-medium text-stone-100 ring-1 ring-neutral-700/80 hover:bg-neutral-800"
                     >
                       Zamknij
                     </button>

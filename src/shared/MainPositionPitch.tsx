@@ -121,7 +121,7 @@ export function MainPositionPitch({ value, onChange }: MainPositionPitchProps) {
           <div className="font-medium text-foreground text-sm">
             Boisko – główna pozycja
           </div>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
+          <p className="mt-0.5 text-xs text-stone-500 dark:text-neutral-400">
             Kliknij na znacznik na boisku, aby ustawić główną pozycję zawodnika.
           </p>
         </div>
@@ -273,13 +273,13 @@ export function MainPositionPitch({ value, onChange }: MainPositionPitchProps) {
         </div>
       </div>
 
-      <div className="mt-3 text-center text-[11px] leading-relaxed text-slate-600 dark:text-neutral-300 sm:text-left">
+      <div className="mt-3 text-center text-[11px] leading-relaxed text-stone-600 dark:text-neutral-300 sm:text-left">
         {activeMeta ? (
           <>
             <span className="font-semibold">
               {activeMeta.code} – {activeMeta.name}
             </span>
-            <span className="ml-1.5 text-slate-600 dark:text-neutral-300">
+            <span className="ml-1.5 text-stone-600 dark:text-neutral-300">
               {activeMeta.desc}
             </span>
           </>

@@ -310,7 +310,7 @@ function CountrySearchCombobox({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm transition",
+            "flex w-full items-center justify-between rounded-md border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm transition",
             "hover:bg:white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
             "dark:border-neutral-700 dark:bg-neutral-950"
           )}
@@ -342,7 +342,7 @@ function CountrySearchCombobox({
           <CommandInput
             placeholder="Szukaj kraju..."
             className={cn(
-              "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-slate-200 bg-background px-3 text-sm",
+              "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-stone-200 bg-background px-3 text-sm",
               "shadow-none outline-none",
               "focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
               "dark:border-neutral-700 dark:bg-neutral-950"
@@ -541,7 +541,7 @@ function ExtContent({ view, ext, setExt }: ExtContentProps) {
 
                 return (
                   <div key={bucket} className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 dark:text-neutral-400">
                       {bucketLabels[bucket]}
                     </p>
                     <div className="grid grid-cols-1 gap-2">
@@ -1335,7 +1335,7 @@ export default function PlayerEditorPage() {
     const hasTooltip = !!aspect.tooltip;
 
     return (
-      <div className="flex w-full max-w-[320px] flex-col justify-between rounded-md border border-slate-200 bg-white/90 p-3 text-xs shadow-sm transition-shadow dark:border-neutral-700 dark:bg-neutral-950/80">
+      <div className="flex w-full max-w-[320px] flex-col justify-between rounded-md border border-stone-200 bg-white/90 p-3 text-xs shadow-sm transition-shadow dark:border-neutral-700 dark:bg-neutral-950/80">
         <div className="mb-2 flex items-start gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-1">
@@ -1356,7 +1356,7 @@ export default function PlayerEditorPage() {
               )}
             </div>
             {aspect.tooltip && (
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-neutral-400">
+              <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
                 {aspect.tooltip}
               </p>
             )}
@@ -1632,7 +1632,7 @@ export default function PlayerEditorPage() {
   ]);
 
   const stepPillClass =
-    "inline-flex h-6 items-center rounded-md bg-stone-100 px-2.5 text-[11px] tracking-wide text-slate-600 dark:bg-neutral-900 dark:text-neutral-200";
+    "inline-flex h-6 items-center rounded-md bg-stone-100 px-2.5 text-[11px] tracking-wide text-stone-600 dark:bg-neutral-900 dark:text-neutral-200";
 
   // Helper to avoid infinite loop in observations onChange
   function mapTableRowsToObservations(rows: any[]): ObsRec[] {
@@ -1680,13 +1680,13 @@ export default function PlayerEditorPage() {
             Postęp profilu
           </span>
           <div className="flex items-center gap-2">
-            <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-neutral-800">
+            <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-neutral-800">
               <div
                 className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-all duration-300"
                 style={{ width: `${completionPercent}%` }}
               />
             </div>
-            <span className="text-[11px] tabular-nums text-slate-700 dark:text-neutral-200">
+            <span className="text-[11px] tabular-nums text-stone-700 dark:text-neutral-200">
               {completionPercent}%
             </span>
           </div>
@@ -1764,8 +1764,8 @@ export default function PlayerEditorPage() {
       <ToolbarFull title={editorTitle} right={null} />
 
       {loading && (
-        <Card className="border-dashed border-slate-300 bg-slate-50/80 dark:border-neutral-800 dark:bg-neutral-950/60">
-          <CardContent className="px-4 py-6 text-sm text-slate-600 dark:text-neutral-300">
+        <Card className="border-dashed border-stone-300 bg-stone-50/80 dark:border-neutral-800 dark:bg-neutral-950/60">
+          <CardContent className="px-4 py-6 text-sm text-stone-600 dark:text-neutral-300">
             Ładowanie danych zawodnika…
           </CardContent>
         </Card>
@@ -1797,7 +1797,7 @@ export default function PlayerEditorPage() {
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
                   Podstawowe informacje
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
                   Wypełnij po prostu pola poniżej – system sam zdecyduje, czy
                   profil jest <b>imienny</b> czy <b>anonimowy</b>.
                 </p>
@@ -1940,14 +1940,14 @@ export default function PlayerEditorPage() {
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
                   Rozszerzone informacje
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
                   Dodatkowe dane sportowe, kontraktowe i kontaktowe – przydatne
                   w profesjonalnym scouting report.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
                 {choice === "unknown" && (
-                  <span className="hidden text-[11px] text-slate-500 sm:inline">
+                  <span className="hidden text-[11px] text-stone-500 sm:inline">
                     Profil anonimowy
                   </span>
                 )}
@@ -1974,7 +1974,7 @@ export default function PlayerEditorPage() {
               <AccordionItem value="ext" className="border-0">
                 <AccordionContent id="ext-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
-                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                    <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
                       Możesz stopniowo uzupełniać te dane, gdy będziesz
                       poznawać zawodnika lepiej.
                     </p>
@@ -1987,7 +1987,7 @@ export default function PlayerEditorPage() {
                       onChange={(e) =>
                         setExtView(e.target.value as ExtKey)
                       }
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                      className="w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                     >
                       <option value="profile">Profil boiskowy</option>
                       <option value="eligibility">
@@ -2076,14 +2076,14 @@ export default function PlayerEditorPage() {
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
                   Ocena zawodnika
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
                   Rozbij ocenę na kategorie techniczne, mentalne i fizyczne –{" "}
                   konfigurujesz je w module „Konfiguracja ocen zawodnika”.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
                 {choice === "unknown" && (
-                  <span className="hidden text-[11px] text-slate-500 sm:inline">
+                  <span className="hidden text-[11px] text-stone-500 sm:inline">
                     Profil anonimowy
                   </span>
                 )}
@@ -2110,7 +2110,7 @@ export default function PlayerEditorPage() {
               <AccordionItem value="grade" className="border-0">
                 <AccordionContent id="grade-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
-                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                    <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
                       Możesz wypełniać oceny nawet dla profilu anonimowego –
                       ważna jest zachowana spójność z główną pozycją.
                     </p>
@@ -2135,7 +2135,7 @@ export default function PlayerEditorPage() {
 
                       <div className="space-y-6">
                         {enabledRatingAspects.length === 0 && (
-                          <p className="text-xs text-slate-500 dark:text-neutral-400">
+                          <p className="text-xs text-stone-500 dark:text-neutral-400">
                             Brak skonfigurowanych kategorii ocen. Dodaj je w
                             panelu „Konfiguracja ocen zawodnika”.
                           </p>
@@ -2173,7 +2173,7 @@ export default function PlayerEditorPage() {
 
                         {!effectiveBucket &&
                           enabledRatingAspects.length > 0 && (
-                            <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+                            <p className="text-[11px] text-stone-500 dark:text-neutral-400">
                               Ustaw <b>Główną pozycję</b> w kroku 1, aby
                               zobaczyć dodatkowe kategorie oceny
                               (GK/DEF/MID/ATT).
@@ -2184,7 +2184,7 @@ export default function PlayerEditorPage() {
 
                     {!effectiveMainPos && (
                       <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
-                        <p className="mb-3 text-xs text-slate-700 dark:text-neutral-200 sm:text-sm">
+                        <p className="mb-3 text-xs text-stone-700 dark:text-neutral-200 sm:text-sm">
                           Aby wprowadzić oceny, najpierw uzupełnij{" "}
                           <b>Główną pozycję</b> zawodnika w kroku 1.
                         </p>
@@ -2231,14 +2231,14 @@ export default function PlayerEditorPage() {
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
                   Obserwacje
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
                   Dodawaj mecze i przypisuj je do profilu zawodnika. Możesz
                   korzystać z globalnego dziennika obserwacji.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
                 {choice === "unknown" && (
-                  <span className="hidden text-[11px] text-slate-500 sm:inline">
+                  <span className="hidden text-[11px] text-stone-500 sm:inline">
                     Profil anonimowy
                   </span>
                 )}
@@ -2264,7 +2264,7 @@ export default function PlayerEditorPage() {
               <AccordionItem value="obs" className="border-0">
                 <AccordionContent id="obs-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
-                    <p className="mb-3 text-[11px] text-slate-500 dark:text-neutral-400">
+                    <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
                       Możesz tworzyć obserwacje również dla profilu anonimowego
                       – ważne, by zachować spójność meczu i poziomu.
                     </p>

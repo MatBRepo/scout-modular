@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as cheerio from "cheerio";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const maxDuration = 300;
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+const BASE = "https://www.transfermarkt.com";
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* -------- lazy Supabase client (safer for Vercel) -------- */
 
@@ -32,10 +34,10 @@ function getSupabase() {
   return _supabase;
 }
 
-const BASE = "https://www.transfermarkt.com";
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 /* ---------------- SSE helpers ---------------- */
+
+const encoder = new TextEncoder();
+
 function sseHeaders() {
   return {
     "Content-Type": "text/event-stream; charset=utf-8",
@@ -44,14 +46,22 @@ function sseHeaders() {
     "X-Accel-Buffering": "no",
   };
 }
-function send(controller: ReadableStreamDefaultController, payload: any) {
-  controller.enqueue(`data: ${JSON.stringify(payload)}\n\n`);
+
+function send(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  payload: any
+) {
+  controller.enqueue(
+    encoder.encode(`data: ${JSON.stringify(payload)}\n\n`)
+  );
 }
-function ping(controller: ReadableStreamDefaultController) {
-  controller.enqueue(`: ping\n\n`);
+
+function ping(controller: ReadableStreamDefaultController<Uint8Array>) {
+  controller.enqueue(encoder.encode(`: ping\n\n`));
 }
 
 /* ---------------- HTTP ---------------- */
+
 async function fetchHtml(pathOrUrl: string) {
   const url = pathOrUrl.startsWith("http") ? pathOrUrl : `${BASE}${pathOrUrl}`;
   const res = await fetch(url, {
@@ -76,16 +86,19 @@ async function fetchHtml(pathOrUrl: string) {
 /* ---------------- parsing helpers ---------------- */
 const clean = (s?: string | null) =>
   (s ?? "").replace(/\s+/g, " ").trim();
+
 function parseIntLoose(s?: string | null) {
   if (!s) return null;
   const n = parseInt(s.replace(/[^\d]/g, ""), 10);
   return Number.isFinite(n) ? n : null;
 }
+
 function parseFloatEU(s?: string | null) {
   if (!s) return null;
   const n = parseFloat(s.replace(/\./g, "").replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
+
 function parseEuroToInt(s?: string | null) {
   if (!s) return null;
   const raw = s.replace(/[€\s]/g, "").toLowerCase();
@@ -102,6 +115,7 @@ function parseEuroToInt(s?: string | null) {
   const f = parseFloat(num.replace(/\./g, "").replace(",", "."));
   return Number.isFinite(f) ? Math.round(f * mult) : null;
 }
+
 function parseHeightCm(s?: string | null) {
   // “1,86m” -> 186
   if (!s) return null;
@@ -112,6 +126,7 @@ function parseHeightCm(s?: string | null) {
   }
   return parseIntLoose(s);
 }
+
 function parseDateEUtoISO(s?: string | null) {
   // “07.04.2004 (21)” -> 2004-04-07
   if (!s) return null;
@@ -122,6 +137,7 @@ function parseDateEUtoISO(s?: string | null) {
 }
 
 /* ---------------- competition clubs from /startseite/wettbewerb/PL2 ---------------- */
+
 function parseClubs(html: string, competitionCode: string, seasonId: number) {
   const $ = cheerio.load(html);
   const rows: any[] = [];
@@ -164,6 +180,7 @@ function parseClubs(html: string, competitionCode: string, seasonId: number) {
 }
 
 /* ---------------- roster (plus/1) ---------------- */
+
 function parsePlayersFromRoster(
   html: string,
   seasonId: number,
@@ -268,6 +285,7 @@ function parsePlayersFromRoster(
 }
 
 /* ---------------- player profile ---------------- */
+
 function parsePlayerProfile(html: string) {
   const $ = cheerio.load(html);
   const data: any = {};
@@ -359,6 +377,7 @@ function parsePlayerProfile(html: string) {
 }
 
 /* ---------------- db helpers ---------------- */
+
 async function upsert(table: string, rows: any[], onConflict: string) {
   if (!rows.length) return;
   const supabase = getSupabase();
@@ -442,20 +461,23 @@ function buildGlobalPlayerRow(
 }
 
 /* ---------------- handler ---------------- */
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const path = searchParams.get("path");
   const seasonId = parseInt(searchParams.get("season") || "2025", 10);
 
-  const stream = new ReadableStream({
+  const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      controller.enqueue(`: connected\n\n`);
+      controller.enqueue(encoder.encode(`: connected\n\n`));
       send(controller, {
         phase: "init",
         message: "Starting…",
         progress: 0,
       });
+
       const hb = setInterval(() => ping(controller), 15000);
+
       const finish = (err?: string) => {
         try {
           send(controller, { done: true, error: err || undefined });
@@ -467,7 +489,7 @@ export async function GET(req: Request) {
       };
 
       try {
-        // ensure Supabase env is present early (nice error)
+        // ensure Supabase env is present early (nice error if missing)
         getSupabase();
 
         if (!path) throw new Error("Missing ?path=");
@@ -481,11 +503,13 @@ export async function GET(req: Request) {
         // 1) clubs from competition page
         const compHtml = await fetchHtml(path);
         const clubs = parseClubs(compHtml, competitionCode, seasonId);
+
         await upsert(
           "tm_clubs",
           clubs,
           "competition_code,season_id,tm_club_id"
         );
+
         send(controller, {
           phase: "clubs",
           message: `Found ${clubs.length} clubs`,

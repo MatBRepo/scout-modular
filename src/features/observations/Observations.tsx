@@ -1121,7 +1121,7 @@ function save(obs: XO) {
                 {/* Filtry */}
                 <div className="relative inline-flex">
                   <span
-                    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-slate-500 
+                    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 
                dark:bg-neutral-950 dark:text-neutral-300"
                   >
                     Filtry
@@ -1240,7 +1240,7 @@ function save(obs: XO) {
                   setDateTo("");
                   setQ("");
                 }}
-                className="ml-1 inline-flex items-center gap-1 rounded-md bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+                className="ml-1 inline-flex items-center gap-1 rounded-md bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700 ring-1 ring-stone-200 hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-stone-800 dark:text-stone-200 dark:ring-stone-700"
                 title="Wyczyść wszystkie filtry"
                 type="button"
               >
@@ -1812,7 +1812,7 @@ function save(obs: XO) {
                       <td
                         className={`${cellPad} hidden align-center sm:table-cell`}
                       >
-                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-neutral-800 dark:text-neutral-100">
+                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
                           {mode === "live" ? "Live" : "TV"}
                         </span>
                       </td>
@@ -1820,7 +1820,7 @@ function save(obs: XO) {
 
                     {visibleCols.status && (
                       <td className={`${cellPad} align-center`}>
-                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-neutral-800 dark:text-neutral-100">
+                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
                           {r.competition || "—"}
                         </span>
                       </td>

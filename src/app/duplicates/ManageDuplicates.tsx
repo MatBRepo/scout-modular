@@ -1047,7 +1047,7 @@ export default function DuplicatesPage() {
 
                     {/* Panel „Dane końcowe” */}
                     {canonical && (
-                      <div className="border-b border-dashed border-gray-200 bg-slate-50/70 px-3 py-3 text-xs dark:border-neutral-800 dark:bg-neutral-900/60">
+                      <div className="border-b border-dashed border-gray-200 bg-stone-50/70 px-3 py-3 text-xs dark:border-neutral-800 dark:bg-neutral-900/60">
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                           <div className="font-medium text-[12px]">
                             Dane końcowe dla tej grupy

@@ -167,11 +167,13 @@ function LnpSearchPanel() {
         }
       );
       if (!rsp.ok) throw new Error(`HTTP ${rsp.status}`);
-      const json = (await rsp.json()) as ScrapeResult[];
 
-      const normalized = json.map((bucket) => ({
+      const raw = (await rsp.json()) as any;
+      const buckets: ScrapeResult[] = Array.isArray(raw) ? raw : [raw];
+
+      const normalized = buckets.map((bucket) => ({
         ...bucket,
-        items: bucket.items.map((it) => ({
+        items: (bucket.items || []).map((it: any) => ({
           ...it,
           id: it.id || uid(),
           source: it.source || (bucket.source as string) || "lnp",
@@ -358,7 +360,7 @@ function LnpSearchPanel() {
 
       {/* Status */}
       {statusMsg && (
-        <div className="mb-1 inline-flex items-center rounded-md bg-slate-50 px-2.5 py-1 text-xs text-slate-700 ring-1 ring-slate-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
+        <div className="mb-1 inline-flex items-center rounded-md bg-stone-50 px-2.5 py-1 text-xs text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
           {statusMsg}
         </div>
       )}
@@ -402,7 +404,7 @@ function ResultsTable({
         <div>
           <CardTitle className="text-sm">
             {sourceLabel ? `Wyniki: ${sourceLabel}` : "Wyniki"}{" "}
-            <span className="ml-1 rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            <span className="ml-1 rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
               {rows.length}
             </span>
           </CardTitle>
@@ -565,7 +567,7 @@ function TmScraperPanel() {
   const [downloadedAt, setDownloadedAt] = useState<string | null>(null);
   const [cachedFlag, setCachedFlag] = useState<boolean | null>(null);
 
-  /* ----- pobierz listę zawodników (flat=1, details=1) ----- */
+  /* ----- pobierz listę zawodników (Supabase cache / TM) ----- */
   const loadPlayers = async (opts?: { refresh?: boolean }) => {
     setLoading(true);
     setErrorMsg(null);
@@ -575,8 +577,7 @@ function TmScraperPanel() {
       let url =
         `/api/admin/tm/scrape/competition/list` +
         `?country=${encodeURIComponent(country)}` +
-        `&season=${encodeURIComponent(season)}` +
-        `&details=1&flat=1`;
+        `&season=${encodeURIComponent(season)}`;
 
       if (opts?.refresh) {
         url += `&refresh=1`;
@@ -627,15 +628,27 @@ function TmScraperPanel() {
         return;
       }
 
-      const rowsRaw: any[] = j.rows || [];
+      const rowsRaw: any[] = Array.isArray(j.rows)
+        ? j.rows
+        : Array.isArray(j.players)
+        ? j.players
+        : Array.isArray(j.items)
+        ? j.items
+        : [];
 
       const list: TmPlayerRow[] = rowsRaw.map((row: any) => ({
-        tm_player_id: Number(row.tm_player_id),
-        player_name: String(row.player_name || ""),
-        player_path: row.player_path || "",
+        tm_player_id: Number(
+          row.tm_player_id ?? row.player_id ?? row.id ?? 0
+        ),
+        player_name: String(row.player_name ?? row.name ?? ""),
+        player_path: row.player_path ?? row.profile_path ?? "",
 
-        competition_code: String(row.competition_code || ""),
-        competition_name: String(row.competition_name || ""),
+        competition_code: String(
+          row.competition_code ?? row.comp_code ?? ""
+        ),
+        competition_name: String(
+          row.competition_name ?? row.comp_name ?? ""
+        ),
         tier_label:
           row.tier_label === undefined || row.tier_label === null
             ? null
@@ -643,12 +656,12 @@ function TmScraperPanel() {
 
         club_tm_id:
           row.club_tm_id === undefined || row.club_tm_id === null
-            ? null
+            ? row.tm_club_id ?? null
             : Number(row.club_tm_id),
-        club_name: String(row.club_name || ""),
-        club_profile_path: row.club_profile_path || "",
+        club_name: String(row.club_name ?? row.tm_club_name ?? ""),
+        club_profile_path: row.club_profile_path ?? row.club_path ?? "",
 
-        number: row.number ?? null,
+        number: row.number ?? row.shirt_number ?? null,
         position: row.position ?? null,
         age:
           typeof row.age === "number"
@@ -658,14 +671,18 @@ function TmScraperPanel() {
             : null,
         nationalities: Array.isArray(row.nationalities)
           ? row.nationalities
-          : row.nationalities
-          ? [String(row.nationalities)]
+          : row.nationality
+          ? [String(row.nationality)]
           : [],
         height_cm:
-          typeof row.height_cm === "number" ? row.height_cm : null,
+          typeof row.height_cm === "number"
+            ? row.height_cm
+            : row.height_cm
+            ? Number(row.height_cm)
+            : null,
         foot: row.foot ?? null,
-        date_of_birth: row.date_of_birth ?? null,
-        contract_until: row.contract_until ?? null,
+        date_of_birth: row.date_of_birth ?? row.dob ?? null,
+        contract_until: row.contract_until ?? row.contract_end ?? null,
       }));
 
       setRows(list);

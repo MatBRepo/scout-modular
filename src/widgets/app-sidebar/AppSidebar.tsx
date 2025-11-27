@@ -100,7 +100,7 @@ function rankClass(r: Rank) {
     case "gold":
       return "bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/70";
     case "silver":
-      return "bg-stone-100 text-slate-800 ring-slate-200 dark:bg-slate-800/40 dark:text-slate-200 dark:ring-slate-700/70";
+      return "bg-stone-100 text-stone-800 ring-stone-200 dark:bg-stone-800/40 dark:text-stone-200 dark:ring-stone-700/70";
     default:
       return "bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-900/30 dark:text-orange-200 dark:ring-orange-800/70";
   }
@@ -112,7 +112,7 @@ function rankTrophyColor(r: Rank) {
     case "gold":
       return "text-amber-500";
     case "silver":
-      return "text-slate-400";
+      return "text-stone-400";
     default:
       return "text-orange-500";
   }
@@ -431,9 +431,9 @@ export default function AppSidebar({
         {role === "admin" && (
           <>
             {/* ADMIN section */}
-            <div className="mt-1 rounded-md border border-slate-200 bg-stone-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+            <div className="mt-1 rounded-md border border-stone-200 bg-stone-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
               <div className="mb-2 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-slate-200 dark:bg-neutral-950 dark:ring-neutral-800">
+                <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
                   <Settings className="h-3.5 w-3.5" />
                   Administracja
                 </span>
@@ -510,7 +510,7 @@ export default function AppSidebar({
                       className={`group flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
                         isManageSection
                           ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-                          : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                          : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
                       }`}
                     >
                       <span className="flex min-w-0 items-center gap-2">
@@ -803,10 +803,10 @@ export default function AppSidebar({
 
   /* ====== PANEL STYLES ====== */
   const asideDesktop =
-    "h-screen w-64 overflow-visible border-r border-slate-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
+    "h-screen w-64 overflow-visible border-r border-stone-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-stone-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
 
   const asideMobile =
-    "h-screen w-full max-w-[380px] overflow-hidden border-r border-slate-200 bg-white p-3 shadow-xl ring-1 ring-slate-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
+    "h-screen w-full max-w-[380px] overflow-hidden border-r border-stone-200 bg-white p-3 shadow-xl ring-1 ring-stone-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
 
   if (variant === "mobile") {
     return (
@@ -895,7 +895,7 @@ function NavItem({
       className={`group relative flex min-w-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
         active
           ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-          : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+          : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
       title={badge && badgeTitle ? `${badgeTitle}: ${badge}` : undefined}
     >
@@ -904,14 +904,14 @@ function NavItem({
         className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-md transition-all ${
           active
             ? "w-1 bg-indigo-500"
-            : "w-0 bg-transparent group-hover:w-1 group-hover:bg-slate-300 dark:group-hover:bg-neutral-700"
+            : "w-0 bg-transparent group-hover:w-1 group-hover:bg-stone-300 dark:group-hover:bg-neutral-700"
         }`}
       />
       <span className="shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
       {badge && (
         <span
-          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white px-2 py-0.5 text-[10px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200"
           title={badgeTitle}
         >
           <span className="truncate">{badge}</span>
@@ -937,13 +937,13 @@ function SubNavItem({
       className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition focus:ring-indigo-500 ${
         active
           ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-          : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+          : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
     >
       <span
         aria-hidden
         className={`h-1.5 w-1.5 rounded-md ${
-          active ? "bg-indigo-500" : "bg-slate-300 dark:bg-neutral-700"
+          active ? "bg-indigo-500" : "bg-stone-300 dark:bg-neutral-700"
         }`}
       />
       <span className="truncate">{label}</span>

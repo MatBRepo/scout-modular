@@ -923,7 +923,7 @@ export default function ManagePage() {
                       </div>
                     </td>
                     <td className="p-3 text-xs">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-stone-800 dark:text-stone-200 dark:ring-stone-700">
                         <Shield className="h-3.5 w-3.5" />{" "}
                         {labelForRole(inv.role)}
                       </span>
@@ -1033,7 +1033,7 @@ export default function ManagePage() {
                       key={a.id}
                       className={`border-t border-gray-200 align-middle dark:border-neutral-700 ${
                         detail?.id === a.id
-                          ? "bg-slate-50/80 dark:bg-neutral-900/60"
+                          ? "bg-stone-50/80 dark:bg-neutral-900/60"
                           : ""
                       }`}
                     >

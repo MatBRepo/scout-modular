@@ -268,10 +268,10 @@ function AppShell({
             {/* BREADCRUMB W HEADERZE */}
 <nav
   aria-label="Breadcrumb"
-  className="absolute left-[60px] top-[45px] min-w-0 pr-2 lg:relative lg:top-[30px] lg:-translate-y-5 lg:left-3"
+  className="absolute left-[60px] top-[12px] min-w-0 pr-2 lg:relative lg:top-[30px] lg:-translate-y-5 lg:left-3"
 >
               {/* DESKTOP: pełna ścieżka */}
-              <ol className="hidden items-center gap-1 text-sm text-slate-600 dark:text-neutral-300 md:flex">
+              <ol className="hidden items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:flex">
                 {crumbs.map((c, i) => {
                   const last = i === crumbs.length - 1;
                   const label = c.label || "Strona główna";
@@ -301,7 +301,7 @@ function AppShell({
                         </>
                       ) : (
                         <span
-                          className="truncate font-medium text-slate-900 dark:text-neutral-100 normal-case"
+                          className="truncate font-medium text-stone-900 dark:text-neutral-100 normal-case"
                           title={label}
                         >
                           {label}
@@ -313,7 +313,7 @@ function AppShell({
               </ol>
 
               {/* MOBILE: tylko home + przycisk do rozwinięcia pełnej ścieżki */}
-              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-neutral-300 md:hidden">
+              <div className="flex items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:hidden">
                 <Link
                   href="/"
                   className="flex items-center"
@@ -330,7 +330,7 @@ function AppShell({
                   onClick={() =>
                     setBreadcrumbsExpanded((prev) => !prev)
                   }
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white/70 text-slate-600 shadow-sm hover:bg-slate-50 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-stone-200 bg-white/70 text-stone-600 shadow-sm hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100 dark:hover:bg-neutral-800"
                   aria-label={
                     breadcrumbsExpanded
                       ? "Ukryj pełną ścieżkę nawigacji"
@@ -356,8 +356,8 @@ function AppShell({
                     aria-hidden="true"
                     onClick={() => setBreadcrumbsExpanded(false)}
                   />
-                  <div className="absolute left-[40px] top-full z-[71] mt-2 max-w-[90vw] rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900 md:hidden">
-                    <ol className="flex flex-wrap items-center gap-1 text-slate-700 dark:text-neutral-100">
+                  <div className="absolute left-[40px] top-full z-[71] mt-2 max-w-[90vw] rounded-md border border-stone-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900 md:hidden">
+                    <ol className="flex flex-wrap items-center gap-1 text-stone-700 dark:text-neutral-100">
                       {crumbs.map((c, i) => {
                         const last = i === crumbs.length - 1;
                         const label = c.label || "Strona główna";
@@ -395,7 +395,7 @@ function AppShell({
                               </>
                             ) : (
                               <span
-                                className="truncate font-medium text-slate-900 dark:text-neutral-50 normal-case"
+                                className="truncate font-medium text-stone-900 dark:text-neutral-50 normal-case"
                                 title={label}
                               >
                                 {label}

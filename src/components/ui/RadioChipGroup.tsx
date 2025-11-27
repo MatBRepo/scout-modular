@@ -74,7 +74,7 @@ export function RadioChipGroup({
               className={cn(
                 "relative flex cursor-pointer select-none items-center justify-center rounded-md border border-input px-4 py-2 text-center text-sm  transition-[color,box-shadow,border-color,background-color]",
                 isSelected &&
-                  "border-black bg-slate-50 ",
+                  "border-black bg-stone-50 ",
                 item.disabled && "cursor-not-allowed opacity-50"
               )}
             >

@@ -767,13 +767,13 @@ export default function MyPlayersFeature({
       });
     }
 
-    if (knownScope !== "all") {
-      chips.push({
-        key: "known",
-        label: knownScope === "known" ? "Znani" : "Nieznani",
-        clear: () => changeKnownScope("all"),
-      });
-    }
+    // if (knownScope !== "all") {
+    //   chips.push({
+    //     key: "known",
+    //     label: knownScope === "known" ? "Znani" : "Nieznani",
+    //     clear: () => changeKnownScope("all"),
+    //   });
+    // }
 
     return chips;
   }, [q, pos, club, ageMin, ageMax, knownScope]);
@@ -1091,7 +1091,7 @@ export default function MyPlayersFeature({
                 {/* Filtry */}
 <div className="relative inline-flex">
   <span
-    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-slate-500 
+    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 
                dark:bg-neutral-950 dark:text-neutral-300"
   >
     Filtry
@@ -2244,7 +2244,7 @@ function PlayersTable({
 
           {visibleCols.obs && (
             <td className={cellPad}>
-              <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+              <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">
                 {r._obs}
               </span>
             </td>
@@ -2441,7 +2441,7 @@ function QuickObservation({
       : (a + " " + b).trim();
 
   const chip = (txt: string) => (
-    <span className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+    <span className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-stone-800 dark:text-stone-200 dark:ring-stone-700">
       {txt}
     </span>
   );

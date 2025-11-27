@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as cheerio from "cheerio";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const maxDuration = 300;
 
 const BASE = "https://www.transfermarkt.com";
 
 /* -------------------- helpers: HTTP -------------------- */
+
 function ensurePath(p?: string | null) {
   if (!p) return "/";
   if (p.startsWith("http")) return p; // full URL
@@ -120,7 +122,6 @@ type CompetitionRow = {
   forum_path: string | null;
   total_value_eur: number | null;
 
-  // added when details=1
   clubs?: ClubRow[];
   clubs_error?: string;
 };
@@ -184,7 +185,7 @@ type FlatClubPlayerRow = {
   contract_until: string | null;
 };
 
-/* ---------------- competitions ---------------- */
+/* ---------------- competitions (działający parser) ---------------- */
 
 function parseCompetitionsDetailed(
   html: string,
@@ -210,6 +211,7 @@ function parseCompetitionsDetailed(
     const $nameCell = $tr.find("td.hauptlink").first();
     if (!$nameCell.length) return;
 
+    // inline-table z nazwą rozgrywek
     const $inline = $nameCell.find("table.inline-table td").eq(1);
     const $a =
       $inline.find("a[href*='/wettbewerb/']").first() ||
@@ -293,8 +295,7 @@ function parseClubsFromCompetition(
     const avg_age = parseFloatEU(tds.eq(3).text());
     const foreigners = parseIntLoose(tds.eq(4).text());
     const avg_market_value_eur = parseEuroToInt(tds.eq(5).text());
-    const totalText =
-      tds.eq(6).text() || tds.eq(6).find("a").text() || "";
+    const totalText = tds.eq(6).text() || tds.eq(6).find("a").text() || "";
     const total_market_value_eur = parseEuroToInt(totalText);
 
     rows.push({
@@ -344,26 +345,18 @@ function parsePlayersFromRoster(
     const tds = $tr.find("> td");
 
     // shirt number
-    const number =
-      clean($tr.find(".rn_nummer").first().text()) || null;
+    const number = clean($tr.find(".rn_nummer").first().text()) || null;
 
     // position – inline-table second row
     const positionText = clean(
-      $playerCell
-        .find("table.inline-table tr")
-        .eq(1)
-        .find("td")
-        .last()
-        .text()
+      $playerCell.find("table.inline-table tr").eq(1).find("td").last().text()
     );
     const position = positionText || null;
 
     // DOB + age
     const dobAge = clean(tds.eq(2).text());
     const date_of_birth = parseDateEUtoISO(dobAge);
-    const age = parseIntLoose(
-      (dobAge.match(/\((\d+)\)/)?.[1]) || ""
-    );
+    const age = parseIntLoose((dobAge.match(/\((\d+)\)/)?.[1]) || "");
 
     // nationalities
     const natCell = tds.eq(3);
@@ -404,180 +397,132 @@ function parsePlayersFromRoster(
   return rows;
 }
 
-/* ---------------- Supabase (optional cache) ---------------- */
+/* ---------------- Supabase admin client (cache) ---------------- */
 
-function getSupabaseServerClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const key = serviceRole || anon;
-  if (!url || !key) {
-    console.warn(
-      "[TM SCRAPER] Supabase env missing – running without cache."
-    );
-    return null;
-  }
-  return createClient(url, key, {
-    auth: { persistSession: false },
-  });
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "";
+
+const supabaseAdmin =
+  supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false },
+      })
+    : null;
+
+if (!supabaseAdmin) {
+  console.warn(
+    "[TM SCRAPER] Supabase cache disabled – missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY"
+  );
 }
 
-/**
- * Table proposal (run manually in Supabase if you want cache):
- *
- * CREATE TABLE public.tm_flat_snapshots (
- *   id bigserial PRIMARY KEY,
- *   country text NOT NULL,
- *   season int NOT NULL,
- *   competitions_count int NOT NULL,
- *   clubs_count int NOT NULL,
- *   players_count int NOT NULL,
- *   rows jsonb NOT NULL,
- *   downloaded_at timestamptz NOT NULL DEFAULT now(),
- *   UNIQUE(country, season)
- * );
- */
+/* --------- cache: odczyt z tm_flat_competition_players --------- */
 
-/* ------------------------ GET handler ------------------------ */
+async function loadFromCache(country: string, season: number) {
+  if (!supabaseAdmin) return null;
 
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const country = searchParams.get("country");
-    const seasonStr = searchParams.get("season");
-    const details = searchParams.get("details") === "1";
-    const flat = searchParams.get("flat") === "1";
-    const refresh = searchParams.get("refresh") === "1";
+  const { data: rows, error } = await supabaseAdmin
+    .from("tm_flat_competition_players")
+    .select("*")
+    .eq("country_id", country)
+    .eq("season_id", season)
+    .order("id", { ascending: true });
 
-    if (!country || !seasonStr) {
-      return new Response(
-        JSON.stringify({ error: "Missing ?country= and/or ?season=" }),
-        { status: 400 }
+  if (error || !rows || rows.length === 0) return null;
+
+  const compSet = new Set<string>();
+  const clubSet = new Set<string>();
+
+  for (const r of rows as any[]) {
+    if (r.competition_code) compSet.add(r.competition_code);
+    const clubKey = `${r.competition_code || ""}::${
+      r.club_tm_id ?? r.club_name ?? ""
+    }`;
+    clubSet.add(clubKey);
+  }
+
+  const competitionsCount = compSet.size;
+  const clubsCount = clubSet.size;
+  const playersCount = rows.length;
+  const downloadedAt: string | null =
+    ((rows[0] as any).downloaded_at as string | null) ?? null;
+
+  return {
+    cached: true as const,
+    competitionsCount,
+    clubsCount,
+    playersCount,
+    rows: rows as FlatClubPlayerRow[],
+    downloadedAt,
+  };
+}
+
+/* ------------ scrap + zapis do tm_flat_competition_players ------------ */
+
+async function scrapeAndCache(country: string, season: number) {
+  const url = `${BASE}/wettbewerbe/national/wettbewerbe/${encodeURIComponent(
+    country
+  )}/saison_id/${season}/plus/1`;
+
+  const html = await fetchHtml(url);
+  const competitions = parseCompetitionsDetailed(html, country, season);
+
+  if (!competitions.length) {
+    throw new Error(`Brak rozgrywek dla kraju=${country}, sezon=${season}`);
+  }
+
+  const flatRows: FlatClubPlayerRow[] = [];
+  const clubsSet = new Set<string>();
+
+  for (const comp of competitions) {
+    try {
+      const compHtml = await fetchHtml(comp.profile_path, url);
+      const clubs = parseClubsFromCompetition(
+        compHtml,
+        comp.code,
+        comp.season_id
       );
-    }
 
-    const season = parseInt(seasonStr, 10);
-    if (!Number.isFinite(season)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid season" }),
-        { status: 400 }
-      );
-    }
+      for (const club of clubs) {
+        clubsSet.add(`${comp.code}:${club.name}`);
 
-    const supabase = getSupabaseServerClient();
+        try {
+          if (!club.tm_club_id) continue;
 
-    // 1) TRY CACHE (only for details=1 & flat=1 & refresh != 1)
-    if (supabase && details && flat && !refresh) {
-      try {
-        const { data, error } = await supabase
-          .from("tm_flat_snapshots")
-          .select("*")
-          .eq("country", country)
-          .eq("season", season)
-          .maybeSingle();
+          const profilePath = club.profile_path || "";
+          let rosterPath: string;
 
-        if (!error && data) {
-          return new Response(
-            JSON.stringify({
-              details: true,
-              competitionsCount: data.competitions_count,
-              clubsCount: data.clubs_count,
-              playersCount: data.players_count,
-              rows: data.rows as FlatClubPlayerRow[],
-              cached: true,
-              downloadedAt: data.downloaded_at,
-            }),
-            { headers: { "Content-Type": "application/json" } }
-          );
-        }
-      } catch (err) {
-        console.warn(
-          "[TM SCRAPER] Failed to read cache from tm_flat_snapshots:",
-          (err as any)?.message
-        );
-      }
-    }
-
-    // 2) SCRAPE FRESH FROM TM
-    const url = `${BASE}/wettbewerbe/national/wettbewerbe/${encodeURIComponent(
-      country
-    )}/saison_id/${season}/plus/1`;
-
-    const html = await fetchHtml(url);
-    const competitions = parseCompetitionsDetailed(html, country, season);
-
-    if (!details) {
-      // simple: competitions only
-      return new Response(
-        JSON.stringify({
-          competitions,
-          details: false,
-        }),
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // details = 1 -> load clubs + players
-    for (const comp of competitions) {
-      try {
-        const compHtml = await fetchHtml(comp.profile_path, url);
-        const clubs = parseClubsFromCompetition(
-          compHtml,
-          comp.code,
-          comp.season_id
-        );
-
-        for (const club of clubs) {
-          try {
-            if (!club.tm_club_id) {
-              club.players = [];
-              continue;
-            }
-
-            const m = (club.profile_path as string).match(
+          if (/\/kader\/verein\//i.test(profilePath)) {
+            rosterPath = profilePath;
+          } else if (/\/startseite\/verein\//i.test(profilePath)) {
+            rosterPath = profilePath.replace(
+              "/startseite/verein",
+              "/kader/verein"
+            );
+          } else {
+            const m = profilePath.match(
               /\/verein\/(\d+)(?:\/saison_id\/(\d+))?/i
             );
             const id = m ? m[1] : String(club.tm_club_id);
             const seasonForClub = m?.[2] || String(comp.season_id);
-            const rosterPath = `/kader/verein/${id}/saison_id/${seasonForClub}/plus/1`;
-            club.roster_path = rosterPath;
-
-            const rosterHtml = await fetchHtml(
-              rosterPath,
-              comp.profile_path
-            );
-            const players = parsePlayersFromRoster(
-              rosterHtml,
-              comp.season_id,
-              club.tm_club_id
-            );
-            club.players = players;
-          } catch (err: any) {
-            club.players = [];
-            club.players_error =
-              err?.message || "Failed to load players";
+            rosterPath = `/kader/verein/${id}/saison_id/${seasonForClub}`;
           }
-        }
 
-        (comp as CompetitionRow).clubs = clubs;
-      } catch (err: any) {
-        (comp as CompetitionRow).clubs_error =
-          err?.message || "Failed to load clubs / players";
-      }
-    }
+          if (!/\/plus\/1\/?$/.test(rosterPath)) {
+            rosterPath = rosterPath.replace(/\/?$/, "/plus/1");
+          }
 
-    // 3) FLAT TABLE
-    if (flat) {
-      const rows: FlatClubPlayerRow[] = [];
+          const rosterHtml = await fetchHtml(rosterPath, comp.profile_path);
+          const players = parsePlayersFromRoster(
+            rosterHtml,
+            comp.season_id,
+            club.tm_club_id!
+          );
 
-      for (const comp of competitions) {
-        const clubs = comp.clubs || [];
-        for (const club of clubs) {
-          const players = club.players || [];
           for (const p of players) {
-            rows.push({
+            flatRows.push({
               competition_code: comp.code,
               competition_name: comp.name,
               country_id: comp.country_id,
@@ -602,83 +547,147 @@ export async function GET(req: Request) {
               contract_until: p.contract_until,
             });
           }
-        }
-      }
-
-      const clubsSet = new Set<string>();
-      for (const comp of competitions) {
-        (comp.clubs || []).forEach((club) => {
-          clubsSet.add(`${comp.code}:${club.name}`);
-        });
-      }
-
-      // 4) SAVE TO CACHE IF POSSIBLE
-      let downloadedAt: string | null = null;
-
-      if (supabase) {
-        try {
-          const nowIso = new Date().toISOString();
-          const { error } = await supabase
-            .from("tm_flat_snapshots")
-            .upsert(
-              {
-                country,
-                season,
-                competitions_count: competitions.length,
-                clubs_count: clubsSet.size,
-                players_count: rows.length,
-                rows,
-                downloaded_at: nowIso,
-              },
-              { onConflict: "country,season" }
-            );
-          if (error) {
-            console.warn(
-              "[TM SCRAPER] Failed to upsert tm_flat_snapshots:",
-              error.message
-            );
-          } else {
-            downloadedAt = nowIso;
-          }
-        } catch (err) {
-          console.warn(
-            "[TM SCRAPER] Exception while upserting cache:",
-            (err as any)?.message
+        } catch (err: any) {
+          console.error(
+            "[TM SCRAPER] Błąd przy klubie",
+            club.name,
+            err?.message
           );
         }
       }
+    } catch (err: any) {
+      console.error(
+        "[TM SCRAPER] Błąd przy rozgrywkach",
+        comp.name,
+        err?.message
+      );
+    }
+  }
 
-      return new Response(
-        JSON.stringify({
-          details: true,
-          competitionsCount: competitions.length,
-          clubsCount: clubsSet.size,
-          playersCount: rows.length,
-          rows,
-          cached: false,
-          downloadedAt,
-        }),
-        {
-          headers: { "Content-Type": "application/json" },
-        }
+  const competitionsCount = competitions.length;
+  const clubsCount = clubsSet.size;
+  const playersCount = flatRows.length;
+  const downloadedAt = new Date().toISOString();
+
+  if (supabaseAdmin) {
+    // wyczyść stare rekordy
+    const { error: delErr } = await supabaseAdmin
+      .from("tm_flat_competition_players")
+      .delete()
+      .eq("country_id", country)
+      .eq("season_id", season);
+    if (delErr) {
+      console.error(
+        "[tm_flat_competition_players] delete error:",
+        delErr.message
       );
     }
 
-    // fallback: full tree
+    // insert w chunkach
+    const chunkSize = 1000;
+    for (let i = 0; i < flatRows.length; i += chunkSize) {
+      const chunk = flatRows.slice(i, i + chunkSize);
+      const { error: insErr } = await supabaseAdmin
+        .from("tm_flat_competition_players")
+        .insert(chunk);
+      if (insErr) {
+        console.error(
+          "[tm_flat_competition_players] insert error:",
+          insErr.message
+        );
+        // nie przerywam całości – dane i tak wrócą w odpowiedzi
+        break;
+      }
+    }
+
+    const { error: metaErr } = await supabaseAdmin
+      .from("tm_cached_scrapes")
+      .insert({
+        country_id: country,
+        season_id: season,
+        rows_json: flatRows,
+        competitions_count: competitionsCount,
+        clubs_count: clubsCount,
+        players_count: playersCount,
+        downloaded_at: downloadedAt,
+      });
+    if (metaErr) {
+      console.error("[tm_cached_scrapes] insert error:", metaErr.message);
+    }
+  }
+
+  return {
+    cached: false as const,
+    competitionsCount,
+    clubsCount,
+    playersCount,
+    rows: flatRows,
+    downloadedAt,
+  };
+}
+
+/* ------------------------ GET handler ------------------------ */
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const country = searchParams.get("country") || "135";
+    const seasonStr = searchParams.get("season") || "2025";
+    const refreshParam = searchParams.get("refresh");
+
+    const season = parseInt(seasonStr, 10);
+    if (!Number.isFinite(season)) {
+      return new Response(JSON.stringify({ error: "Invalid season" }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const refresh =
+      refreshParam === "1" ||
+      refreshParam === "true" ||
+      refreshParam === "yes";
+
+    // 1) cache FIRST (jeśli nie refresh)
+    if (!refresh) {
+      const cached = await loadFromCache(country, season);
+      if (cached) {
+        return new Response(
+          JSON.stringify({
+            details: true,
+            cached: true,
+            competitionsCount: cached.competitionsCount,
+            clubsCount: cached.clubsCount,
+            playersCount: cached.playersCount,
+            rows: cached.rows,
+            downloadedAt: cached.downloadedAt,
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // 2) brak cache albo refresh=1 => scrap + zapis (jeśli Supabase dostępne)
+    const scraped = await scrapeAndCache(country, season);
+
     return new Response(
       JSON.stringify({
-        competitions,
         details: true,
+        cached: scraped.cached,
+        competitionsCount: scraped.competitionsCount,
+        clubsCount: scraped.clubsCount,
+        playersCount: scraped.playersCount,
+        rows: scraped.rows,
+        downloadedAt: scraped.downloadedAt,
       }),
-      {
-        headers: { "Content-Type": "application/json" },
-      }
+      { headers: { "Content-Type": "application/json" } }
     );
   } catch (e: any) {
-    console.error("[TM SCRAPER] Fatal error:", e);
+    console.error("[TM SCRAPER competition/list] Fatal error:", e);
     return new Response(
-      JSON.stringify({ error: e?.message || "Failed" }),
-      { status: 500 }
+      JSON.stringify({
+        error: e?.message || "Nieznany błąd TM competition/list",
+      }),
+      { headers: { "Content-Type": "application/json" } }
     );
   }
 }

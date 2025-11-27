@@ -886,10 +886,10 @@ export default function GlobalDatabasePage() {
       />
 
       {/* Info / summary card */}
-      <Card className="border-stone-200 bg-gradient-to-r from-slate-50 to-stone-100 text-xs dark:border-neutral-700 dark:from-neutral-900 dark:to-neutral-900/70">
+      <Card className="border-stone-200 bg-gradient-to-r from-stone-50 to-stone-100 text-xs dark:border-neutral-700 dark:from-neutral-900 dark:to-neutral-900/70">
         <CardContent className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
           <div className="flex flex-1 items-start gap-2">
-            <div className="mt-0.5 rounded bg-slate-900/5 p-1 dark:bg-neutral-100/5">
+            <div className="mt-0.5 rounded bg-stone-900/5 p-1 dark:bg-neutral-100/5">
               <InfoIcon className="h-3.5 w-3.5 text-stone-600 dark:text-neutral-300" />
             </div>
             <div className="space-y-1">
@@ -911,17 +911,17 @@ export default function GlobalDatabasePage() {
           <div className="flex flex-col items-end gap-1 text-[11px] text-stone-600 dark:text-neutral-300">
             <span>
               Wszystkich (global_players):{" "}
-              <span className="font-semibold text-slate-900 dark:text-neutral-50">
+              <span className="font-semibold text-stone-900 dark:text-neutral-50">
                 {totalGlobal}
               </span>
             </span>
             <span>
               TM:{" "}
-              <span className="font-semibold text-slate-900 dark:text-neutral-50">
+              <span className="font-semibold text-stone-900 dark:text-neutral-50">
                 {tmCount}
               </span>{" "}
               • LNP:{" "}
-              <span className="font-semibold text-slate-900 dark:text-neutral-50">
+              <span className="font-semibold text-stone-900 dark:text-neutral-50">
                 {lnpCount}
               </span>
             </span>
@@ -950,7 +950,7 @@ export default function GlobalDatabasePage() {
       <Card className="border-gray-200 shadow-sm dark:border-neutral-800">
         <CardHeader className="flex flex-col gap-2 border-b border-stone-200/70 pb-3 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
           <div className="space-y-1">
-            <CardTitle className="text-sm font-semibold text-slate-900 dark:text-neutral-50">
+            <CardTitle className="text-sm font-semibold text-stone-900 dark:text-neutral-50">
               Globalna baza zawodników
             </CardTitle>
             <p className="text-[11px] text-gray-500 dark:text-neutral-400">
@@ -982,7 +982,7 @@ export default function GlobalDatabasePage() {
                   className={cn(
                     "rounded px-2 py-0.5",
                     sourceFilter === "all"
-                      ? "bg-white text-slate-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-50"
+                      ? "bg-white text-stone-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-50"
                       : "text-stone-600 hover:bg-stone-200/70 dark:text-neutral-300 dark:hover:bg-neutral-800"
                   )}
                 >
@@ -994,7 +994,7 @@ export default function GlobalDatabasePage() {
                   className={cn(
                     "rounded px-2 py-0.5",
                     sourceFilter === "tm"
-                      ? "bg-white text-slate-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-50"
+                      ? "bg-white text-stone-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-50"
                       : "text-stone-600 hover:bg-stone-200/70 dark:text-neutral-300 dark:hover:bg-neutral-800"
                   )}
                 >
@@ -1006,7 +1006,7 @@ export default function GlobalDatabasePage() {
                   className={cn(
                     "rounded px-2 py-0.5",
                     sourceFilter === "lnp"
-                      ? "bg-white text-slate-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-50"
+                      ? "bg-white text-stone-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-50"
                       : "text-stone-600 hover:bg-stone-200/70 dark:text-neutral-300 dark:hover:bg-neutral-800"
                   )}
                 >
@@ -1045,7 +1045,7 @@ export default function GlobalDatabasePage() {
         <CardContent className="p-0">
           <div className="w-full overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs font-medium uppercase tracking-wide text-stone-600 dark:bg-neutral-900 dark:text-neutral-300">
+              <thead className="bg-stone-50 text-xs font-medium uppercase tracking-wide text-stone-600 dark:bg-neutral-900 dark:text-neutral-300">
                 <tr>
                   <th className="w-[40px] px-3 py-2 text-left">
                     <Checkbox
@@ -1104,7 +1104,7 @@ export default function GlobalDatabasePage() {
                           "border-t border-gray-100 align-top transition-colors dark:border-neutral-800",
                           idx % 2
                             ? "bg-white dark:bg-neutral-950"
-                            : "bg-slate-50/40 dark:bg-neutral-950/60",
+                            : "bg-stone-50/40 dark:bg-neutral-950/60",
                           "hover:bg-stone-100/90 dark:hover:bg-neutral-900",
                           isExpanded &&
                             "border-sky-200 bg-sky-50/70 shadow-sm dark:border-sky-700 dark:stone-700",
@@ -1128,7 +1128,7 @@ export default function GlobalDatabasePage() {
                                 {r.name || "—"}
                               </div>
                               {r.pos && (
-                                <span className="inline-flex rounded bg-slate-900/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-800 dark:bg-neutral-100/5 dark:text-neutral-100">
+                                <span className="inline-flex rounded bg-stone-900/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-800 dark:bg-neutral-100/5 dark:text-neutral-100">
                                   {r.pos}
                                 </span>
                               )}
@@ -1165,7 +1165,7 @@ export default function GlobalDatabasePage() {
                         </td>
                         <td className="px-3 py-2">
                           {r.club ? (
-                            <span className="inline-flex max-w-[180px] items-center rounded bg-slate-50 px-2 py-0.5 text-[11px] text-slate-800 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+                            <span className="inline-flex max-w-[180px] items-center rounded bg-stone-50 px-2 py-0.5 text-[11px] text-stone-800 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
                               {r.club}
                             </span>
                           ) : (
@@ -1184,7 +1184,7 @@ export default function GlobalDatabasePage() {
                         <td className="px-3 py-2">{r.age ?? "—"}</td>
                         <td className="px-3 py-2">
                           {r.nationality ? (
-                            <span className="inline-flex max-w-[140px] items-center rounded bg-slate-50 px-2 py-0.5 text-[11px] text-slate-800 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+                            <span className="inline-flex max-w-[140px] items-center rounded bg-stone-50 px-2 py-0.5 text-[11px] text-stone-800 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
                               {r.nationality}
                             </span>
                           ) : (
@@ -1321,7 +1321,7 @@ export default function GlobalDatabasePage() {
                       {isExpanded && (
                         <tr
                           key={`${r.id}-details`}
-                          className="border-t border-stone-200 bg-slate-50/70 dark:border-neutral-800 dark:bg-neutral-950/60"
+                          className="border-t border-stone-200 bg-stone-50/70 dark:border-neutral-800 dark:bg-neutral-950/60"
                         >
                           <td colSpan={10} className="px-3 py-4">
                             <div className="space-y-4 rounded border border-stone-200 bg-white/95 p-4 text-xs shadow-sm dark:border-neutral-700 dark:bg-neutral-950/95">
@@ -1332,14 +1332,14 @@ export default function GlobalDatabasePage() {
                                     <span className="h-1.5 w-1.5 rounded bg-stone-500" />
                                     Szczegóły globalnego zawodnika
                                   </div>
-                                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-stone-900 dark:text-neutral-50">
                                     <span>{r.name}</span>
                                     {r.club && (
                                       <>
                                         <span className="text-[11px] text-stone-400">
                                           •
                                         </span>
-                                        <span className="rounded bg-slate-900/5 px-2 py-0.5 text-[11px] font-normal text-stone-700 dark:bg-neutral-100/5 dark:text-neutral-200">
+                                        <span className="rounded bg-stone-900/5 px-2 py-0.5 text-[11px] font-normal text-stone-700 dark:bg-neutral-100/5 dark:text-neutral-200">
                                           {r.club}
                                         </span>
                                       </>
@@ -1498,11 +1498,11 @@ export default function GlobalDatabasePage() {
                                           return (
                                             <div
                                               key={o.id}
-                                              className="flex flex-col gap-1 rounded border border-gray-200 bg-slate-50/80 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-950"
+                                              className="flex flex-col gap-1 rounded border border-gray-200 bg-stone-50/80 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-950"
                                             >
                                               <div className="flex flex-wrap items-center justify-between gap-2">
                                                 <div className="flex flex-col gap-0.5">
-                                                  <div className="font-medium text-slate-900 dark:text-neutral-50">
+                                                  <div className="font-medium text-stone-900 dark:text-neutral-50">
                                                     {o.match ||
                                                       "Bez nazwy meczu"}
                                                   </div>
@@ -1513,12 +1513,12 @@ export default function GlobalDatabasePage() {
                                                 </div>
                                                 <div className="flex flex-wrap items-center gap-1">
                                                   {o.mode && (
-                                                    <span className="rounded bg-slate-900/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-stone-700 dark:bg-neutral-100/5 dark:text-neutral-200">
+                                                    <span className="rounded bg-stone-900/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-stone-700 dark:bg-neutral-100/5 dark:text-neutral-200">
                                                       {o.mode}
                                                     </span>
                                                   )}
                                                   {o.status && (
-                                                    <span className="rounded bg-slate-900/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-stone-700 dark:bg-neutral-100/5 dark:text-neutral-200">
+                                                    <span className="rounded bg-stone-900/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-stone-700 dark:bg-neutral-100/5 dark:text-neutral-200">
                                                       {o.status}
                                                     </span>
                                                   )}
@@ -1527,7 +1527,7 @@ export default function GlobalDatabasePage() {
                                               {scout && (
                                                 <div className="text-[11px] text-gray-500 dark:text-neutral-400">
                                                   Scout:{" "}
-                                                  <span className="font-medium text-slate-800 dark:text-neutral-100">
+                                                  <span className="font-medium text-stone-800 dark:text-neutral-100">
                                                     {scout.name ||
                                                       "Bez nazwy konta"}
                                                   </span>
@@ -1595,7 +1595,7 @@ export default function GlobalDatabasePage() {
                 <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-neutral-400">
                   Zawodnik
                 </div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-neutral-50">
+                <div className="text-sm font-semibold text-stone-900 dark:text-neutral-50">
                   {sourcesModal.playerName}
                 </div>
               </div>
@@ -1627,7 +1627,7 @@ export default function GlobalDatabasePage() {
                     {sourcesModal.scouts.map((s) => (
                       <li
                         key={s.id}
-                        className="rounded bg-slate-50 px-3 py-2 text-xs text-slate-800 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700"
+                        className="rounded bg-stone-50 px-3 py-2 text-xs text-stone-800 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700"
                       >
                         <div className="font-medium">
                           {s.name || "Bez nazwy konta"}
@@ -1642,7 +1642,7 @@ export default function GlobalDatabasePage() {
                 </div>
               )}
             </div>
-            <div className="border-t border-gray-200 bg-slate-50 px-4 py-2 text-[11px] text-stone-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+            <div className="border-t border-gray-200 bg-stone-50 px-4 py-2 text-[11px] text-stone-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
               Lista budowana z pola{" "}
               <code className="rounded bg-stone-200 px-1 py-0.5 dark:bg-neutral-800">
                 global_players.sources
@@ -1695,7 +1695,7 @@ function RatingBlock({
             className="rounded border border-stone-200 bg-white/90 p-3 text-xs shadow-sm transition hover:-translate-y-[1px] hover:border-stone-300 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-950/80 dark:hover:border-neutral-500"
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="font-medium text-[13px] text-slate-900 dark:text-neutral-50">
+              <div className="font-medium text-[13px] text-stone-900 dark:text-neutral-50">
                 {s.label}
               </div>
               <span className="text-[11px] text-stone-500 dark:text-neutral-400">
@@ -1723,7 +1723,7 @@ function RatingBlock({
 function SummaryPill({ label, value }: { label: string; value: number }) {
   return (
     <div className="inline-flex items-center gap-1 rounded bg-stone-100 px-2.5 py-0.5 text-[10px] text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
-      <span className="text-[11px] font-semibold text-slate-900 dark:text-neutral-50">
+      <span className="text-[11px] font-semibold text-stone-900 dark:text-neutral-50">
         {value}
       </span>
       <span>{label}</span>

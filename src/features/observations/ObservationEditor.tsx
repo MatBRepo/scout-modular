@@ -1093,7 +1093,7 @@ export function ObservationEditor({
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
                   Dane meczu
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
                   Wpisz drużyny oraz datę meczu – nazwa meczu zbuduje się
                   automatycznie.
                 </p>
@@ -1211,10 +1211,10 @@ export function ObservationEditor({
                                   <GitCompare className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
                                 )}
                                 <div>
-                                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-800 dark:text-neutral-50">
+                                  <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-800 dark:text-neutral-50">
                                     {title}
                                   </div>
-                                  <div className="text-[11px] text-slate-500 dark:text-neutral-400">
+                                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
                                     {subtitle}
                                   </div>
                                 </div>
@@ -1281,7 +1281,7 @@ export function ObservationEditor({
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
                   Obserwowani zawodnicy
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
                   Jeden input – numer lub nazwisko, dropdown z wynikami i
                   szczegóły pod wierszem zawodnika.
                 </p>
@@ -1639,7 +1639,7 @@ export function ObservationEditor({
                                       <div className="relative">
                                         {!hasPosition && (
                                           <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
-                                            <p className="mb-3 text-xs text-slate-700 dark:text-neutral-200 sm:text-sm">
+                                            <p className="mb-3 text-xs text-stone-700 dark:text-neutral-200 sm:text-sm">
                                               Aby wprowadzić oceny, najpierw
                                               uzupełnij{" "}
                                               <b>Pozycja w meczu</b>.
@@ -1845,7 +1845,7 @@ export function ObservationEditor({
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
                   Notatka do obserwacji
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-neutral-400">
+                <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
                   Krótki opis, kontekst, obserwacje ogólne.
                 </p>
               </div>
