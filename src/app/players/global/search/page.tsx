@@ -682,7 +682,7 @@ function TmScraperPanel() {
 
       const originLabel =
         j.cached === true
-          ? " (Supabase cache)"
+          ? " (Supabase cache – bez scrapowania)"
           : " (świeże pobranie z TM)";
       const okMsg = `Pobrano ${list.length} zawodników (kraj: ${country}, sezon: ${season})${originLabel}`;
       setLastApiMessage(okMsg);
@@ -954,6 +954,16 @@ function TmScraperPanel() {
           <div className="my-1 w-full border-t" />
 
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => loadPlayers()}
+              disabled={loading}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Odśwież listę (cache / TM)
+            </Button>
+
             <Button
               variant="outline"
               className="gap-2"

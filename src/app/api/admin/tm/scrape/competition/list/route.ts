@@ -8,34 +8,6 @@ export const revalidate = 0;
 
 const BASE = "https://www.transfermarkt.com";
 
-/* -------------------- Supabase (lazy, safe) -------------------- */
-
-let supabase: SupabaseClient | null = null;
-
-function getSupabase(): SupabaseClient | null {
-  if (supabase) return supabase;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    console.warn(
-      "[tm-scraper] Supabase envs missing (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY). Cache disabled."
-    );
-    return null;
-  }
-
-  supabase = createClient(url, key, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-  return supabase;
-}
-
 /* -------------------- helpers: HTTP -------------------- */
 function ensurePath(p?: string | null) {
   if (!p) return "/";
@@ -135,7 +107,7 @@ type CompetitionRow = {
   code: string;
   name: string;
   profile_path: string;
-  // aliases your UI might already use:
+  // aliases:
   path: string | null;
   url_path: string | null;
   href: string | null;
@@ -187,7 +159,6 @@ type PlayerRow = {
   contract_until: string | null;
 };
 
-/** Płaski wiersz: rozgrywki + klub + zawodnik */
 type FlatClubPlayerRow = {
   competition_code: string;
   competition_name: string;
@@ -234,11 +205,16 @@ function parseCompetitionsDetailed(
     }
 
     const tds = $tr.find("> td");
-    if (tds.length < 8) return;
+    if (!tds.length) return;
 
-    const $nameCell = $(tds[0]);
+    const $nameCell = $tr.find("td.hauptlink").first();
+    if (!$nameCell.length) return;
+
     const $inline = $nameCell.find("table.inline-table td").eq(1);
-    const $a = $inline.find("a").first();
+    const $a =
+      $inline.find("a[href*='/wettbewerb/']").first() ||
+      $nameCell.find("a[href*='/wettbewerb/']").first();
+    if (!$a.length) return;
 
     const name = $a.text().trim();
     const profile_path = $a.attr("href") || "";
@@ -294,25 +270,32 @@ function parseClubsFromCompetition(
   const rows: ClubRow[] = [];
 
   $("table.items > tbody > tr").each((_, tr) => {
-    const tds = $(tr).find("> td");
-    if (tds.length < 7) return;
+    const $tr = $(tr);
+    const tds = $tr.find("> td");
+    if (!tds.length) return;
 
-    // Col 1 = club name + link (index 0 is pos)
-    const $nameCell = $(tds[1]);
-    const $a = $nameCell.find("a").first();
+    const $nameCell = $tr.find("td.hauptlink").first();
+    if (!$nameCell.length) return;
+
+    const $a =
+      $nameCell.find("a[href*='/verein/']").first() ||
+      $nameCell.find("a").first();
+    if (!$a.length) return;
+
     const name = clean($a.text());
     const profile_path = $a.attr("href") || "";
     const idMatch = profile_path.match(/\/verein\/(\d+)/);
     const tm_club_id = idMatch ? parseInt(idMatch[1], 10) : null;
 
-    const squad_size = parseIntLoose($(tds[2]).text());
-    const avg_age = parseFloatEU($(tds[3]).text());
-    const foreigners = parseIntLoose($(tds[4]).text());
-    const avg_market_value_eur = parseEuroToInt($(tds[5]).text());
-    const totalText = $(tds[6]).text() || $(tds[6]).find("a").text();
-    const total_market_value_eur = parseEuroToInt(totalText);
-
     if (!name) return;
+
+    const squad_size = parseIntLoose(tds.eq(2).text());
+    const avg_age = parseFloatEU(tds.eq(3).text());
+    const foreigners = parseIntLoose(tds.eq(4).text());
+    const avg_market_value_eur = parseEuroToInt(tds.eq(5).text());
+    const totalText =
+      tds.eq(6).text() || tds.eq(6).find("a").text() || "";
+    const total_market_value_eur = parseEuroToInt(totalText);
 
     rows.push({
       competition_code: competitionCode,
@@ -342,53 +325,64 @@ function parsePlayersFromRoster(
   const rows: PlayerRow[] = [];
 
   $("table.items > tbody > tr").each((_, tr) => {
-    const tds = $(tr).find("> td");
-    if (tds.length < 10) return; // plus/1 table has many cols
+    const $tr = $(tr);
 
-    const number = clean($(tds[0]).find(".rn_nummer").text()) || null;
+    const $playerCell = $tr.find("td.hauptlink").first();
+    if (!$playerCell.length) return;
 
-    // player cell (image + name + position)
-    const $playerCell = $(tds[1]);
-    const $nameA = $playerCell.find("a").first();
+    const $nameA =
+      $playerCell.find("a[href*='/spieler/']").first() ||
+      $playerCell.find("a").first();
+    if (!$nameA.length) return;
+
     const name = clean($nameA.text());
     const player_path = $nameA.attr("href") || "";
     const idm = player_path.match(/\/spieler\/(\d+)/);
     const tm_player_id = idm ? parseInt(idm[1], 10) : null;
-
     if (!tm_player_id || !name) return;
 
-    const position =
-      clean(
-        $playerCell
-          .find("table.inline-table tr")
-          .eq(1)
-          .find("td")
-          .last()
-          .text()
-      ) || null;
+    const tds = $tr.find("> td");
 
-    // Date of birth / Age
-    const dobAge = clean($(tds[2]).text());
+    // shirt number
+    const number =
+      clean($tr.find(".rn_nummer").first().text()) || null;
+
+    // position – inline-table second row
+    const positionText = clean(
+      $playerCell
+        .find("table.inline-table tr")
+        .eq(1)
+        .find("td")
+        .last()
+        .text()
+    );
+    const position = positionText || null;
+
+    // DOB + age
+    const dobAge = clean(tds.eq(2).text());
     const date_of_birth = parseDateEUtoISO(dobAge);
-    const age = parseIntLoose((dobAge.match(/\((\d+)\)/)?.[1]) || "");
+    const age = parseIntLoose(
+      (dobAge.match(/\((\d+)\)/)?.[1]) || ""
+    );
 
-    // Nationalities
-    const natImgs = $(tds[3]).find("img");
+    // nationalities
+    const natCell = tds.eq(3);
     const nationalities: string[] = [];
-    natImgs.each((_, im) => {
+    natCell.find("img").each((_, im) => {
       const alt = $(im).attr("alt");
       if (alt) nationalities.push(clean(alt));
     });
 
-    // Height
-    const height_cm = parseHeightCm(clean($(tds[4]).text()));
+    // height
+    const height_cm = parseHeightCm(clean(tds.eq(4).text()));
 
-    // Foot
-    const foot = clean($(tds[5]).text()) || null;
+    // foot
+    const footText = clean(tds.eq(5).text());
+    const foot = footText || null;
 
-    // Contract
-    const contract_until_text = clean($(tds[8]).text()) || null;
-    const contract_until = parseDateEUtoISO(contract_until_text || undefined);
+    // contract until
+    const contractText = clean(tds.eq(8).text()) || null;
+    const contract_until = parseDateEUtoISO(contractText || undefined);
 
     rows.push({
       season_id: seasonId,
@@ -410,6 +404,40 @@ function parsePlayersFromRoster(
   return rows;
 }
 
+/* ---------------- Supabase (optional cache) ---------------- */
+
+function getSupabaseServerClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = serviceRole || anon;
+  if (!url || !key) {
+    console.warn(
+      "[TM SCRAPER] Supabase env missing – running without cache."
+    );
+    return null;
+  }
+  return createClient(url, key, {
+    auth: { persistSession: false },
+  });
+}
+
+/**
+ * Table proposal (run manually in Supabase if you want cache):
+ *
+ * CREATE TABLE public.tm_flat_snapshots (
+ *   id bigserial PRIMARY KEY,
+ *   country text NOT NULL,
+ *   season int NOT NULL,
+ *   competitions_count int NOT NULL,
+ *   clubs_count int NOT NULL,
+ *   players_count int NOT NULL,
+ *   rows jsonb NOT NULL,
+ *   downloaded_at timestamptz NOT NULL DEFAULT now(),
+ *   UNIQUE(country, season)
+ * );
+ */
+
 /* ------------------------ GET handler ------------------------ */
 
 export async function GET(req: Request) {
@@ -417,8 +445,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const country = searchParams.get("country");
     const seasonStr = searchParams.get("season");
-    const details = searchParams.get("details") === "1"; // pobieraj kluby + zawodników
-    const flat = searchParams.get("flat") === "1"; // zwróć płaską tabelę
+    const details = searchParams.get("details") === "1";
+    const flat = searchParams.get("flat") === "1";
     const refresh = searchParams.get("refresh") === "1";
 
     if (!country || !seasonStr) {
@@ -436,40 +464,41 @@ export async function GET(req: Request) {
       );
     }
 
-    const supa = getSupabase();
+    const supabase = getSupabaseServerClient();
 
-    /* ---------- 1) Spróbuj odczytać cache z Supabase ---------- */
-    if (supa && !refresh && details && flat) {
-      const { data, error } = await supa
-        .from("tm_cached_scrapes")
-        .select(
-          "rows_json, competitions_count, clubs_count, players_count, downloaded_at"
-        )
-        .eq("country_id", country)
-        .eq("season_id", season)
-        .maybeSingle();
+    // 1) TRY CACHE (only for details=1 & flat=1 & refresh != 1)
+    if (supabase && details && flat && !refresh) {
+      try {
+        const { data, error } = await supabase
+          .from("tm_flat_snapshots")
+          .select("*")
+          .eq("country", country)
+          .eq("season", season)
+          .maybeSingle();
 
-      if (!error && data && data.rows_json) {
-        const rows = (data.rows_json as any[]) || [];
-        return new Response(
-          JSON.stringify({
-            cached: true,
-            downloadedAt: data.downloaded_at,
-            competitionsCount: data.competitions_count ?? 0,
-            clubsCount: data.clubs_count ?? 0,
-            playersCount: data.players_count ?? rows.length,
-            rows,
-          }),
-          {
-            headers: { "Content-Type": "application/json" },
-          }
+        if (!error && data) {
+          return new Response(
+            JSON.stringify({
+              details: true,
+              competitionsCount: data.competitions_count,
+              clubsCount: data.clubs_count,
+              playersCount: data.players_count,
+              rows: data.rows as FlatClubPlayerRow[],
+              cached: true,
+              downloadedAt: data.downloaded_at,
+            }),
+            { headers: { "Content-Type": "application/json" } }
+          );
+        }
+      } catch (err) {
+        console.warn(
+          "[TM SCRAPER] Failed to read cache from tm_flat_snapshots:",
+          (err as any)?.message
         );
       }
     }
 
-    /* ---------- 2) Scrapowanie z TM (fresh) ---------- */
-
-    // detailed competitions table (includes season stats)
+    // 2) SCRAPE FRESH FROM TM
     const url = `${BASE}/wettbewerbe/national/wettbewerbe/${encodeURIComponent(
       country
     )}/saison_id/${season}/plus/1`;
@@ -477,8 +506,8 @@ export async function GET(req: Request) {
     const html = await fetchHtml(url);
     const competitions = parseCompetitionsDetailed(html, country, season);
 
-    // Jeśli nie chcemy detali, zwracamy tylko rozgrywki
     if (!details) {
+      // simple: competitions only
       return new Response(
         JSON.stringify({
           competitions,
@@ -490,7 +519,7 @@ export async function GET(req: Request) {
       );
     }
 
-    // details = 1 -> doładowujemy kluby + zawodników
+    // details = 1 -> load clubs + players
     for (const comp of competitions) {
       try {
         const compHtml = await fetchHtml(comp.profile_path, url);
@@ -500,7 +529,6 @@ export async function GET(req: Request) {
           comp.season_id
         );
 
-        // for each club, load roster + players
         for (const club of clubs) {
           try {
             if (!club.tm_club_id) {
@@ -528,7 +556,8 @@ export async function GET(req: Request) {
             club.players = players;
           } catch (err: any) {
             club.players = [];
-            club.players_error = err?.message || "Failed to load players";
+            club.players_error =
+              err?.message || "Failed to load players";
           }
         }
 
@@ -539,16 +568,13 @@ export async function GET(req: Request) {
       }
     }
 
-    /* ---------- 3) Jeśli flat=1 -> budujemy płaską tabelę ---------- */
+    // 3) FLAT TABLE
     if (flat) {
       const rows: FlatClubPlayerRow[] = [];
-      const clubsSet = new Set<string>();
 
       for (const comp of competitions) {
         const clubs = comp.clubs || [];
         for (const club of clubs) {
-          clubsSet.add(`${comp.code}:${club.name}`);
-
           const players = club.players || [];
           for (const p of players) {
             rows.push({
@@ -579,42 +605,58 @@ export async function GET(req: Request) {
         }
       }
 
-      const competitionsCount = competitions.length;
-      const clubsCount = clubsSet.size;
-      const playersCount = rows.length;
-      const downloadedAt = new Date().toISOString();
+      const clubsSet = new Set<string>();
+      for (const comp of competitions) {
+        (comp.clubs || []).forEach((club) => {
+          clubsSet.add(`${comp.code}:${club.name}`);
+        });
+      }
 
-      // 3a) Zapisz do cache (Supabase), jeśli dostępny
-      const supa2 = getSupabase();
-      if (supa2) {
+      // 4) SAVE TO CACHE IF POSSIBLE
+      let downloadedAt: string | null = null;
+
+      if (supabase) {
         try {
-          await supa2.from("tm_cached_scrapes").upsert(
-            {
-              country_id: country,
-              season_id: season,
-              rows_json: rows,
-              competitions_count: competitionsCount,
-              clubs_count: clubsCount,
-              players_count: playersCount,
-              downloaded_at: downloadedAt,
-            },
-            { onConflict: "country_id,season_id" }
-          );
+          const nowIso = new Date().toISOString();
+          const { error } = await supabase
+            .from("tm_flat_snapshots")
+            .upsert(
+              {
+                country,
+                season,
+                competitions_count: competitions.length,
+                clubs_count: clubsSet.size,
+                players_count: rows.length,
+                rows,
+                downloaded_at: nowIso,
+              },
+              { onConflict: "country,season" }
+            );
+          if (error) {
+            console.warn(
+              "[TM SCRAPER] Failed to upsert tm_flat_snapshots:",
+              error.message
+            );
+          } else {
+            downloadedAt = nowIso;
+          }
         } catch (err) {
-          console.warn("[tm-scraper] Failed to upsert cache:", err);
+          console.warn(
+            "[TM SCRAPER] Exception while upserting cache:",
+            (err as any)?.message
+          );
         }
       }
 
-      // 3b) Zwróć odpowiedź
       return new Response(
         JSON.stringify({
+          details: true,
+          competitionsCount: competitions.length,
+          clubsCount: clubsSet.size,
+          playersCount: rows.length,
+          rows,
           cached: false,
           downloadedAt,
-          details: true,
-          competitionsCount,
-          clubsCount,
-          playersCount,
-          rows, // ← idealne pod jedną „piękną tabelę”
         }),
         {
           headers: { "Content-Type": "application/json" },
@@ -622,7 +664,7 @@ export async function GET(req: Request) {
       );
     }
 
-    /* ---------- 4) Domyślnie: pełne drzewko ---------- */
+    // fallback: full tree
     return new Response(
       JSON.stringify({
         competitions,
@@ -633,7 +675,7 @@ export async function GET(req: Request) {
       }
     );
   } catch (e: any) {
-    console.error("[tm-scraper] GET error:", e);
+    console.error("[TM SCRAPER] Fatal error:", e);
     return new Response(
       JSON.stringify({ error: e?.message || "Failed" }),
       { status: 500 }
