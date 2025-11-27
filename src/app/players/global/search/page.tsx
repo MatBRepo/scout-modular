@@ -110,7 +110,6 @@ export default function GlobalSearchPage() {
         }
       />
 
-      {/* Krótkie wyjaśnienie kontekstu widoku */}
       <div className="mt-3">
         <Card className="border-dashed border-stone-200 bg-stone-50/70 text-[11px] text-stone-700 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-200">
           <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -155,7 +154,6 @@ function LnpSearchPanel() {
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // wczytanie lokalnej bazy LNP przy starcie
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -170,11 +168,10 @@ function LnpSearchPanel() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
-      // ignoruj błąd
+      // ignore
     }
   }
 
-  /* uruchom scraper LNP => GET /api/scrape?query=...&src=lnp */
   async function run() {
     if (!q.trim()) return;
     setRunning(true);
@@ -293,7 +290,6 @@ function LnpSearchPanel() {
             .split(/\r?\n/)
             .filter(Boolean)
             .map((r) => r.split(","));
-          // prosty CSV: name,club,pos,age,nationality
           const imported: GlobalPlayer[] = rows.map((r) => ({
             id: uid(),
             name: (r[0] || "").replace(/^"|"$/g, ""),
@@ -319,7 +315,6 @@ function LnpSearchPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Panel sterowania LNP */}
       <Card className="border-gray-200 bg-white/70 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/70">
         <CardContent className="space-y-3 p-3 sm:p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -437,7 +432,6 @@ function LnpSearchPanel() {
         </CardContent>
       </Card>
 
-      {/* Wyniki */}
       <ResultsTable
         rows={flatFiltered}
         dbKeys={new Set(db.map(dedupeKey))}
@@ -537,7 +531,6 @@ function ResultsTable({
                     className={`border-t border-gray-200 transition-colors dark:border-neutral-800 ${rowClass}`}
                   >
                     <td className="px-2 py-2.5 align-middle">
-                      {/* tylko wizualny checkbox, bez logiki dla LNP */}
                       <div className="flex justify-center">
                         <Checkbox className="h-3.5 w-3.5" disabled />
                       </div>
@@ -670,6 +663,88 @@ type PlayerDetailsResponse = {
   errors?: Record<string, string>;
 };
 
+/* ---- parsed "blob" from TM footer line ---- */
+type ParsedFacts = {
+  nativeName?: string | null;
+  birth?: string | null; // "21/03/1996 (29)"
+  birthPlace?: string | null;
+  height?: string | null; // e.g. "1,89 m"
+  citizenship?: string | null;
+  position?: string | null;
+  foot?: string | null;
+  agent?: string | null;
+  currentClub?: string | null;
+  joined?: string | null;
+  contractExpires?: string | null;
+  lastExtension?: string | null;
+};
+
+function parseFactsBlob(blob?: string | null): ParsedFacts | null {
+  if (!blob) return null;
+  const trimmed = blob.replace(/\s+/g, " ").trim();
+
+  // jeśli to zwykłe "Goalkeeper" / "Central Midfield" itd. – nie parsujemy
+  if (trimmed.length < 60) return null;
+  if (!trimmed.includes("Date of birth") && !trimmed.includes("Height")) {
+    return null;
+  }
+
+  const text = trimmed;
+  const LABELS = [
+    "Name in home country",
+    "Date of birth/Age",
+    "Place of birth",
+    "Height",
+    "Citizenship",
+    "Position",
+    "Foot",
+    "Player agent",
+    "Current club",
+    "Joined",
+    "Contract expires",
+    "Last contract extension",
+  ];
+
+  const findValue = (label: string): string | null => {
+    const marker = `${label}:`;
+    const start = text.indexOf(marker);
+    if (start === -1) return null;
+    const from = start + marker.length;
+
+    let end = text.length;
+    for (const other of LABELS) {
+      if (other === label) continue;
+      const idx = text.indexOf(`${other}:`, from);
+      if (idx !== -1 && idx < end) {
+        end = idx;
+      }
+    }
+
+    const val = text.slice(from, end).trim();
+    return val || null;
+  };
+
+  const result: ParsedFacts = {
+    nativeName: findValue("Name in home country"),
+    birth: findValue("Date of birth/Age"),
+    birthPlace: findValue("Place of birth"),
+    height: findValue("Height"),
+    citizenship: findValue("Citizenship"),
+    position: findValue("Position"),
+    foot: findValue("Foot"),
+    agent: findValue("Player agent"),
+    currentClub: findValue("Current club"),
+    joined: findValue("Joined"),
+    contractExpires: findValue("Contract expires"),
+    lastExtension: findValue("Last contract extension"),
+  };
+
+  const hasAny = Object.values(result).some(
+    (v) => typeof v === "string" && v.trim() !== ""
+  );
+  return hasAny ? result : null;
+}
+
 function TmScraperPanel() {
   const [country, setCountry] = useState("135");
   const [season, setSeason] = useState("2025");
@@ -691,15 +766,12 @@ function TmScraperPanel() {
   const [downloadedAt, setDownloadedAt] = useState<string | null>(null);
   const [cachedFlag, setCachedFlag] = useState<boolean | null>(null);
 
-  // --- nowe filtry ---
   type PosFilter = "all" | "GK" | "DF" | "MF" | "FW" | "other";
   const [posFilter, setPosFilter] = useState<PosFilter>("all");
   const [competitionFilter, setCompetitionFilter] = useState<string>("all");
 
-  // zaznaczenia (checkboxy w tabeli)
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-  // szczegóły TM dla wybranego zawodnika
   const [selectedPlayer, setSelectedPlayer] = useState<TmPlayerRow | null>(
     null
   );
@@ -710,7 +782,6 @@ function TmScraperPanel() {
 
   const TM_DETAILS_ENDPOINT = "/api/tm/player/details";
 
-  // lista dostępnych rozgrywek (do selecta)
   const competitionOptions = useMemo(() => {
     const set = new Set<string>();
     for (const p of rows) {
@@ -721,7 +792,6 @@ function TmScraperPanel() {
     );
   }, [rows]);
 
-  /* ----- pobierz listę zawodników (Supabase cache / TM) ----- */
   const loadPlayers = async (opts?: { refresh?: boolean }) => {
     setLoading(true);
     setErrorMsg(null);
@@ -878,7 +948,6 @@ function TmScraperPanel() {
   };
 
   useEffect(() => {
-    // automat: pierwszy load (z cache jeśli istnieje)
     loadPlayers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -910,18 +979,15 @@ function TmScraperPanel() {
 
   const total = rows.length;
 
-  /* ----- filtrowanie (po rozgrywkach, pozycji, oraz full-text) ----- */
   const filtered = useMemo(() => {
     let data = [...rows];
 
-    // 1) rozgrywki
     if (competitionFilter !== "all") {
       data = data.filter(
         (p) => p.competition_name === competitionFilter
       );
     }
 
-    // 2) pozycja
     if (posFilter !== "all") {
       data = data.filter((p) => {
         const pos = (p.position || "").toUpperCase();
@@ -948,7 +1014,6 @@ function TmScraperPanel() {
       });
     }
 
-    // 3) free-text
     const q = search.trim().toLowerCase();
     if (!q) return data;
     const tokens = q.split(/\s+/).filter(Boolean);
@@ -976,7 +1041,6 @@ function TmScraperPanel() {
 
   const visible = filtered.length;
 
-  /* ----- selekcje (checkboxy) ----- */
   const isSelected = (id: number) => selectedIds.includes(id);
 
   const toggleSelect = (id: number) => {
@@ -996,7 +1060,6 @@ function TmScraperPanel() {
 
   const selectedCount = selectedIds.length;
 
-  /* ----- grupowanie po klubach do głównej tabeli ----- */
   const groupedByClub = useMemo(() => {
     type ClubGroup = {
       club_name: string;
@@ -1028,7 +1091,6 @@ function TmScraperPanel() {
     );
   }, [filtered]);
 
-  /* ----- agregacja klubów i zawodników (dla bocznych boxów) ----- */
   const clubsAgg = useMemo(() => {
     const map = new Map<string, { club_name: string; playersCount: number }>();
 
@@ -1057,9 +1119,8 @@ function TmScraperPanel() {
     setSearch(clubName);
   };
 
-  /* ----- mapowanie na payload Supabase ----- */
   const mapToPayload = (p: TmPlayerRow) => ({
-    key: `tm:${p.tm_player_id}`, // UNIQUE key
+    key: `tm:${p.tm_player_id}`,
     name: p.player_name,
     pos: p.position || "UNK",
     age: p.age ?? null,
@@ -1088,7 +1149,6 @@ function TmScraperPanel() {
     added_at: new Date().toISOString(),
   });
 
-  /* ----- zapis do Supabase: global_players (widoczni / zaznaczeni) ----- */
   const saveSelectedOrVisible = async () => {
     const baseList =
       selectedIds.length > 0
@@ -1123,7 +1183,6 @@ function TmScraperPanel() {
     }
   };
 
-  /* ----- zapis jednego zawodnika ----- */
   const saveSinglePlayer = async (p: TmPlayerRow) => {
     setSaving(true);
     try {
@@ -1144,7 +1203,6 @@ function TmScraperPanel() {
     }
   };
 
-  /* ----- usuwanie zawodników z listy (lokalne, UI-only) ----- */
   const deletePlayer = (id: number) => {
     setRows((prev) => prev.filter((p) => p.tm_player_id !== id));
     setSelectedIds((prev) => prev.filter((x) => x !== id));
@@ -1172,7 +1230,6 @@ function TmScraperPanel() {
     toast.success("Usunięto zaznaczonych zawodników z listy (tylko lokalnie).");
   };
 
-  /* ----- ładowanie szczegółów TM dla jednego zawodnika ----- */
   const loadPlayerDetails = async (player: TmPlayerRow) => {
     if (!player.player_path) {
       toast.error("Brak ścieżki TM dla tego zawodnika");
@@ -1187,7 +1244,7 @@ function TmScraperPanel() {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
       controller.abort();
-    }, 25000); // 25s timeout – brak wiecznego loadera
+    }, 25000);
 
     try {
       const url =
@@ -1208,7 +1265,7 @@ function TmScraperPanel() {
           const parsed = JSON.parse(text);
           errMsg = parsed?.error || "";
         } catch {
-          // odpowiedź mogła być HTML
+          // ignore
         }
         throw new Error(
           errMsg || text || `HTTP ${res.status} przy pobieraniu detali TM`
@@ -1298,6 +1355,20 @@ function TmScraperPanel() {
       </div>
     );
   };
+
+  /* ===== fakty z "blobu" ===== */
+  const facts = useMemo<ParsedFacts | null>(() => {
+    const blob = playerDetails?.profile?.main_position;
+    return parseFactsBlob(blob);
+  }, [playerDetails?.profile?.main_position]);
+
+  // wnioskuj krótką, sensowną pozycję
+  const shortPosition: string | null = useMemo(() => {
+    if (facts?.position) return facts.position;
+    const mainPos = playerDetails?.profile?.main_position;
+    if (mainPos && mainPos.length < 40) return mainPos;
+    return selectedPlayer?.position || null;
+  }, [facts?.position, playerDetails?.profile?.main_position, selectedPlayer]);
 
   return (
     <div className="space-y-5">
@@ -1413,9 +1484,7 @@ function TmScraperPanel() {
 
           <div className="w-full border-t pt-2" />
 
-          {/* Dodatkowe filtry: rozgrywki + pozycja */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Rozgrywki */}
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-muted-foreground">
                 Rozgrywki:
@@ -1435,7 +1504,6 @@ function TmScraperPanel() {
               </select>
             </div>
 
-            {/* Pozycja */}
             <div className="flex flex-wrap items-center gap-1">
               <span className="mr-1 text-[11px] text-muted-foreground">
                 Pozycja:
@@ -1478,7 +1546,6 @@ function TmScraperPanel() {
 
           <div className="w-full border-t pt-2" />
 
-          {/* Akcje: TM fetch + Supabase + selekcje */}
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
@@ -1566,7 +1633,7 @@ function TmScraperPanel() {
         )}
       </Card>
 
-      {/* Tabela: grupy klubów + zawodnicy (z checkboxami + akcjami) */}
+      {/* Tabela TM */}
       <Card className="p-0 border-gray-200 bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/70">
         <div className="w-full overflow-x-auto">
           <table className="w-full text-[13px]">
@@ -1627,7 +1694,6 @@ function TmScraperPanel() {
                     <React.Fragment
                       key={`club-${group.club_name || "none"}`}
                     >
-                      {/* Wiersz grupy-klubu */}
                       <tr className="border-t border-stone-200 bg-stone-50/80 text-[11px] font-semibold uppercase tracking-wide text-stone-700 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-200">
                         <td colSpan={10} className="p-2.5">
                           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1653,10 +1719,9 @@ function TmScraperPanel() {
                         </td>
                       </tr>
 
-                      {/* Wiersze zawodników w danym klubie */}
                       {group.players.map((p, idx) => {
                         const tmHref = openTmUrl(p.player_path);
-                        const showClubName = idx === 0; // tylko przy pierwszym
+                        const showClubName = idx === 0;
                         const rowSelected = isSelected(p.tm_player_id);
                         const isRowDetailsLoading =
                           detailsLoading &&
@@ -1672,7 +1737,6 @@ function TmScraperPanel() {
                                 : "hover:bg-stone-50 dark:hover:bg-neutral-900",
                             ].join(" ")}
                           >
-                            {/* checkbox */}
                             <td className="px-2 py-2.5 align-middle">
                               <div className="flex justify-center">
                                 <Checkbox
@@ -1686,7 +1750,6 @@ function TmScraperPanel() {
                               </div>
                             </td>
 
-                            {/* Rozgrywki */}
                             <td className="p-2.5">
                               <div className="truncate text-[12px] font-medium">
                                 {p.competition_name}
@@ -1698,7 +1761,6 @@ function TmScraperPanel() {
                               )}
                             </td>
 
-                            {/* Klub */}
                             <td className="p-2.5">
                               {showClubName && (
                                 <div className="truncate text-sm text-stone-800 dark:text-neutral-100">
@@ -1707,7 +1769,6 @@ function TmScraperPanel() {
                               )}
                             </td>
 
-                            {/* Zawodnik */}
                             <td className="p-2.5">
                               <button
                                 type="button"
@@ -1717,7 +1778,6 @@ function TmScraperPanel() {
                                 {p.player_name || "—"}
                               </button>
                               <div className="mt-0.5 text-[11px] text-muted-foreground sm:hidden">
-                                {/* skrócone meta na mobile */}
                                 {p.position && <span>{p.position}</span>}
                                 {p.age !== null && (
                                   <>
@@ -1728,7 +1788,6 @@ function TmScraperPanel() {
                               </div>
                             </td>
 
-                            {/* Pozycja */}
                             <td className="p-2.5 hidden sm:table-cell">
                               {p.position ? (
                                 <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-800 ring-1 ring-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:ring-neutral-700">
@@ -1739,32 +1798,26 @@ function TmScraperPanel() {
                               )}
                             </td>
 
-                            {/* Wiek */}
                             <td className="p-2.5 hidden text-sm text-stone-800 dark:text-neutral-200 sm:table-cell">
                               {p.age ?? "—"}
                             </td>
 
-                            {/* Narodowość */}
                             <td className="hidden p-2.5 text-sm text-stone-800 dark:text-neutral-200 md:table-cell">
                               {p.nationalities && p.nationalities.length > 0
                                 ? p.nationalities.join(", ")
                                 : "—"}
                             </td>
 
-                            {/* Data ur. */}
                             <td className="hidden p-2.5 text-sm text-stone-800 dark:text-neutral-200 md:table-cell">
                               {p.date_of_birth ? p.date_of_birth : "—"}
                             </td>
 
-                            {/* Kontrakt */}
                             <td className="hidden p-2.5 text-sm text-stone-800 dark:text-neutral-200 lg:table-cell">
                               {p.contract_until ? p.contract_until : "—"}
                             </td>
 
-                            {/* Akcje */}
                             <td className="p-2.5 text-right align-middle">
                               <div className="flex flex-wrap justify-end gap-1">
-                                {/* Szczegóły TM (UI, nie Supabase) */}
                                 <Button
                                   type="button"
                                   size="icon"
@@ -1780,7 +1833,6 @@ function TmScraperPanel() {
                                   )}
                                 </Button>
 
-                                {/* Otwórz na TM */}
                                 {tmHref && (
                                   <Button
                                     asChild
@@ -1799,7 +1851,6 @@ function TmScraperPanel() {
                                   </Button>
                                 )}
 
-                                {/* Kopiuj ścieżkę TM */}
                                 {p.player_path && (
                                   <Button
                                     type="button"
@@ -1813,7 +1864,6 @@ function TmScraperPanel() {
                                   </Button>
                                 )}
 
-                                {/* Zapisz tylko tego zawodnika */}
                                 <Button
                                   type="button"
                                   size="icon"
@@ -1826,7 +1876,6 @@ function TmScraperPanel() {
                                   <CheckCircle2 className="h-3.5 w-3.5" />
                                 </Button>
 
-                                {/* Usuń z listy (tylko lokalnie) */}
                                 <Button
                                   type="button"
                                   size="icon"
@@ -1861,18 +1910,20 @@ function TmScraperPanel() {
         </div>
       </Card>
 
-      {/* Szczegóły wybranego zawodnika z Transfermarkt */}
+      {/* Szczegóły wybranego zawodnika z Transfermarkt – beautified blob */}
       {selectedPlayer && (
-        <Card className="border-emerald-200 bg-emerald-50/40 p-3 text-[11px] dark:border-emerald-900 dark:bg-emerald-950/20">
+        <Card className="rounded-md border border-emerald-200 bg-emerald-50/40 p-3 text-[11px] text-card-foreground shadow-sm dark:border-emerald-900 dark:bg-emerald-950/20">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-            {/* Lewa kolumna: foto + podstawowe info */}
+            {/* Lewa kolumna */}
             <div className="flex flex-1 min-w-[220px] items-start gap-3">
               {playerDetails?.profile?.portrait_url && (
                 <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-emerald-200 bg-white dark:border-emerald-800 dark:bg-neutral-900">
-                  {/* normalny <img>, bez next/image */}
                   <img
                     src={playerDetails.profile.portrait_url}
-                    alt={playerDetails.profile.name || selectedPlayer.player_name}
+                    alt={
+                      playerDetails.profile.name ||
+                      selectedPlayer.player_name
+                    }
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -1882,29 +1933,58 @@ function TmScraperPanel() {
                   <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold ring-1 ring-emerald-200 dark:bg-neutral-950 dark:ring-emerald-800">
                     {selectedPlayer.player_name}
                   </span>
-                  {selectedPlayer.position && (
+                  {shortPosition && (
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-100 dark:ring-emerald-700">
-                      {selectedPlayer.position}
+                      {shortPosition}
                     </span>
                   )}
                 </div>
+
                 <div className="text-[11px] text-muted-foreground">
-                  {selectedPlayer.club_name || "Bez klubu"} •{" "}
-                  {selectedPlayer.competition_name || "—"}
+                  {facts?.currentClub ||
+                    playerDetails?.profile?.current_club ||
+                    selectedPlayer.club_name ||
+                    "Bez klubu"}{" "}
+                  • {selectedPlayer.competition_name || "—"}
                 </div>
+
                 <div className="text-[11px] text-muted-foreground">
-                  {selectedPlayer.age !== null && <>Wiek: {selectedPlayer.age}</>}{" "}
+                  {/* wiek + data urodzenia */}
+                  {selectedPlayer.age !== null && (
+                    <>
+                      Wiek: {selectedPlayer.age}
+                      {facts?.birth && facts.birth.includes("(") && (
+                        <> ({facts.birth.split("(")[1]?.replace(")", "")})</>
+                      )}
+                    </>
+                  )}
                   {selectedPlayer.date_of_birth && (
                     <>
                       {" "}
                       • ur. {selectedPlayer.date_of_birth}
                     </>
                   )}
+                  {!selectedPlayer.date_of_birth && facts?.birth && (
+                    <>
+                      {" "}
+                      • ur. {facts.birth.split("(")[0]?.trim()}
+                    </>
+                  )}
                 </div>
+
+                {(facts?.birthPlace || facts?.citizenship) && (
+                  <div className="text-[11px] text-muted-foreground">
+                    {facts?.birthPlace && (
+                      <>Miejsce ur.: {facts.birthPlace}</>
+                    )}
+                    {facts?.birthPlace && facts?.citizenship && " • "}
+                    {facts?.citizenship && <>Obywatelstwo: {facts.citizenship}</>}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Prawa kolumna: akcje */}
+            {/* Prawa kolumna */}
             <div className="flex flex-col items-end gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 {selectedPlayer.player_path && (
@@ -1926,41 +2006,76 @@ function TmScraperPanel() {
                 )}
               </div>
 
-              {playerDetails?.profile && (
-                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                  {playerDetails.profile.main_position && (
-                    <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
-                      {playerDetails.profile.main_position}
-                    </span>
-                  )}
-                  {typeof playerDetails.profile.height_cm === "number" && (
-                    <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
-                      {playerDetails.profile.height_cm} cm
-                    </span>
-                  )}
-                  {playerDetails.profile.nationalities &&
-                    playerDetails.profile.nationalities.length > 0 && (
-                      <span className="truncate rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
-                        {playerDetails.profile.nationalities.join(", ")}
-                      </span>
-                    )}
-                  {typeof playerDetails.profile.market_value_eur ===
-                    "number" && (
-                    <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
-                      MV:{" "}
-                      {playerDetails.profile.market_value_eur.toLocaleString(
-                        "de-DE"
-                      )}{" "}
-                      €
-                    </span>
-                  )}
-                  {playerDetails.profile.contract_until_text && (
-                    <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
-                      Umowa do: {playerDetails.profile.contract_until_text}
-                    </span>
-                  )}
-                </div>
-              )}
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                {/* wysokość */}
+                {(facts?.height ||
+                  typeof playerDetails?.profile?.height_cm ===
+                    "number") && (
+                  <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
+                    {typeof playerDetails?.profile?.height_cm ===
+                    "number"
+                      ? `${playerDetails.profile.height_cm} cm`
+                      : facts?.height}
+                  </span>
+                )}
+
+                {/* stopa */}
+                {(facts?.foot || playerDetails?.profile?.foot) && (
+                  <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
+                    Noga:{" "}
+                    {(facts?.foot || playerDetails?.profile?.foot || "")
+                      .toString()
+                      .toLowerCase()
+                      .replace("right", "prawa")
+                      .replace("left", "lewa")}
+                  </span>
+                )}
+
+                {/* agent */}
+                {(facts?.agent || playerDetails?.profile?.agent) && (
+                  <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
+                    Agent: {facts?.agent || playerDetails?.profile?.agent}
+                  </span>
+                )}
+
+                {/* MV */}
+                {typeof playerDetails?.profile?.market_value_eur ===
+                  "number" && (
+                  <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
+                    MV:{" "}
+                    {playerDetails.profile.market_value_eur.toLocaleString(
+                      "de-DE"
+                    )}{" "}
+                    €
+                  </span>
+                )}
+
+                {/* kontrakt */}
+                {(facts?.contractExpires ||
+                  playerDetails?.profile?.contract_until_text ||
+                  selectedPlayer.contract_until) && (
+                  <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
+                    Umowa do:{" "}
+                    {facts?.contractExpires ||
+                      playerDetails?.profile?.contract_until_text ||
+                      selectedPlayer.contract_until}
+                  </span>
+                )}
+
+                {/* w klubie od */}
+                {facts?.joined && (
+                  <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
+                    W klubie od: {facts.joined}
+                  </span>
+                )}
+
+                {/* ostatnie przedłużenie */}
+                {facts?.lastExtension && (
+                  <span className="rounded-full bg-white px-2 py-0.5 ring-1 ring-emerald-200 dark:bg-neutral-900 dark:ring-emerald-800">
+                    Ostatnie przedłużenie: {facts.lastExtension}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1979,71 +2094,66 @@ function TmScraperPanel() {
           )}
 
           {playerDetails && (
-            <>
-              <Tabs defaultValue="currentSeason" className="mt-1 w-full text-xs">
-                <TabsList className="mb-2 flex flex-wrap gap-1 bg-emerald-100/60 p-1 text-[11px] dark:bg-emerald-950/40">
-                  <TabsTrigger
-                    value="currentSeason"
-                    className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
-                  >
-                    Current season
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="allSeasons"
-                    className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
-                  >
-                    All seasons
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="byClub"
-                    className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
-                  >
-                    Stats by club
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="injuries"
-                    className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
-                  >
-                    Injury history
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="marketValue"
-                    className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
-                  >
-                    Market value
-                  </TabsTrigger>
-                </TabsList>
+            <Tabs defaultValue="currentSeason" className="mt-1 w-full text-xs">
+              <TabsList className="mb-2 flex flex-wrap gap-1 bg-emerald-100/60 p-1 text-[11px] text-muted-foreground/70 dark:bg-emerald-950/40">
+                <TabsTrigger
+                  value="currentSeason"
+                  className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
+                >
+                  Current season
+                </TabsTrigger>
+                <TabsTrigger
+                  value="allSeasons"
+                  className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
+                >
+                  All seasons
+                </TabsTrigger>
+                <TabsTrigger
+                  value="byClub"
+                  className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
+                >
+                  Stats by club
+                </TabsTrigger>
+                <TabsTrigger
+                  value="injuries"
+                  className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
+                >
+                  Injury history
+                </TabsTrigger>
+                <TabsTrigger
+                  value="marketValue"
+                  className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
+                >
+                  Market value
+                </TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="currentSeason" className="mt-0">
-                  {renderParsedTable(
-                    playerDetails.tables?.["statsCurrentSeason"]
-                  )}
-                </TabsContent>
-                <TabsContent value="allSeasons" className="mt-0">
-                  {renderParsedTable(
-                    playerDetails.tables?.["statsAllSeasons"]
-                  )}
-                </TabsContent>
-                <TabsContent value="byClub" className="mt-0">
-                  {renderParsedTable(playerDetails.tables?.["statsByClub"])}
-                </TabsContent>
-                <TabsContent value="injuries" className="mt-0">
-                  {renderParsedTable(
-                    playerDetails.tables?.["injuryHistory"]
-                  )}
-                </TabsContent>
-                <TabsContent value="marketValue" className="mt-0">
-                  {renderParsedTable(playerDetails.tables?.["marketValue"])}
-                </TabsContent>
-              </Tabs>
-            </>
+              <TabsContent value="currentSeason" className="mt-0">
+                {renderParsedTable(
+                  playerDetails.tables?.["statsCurrentSeason"]
+                )}
+              </TabsContent>
+              <TabsContent value="allSeasons" className="mt-0">
+                {renderParsedTable(
+                  playerDetails.tables?.["statsAllSeasons"]
+                )}
+              </TabsContent>
+              <TabsContent value="byClub" className="mt-0">
+                {renderParsedTable(playerDetails.tables?.["statsByClub"])}
+              </TabsContent>
+              <TabsContent value="injuries" className="mt-0">
+                {renderParsedTable(playerDetails.tables?.["injuryHistory"])}
+              </TabsContent>
+              <TabsContent value="marketValue" className="mt-0">
+                {renderParsedTable(playerDetails.tables?.["marketValue"])}
+              </TabsContent>
+            </Tabs>
           )}
         </Card>
       )}
 
-      {/* Podsumowania boczne (kluby + zawodnicy) */}
+      {/* Podsumowania boczne */}
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Lista klubów */}
         <Card className="border-gray-200 bg-white/70 p-3 sm:p-4 dark:border-neutral-800 dark:bg-neutral-950/70">
           <CardTitle className="flex items-center justify-between text-sm">
             <span>Lista klubów (z aktualnego filtra)</span>
@@ -2077,7 +2187,6 @@ function TmScraperPanel() {
           </div>
         </Card>
 
-        {/* Lista zawodników */}
         <Card className="border-gray-200 bg-white/70 p-3 sm:p-4 dark:border-neutral-800 dark:bg-neutral-950/70">
           <CardTitle className="flex items-center justify-between text-sm">
             <span>Lista zawodników (alfabetycznie)</span>
