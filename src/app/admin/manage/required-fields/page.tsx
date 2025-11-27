@@ -7,15 +7,11 @@ import { useRouter } from "next/navigation";
 import { ToolbarFull } from "@/shared/ui/atoms";
 import { getSupabase } from "@/lib/supabaseClient";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-} from "@/components/ui/accordion";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { ChevronDown, Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -540,6 +536,7 @@ function makeKey(context: FormContext, fieldKey: string) {
 export default function RequiredFieldsPage() {
   const router = useRouter();
 
+  // "Aktywny" formularz na potrzeby globalnego headera
   const [activeForm, setActiveForm] =
     useState<FormContext>("player_basic_known");
 
@@ -550,9 +547,32 @@ export default function RequiredFieldsPage() {
 
   const [requiredMap, setRequiredMap] = useState<Record<string, boolean>>({});
 
-  // accordions
-  const [contextsOpen, setContextsOpen] = useState(true);
-  const [detailsOpen, setDetailsOpen] = useState(true);
+  // Accordion: pierwszy otwarty domyślnie, reszta zamknięta
+  const [groupsOpen, setGroupsOpen] = useState<Record<string, boolean>>({
+    addPlayer: true,
+    observations: false,
+    player_basic: false,
+    player_ext: false,
+  });
+
+  // Tabs: który formularz jest aktywny w każdej grupie
+  const [activeByGroup, setActiveByGroup] = useState<
+    Record<string, FormContext>
+  >({
+    addPlayer: "player_basic_known",
+    observations: "observations_main",
+    player_basic: "player_editor_basic_known",
+    player_ext: "player_editor_ext_profile",
+  });
+
+  const toggleGroupOpen = (id: string) => {
+    setGroupsOpen((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const setActiveInGroup = (groupId: string, ctx: FormContext) => {
+    setActiveByGroup((prev) => ({ ...prev, [groupId]: ctx }));
+    setActiveForm(ctx);
+  };
 
   /* ======================== Load config from Supabase ======================== */
 
@@ -731,14 +751,14 @@ export default function RequiredFieldsPage() {
     return { total, required, changed };
   }, [activeFormDef, requiredMap]);
 
-  /* ======================== Header layout (jak PlayerEditorPage) ======================== */
+  /* ======================== Render ======================== */
 
   const headerTitle = (
     <div className="flex flex-col gap-0.5">
       <h2 className="text-xl font-semibold leading-none tracking-tight">
         Wymagalność pól w formularzach
       </h2>
-      <p className="max-w-xl text-xs text-muted-foreground">
+      <p className=" text-xs text-muted-foreground py-3">
         Ustal, które pola w AddPlayer, PlayerEditor i Observations muszą być
         wypełnione przed zapisem (w tym w auto-zapisie). Ustawienia są globalne
         dla całej aplikacji.
@@ -804,8 +824,6 @@ export default function RequiredFieldsPage() {
     </div>
   );
 
-  /* ======================== Render ======================== */
-
   return (
     <div className="w-full space-y-4">
       <ToolbarFull title={headerTitle} right={headerRight} />
@@ -837,387 +855,366 @@ export default function RequiredFieldsPage() {
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,260px),minmax(0,1fr)]">
-        {/* LEFT: KROK 1 – wybór kontekstu formularza (akordeon jak w PlayerEditorPage) */}
-        <Card className="h-full rounded-md border border-stone-200 bg-card dark:border-neutral-800">
-          <CardHeader
-            className={cn(
-              "group flex items-center justify-between rounded-md border-b border-transparent p-0 transition-colors hover:bg-stone-50/80 dark:hover:bg-neutral-900/60",
-              contextsOpen && "bg-stone-100/80 dark:bg-neutral-900/70"
-            )}
-          >
-            <button
-              type="button"
-              aria-expanded={contextsOpen}
-              aria-controls="contexts-panel"
-              onClick={() => setContextsOpen((v) => !v)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left"
+      {loading && (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Ładowanie konfiguracji z Supabase…
+        </p>
+      )}
+
+      {/* ====================== SEKCJE (akordeony) + TABS ====================== */}
+      <div className="space-y-4">
+        {FORM_GROUPS.map((group) => {
+          const groupOpen = groupsOpen[group.id] ?? false;
+          const groupActiveForm =
+            activeByGroup[group.id] ?? group.items[0] ?? activeForm;
+
+          // policz wymagane / total w całej sekcji (dla nagłówka akordeonu)
+          let groupTotal = 0;
+          let groupRequired = 0;
+          for (const ctx of group.items) {
+            const form = FORM_DEF_BY_ID[ctx];
+            for (const field of form.fields) {
+              groupTotal += 1;
+              const key = makeKey(form.id, field.key);
+              const currentRequired =
+                requiredMap[key] ?? DEFAULT_REQUIRED[key] ?? false;
+              if (currentRequired) groupRequired += 1;
+            }
+          }
+
+          return (
+            <Card
+              key={group.id}
+              className="rounded-md border border-stone-200 bg-card dark:border-neutral-800"
             >
-              <div>
-                <div className={stepPillClass}>Krok 1 · Wybór formularza</div>
-                <div className="mt-1 text-sm font-semibold leading-none tracking-tight">
-                  Konteksty formularzy
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Wybierz formularz (AddPlayer, PlayerEditor, Observations),
-                  dla którego chcesz skonfigurować wymagalność pól.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pl-4">
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    contextsOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
-              </div>
-            </button>
-          </CardHeader>
-          <CardContent className="px-3 py-0">
-            <Accordion
-              type="single"
-              collapsible
-              value={contextsOpen ? "contexts" : undefined}
-              onValueChange={(v) => setContextsOpen(v === "contexts")}
-              className="w-full"
-            >
-              <AccordionItem value="contexts" className="border-0">
-                <AccordionContent
-                  id="contexts-panel"
-                  className="px-1 pt-3 pb-4"
+              <CardHeader
+                className={cn(
+                  "group flex items-center justify-between rounded-md border-b border-transparent p-0 transition-colors hover:bg-stone-50/80 dark:hover:bg-neutral-900/60",
+                  groupOpen && "bg-stone-100/80 dark:bg-neutral-900/70"
+                )}
+              >
+                <button
+                  type="button"
+                  aria-expanded={groupOpen}
+                  onClick={() => toggleGroupOpen(group.id)}
+                  className="flex w-full items-center justify-between px-4 py-3 text-left"
                 >
-                  <div className="space-y-3">
-                    {FORM_GROUPS.map((group, groupIndex) => (
-                      <div key={group.id} className="space-y-1.5">
-                        <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.09em] text-stone-500 dark:text-neutral-500">
-                          {group.label}
-                        </p>
-                        <div className="space-y-1">
-                          {group.items.map((ctx) => {
-                            const form = FORM_DEF_BY_ID[ctx];
-                            const isActive = activeForm === ctx;
-
-                            let total = form.fields.length;
-                            let requiredCount = 0;
-                            let changed = false;
-
-                            for (const field of form.fields) {
-                              const key = makeKey(form.id, field.key);
-                              const currentRequired =
-                                requiredMap[key] ??
-                                DEFAULT_REQUIRED[key] ??
-                                false;
-                              const defaultRequired =
-                                DEFAULT_REQUIRED[key] ?? false;
-                              if (currentRequired) requiredCount += 1;
-                              if (currentRequired !== defaultRequired) {
-                                changed = true;
-                              }
-                            }
-
-                            return (
-                              <button
-                                key={ctx}
-                                type="button"
-                                onClick={() => setActiveForm(ctx)}
-                                className={cn(
-                                  "flex w-full flex-col rounded-md border px-2.5 py-2 text-left text-sm transition",
-                                  isActive
-                                    ? "border-stone-900 bg-background dark:border-neutral-100"
-                                    : "border-stone-200 bg-background hover:border-stone-300 dark:border-neutral-800 dark:hover:border-neutral-700"
-                                )}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span
-                                    className={cn(
-                                      "line-clamp-1 font-medium",
-                                      isActive
-                                        ? "text-foreground"
-                                        : "text-stone-700 dark:text-neutral-200"
-                                    )}
-                                  >
-                                    {form.label}
-                                  </span>
-                                  <span className="inline-flex items-center rounded-md border border-stone-200 px-2 py-0.5 text-[10px] text-stone-600 dark:border-neutral-700 dark:text-neutral-300">
-                                    {requiredCount}/{total} wymagane
-                                  </span>
-                                </div>
-                                {form.highlight && (
-                                  <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">
-                                    {form.highlight}
-                                  </p>
-                                )}
-                                {changed && (
-                                  <span className="mt-1 inline-flex items-center text-[9px] text-amber-700 dark:text-amber-300">
-                                    • Zmieniono względem domyślnych
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {groupIndex < FORM_GROUPS.length - 1 && (
-                          <Separator className="my-2" />
-                        )}
-                      </div>
-                    ))}
+                  <div>
+                    <div className={stepPillClass}>
+                      Sekcja · {group.label}
+                    </div>
+                    <div className="mt-1 text-sm font-semibold leading-none tracking-tight">
+                      Formularze w tej sekcji
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Wybierz jeden z formularzy (taby poniżej), aby ustawić
+                      wymagalność jego pól.
+                    </p>
                   </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+                  <div className="flex items-center gap-3 pl-4">
+                    <div className="flex flex-col items-end text-xs text-muted-foreground">
+                      <span>
+                        Wymagane w sekcji:{" "}
+                        <span className="font-medium text-foreground">
+                          {groupRequired}/{groupTotal}
+                        </span>
+                      </span>
+                    </div>
+                    <ChevronDown
+                      className={cn(
+                        "h-5 w-5 transition-transform",
+                        groupOpen ? "rotate-180" : "rotate-0"
+                      )}
+                    />
+                  </div>
+                </button>
+              </CardHeader>
 
-        {/* RIGHT: KROK 2 – szczegóły aktywnego formularza (akordeon jak w PlayerEditorPage) */}
-        <Card className="rounded-md border border-stone-200 bg-card dark:border-neutral-800">
-          <CardHeader
-            className={cn(
-              "group flex items-center justify-between rounded-md border-b border-transparent p-0 transition-colors hover:bg-stone-50/80 dark:hover:bg-neutral-900/60",
-              detailsOpen && "bg-stone-100/80 dark:bg-neutral-900/70"
-            )}
-          >
-            <button
-              type="button"
-              aria-expanded={detailsOpen}
-              aria-controls="details-panel"
-              onClick={() => setDetailsOpen((v) => !v)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left"
-            >
-              <div>
-                <div className={stepPillClass}>Krok 2 · Wymagalność pól</div>
-                <div className="mt-1 text-sm font-semibold leading-none tracking-tight">
-                  {activeFormDef.label}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {activeFormDef.description}
-                </p>
-                {activeFormDef.highlight && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      Powiązanie w aplikacji:
-                    </span>{" "}
-                    {activeFormDef.highlight}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col items-end gap-1 pl-4 text-xs text-muted-foreground">
-                <span>
-                  Wymagane pola:{" "}
-                  <span className="font-medium text-foreground">
-                    {activeStats.required}/{activeStats.total}
-                  </span>
-                </span>
-                {activeStats.changed > 0 && (
-                  <span className="text-[10px]">
-                    Zmienione:{" "}
-                    <span className="font-medium text-foreground">
-                      {activeStats.changed}
-                    </span>
-                  </span>
-                )}
-                <div className="mt-1 hidden gap-1 sm:flex">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={loading || saving}
-                    onClick={() => setAllInForm(activeForm, true)}
-                    className="h-7 rounded-md px-2 text-[10px]"
+              {groupOpen && (
+                <CardContent className="px-3 py-3 md:px-4">
+                  <Tabs
+                    value={groupActiveForm}
+                    onValueChange={(value) =>
+                      setActiveInGroup(group.id, value as FormContext)
+                    }
                   >
-                    Wszystko wymagane
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={loading || saving}
-                    onClick={() => setAllInForm(activeForm, false)}
-                    className="h-7 rounded-md px-2 text-[10px]"
-                  >
-                    Wszystko opcjonalne
-                  </Button>
-                </div>
-                <ChevronDown
-                  className={cn(
-                    "mt-1 h-5 w-5 transition-transform",
-                    detailsOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
-              </div>
-            </button>
-            {/* mobile quick actions under header */}
-            <div className="flex w-full items-center justify-end gap-1 border-t border-stone-200 px-4 py-2 text-[10px] text-muted-foreground dark:border-neutral-800 sm:hidden">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={loading || saving}
-                onClick={() => setAllInForm(activeForm, true)}
-                className="h-7 rounded-md px-2 text-[10px]"
-              >
-                Wszystko wymagane
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={loading || saving}
-                onClick={() => setAllInForm(activeForm, false)}
-                className="h-7 rounded-md px-2 text-[10px]"
-              >
-                Wszystko opcjonalne
-              </Button>
-            </div>
+                    {/* Tabs – kafelki formularzy (AddPlayer – znany / nieznany / itp.) */}
+                    <TabsList className="flex flex-wrap gap-2 rounded-md bg-transparent p-0">
+                      {group.items.map((ctx) => {
+                        const form = FORM_DEF_BY_ID[ctx];
 
-            {loading && (
-              <p className="w-full px-4 pb-2 text-xs text-muted-foreground">
-                <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" />
-                Ładowanie konfiguracji z Supabase…
-              </p>
-            )}
-          </CardHeader>
+                        let total = form.fields.length;
+                        let requiredCount = 0;
+                        let changed = false;
 
-          <CardContent className="px-3 py-0 md:px-4">
-            <Accordion
-              type="single"
-              collapsible
-              value={detailsOpen ? "details" : undefined}
-              onValueChange={(v) => setDetailsOpen(v === "details")}
-              className="w-full"
-            >
-              <AccordionItem value="details" className="border-0">
-                <AccordionContent
-                  id="details-panel"
-                  className="space-y-4 pt-3 pb-4"
-                >
-                  {/* Lista pól – kafelki jak mini-ExtContent */}
-                  <div className="space-y-2">
-                    {activeFormDef.fields.length === 0 ? (
-                      <div className="rounded-md border border-dashed border-stone-200 bg-background px-4 py-6 text-center text-sm text-muted-foreground dark:border-neutral-800">
-                        Dla tego formularza nie zdefiniowano żadnych pól.
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {activeFormDef.fields.map((field) => {
-                          const key = makeKey(activeFormDef.id, field.key);
-                          const required = isRequired(
-                            activeFormDef.id,
-                            field.key
-                          );
+                        for (const field of form.fields) {
+                          const key = makeKey(form.id, field.key);
+                          const currentRequired =
+                            requiredMap[key] ??
+                            DEFAULT_REQUIRED[key] ??
+                            false;
                           const defaultRequired =
                             DEFAULT_REQUIRED[key] ?? false;
-                          const isDefaultRequired = defaultRequired;
-                          const changed = required !== defaultRequired;
+                          if (currentRequired) requiredCount += 1;
+                          if (currentRequired !== defaultRequired) {
+                            changed = true;
+                          }
+                        }
 
-                          return (
-                            <div
-                              key={field.key}
-                              className="flex items-start justify-between gap-3 rounded-md border border-stone-200 bg-background px-3 py-2 text-sm shadow-xs dark:border-neutral-800"
-                            >
-                              <div className="space-y-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="font-medium text-foreground">
-                                    {field.label}
-                                  </span>
-                                  <span className="rounded-md border border-stone-200 px-1.5 py-0.5 text-[9px] text-stone-600 dark:border-neutral-700 dark:text-neutral-300">
-                                    {required ? "Wymagane" : "Opcjonalne"}
-                                  </span>
-                                  {changed && (
-                                    <span className="rounded-md border border-amber-300 px-1.5 py-0.5 text-[9px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
-                                      Zmienione
-                                    </span>
-                                  )}
-                                  {isDefaultRequired &&
-                                    !changed &&
-                                    required && (
-                                      <span className="rounded-md border border-stone-300 px-1.5 py-0.5 text-[9px] text-stone-600 dark:border-neutral-600 dark:text-neutral-300">
-                                        Domyślnie wymagane
-                                      </span>
-                                    )}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                                  <span>
-                                    Klucz:{" "}
-                                    <code className="rounded-md bg-muted px-1 py-0.5">
-                                      {field.key}
-                                    </code>
-                                  </span>
-                                  {field.description && (
-                                    <span>{field.description}</span>
-                                  )}
-                                </div>
+                        const isActive = groupActiveForm === ctx;
+
+                        return (
+                          <TabsTrigger
+                            key={ctx}
+                            value={ctx}
+                            className={cn(
+                              "flex min-w-[220px] max-w-xs flex-1 flex-col items-stretch justify-start rounded-md border bg-background px-3 py-2 text-left text-sm font-normal outline-none transition",
+                              isActive
+                                ? "border-stone-900 text-foreground dark:border-neutral-100"
+                                : "border-stone-200 text-stone-700 hover:border-stone-300 dark:border-neutral-800 dark:text-neutral-200 dark:hover:border-neutral-700"
+                            )}
+                          >
+                            <div className="flex w-full items-center justify-between gap-2">
+                              <span className="line-clamp-1 font-medium">
+                                {form.label}
+                              </span>
+                              <span className="inline-flex items-center rounded-md border border-stone-200 px-2 py-0.5 text-[10px] text-stone-600 dark:border-neutral-700 dark:text-neutral-300">
+                                {requiredCount}/{total} wymagane
+                              </span>
+                            </div>
+                            {form.highlight && (
+                              <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">
+                                {form.highlight}
+                              </p>
+                            )}
+                            {changed && (
+                              <span className="mt-0.5 text-[9px] text-amber-700 dark:text-amber-300">
+                                • Zmieniono względem domyślnych
+                              </span>
+                            )}
+                          </TabsTrigger>
+                        );
+                      })}
+                    </TabsList>
+
+                    {/* Content dla każdego formularza w grupie */}
+                    {group.items.map((ctx) => {
+                      const form = FORM_DEF_BY_ID[ctx];
+
+                      let total = form.fields.length;
+                      let requiredCount = 0;
+                      let changedCount = 0;
+
+                      for (const field of form.fields) {
+                        const key = makeKey(form.id, field.key);
+                        const currentRequired =
+                          requiredMap[key] ?? DEFAULT_REQUIRED[key] ?? false;
+                        const defaultRequired =
+                          DEFAULT_REQUIRED[key] ?? false;
+
+                        if (currentRequired) requiredCount += 1;
+                        if (currentRequired !== defaultRequired)
+                          changedCount += 1;
+                      }
+
+                      return (
+                        <TabsContent
+                          key={ctx}
+                          value={ctx}
+                          className="mt-3 space-y-3"
+                        >
+                          {/* Nagłówek „Krok 2” dla konkretnego formularza */}
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-col gap-0.5">
+                              <div className={stepPillClass}>
+                                Krok 2 · Wymagalność pól
                               </div>
-
-                              {/* Minimalistyczny „switch” */}
-                              <div className="flex flex-col items-end gap-1">
-                                <button
-                                  type="button"
-                                  disabled={loading || saving}
-                                  onClick={() =>
-                                    toggleRequired(
-                                      activeFormDef.id,
-                                      field.key
-                                    )
-                                  }
-                                  className={cn(
-                                    "relative inline-flex h-5 w-9 cursor-pointer items-center rounded-md border px-0.5 transition",
-                                    required
-                                      ? "border-stone-900 bg-stone-900"
-                                      : "border-stone-300 bg-background dark:border-neutral-700"
-                                  )}
-                                >
-                                  <span
-                                    className={cn(
-                                      "inline-block h-[14px] w-[14px] rounded-full bg-white transition-transform",
-                                      required
-                                        ? "translate-x-3.5"
-                                        : "translate-x-0"
-                                    )}
-                                  />
-                                </button>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {required
-                                    ? "Ustaw jako opcjonalne"
-                                    : "Ustaw jako wymagane"}
+                              <div className="mt-1 text-sm font-semibold leading-none tracking-tight">
+                                {form.label}
+                              </div>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {form.description}
+                              </p>
+                              {form.highlight && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  <span className="font-medium text-foreground">
+                                    Powiązanie w aplikacji:
+                                  </span>{" "}
+                                  {form.highlight}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                              <span>
+                                Wymagane pola:{" "}
+                                <span className="font-medium text-foreground">
+                                  {requiredCount}/{total}
                                 </span>
+                              </span>
+                              {changedCount > 0 && (
+                                <span className="text-[10px]">
+                                  Zmienione:{" "}
+                                  <span className="font-medium text-foreground">
+                                    {changedCount}
+                                  </span>
+                                </span>
+                              )}
+                              <div className="mt-1 flex gap-1">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={loading || saving}
+                                  onClick={() => setAllInForm(ctx, true)}
+                                  className="h-7 rounded-md px-2 text-[10px]"
+                                >
+                                  Wszystko wymagane
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={loading || saving}
+                                  onClick={() => setAllInForm(ctx, false)}
+                                  className="h-7 rounded-md px-2 text-[10px]"
+                                >
+                                  Wszystko opcjonalne
+                                </Button>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                          </div>
 
-                  {/* info + błędy / sukces */}
-                  <div className="space-y-2 text-xs text-muted-foreground sm:text-sm">
-                    <p>
-                      Te ustawienia są używane przez formularze AddPlayer,
-                      PlayerEditor i Observations do weryfikacji wymagalności
-                      przed zapisem (w tym auto-zapis).
-                    </p>
-                    {isDirty && (
-                      <span className="inline-flex items-center rounded-md border border-amber-300 bg-background px-2 py-0.5 text-[10px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
-                        Masz niezapisane zmiany – kliknij „Zapisz”.
-                      </span>
-                    )}
-                  </div>
+                          <Separator className="my-1" />
 
-                  {error && (
-                    <div className="rounded-md border border-red-500/40 bg-background px-3 py-2 text-sm text-red-700 dark:border-red-500/50 dark:text-red-200">
-                      {error}
-                    </div>
-                  )}
-                  {success && (
-                    <div className="rounded-md border border-emerald-500/40 bg-background px-3 py-2 text-sm text-emerald-700 dark:border-emerald-500/50 dark:text-emerald-200">
-                      {success}
-                    </div>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+                          {/* Lista pól – kafelki jak mini-ExtContent */}
+                          <div className="space-y-1.5">
+                            {form.fields.length === 0 ? (
+                              <div className="rounded-md border border-dashed border-stone-200 bg-background px-4 py-6 text-center text-sm text-muted-foreground dark:border-neutral-800">
+                                Dla tego formularza nie zdefiniowano żadnych
+                                pól.
+                              </div>
+                            ) : (
+                              form.fields.map((field) => {
+                                const key = makeKey(form.id, field.key);
+                                const required = isRequired(form.id, field.key);
+                                const defaultRequired =
+                                  DEFAULT_REQUIRED[key] ?? false;
+                                const isDefaultRequired = defaultRequired;
+                                const changed =
+                                  required !== defaultRequired;
+
+                                return (
+                                  <div
+                                    key={field.key}
+                                    className="flex items-start justify-between gap-3 rounded-md border border-stone-200 bg-background px-3 py-2 text-sm shadow-xs dark:border-neutral-800"
+                                  >
+                                    <div className="space-y-1">
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="font-medium text-foreground">
+                                          {field.label}
+                                        </span>
+                                        <span className="rounded-md border border-stone-200 px-1.5 py-0.5 text-[9px] text-stone-600 dark:border-neutral-700 dark:text-neutral-300">
+                                          {required
+                                            ? "Wymagane"
+                                            : "Opcjonalne"}
+                                        </span>
+                                        {changed && (
+                                          <span className="rounded-md border border-amber-300 px-1.5 py-0.5 text-[9px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
+                                            Zmienione
+                                          </span>
+                                        )}
+                                        {isDefaultRequired &&
+                                          !changed &&
+                                          required && (
+                                            <span className="rounded-md border border-stone-300 px-1.5 py-0.5 text-[9px] text-stone-600 dark:border-neutral-600 dark:text-neutral-300">
+                                              Domyślnie wymagane
+                                            </span>
+                                          )}
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                                        <span>
+                                          Klucz:{" "}
+                                          <code className="rounded-md bg-muted px-1 py-0.5">
+                                            {field.key}
+                                          </code>
+                                        </span>
+                                        {field.description && (
+                                          <span>{field.description}</span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Minimalistyczny „switch” */}
+                                    <div className="flex flex-col items-end gap-1">
+                                      <button
+                                        type="button"
+                                        disabled={loading || saving}
+                                        onClick={() =>
+                                          toggleRequired(form.id, field.key)
+                                        }
+                                        className={cn(
+                                          "relative inline-flex h-5 w-9 cursor-pointer items-center rounded-md border px-0.5 transition",
+                                          required
+                                            ? "border-stone-900 bg-stone-900"
+                                            : "border-stone-300 bg-background dark:border-neutral-700"
+                                        )}
+                                      >
+                                        <span
+                                          className={cn(
+                                            "inline-block h-[14px] w-[14px] rounded-full bg-white transition-transform",
+                                            required
+                                              ? "translate-x-3.5"
+                                              : "translate-x-0"
+                                          )}
+                                        />
+                                      </button>
+                                      <span className="text-[10px] text-muted-foreground">
+                                        {required
+                                          ? "Ustaw jako opcjonalne"
+                                          : "Ustaw jako wymagane"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </TabsContent>
+                      );
+                    })}
+                  </Tabs>
+                </CardContent>
+              )}
+            </Card>
+          );
+        })}
       </div>
+
+      {/* info + globalny status / błędy / sukces */}
+      <div className="space-y-2 text-xs text-muted-foreground sm:text-sm">
+        <p>
+          Te ustawienia są używane przez formularze AddPlayer, PlayerEditor i
+          Observations do weryfikacji wymagalności przed zapisem (w tym
+          auto-zapis).
+        </p>
+        {isDirty && (
+          <span className="inline-flex items-center rounded-md border border-amber-300 bg-background px-2 py-0.5 text-[10px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
+            Masz niezapisane zmiany – kliknij „Zapisz”.
+          </span>
+        )}
+      </div>
+
+      {error && (
+        <div className="rounded-md border border-red-500/40 bg-background px-3 py-2 text-sm text-red-700 dark:border-red-500/50 dark:text-red-200">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-md border border-emerald-500/40 bg-background px-3 py-2 text-sm text-emerald-700 dark:border-emerald-500/50 dark:text-emerald-200">
+          {success}
+        </div>
+      )}
     </div>
   );
 }

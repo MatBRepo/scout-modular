@@ -1112,13 +1112,7 @@ function RankUpgradeOverlay({
             >
               OK, super
             </button>
-            <Link
-              href="/admin/manage/ranks"
-              className="inline-flex items-center rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 focus:ring-indigo-500 dark:bg-neutral-50 dark:text-neutral-900 dark:hover:bg-neutral-200"
-              onClick={onClose}
-            >
-              Zobacz progi rang
-            </Link>
+           
           </div>
         </div>
       </div>
