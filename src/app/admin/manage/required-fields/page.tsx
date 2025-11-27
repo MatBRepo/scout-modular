@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { Toolbar } from "@/shared/ui/atoms";
+import { ToolbarFull } from "@/shared/ui/atoms";
 import { getSupabase } from "@/lib/supabaseClient";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import {
   AccordionItem,
 } from "@/components/ui/accordion";
 
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type FormContext =
@@ -51,6 +51,45 @@ type FormDef = {
 
 const stepPillClass =
   "inline-flex h-6 items-center rounded-md bg-stone-100 px-2.5 text-[11px] tracking-wide text-stone-600 dark:bg-neutral-900 dark:text-neutral-200";
+
+type SaveState = "idle" | "saving" | "saved";
+
+function SavePill({
+  state,
+  size = "compact",
+}: {
+  state: SaveState;
+  size?: "default" | "compact";
+}) {
+  const base =
+    size === "compact"
+      ? "inline-flex h-8 items-center rounded-md px-2 text-xs leading-none"
+      : "inline-flex h-9 items-center rounded-md px-3 text-sm leading-none";
+
+  const map = {
+    saving: "text-amber-700 dark:text-amber-200",
+    saved: "text-emerald-700 dark:text-emerald-200",
+    idle: "text-gray-600 dark:text-neutral-300",
+  } as const;
+
+  if (state === "idle") return null;
+
+  return (
+    <span className={cn(base, map[state])} aria-live="polite">
+      {state === "saving" ? (
+        <>
+          <Loader2 className="h-3.5 w-3.5 animate-spin md:mr-1.5" />
+          <span className="hidden md:inline">Zapisuję ustawienia…</span>
+        </>
+      ) : (
+        <>
+          <CheckCircle2 className="h-3.5 w-3.5 md:mr-1.5" />
+          <span className="hidden md:inline">Zapisano ustawienia</span>
+        </>
+      )}
+    </span>
+  );
+}
 
 /* ===== Definicje pól w formularzach ===== */
 const FORM_DEFS: FormDef[] = [
@@ -583,6 +622,12 @@ export default function RequiredFieldsPage() {
     return false;
   }, [requiredMap]);
 
+  const saveState: SaveState = saving
+    ? "saving"
+    : success && !isDirty
+    ? "saved"
+    : "idle";
+
   function isRequired(context: FormContext, fieldKey: string) {
     const key = makeKey(context, fieldKey);
     if (key in requiredMap) return requiredMap[key];
@@ -686,79 +731,114 @@ export default function RequiredFieldsPage() {
     return { total, required, changed };
   }, [activeFormDef, requiredMap]);
 
+  /* ======================== Header layout (jak PlayerEditorPage) ======================== */
+
+  const headerTitle = (
+    <div className="flex flex-col gap-0.5">
+      <h2 className="text-xl font-semibold leading-none tracking-tight">
+        Wymagalność pól w formularzach
+      </h2>
+      <p className="max-w-xl text-xs text-muted-foreground">
+        Ustal, które pola w AddPlayer, PlayerEditor i Observations muszą być
+        wypełnione przed zapisem (w tym w auto-zapisie). Ustawienia są globalne
+        dla całej aplikacji.
+      </p>
+    </div>
+  );
+
+  const headerRight = (
+    <div className="flex items-center gap-3">
+      <SavePill state={saveState} size="compact" />
+
+      <span className="hidden text-xs text-muted-foreground md:inline">
+        {isDirty ? "Masz niezapisane zmiany" : "Wszystkie zmiany zapisane"}
+      </span>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => router.push("/admin/manage")}
+        className="hidden h-8 rounded-md px-3 text-xs sm:inline-flex"
+      >
+        Wróć do zarządzania
+      </Button>
+
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="inline-flex h-8 w-8 rounded-md p-0 sm:hidden"
+          aria-label="Wróć do zarządzania"
+          onClick={() => router.push("/admin/manage")}
+        >
+          ←
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleResetToDefaults}
+          disabled={saving || loading}
+          className="h-8 rounded-md px-3 text-xs"
+        >
+          Domyślne
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleSave}
+          disabled={saving || loading || !isDirty}
+          className="h-8 rounded-md px-3 text-xs"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              Zapisuję…
+            </>
+          ) : (
+            "Zapisz"
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+
   /* ======================== Render ======================== */
 
   return (
     <div className="w-full space-y-4">
-      <Toolbar
-        title="Wymagane pola w formularzach"
-        right={
-          <div className="flex items-center gap-2">
-            <span className="hidden text-sm text-muted-foreground md:inline">
-              {isDirty ? "Masz niezapisane zmiany" : "Wszystkie zmiany zapisane"}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/admin/manage")}
-              className="rounded-md"
-            >
-              Wróć do zarządzania
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleResetToDefaults}
-              disabled={saving || loading}
-              className="rounded-md"
-            >
-              Przywróć domyślne
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleSave}
-              disabled={saving || loading}
-              className="rounded-md"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Zapisuję…
-                </>
-              ) : (
-                "Zapisz ustawienia"
-              )}
-            </Button>
-          </div>
-        }
-      />
+      <ToolbarFull title={headerTitle} right={headerRight} />
 
-      {/* Krótki opis u góry – bez gradientów */}
+      {/* mały status jak w PlayerEditor – chipy po prawej, bez gradientów */}
       <Card className="rounded-md border border-stone-200 bg-card px-4 py-3 text-sm dark:border-neutral-800">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">
-            Ustal, które pola w AddPlayer, PlayerEditor i Observations są
-            wymagane przed zapisem. Ustawienia są globalne dla całej aplikacji.
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Aktywna konfiguracja wymagalności wpływa na walidację w AddPlayer,
+            PlayerEditor oraz ObservationEditor.
           </p>
-          <div className="flex flex-col items-end text-sm text-muted-foreground">
+          <div className="flex flex-col items-end text-xs text-muted-foreground sm:text-sm">
             <span>
               Aktywny formularz:{" "}
               <span className="font-medium text-foreground">
                 {activeFormDef.label}
               </span>
             </span>
-            <span className="text-[10px]">
-              {activeStats.required} z {activeStats.total} pól oznaczonych jako
-              wymagane
+            <span className="mt-0.5 text-[10px]">
+              {activeStats.required} z {activeStats.total} pól oznaczonych jako{" "}
+              <span className="font-medium text-foreground">wymagane</span>
             </span>
+            {activeStats.changed > 0 && (
+              <span className="mt-0.5 inline-flex items-center rounded-md border border-amber-300 bg-background px-1.5 py-0.5 text-[10px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
+                Zmieniono {activeStats.changed} pól względem domyślnych
+              </span>
+            )}
           </div>
         </div>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,260px),minmax(0,1fr)]">
-        {/* LEFT: konteksty formularzy – Sekcja 1 w akordeonie */}
+        {/* LEFT: KROK 1 – wybór kontekstu formularza (akordeon jak w PlayerEditorPage) */}
         <Card className="h-full rounded-md border border-stone-200 bg-card dark:border-neutral-800">
           <CardHeader
             className={cn(
@@ -774,15 +854,13 @@ export default function RequiredFieldsPage() {
               className="flex w-full items-center justify-between px-4 py-3 text-left"
             >
               <div>
-                <div className={stepPillClass}>
-                  Sekcja 1 · Konteksty formularzy
-                </div>
+                <div className={stepPillClass}>Krok 1 · Wybór formularza</div>
                 <div className="mt-1 text-sm font-semibold leading-none tracking-tight">
-                  Wybór widoku formularza
+                  Konteksty formularzy
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Wybierz formularz (AddPlayer, PlayerEditor, Observations), dla
-                  którego chcesz ustawić wymagalność pól.
+                  Wybierz formularz (AddPlayer, PlayerEditor, Observations),
+                  dla którego chcesz skonfigurować wymagalność pól.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
@@ -806,7 +884,7 @@ export default function RequiredFieldsPage() {
               <AccordionItem value="contexts" className="border-0">
                 <AccordionContent
                   id="contexts-panel"
-                  className="pt-3 pb-4 px-1"
+                  className="px-1 pt-3 pb-4"
                 >
                   <div className="space-y-3">
                     {FORM_GROUPS.map((group, groupIndex) => (
@@ -890,7 +968,7 @@ export default function RequiredFieldsPage() {
           </CardContent>
         </Card>
 
-        {/* RIGHT: detale aktywnego formularza – Sekcja 2 w akordeonie */}
+        {/* RIGHT: KROK 2 – szczegóły aktywnego formularza (akordeon jak w PlayerEditorPage) */}
         <Card className="rounded-md border border-stone-200 bg-card dark:border-neutral-800">
           <CardHeader
             className={cn(
@@ -906,9 +984,7 @@ export default function RequiredFieldsPage() {
               className="flex w-full items-center justify-between px-4 py-3 text-left"
             >
               <div>
-                <div className={stepPillClass}>
-                  Sekcja 2 · Wymagalność pól
-                </div>
+                <div className={stepPillClass}>Krok 2 · Wymagalność pól</div>
                 <div className="mt-1 text-sm font-semibold leading-none tracking-tight">
                   {activeFormDef.label}
                 </div>
@@ -1012,9 +1088,9 @@ export default function RequiredFieldsPage() {
               <AccordionItem value="details" className="border-0">
                 <AccordionContent
                   id="details-panel"
-                  className="pt-3 pb-4 space-y-4"
+                  className="space-y-4 pt-3 pb-4"
                 >
-                  {/* Lista pól – minimalne „kafelki” */}
+                  {/* Lista pól – kafelki jak mini-ExtContent */}
                   <div className="space-y-2">
                     {activeFormDef.fields.length === 0 ? (
                       <div className="rounded-md border border-dashed border-stone-200 bg-background px-4 py-6 text-center text-sm text-muted-foreground dark:border-neutral-800">
@@ -1036,9 +1112,7 @@ export default function RequiredFieldsPage() {
                           return (
                             <div
                               key={field.key}
-                              className={cn(
-                                "flex items-start justify-between gap-3 rounded-md bg-background px-3 py-2 text-sm dark:border-neutral-800"
-                              )}
+                              className="flex items-start justify-between gap-3 rounded-md border border-stone-200 bg-background px-3 py-2 text-sm shadow-xs dark:border-neutral-800"
                             >
                               <div className="space-y-1">
                                 <div className="flex flex-wrap items-center gap-1.5">
@@ -1046,9 +1120,7 @@ export default function RequiredFieldsPage() {
                                     {field.label}
                                   </span>
                                   <span className="rounded-md border border-stone-200 px-1.5 py-0.5 text-[9px] text-stone-600 dark:border-neutral-700 dark:text-neutral-300">
-                                    {required
-                                      ? "Wymagane"
-                                      : "Opcjonalne"}
+                                    {required ? "Wymagane" : "Opcjonalne"}
                                   </span>
                                   {changed && (
                                     <span className="rounded-md border border-amber-300 px-1.5 py-0.5 text-[9px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
@@ -1117,7 +1189,7 @@ export default function RequiredFieldsPage() {
                   </div>
 
                   {/* info + błędy / sukces */}
-                  <div className="space-y-2 text-sm text-muted-foreground">
+                  <div className="space-y-2 text-xs text-muted-foreground sm:text-sm">
                     <p>
                       Te ustawienia są używane przez formularze AddPlayer,
                       PlayerEditor i Observations do weryfikacji wymagalności
@@ -1125,8 +1197,7 @@ export default function RequiredFieldsPage() {
                     </p>
                     {isDirty && (
                       <span className="inline-flex items-center rounded-md border border-amber-300 bg-background px-2 py-0.5 text-[10px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
-                        Masz niezapisane zmiany – kliknij „Zapisz
-                        ustawienia”.
+                        Masz niezapisane zmiany – kliknij „Zapisz”.
                       </span>
                     )}
                   </div>

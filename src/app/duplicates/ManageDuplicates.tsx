@@ -12,9 +12,20 @@ import {
   CheckCircle2,
   XCircle,
   Eye,
+  Loader2,
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Toolbar } from "@/shared/ui/atoms";
+import { cn } from "@/lib/utils";
 
 /* ======================== Types ======================== */
 type Role = "admin" | "scout" | "scout-agent";
@@ -776,158 +787,231 @@ export default function DuplicatesPage() {
 
   if (authLoading) {
     return (
-      <div className="w-full p-4 text-sm text-dark dark:text-neutral-300">
-        Ładowanie uprawnień użytkownika…
+      <div className="w-full">
+        <Card className="mt-4 border-gray-200 dark:border-neutral-800">
+          <CardContent className="flex items-center gap-3 py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+            <div className="text-sm text-gray-700 dark:text-neutral-300">
+              Ładowanie uprawnień użytkownika…
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="w-full  mx-auto px-3 py-4 md:px-0">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Duplikaty</h1>
-          <p className="text-sm text-dark">
-            Wykrywa tych samych zawodników dodanych przez różnych scoutów. Tylko
-            dla Administratora. Dane pochodzą z{" "}
-            <code className="text-[11px]">players_admin_view</code> i{" "}
-            <code className="text-[11px]">global_players</code> w Supabase.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            className="btn-soft-hover h-9 border-gray-300 text-sm dark:border-neutral-700"
-            onClick={runRefresh}
-            title={
-              lastRefreshAt
-                ? `Ostatnie odświeżenie: ${fmtTime(lastRefreshAt)}`
-                : "Odśwież teraz"
-            }
-            disabled={loading || saving || !isAdmin}
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${
-                loading || saving ? "animate-spin" : ""
-              }`}
-            />
-            {loading ? "Ładuję…" : "Odśwież"}
-            {lastRefreshAt ? ` (${fmtTime(lastRefreshAt)})` : ""}
-          </Button>
-          <Button
-            asChild
-            className="btn-soft-hover h-9 bg-gray-900 text-sm text-white hover:bg-gray-800"
-          >
-            <Link href="/scouts" title="Lista scoutów">
-              <UserCircle2 className="mr-1 h-4 w-4" />
-              Scoutsi
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <div className="w-full space-y-5">
+      <Toolbar
+        title="Duplikaty zawodników (Admin)"
+        right={
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Button
+              variant="outline"
+              className="h-9 rounded border-gray-300 text-xs font-medium dark:border-neutral-700"
+              onClick={runRefresh}
+              title={
+                lastRefreshAt
+                  ? `Ostatnie odświeżenie: ${fmtTime(lastRefreshAt)}`
+                  : "Odśwież teraz"
+              }
+              disabled={loading || saving || !isAdmin}
+            >
+              <RefreshCw
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  (loading || saving) && "animate-spin"
+                )}
+              />
+              {loading ? "Ładuję…" : "Odśwież"}
+            </Button>
+            <Button
+              asChild
+              className="h-9 rounded bg-gray-900 px-3 text-xs font-medium text-white hover:bg-gray-800"
+            >
+              <Link href="/scouts" title="Lista scoutów">
+                <UserCircle2 className="mr-1.5 h-4 w-4" />
+                Scoutsi
+              </Link>
+            </Button>
+          </div>
+        }
+      />
 
-      {isAdmin && groups.length > 0 && (
-        <div className="mb-3 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 shadow-sm dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-100">
-          <div className="flex items-start gap-2">
-            <InfoIcon className="mt-[2px] h-4 w-4" />
-            <div>
-              <div className="font-medium text-[12px]">
-                Jak używać widoku duplikatów?
+      {/* Info / intro card */}
+      <Card className="border-indigo-100 bg-gradient-to-r from-indigo-50 to-sky-50 text-xs shadow-sm dark:border-indigo-900/60 dark:from-neutral-900 dark:to-neutral-900/70">
+        <CardContent className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+          <div className="flex flex-1 items-start gap-2">
+            <div className="mt-0.5 rounded bg-indigo-600/10 p-1 dark:bg-indigo-500/10">
+              <InfoIcon className="h-3.5 w-3.5 text-indigo-700 dark:text-indigo-200" />
+            </div>
+            <div className="space-y-1">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-indigo-800 dark:text-indigo-200">
+                Panel duplikatów
               </div>
-              <ol className="mt-1 list-decimal space-y-0.5 pl-4">
-                <li>
-                  W pierwszej kolumnie wybierz <b>keepera</b> – rekord, który
-                  traktujesz jako bazowy.
-                </li>
-                <li>
-                  W kolumnie <b>„Duplikat?”</b> możesz zaznaczyć tylko te
-                  rekordy, które chcesz oznaczyć jako duplikaty keepera (może
-                  być kilka, nie wszystkie).
-                </li>
-                <li>
-                  W panelu <b>„Dane końcowe”</b> nad tabelą możesz poprawić
-                  dane. Zostaną one zapisane w{" "}
-                  <code>global_players</code> i <b>nadpiszą</b> rekordy{" "}
-                  <code>players</code> w tej grupie.
-                </li>
-              </ol>
-              <p className="mt-1 text-[11px] text-indigo-900/70 dark:text-indigo-200/80">
-                Zmiany w „Dane końcowe” zapisują się dopiero przy scalaniu /
-                powiązaniu z globalem.
+              <p className="text-[11px] leading-snug text-stone-700 dark:text-neutral-300">
+                W tym widoku widzisz grupy potencjalnych duplikatów zawodników
+                dodanych przez różnych scoutów. Dane pochodzą z{" "}
+                <code className="rounded bg-indigo-100 px-1 py-0.5 text-[10px] text-indigo-900 dark:bg-neutral-800 dark:text-neutral-100">
+                  players_admin_view
+                </code>{" "}
+                i{" "}
+                <code className="rounded bg-indigo-100 px-1 py-0.5 text-[10px] text-indigo-900 dark:bg-neutral-800 dark:text-neutral-100">
+                  global_players
+                </code>{" "}
+                w Supabase. Po scaleniu grupa może zostać dodana do{" "}
+                <b>globalnej bazy</b> albo powiązana z już istniejącym wpisem
+                globalnym.
               </p>
             </div>
           </div>
-        </div>
-      )}
-
-      {lastRefreshAt && (
-        <div className="mb-2 text-xs text-dark">
-          Ostatnie odświeżenie: <b>{fmtTime(lastRefreshAt)}</b>
-        </div>
-      )}
+          <div className="flex flex-col items-end gap-1 text-[11px] text-stone-600 dark:text-neutral-300">
+            <span>
+              Grupy duplikatów:{" "}
+              <span className="font-semibold text-stone-900 dark:text-neutral-50">
+                {isAdmin ? groups.length : "—"}
+              </span>
+            </span>
+            {lastRefreshAt && (
+              <span className="text-[10px]">
+                Ostatnie odświeżenie:{" "}
+                {fmtTime(lastRefreshAt)}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {error && (
-        <div className="mb-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+        <div className="mt-1 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
           {error}
         </div>
       )}
 
       {!isAdmin ? (
-        <div className="rounded-md border border-dashed border-gray-300 bg-white p-6 text-center shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
-          <div className="mx-auto mb-2 inline-flex h-9 w-9 w-9 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
-            <Lock className="h-5 w-5" />
-          </div>
-          <div className="text-sm font-medium">
-            Dostęp tylko dla Administratora
-          </div>
-          <div className="mt-1 text-xs text-dark">
-            Upewnij się, że w tabeli{" "}
-            <code className="text-[11px]">profiles</code> Twoja rola to{" "}
-            <b>admin</b>.
-          </div>
-        </div>
+        <Card className="border-amber-200 dark:border-amber-900/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-200">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40">
+                <Lock className="h-4 w-4" />
+              </span>
+              Dostęp tylko dla Administratora
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-xs text-stone-700 dark:text-neutral-200">
+            <p>
+              Ten widok jest przeznaczony wyłącznie dla roli{" "}
+              <b>Admin</b>. Upewnij się, że w tabeli{" "}
+              <code className="rounded bg-amber-100 px-1 py-0.5 text-[10px] text-amber-900 dark:bg-neutral-800 dark:text-neutral-100">
+                profiles
+              </code>{" "}
+              Twoja rola to <b>admin</b>.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <>
-          {/* Toolbar */}
-          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-gray-200 bg-white p-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-            <div className="relative">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Szukaj po nazwisku lub skaucie…"
-                className="w-72 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-              />
-              <Search className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            </div>
-            <label className="inline-flex flex-wrap items-center gap-2 text-xs md:text-sm">
-              <input
-                type="checkbox"
-                checked={includeTrashed}
-                onChange={(e) => setIncludeTrashed(e.target.checked)}
-              />
-              Pokaż także „Kosz”
-            </label>
-            <label className="inline-flex flex-wrap items-center gap-2 text-xs md:text-sm">
-              <input
-                type="checkbox"
-                checked={showOnlyUnresolved}
-                onChange={(e) => setShowOnlyUnresolved(e.target.checked)}
-              />
-              Tylko nierozwiązane
-            </label>
-            <div className="ml-auto text-xs md:text-sm text-dark dark:text-neutral-300">
-              Grupy: <b>{groups.length}</b>
-            </div>
-          </div>
+          {/* Jak używać widoku duplikatów */}
+          {groups.length > 0 && (
+            <Card className="border-indigo-200 bg-indigo-50 text-xs shadow-sm dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-100">
+              <CardContent className="flex items-start gap-2 px-4 py-3">
+                <InfoIcon className="mt-[2px] h-4 w-4" />
+                <div>
+                  <div className="text-[12px] font-semibold">
+                    Jak używać widoku duplikatów?
+                  </div>
+                  <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                    <li>
+                      W pierwszej kolumnie wybierz <b>keepera</b> – rekord,
+                      który traktujesz jako bazowy.
+                    </li>
+                    <li>
+                      W kolumnie{" "}
+                      <b>„Duplikat?”</b> zaznacz tylko te rekordy, które
+                      chcesz oznaczyć jako duplikaty keepera (może być kilka,
+                      nie wszystkie).
+                    </li>
+                    <li>
+                      W panelu <b>„Dane końcowe”</b> nad tabelą możesz
+                      poprawić dane. Zostaną one zapisane w{" "}
+                      <code>global_players</code> i{" "}
+                      <b>nadpiszą</b> rekordy{" "}
+                      <code>players</code> w tej grupie.
+                    </li>
+                  </ol>
+                  <p className="mt-1 text-[11px] text-indigo-900/70 dark:text-indigo-200/80">
+                    Zmiany w „Dane końcowe” zapisują się dopiero przy scalaniu
+                    / powiązaniu z globalem.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          {groups.length === 0 && !loading ? (
-            <div className="rounded-md border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
-              <div className="flex flex-wrap items-center gap-2">
-                <InfoIcon className="h-4 w-4 text-dark" />
-                Brak potencjalnych duplikatów na podstawie danych w{" "}
-                <code className="text-[11px]">players_admin_view</code>.
+          {/* Toolbar: wyszukiwarka + filtry */}
+          <Card className="border-gray-200 shadow-sm dark:border-neutral-800">
+            <CardContent className="flex flex-wrap items-center gap-3 px-3 py-3 text-sm">
+              <div className="relative">
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Szukaj po nazwisku lub skaucie…"
+                  className="w-72 rounded pl-8 text-sm"
+                />
+                <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                {q && (
+                  <button
+                    type="button"
+                    onClick={() => setQ("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 transition hover:text-gray-700 dark:text-neutral-500 dark:hover:text-neutral-200"
+                    aria-label="Wyczyść wyszukiwanie"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
-            </div>
+
+              <label className="inline-flex items-center gap-2 text-xs md:text-sm text-stone-700 dark:text-neutral-200">
+                <Checkbox
+                  checked={includeTrashed}
+                  onCheckedChange={(v) => setIncludeTrashed(!!v)}
+                  className="h-4 w-4"
+                />
+                <span>Pokaż także „Kosz”</span>
+              </label>
+
+              <label className="inline-flex items-center gap-2 text-xs md:text-sm text-stone-700 dark:text-neutral-200">
+                <Checkbox
+                  checked={showOnlyUnresolved}
+                  onCheckedChange={(v) => setShowOnlyUnresolved(!!v)}
+                  className="h-4 w-4"
+                />
+                <span>Tylko nierozwiązane</span>
+              </label>
+
+              <div className="ml-auto text-xs md:text-sm text-stone-600 dark:text-neutral-300">
+                Grupy:{" "}
+                <b className="text-stone-900 dark:text-neutral-50">
+                  {groups.length}
+                </b>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Brak grup */}
+          {groups.length === 0 && !loading ? (
+            <Card className="border-gray-200 shadow-sm dark:border-neutral-800">
+              <CardContent className="flex items-center gap-2 px-4 py-3 text-sm">
+                <InfoIcon className="h-4 w-4 text-stone-500 dark:text-neutral-300" />
+                <div className="text-sm text-stone-700 dark:text-neutral-200">
+                  Brak potencjalnych duplikatów na podstawie danych w{" "}
+                  <code className="rounded bg-stone-100 px-1 py-0.5 text-[11px] dark:bg-neutral-900">
+                    players_admin_view
+                  </code>
+                  .
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <div className="space-y-4">
               {groups.map((g, idx) => {
@@ -946,31 +1030,32 @@ export default function DuplicatesPage() {
                 const selectedCount = selectedDupIds.length;
 
                 return (
-                  <div
+                  <Card
                     key={g.key}
-                    className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
+                    className="overflow-hidden border-gray-200 shadow-sm dark:border-neutral-800"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-3 py-2 dark:border-neutral-800">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">
+                    {/* header grupy */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200/80 bg-stone-50/70 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-900/60">
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="truncate text-sm font-semibold text-stone-900 dark:text-neutral-50">
                           {rep?.name || "Nieznany"} • ur.{" "}
-                          {prettyDate(rep?.birthDate)} • {g.list.length}{" "}
-                          wpis(y)
+                          {prettyDate(rep?.birthDate)} • {g.list.length} wpis(y)
                         </div>
-                        <div className="mt-0.5 text-[12px] text-dark">
+                        <div className="text-[11px] text-stone-500 dark:text-neutral-400">
                           Klucz grupy:{" "}
-                          <code className="rounded-md bg-stone-100 px-1 py-0.5 dark:bg-neutral-900">
+                          <code className="rounded bg-stone-100 px-1 py-0.5 text-[10px] dark:bg-neutral-800">
                             {g.key}
-                          </code>{" "}
+                          </code>
                           {existingGlobal && (
-                            <span className="ml-2 inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                            <span className="ml-2 inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
                               Ma globalny wpis #{existingGlobal.id}
                             </span>
                           )}
                         </div>
                         {selectedCount > 0 && (
-                          <div className="mt-0.5 text-[11px] text-emerald-700 dark:text-emerald-300">
-                            Zaznaczone duplikaty: <b>{selectedCount}</b>
+                          <div className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                            Zaznaczone duplikaty:{" "}
+                            <b>{selectedCount}</b>
                           </div>
                         )}
                       </div>
@@ -978,7 +1063,7 @@ export default function DuplicatesPage() {
                         {/* merge / link to global */}
                         {existingGlobal ? (
                           <Button
-                            className="btn-soft-hover h-9 bg-indigo-600 text-xs sm:text-sm text-white hover:bg-indigo-700"
+                            className="h-8 rounded bg-indigo-600 px-2.5 text-[11px] font-medium text-white hover:bg-indigo-700"
                             onClick={() =>
                               linkGroupToExistingGlobal(
                                 g.key,
@@ -988,7 +1073,7 @@ export default function DuplicatesPage() {
                             disabled={allLinkedToGlobal || saving}
                             title="Powiąż wszystkie rekordy z istniejącym wpisem globalnym (z nadpisaniem danych wg „Danych końcowych”)"
                           >
-                            <CheckCircle2 className="h-4 w-4" />
+                            <CheckCircle2 className="mr-1 h-4 w-4" />
                             <span className="hidden sm:inline">
                               Powiąż z globalnym #{existingGlobal.id}
                             </span>
@@ -996,12 +1081,12 @@ export default function DuplicatesPage() {
                           </Button>
                         ) : (
                           <Button
-                            className="btn-soft-hover h-9 bg-indigo-600 text-xs sm:text-sm text-white hover:bg-indigo-700"
+                            className="h-8 rounded bg-indigo-600 px-2.5 text-[11px] font-medium text-white hover:bg-indigo-700"
                             onClick={() => mergeGroupToGlobal(g.key)}
                             disabled={saving}
                             title="Scal i dodaj do Globalnej bazy (z nadpisaniem danych wg „Danych końcowych”)"
                           >
-                            <CheckCircle2 className="h-4 w-4" />
+                            <CheckCircle2 className="mr-1 h-4 w-4" />
                             <span className="hidden sm:inline">
                               Scal i dodaj do Globalnej bazy
                             </span>
@@ -1011,7 +1096,7 @@ export default function DuplicatesPage() {
 
                         {/* classic duplicate marking to keeper */}
                         <Button
-                          className="btn-soft-hover h-9 bg-emerald-600 text-xs sm:text-sm text-white hover:bg-emerald-700"
+                          className="h-8 rounded bg-emerald-600 px-2.5 text-[11px] font-medium text-white hover:bg-emerald-700"
                           onClick={() => markDuplicatesToKeeper(g.key)}
                           disabled={!keeperId || saving}
                           title="Oznacz zaznaczone rekordy jako duplikaty keepera"
@@ -1020,7 +1105,7 @@ export default function DuplicatesPage() {
                         </Button>
                         <Button
                           variant="outline"
-                          className="btn-soft-hover h-9 border-gray-300 text-xs sm:text-sm hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                          className="h-8 rounded border-gray-300 px-2.5 text-[11px] font-medium hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                           onClick={() => {
                             setKeeperByKey((prev) => ({
                               ...prev,
@@ -1039,20 +1124,20 @@ export default function DuplicatesPage() {
                           }}
                           title="Wyczyść wybór keepera, duplikatów i dane końcowe"
                         >
-                          <XCircle className="h-4 w-4" />
-                          Wyczyść keepera
+                          <XCircle className="mr-1 h-4 w-4" />
+                          Wyczyść
                         </Button>
                       </div>
                     </div>
 
                     {/* Panel „Dane końcowe” */}
                     {canonical && (
-                      <div className="border-b border-dashed border-gray-200 bg-stone-50/70 px-3 py-3 text-xs dark:border-neutral-800 dark:bg-neutral-900/60">
+                      <div className="border-b border-dashed border-stone-200 bg-stone-50/70 px-3 py-3 text-xs dark:border-neutral-800 dark:bg-neutral-900/60">
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                          <div className="font-medium text-[12px]">
+                          <div className="text-[12px] font-semibold text-stone-900 dark:text-neutral-50">
                             Dane końcowe dla tej grupy
                           </div>
-                          <div className="text-[11px] text-gray-500 dark:text-neutral-400">
+                          <div className="text-[11px] text-stone-500 dark:text-neutral-400">
                             Te wartości trafią do{" "}
                             <code>global_players</code> i nadpiszą{" "}
                             <code>players</code> u wszystkich scoutów w tej
@@ -1064,7 +1149,7 @@ export default function DuplicatesPage() {
                             <div className="mb-1 text-[11px] font-medium">
                               Nazwa w systemie
                             </div>
-                            <input
+                            <Input
                               value={canonical.name}
                               onChange={(e) =>
                                 setCanonicalByKey((prev) => ({
@@ -1075,68 +1160,71 @@ export default function DuplicatesPage() {
                                   },
                                 }))
                               }
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                              className="h-8 text-xs"
                             />
                           </div>
                           <div>
                             <div className="mb-1 text-[11px] font-medium">
                               Imię
                             </div>
-                            <input
+                            <Input
                               value={canonical.firstName || ""}
                               onChange={(e) =>
                                 setCanonicalByKey((prev) => ({
                                   ...prev,
                                   [g.key]: {
                                     ...prev[g.key],
-                                    firstName: e.target.value || undefined,
+                                    firstName:
+                                      e.target.value || undefined,
                                   },
                                 }))
                               }
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                              className="h-8 text-xs"
                             />
                           </div>
                           <div>
                             <div className="mb-1 text-[11px] font-medium">
                               Nazwisko
                             </div>
-                            <input
+                            <Input
                               value={canonical.lastName || ""}
                               onChange={(e) =>
                                 setCanonicalByKey((prev) => ({
                                   ...prev,
                                   [g.key]: {
                                     ...prev[g.key],
-                                    lastName: e.target.value || undefined,
+                                    lastName:
+                                      e.target.value || undefined,
                                   },
                                 }))
                               }
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                              className="h-8 text-xs"
                             />
                           </div>
                           <div>
                             <div className="mb-1 text-[11px] font-medium">
                               Data ur. (YYYY-MM-DD)
                             </div>
-                            <input
+                            <Input
                               value={canonical.birthDate || ""}
                               onChange={(e) =>
                                 setCanonicalByKey((prev) => ({
                                   ...prev,
                                   [g.key]: {
                                     ...prev[g.key],
-                                    birthDate: e.target.value || undefined,
+                                    birthDate:
+                                      e.target.value || undefined,
                                   },
                                 }))
                               }
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                              className="h-8 text-xs"
                             />
                           </div>
                           <div>
                             <div className="mb-1 text-[11px] font-medium">
                               Pozycja (GK/DF/MF/FW)
                             </div>
-                            <input
+                            <Input
                               value={canonical.pos}
                               onChange={(e) =>
                                 setCanonicalByKey((prev) => ({
@@ -1152,14 +1240,14 @@ export default function DuplicatesPage() {
                                   },
                                 }))
                               }
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs uppercase tracking-wide dark:border-neutral-700 dark:bg-neutral-950"
+                              className="h-8 text-xs uppercase tracking-wide"
                             />
                           </div>
                           <div>
                             <div className="mb-1 text-[11px] font-medium">
                               Wiek
                             </div>
-                            <input
+                            <Input
                               type="number"
                               value={canonical.age ?? ""}
                               onChange={(e) =>
@@ -1174,43 +1262,45 @@ export default function DuplicatesPage() {
                                   },
                                 }))
                               }
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                              className="h-8 text-xs"
                             />
                           </div>
                           <div>
                             <div className="mb-1 text-[11px] font-medium">
                               Narodowość
                             </div>
-                            <input
+                            <Input
                               value={canonical.nationality || ""}
                               onChange={(e) =>
                                 setCanonicalByKey((prev) => ({
                                   ...prev,
                                   [g.key]: {
                                     ...prev[g.key],
-                                    nationality: e.target.value || undefined,
+                                    nationality:
+                                      e.target.value || undefined,
                                   },
                                 }))
                               }
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                              className="h-8 text-xs"
                             />
                           </div>
                           <div>
                             <div className="mb-1 text-[11px] font-medium">
                               URL zdjęcia (opcjonalnie)
                             </div>
-                            <input
+                            <Input
                               value={canonical.photo || ""}
                               onChange={(e) =>
                                 setCanonicalByKey((prev) => ({
                                   ...prev,
                                   [g.key]: {
                                     ...prev[g.key],
-                                    photo: e.target.value || undefined,
+                                    photo:
+                                      e.target.value || undefined,
                                   },
                                 }))
                               }
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                              className="h-8 text-xs"
                             />
                           </div>
                         </div>
@@ -1220,44 +1310,35 @@ export default function DuplicatesPage() {
                     {/* Tabela z rekordami scoutów */}
                     <div className="w-full overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                        <thead className="bg-stone-50 text-xs font-medium uppercase tracking-wide text-stone-600 dark:bg-neutral-900 dark:text-neutral-300">
                           <tr>
-                            <th className="p-3 text-left font-medium">
-                              Keeper
-                            </th>
-                            <th className="p-3 text-left font-medium">
-                              Duplikat?
-                            </th>
-                            <th className="p-3 text-left font-medium">Scout</th>
-                            <th className="p-3 text-left font-medium">
+                            <th className="px-3 py-2 text-left">Keeper</th>
+                            <th className="px-3 py-2 text-left">Duplikat?</th>
+                            <th className="px-3 py-2 text-left">Scout</th>
+                            <th className="px-3 py-2 text-left">
                               Nazwisko i imię
                             </th>
-                            <th className="p-3 text-left font-medium">
+                            <th className="px-3 py-2 text-left">
                               Data ur.
                             </th>
-                            <th className="p-3 text-left font-medium">Poz.</th>
-                            <th className="p-3 text-left font-medium">
-                              Status
-                            </th>
-                            <th className="p-3 text-left font-medium">
+                            <th className="px-3 py-2 text-left">Poz.</th>
+                            <th className="px-3 py-2 text-left">Status</th>
+                            <th className="px-3 py-2 text-left">
                               Kompletność
                             </th>
-                            <th className="p-3 text-left font-medium">
-                              Global
-                            </th>
-                            <th className="p-3 text-right font-medium">
-                              Akcje
-                            </th>
+                            <th className="px-3 py-2 text-left">Global</th>
+                            <th className="px-3 py-2 text-right">Akcje</th>
                           </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="text-xs sm:text-[13px]">
                           {g.list
                             .slice()
                             .sort((a, b) => {
                               if (a.id === keeperId) return -1;
                               if (b.id === keeperId) return 1;
                               return (
-                                completenessScore(b) - completenessScore(a)
+                                completenessScore(b) -
+                                completenessScore(a)
                               );
                             })
                             .map((p) => {
@@ -1271,105 +1352,113 @@ export default function DuplicatesPage() {
                               return (
                                 <tr
                                   key={String(p.id)}
-                                  className={`border-t border-gray-200 align-middle dark:border-neutral-800 ${
+                                  className={cn(
+                                    "border-t border-stone-100 align-middle transition-colors dark:border-neutral-800",
                                     isKeeper
-                                      ? "bg-emerald-50/60 dark:bg-emerald-900/20"
-                                      : "hover:bg-stone-50/60 dark:hover:bg-neutral-900/60"
-                                  }`}
+                                      ? "bg-emerald-50/70 dark:bg-emerald-900/20"
+                                      : "hover:bg-stone-50/80 dark:hover:bg-neutral-900/60"
+                                  )}
                                 >
-                                  <td className="p-3">
+                                  <td className="px-3 py-2">
                                     <input
                                       type="radio"
                                       name={`keeper-${idx}`}
                                       checked={isKeeper}
-                                      onChange={() => selectKeeper(g.key, p)}
-                                    />
-                                  </td>
-                                  <td className="p-3">
-                                    <input
-                                      type="checkbox"
-                                      disabled={isKeeper}
-                                      checked={isSelectedDuplicate}
                                       onChange={() =>
-                                        !isKeeper &&
-                                        toggleDuplicateSelection(g.key, p.id)
+                                        selectKeeper(g.key, p)
                                       }
                                     />
                                   </td>
-                                  <td className="p-3">
-                                    <div className="font-medium text-gray-900 dark:text-neutral-100">
+                                  <td className="px-3 py-2">
+                                    <Checkbox
+                                      disabled={isKeeper}
+                                      checked={isSelectedDuplicate}
+                                      onCheckedChange={() =>
+                                        !isKeeper &&
+                                        toggleDuplicateSelection(
+                                          g.key,
+                                          p.id
+                                        )
+                                      }
+                                      className="h-4 w-4"
+                                    />
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <div className="font-medium text-stone-900 dark:text-neutral-50">
                                       {p.scoutName || p.scoutId}
                                     </div>
-                                    <div className="text-xs text-dark">
+                                    <div className="text-[11px] text-stone-500 dark:text-neutral-400">
                                       {p.scoutId}
                                     </div>
                                   </td>
-                                  <td className="p-3">
-                                    <div className="font-medium text-gray-900 dark:text-neutral-100">
+                                  <td className="px-3 py-2">
+                                    <div className="font-medium text-stone-900 dark:text-neutral-50">
                                       {p.name}
                                     </div>
-                                    <div className="text-xs text-dark">
+                                    <div className="text-[11px] text-stone-500 dark:text-neutral-400">
                                       {(p.firstName || "—") +
                                         " " +
                                         (p.lastName || "")}
                                     </div>
                                   </td>
-                                  <td className="p-3">
+                                  <td className="px-3 py-2">
                                     {prettyDate(p.birthDate)}
                                   </td>
-                                  <td className="p-3">
-                                    <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                                  <td className="px-3 py-2">
+                                    <span className="inline-flex rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
                                       {p.pos}
                                     </span>
                                   </td>
-                                  <td className="p-3">
+                                  <td className="px-3 py-2">
                                     <span
-                                      className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                                      className={cn(
+                                        "inline-flex rounded px-2 py-0.5 text-[11px] font-medium",
                                         (p.status ?? "active") === "active"
                                           ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200"
                                           : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"
-                                      }`}
+                                      )}
                                     >
                                       {(p.status ?? "active") === "active"
                                         ? "aktywny"
                                         : "kosz"}
                                     </span>
                                   </td>
-                                  <td className="p-3">
-                                    <div className="w-40 rounded-md bg-gray-100 dark:bg-neutral-800">
+                                  <td className="px-3 py-2">
+                                    <div className="w-40 rounded bg-gray-100 dark:bg-neutral-800">
                                       <div
-                                        className={`h-2 rounded-md ${
+                                        className={cn(
+                                          "h-2 rounded",
                                           isKeeper
                                             ? "bg-emerald-500"
                                             : "bg-gray-400"
-                                        }`}
+                                        )}
                                         style={{
                                           width: `${(comp / 4) * 100}%`,
                                         }}
                                       />
                                     </div>
-                                    <div className="mt-1 text-xs text-dark">
+                                    <div className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
                                       {comp}/4
                                     </div>
                                   </td>
-                                  <td className="p-3 text-xs">
+                                  <td className="px-3 py-2 text-[11px]">
                                     {p.globalId ? (
-                                      <span className="inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                                      <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
                                         #{p.globalId}
                                       </span>
                                     ) : (
                                       "—"
                                     )}
                                   </td>
-                                  <td className="p-3 text-right">
+                                  <td className="px-3 py-2 text-right">
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      className="btn-soft-hover h-8 border-gray-300 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                      className="h-8 rounded border-gray-300 px-2.5 text-[11px] font-medium hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                       onClick={() => setDetails(p)}
                                       title="Podgląd szczegółów rekordu skauta"
                                     >
-                                      <Eye className="h-3.5 w-3.5" />
+                                      <Eye className="mr-1 h-3.5 w-3.5" />
                                       <span className="hidden sm:inline">
                                         Szczegóły
                                       </span>
@@ -1381,7 +1470,7 @@ export default function DuplicatesPage() {
                         </tbody>
                       </table>
                     </div>
-                  </div>
+                  </Card>
                 );
               })}
             </div>
@@ -1392,86 +1481,118 @@ export default function DuplicatesPage() {
       {/* ===== Details Modal ===== */}
       {details && (
         <div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-3 sm:items-center"
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-3 sm:items-center"
           role="dialog"
           aria-modal="true"
+          onClick={() => setDetails(null)}
         >
-          <div className="w-full max-w-2xl overflow-hidden rounded-md border border-gray-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950">
-            <div className="flex flex-wrap items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-neutral-800">
-              <div className="text-sm font-semibold">
-                Szczegóły zawodnika skauta
+          <div
+            className="w-full max-w-2xl overflow-hidden rounded border border-gray-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-wrap items-center justify-between border-b border-gray-200 px-4 py-2.5 dark:border-neutral-800">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-neutral-400">
+                  Podgląd rekordu
+                </div>
+                <div className="text-sm font-semibold text-stone-900 dark:text-neutral-50">
+                  Szczegóły zawodnika skauta
+                </div>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="btn-soft-hover h-8 border-gray-300 text-xs hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                className="h-8 rounded border-gray-300 px-2.5 text-[11px] font-medium hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
                 onClick={() => setDetails(null)}
               >
                 Zamknij
               </Button>
             </div>
-            <div className="max-h-[70vh] overflow-auto p-4 text-sm">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="max-h-[70vh] overflow-auto px-4 py-3 text-sm">
+              <div className="grid grid-cols-2 gap-3 text-xs text-stone-800 dark:text-neutral-100">
                 <div>
-                  <div className="text-xs text-dark">Scout</div>
+                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
+                    Scout
+                  </div>
                   <div className="font-medium">
                     {details.scoutName || details.scoutId}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-dark">ID rekordu</div>
+                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
+                    ID rekordu
+                  </div>
                   <div className="font-medium">
                     #{String(details.id)}
                   </div>
                 </div>
                 <div className="col-span-2">
-                  <div className="text-xs text-dark">Nazwa</div>
+                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
+                    Nazwa
+                  </div>
                   <div className="font-medium">{details.name}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-dark">Imię</div>
+                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
+                    Imię
+                  </div>
                   <div>{details.firstName || "—"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-dark">Nazwisko</div>
+                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
+                    Nazwisko
+                  </div>
                   <div>{details.lastName || "—"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-dark">Data ur.</div>
+                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
+                    Data ur.
+                  </div>
                   <div>{prettyDate(details.birthDate)}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-dark">Pozycja</div>
+                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
+                    Pozycja
+                  </div>
                   <div>{details.pos}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-dark">Status</div>
+                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
+                    Status
+                  </div>
                   <div>{details.status ?? "active"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-dark">Global</div>
+                  <div className="text-[11px] text-stone-500 dark:text-neutral-400">
+                    Global
+                  </div>
                   <div>
                     {details.globalId ? `#${details.globalId}` : "—"}
                   </div>
                 </div>
               </div>
-              <div className="mt-4 rounded-md bg-stone-100 p-3 text-xs leading-relaxed dark:bg-neutral-900">
+              <div className="mt-4 rounded border border-stone-200 bg-stone-50 p-3 text-[11px] leading-relaxed text-stone-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200">
                 <div className="mb-1 font-medium">
                   Uwaga dot. scalania i przyszłych duplikatów
                 </div>
                 Po scaleniu do globalnej bazy, kolejne wpisy scoutów o tym samym
-                zawodniku zostaną wykryte jako grupa o tym samym kluczu.
-                Wystarczy użyć akcji <b>„Powiąż z globalnym”</b>, aby dopiąć
-                nowy wpis do istniejącego rekordu globalnego.
+                zawodniku zostaną wykryte jako grupa o tym samym kluczu. Wystarczy
+                użyć akcji{" "}
+                <b>„Powiąż z globalnym”</b>, aby dopiąć nowy wpis do
+                istniejącego rekordu globalnego.
               </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between border-t border-gray-200 bg-stone-100 px-4 py-2 text-xs dark:border-neutral-800 dark:bg-neutral-900">
-              <span className="text-gray-500">
-                Klucz: <code>{dupKey(details)}</code>
+            <div className="flex flex-wrap items-center justify-between border-t border-gray-200 bg-stone-50 px-4 py-2 text-[11px] text-stone-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+              <span>
+                Klucz:{" "}
+                <code className="rounded bg-stone-100 px-1 py-0.5 dark:bg-neutral-800">
+                  {dupKey(details)}
+                </code>
               </span>
-              <div className="text-gray-500">
-                Kompletność: {completenessScore(details)}/4
-              </div>
+              <span>
+                Kompletność:{" "}
+                <b>{completenessScore(details)}/4</b>
+              </span>
             </div>
           </div>
         </div>

@@ -1,10 +1,10 @@
 // src/app/settings/ratings/page.tsx
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { getSupabase } from "@/lib/supabaseClient";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -14,6 +14,8 @@ import {
   ToggleLeft,
   ToggleRight,
   AlertCircle,
+  Star,
+  ChevronDown,
 } from "lucide-react";
 
 /* ---------- Types ---------- */
@@ -81,7 +83,7 @@ function InlineCell({
 
   return (
     <input
-      className="h-8 w-full rounded-md border border-transparent px-2 text-sm outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
+      className="h-8 w-full rounded-md border border-transparent bg-white px-2 text-sm outline-none focus:border-indigo-500 dark:bg-neutral-950 dark:focus:border-indigo-400"
       value={local}
       placeholder={placeholder}
       onChange={(e) => setLocal(e.target.value)}
@@ -106,7 +108,9 @@ export default function RatingsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<{ group: string; id: string } | null>(
+    null
+  );
 
   /* ---------- Load from Supabase ---------- */
   useEffect(() => {
@@ -200,14 +204,15 @@ export default function RatingsSettingsPage() {
     }
   }
 
-  async function addAspect() {
+  async function addAspect(groupKey: string) {
     setSaving(true);
     setError(null);
     try {
       const supabase = getSupabase();
+      const groupRows = rows.filter((r) => r.group_key === groupKey);
       const maxSort =
-        rows.length > 0
-          ? Math.max(...rows.map((r) => r.sort_order || 0))
+        groupRows.length > 0
+          ? Math.max(...groupRows.map((r) => r.sort_order || 0))
           : 0;
       const label = "Nowa ocena";
       const key = slugKey(label);
@@ -218,7 +223,7 @@ export default function RatingsSettingsPage() {
         tooltip: "",
         enabled: true,
         sort_order: maxSort + 1,
-        group_key: "GEN", // domyślnie ogólne
+        group_key: groupKey,
       };
 
       const { data, error } = await supabase
@@ -236,7 +241,7 @@ export default function RatingsSettingsPage() {
         tooltip: data.tooltip ?? null,
         enabled: data.enabled,
         sort_order: data.sort_order,
-        group_key: data.group_key || "GEN",
+        group_key: data.group_key || groupKey,
       };
 
       setRows((prev) => {
@@ -276,21 +281,27 @@ export default function RatingsSettingsPage() {
     }
   }
 
-  // Fix: używamy zwykłego update, nie upsert (żeby nie wbijać nulli w NOT NULL columns)
-  async function moveAspect(id: string, dir: -1 | 1) {
-    const idx = rows.findIndex((r) => r.id === id);
+  // reorder tylko w obrębie danej grupy
+  async function moveAspect(groupKey: string, id: string, dir: -1 | 1) {
+    const groupRows = rows
+      .filter((r) => r.group_key === groupKey)
+      .sort((a, b) => a.sort_order - b.sort_order);
+
+    const idx = groupRows.findIndex((r) => r.id === id);
     if (idx < 0) return;
     const target = idx + dir;
-    if (target < 0 || target >= rows.length) return;
+    if (target < 0 || target >= groupRows.length) return;
 
-    const a = rows[idx];
-    const b = rows[target];
+    const a = groupRows[idx];
+    const b = groupRows[target];
     if (!a || !b) return;
 
-    // optymistyczna zamiana sort_order lokalnie
-    const next = [...rows];
-    next[idx] = { ...b, sort_order: a.sort_order };
-    next[target] = { ...a, sort_order: b.sort_order };
+    // optymistycznie zamiana sort_order lokalnie
+    const next = rows.map((r) => {
+      if (r.id === a.id) return { ...r, sort_order: b.sort_order };
+      if (r.id === b.id) return { ...r, sort_order: a.sort_order };
+      return r;
+    });
     next.sort(sortAspects);
     setRows(next);
 
@@ -318,39 +329,33 @@ export default function RatingsSettingsPage() {
 
   /* ---------- Drag & Drop ordering (within group) ---------- */
 
-  function handleDragStart(id: string) {
-    setDraggingId(id);
+  function handleDragStart(groupKey: string, id: string) {
+    setDragging({ group: groupKey, id });
   }
 
   function handleDragEnd() {
-    setDraggingId(null);
+    setDragging(null);
   }
 
-  async function handleDrop(targetId: string) {
-    if (!draggingId || draggingId === targetId) return;
-
-    const sourceId = draggingId;
-    setDraggingId(null);
-
-    const current = [...rows];
-    const sourceRow = current.find((r) => r.id === sourceId);
-    const targetRow = current.find((r) => r.id === targetId);
-    if (!sourceRow || !targetRow) return;
-
-    // Na razie pozwalamy drag & drop tylko w ramach tej samej grupy
-    if (sourceRow.group_key !== targetRow.group_key) {
+  async function handleDrop(groupKey: string, targetId: string) {
+    if (!dragging || dragging.group !== groupKey) return;
+    const sourceId = dragging.id;
+    if (sourceId === targetId) {
+      setDragging(null);
       return;
     }
 
-    const groupKey = sourceRow.group_key;
-    const groupRows = current
+    const groupRows = rows
       .filter((r) => r.group_key === groupKey)
       .sort((a, b) => a.sort_order - b.sort_order);
 
     const ids = groupRows.map((r) => r.id);
     const from = ids.indexOf(sourceId);
     const to = ids.indexOf(targetId);
-    if (from === -1 || to === -1) return;
+    if (from === -1 || to === -1) {
+      setDragging(null);
+      return;
+    }
 
     ids.splice(from, 1);
     ids.splice(to, 0, sourceId);
@@ -370,6 +375,8 @@ export default function RatingsSettingsPage() {
       arr.sort(sortAspects);
       return arr;
     });
+
+    setDragging(null);
 
     // zapis do Supabase
     setSaving(true);
@@ -391,21 +398,13 @@ export default function RatingsSettingsPage() {
       );
     } catch (e: any) {
       console.error("Error reordering rating aspects (drag & drop):", e);
-      setError("Nie udało się zmienić kolejności (drag & drop). Odśwież widok.");
+      setError(
+        "Nie udało się zmienić kolejności (drag & drop). Odśwież widok."
+      );
     } finally {
       setSaving(false);
     }
   }
-
-  /* ---------- Grupowanie do widoku (nagłówki grup) ---------- */
-
-  // upakuj w strukturę: grupy + ich wiersze
-  const groupedRows = GROUP_OPTIONS.map((g) => ({
-    group: g,
-    items: rows
-      .filter((r) => r.group_key === g.value)
-      .sort(sortAspects),
-  })).filter((section) => section.items.length > 0);
 
   /* ---------- Render ---------- */
 
@@ -419,7 +418,8 @@ export default function RatingsSettingsPage() {
           </h1>
           <p className="mt-1 text-sm text-dark dark:text-neutral-300">
             Te kategorie pojawiają się w sekcji „Ocena” przy dodawaniu/edycji
-            znanego zawodnika.
+            znanego zawodnika. Możesz je grupować wg pozycji, włączać/wyłączać
+            oraz zmieniać kolejność.
           </p>
         </div>
         {saving && (
@@ -443,103 +443,99 @@ export default function RatingsSettingsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-gray-200 dark:border-neutral-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base font-semibold">
-              Kategorie ocen zawodnika
-            </CardTitle>
-            <div className="text-xs text-dark dark:text-neutral-400">
-              Dodaj nowe, edytuj etykiety, klucze, opisy, grupy oraz kolejność
-              (możesz przeciągać wiersze w obrębie grup).
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Button
-                onClick={addAspect}
-                className="bg-gray-900 text-white hover:bg-gray-800"
-                size="sm"
+        <div className="space-y-3">
+          {GROUP_OPTIONS.map((group) => {
+            const groupKey = group.value;
+            const groupRows = rows
+              .filter((r) => r.group_key === groupKey)
+              .sort(sortAspects);
+            const activeCount = groupRows.filter((r) => r.enabled).length;
+
+            return (
+              <InterfaceSection
+                key={groupKey}
+                icon={<Star className="h-4 w-4" />}
+                title={group.label}
+                description="Kategorie ocen przypisane do tej grupy pozycyjnej."
+                badge={
+                  <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] text-dark ring-1 ring-gray-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+                    {activeCount}/{groupRows.length} aktywnych
+                  </span>
+                }
+                defaultOpen={groupKey === "GEN"}
               >
-                <Plus className="mr-2 h-4 w-4" />
-                Dodaj kategorię
-              </Button>
-              
-            </div>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    onClick={() => addAspect(groupKey)}
+                    className="bg-gray-900 text-white hover:bg-gray-800"
+                    size="sm"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Dodaj kategorię
+                  </Button>
+                </div>
 
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-                  <tr>
-                    <th className="w-10 p-2 text-left font-medium">#</th>
-                    <th className="w-40 p-2 text-left font-medium">Grupa</th>
-                    <th className="min-w-[220px] p-2 text-left font-medium">
-                      Etykieta
-                    </th>
-                    <th className="min-w-[160px] p-2 text-left font-medium">
-                      Key
-                    </th>
-                    <th className="min-w-[220px] p-2 text-left font-medium">
-                      Tooltip
-                    </th>
-                    <th className="w-28 p-2 text-left font-medium">
-                      Widoczna
-                    </th>
-                    <th className="w-28 p-2 text-left font-medium">
-                      Kolejność
-                    </th>
-                    <th className="w-28 p-2 text-right font-medium">
-                      Akcje
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    let rowIndex = 0;
-                    if (groupedRows.length === 0) {
-                      return (
+                <div className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white text-sm dark:border-neutral-800 dark:bg-neutral-950">
+                  {groupRows.length === 0 ? (
+                    <div className="p-4 text-sm text-dark dark:text-neutral-400">
+                      Brak kategorii w tej grupie — dodaj pierwszą kategorię.
+                    </div>
+                  ) : (
+                    <table className="w-full min-w-[720px] text-sm">
+                      <thead className="bg-stone-100 text-[11px] uppercase tracking-wide text-dark dark:bg-neutral-900 dark:text-neutral-300">
                         <tr>
-                          <td
-                            colSpan={8}
-                            className="p-6 text-center text-sm text-dark dark:text-neutral-400"
-                          >
-                            Brak kategorii ocen — dodaj pierwszą kategorię.
-                          </td>
+                          <th className="w-10 p-2 text-left font-medium">#</th>
+                          <th className="w-40 p-2 text-left font-medium">
+                            Grupa
+                          </th>
+                          <th className="min-w-[220px] p-2 text-left font-medium">
+                            Etykieta
+                          </th>
+                          <th className="min-w-[160px] p-2 text-left font-medium">
+                            Key
+                          </th>
+                          <th className="min-w-[220px] p-2 text-left font-medium">
+                            Tooltip
+                          </th>
+                          <th className="w-28 p-2 text-left font-medium">
+                            Widoczna
+                          </th>
+                          <th className="w-28 p-2 text-left font-medium">
+                            Kolejność
+                          </th>
+                          <th className="w-28 p-2 text-right font-medium">
+                            Akcje
+                          </th>
                         </tr>
-                      );
-                    }
+                      </thead>
+                      <tbody>
+                        {groupRows.map((r, index) => {
+                          const isDragging =
+                            dragging &&
+                            dragging.group === groupKey &&
+                            dragging.id === r.id;
 
-                    return groupedRows.map((section) => (
-                      <Fragment key={section.group.value}>
-                        {/* mały nagłówek grupy */}
-                        <tr className="bg-stone-50/80 dark:bg-neutral-900/70">
-                          <td
-                            colSpan={8}
-                            className="p-2 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-neutral-400"
-                          >
-                            {section.group.label}
-                          </td>
-                        </tr>
-
-                        {section.items.map((r) => {
-                          rowIndex += 1;
-                          const isDragging = draggingId === r.id;
                           return (
                             <tr
                               key={r.id}
                               draggable
-                              onDragStart={() => handleDragStart(r.id)}
+                              onDragStart={() =>
+                                handleDragStart(groupKey, r.id)
+                              }
                               onDragEnd={handleDragEnd}
                               onDragOver={(e) => e.preventDefault()}
-                              onDrop={() => handleDrop(r.id)}
+                              onDrop={() => handleDrop(groupKey, r.id)}
                               className={`border-t border-gray-200 align-middle hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
-                                isDragging ? "opacity-60 ring-1 ring-indigo-500" : ""
+                                isDragging
+                                  ? "opacity-60 ring-1 ring-indigo-500"
+                                  : ""
                               }`}
                             >
-                              <td className="p-2 text-xs text-dark">
-                                {rowIndex}
+                              <td className="p-2 text-xs text-dark dark:text-neutral-300">
+                                {index + 1}
                               </td>
 
-                              {/* Grupa */}
+                              {/* Grupa (select – może przerzucić kategorię do innej sekcji) */}
                               <td className="p-2">
                                 <select
                                   className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-neutral-700 dark:bg-neutral-950"
@@ -599,7 +595,7 @@ export default function RatingsSettingsPage() {
                                       enabled: !r.enabled,
                                     })
                                   }
-                                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs transition hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-stone-50 px-2 py-1 text-xs transition hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
                                   title={
                                     r.enabled
                                       ? "Ukryj kategorię w formularzu oceny"
@@ -620,14 +616,20 @@ export default function RatingsSettingsPage() {
                                 <div className="flex items-center gap-1">
                                   <button
                                     className="rounded-md border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                                    onClick={() => moveAspect(r.id, -1)}
+                                    onClick={() =>
+                                      moveAspect(groupKey, r.id, -1)
+                                    }
+                                    disabled={index === 0}
                                     title="Przenieś w górę"
                                   >
                                     <ArrowUp className="h-3.5 w-3.5" />
                                   </button>
                                   <button
                                     className="rounded-md border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                                    onClick={() => moveAspect(r.id, 1)}
+                                    onClick={() =>
+                                      moveAspect(groupKey, r.id, 1)
+                                    }
+                                    disabled={index === groupRows.length - 1}
                                     title="Przenieś w dół"
                                   >
                                     <ArrowDown className="h-3.5 w-3.5" />
@@ -640,7 +642,7 @@ export default function RatingsSettingsPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 border-gray-300 text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:hover:bg-red-900/20"
+                                  className="h-8 border-gray-300 text-xs text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:hover:bg-red-900/20"
                                   onClick={() => removeAspect(r.id)}
                                   title="Usuń kategorię"
                                 >
@@ -650,15 +652,76 @@ export default function RatingsSettingsPage() {
                             </tr>
                           );
                         })}
-                      </Fragment>
-                    ));
-                  })()}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </InterfaceSection>
+            );
+          })}
+        </div>
       )}
     </div>
+  );
+}
+
+/* ======================= Interface section (accordion) ======================= */
+
+function InterfaceSection({
+  icon,
+  title,
+  description,
+  badge,
+  defaultOpen = true,
+  children,
+}: {
+  icon?: ReactNode;
+  title: string;
+  description?: ReactNode;
+  badge?: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <Card className="overflow-hidden border-gray-200 shadow-sm dark:border-neutral-800">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 bg-stone-50/70 px-4 py-3 text-left hover:bg-stone-100/80 dark:bg-neutral-950/70 dark:hover:bg-neutral-900/80"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          {icon && (
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-dark ring-1 ring-gray-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+              {icon}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-dark dark:text-neutral-50">
+              {title}
+            </div>
+            {description && (
+              <div className="mt-0.5 text-[11px] text-dark/70 dark:text-neutral-400">
+                {description}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {badge}
+          <ChevronDown
+            className={`h-4 w-4 text-dark/70 transition-transform dark:text-neutral-300 ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-gray-200 bg-white px-4 py-3 text-sm dark:border-neutral-800 dark:bg-neutral-950">
+          {children}
+        </div>
+      )}
+    </Card>
   );
 }

@@ -22,8 +22,6 @@ import {
   Search,
   ArrowLeft,
   X,
-  ChevronLeft,
-  ChevronRight,
   Columns3,
   EllipsisVertical,
   Users,
@@ -88,7 +86,7 @@ function MobileSheet({
       <div
         role="dialog"
         aria-modal="true"
-        className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-md-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+        className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-3 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-2 flex items-center justify-between">
@@ -442,11 +440,11 @@ export default function MyPlayersFeature({
         !q
           ? true
           : r.name.toLowerCase().includes(q.toLowerCase()) ||
-            r.club.toLowerCase().includes(q.toLowerCase())
+            (r.club || "").toLowerCase().includes(q.toLowerCase())
       )
       .filter((r) => pos[toPosGroup(r.pos)])
       .filter((r) =>
-        club ? r.club.toLowerCase().includes(club.toLowerCase()) : true
+        club ? (r.club || "").toLowerCase().includes(club.toLowerCase()) : true
       )
       .filter((r) => (ageMin === "" ? true : r.age >= Number(ageMin)))
       .filter((r) => (ageMax === "" ? true : r.age <= Number(ageMax)));
@@ -871,8 +869,7 @@ export default function MyPlayersFeature({
   /* ====== scope-aware selection state (used by pill) ====== */
   const anyActiveSelected = useMemo(() => {
     return ownedPlayers.some(
-      (p) =>
-        selected.has(p.id) && (p.status ?? "active") === "active"
+      (p) => selected.has(p.id) && (p.status ?? "active") === "active"
     );
   }, [ownedPlayers, selected]);
 
@@ -944,14 +941,14 @@ export default function MyPlayersFeature({
         {/* TOOLBAR */}
         <Toolbar
           title={
-            <div className="flex items-start gap-3 w-full min-h-9">
+            <div className="flex w-full min-h-9 items-start gap-3">
               {/* Left: Title */}
-              <span className="font-semibold text-xl md:text-2xl shrink-0 leading-none h-9 flex items-center">
+              <span className="flex h-9 shrink-0 items-center text-xl font-semibold leading-none md:text-2xl">
                 Baza zawodników
               </span>
 
               {/* Right: tabs block (desktop) */}
-              <div className="hidden md:block shrink-0">
+              <div className="hidden shrink-0 md:block">
                 <Tabs
                   className="items-center"
                   value={knownScope}
@@ -963,7 +960,7 @@ export default function MyPlayersFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Wszyscy</span>
-                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
+                      <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
                         {tabCounts.all}
                       </span>
                     </TabsTrigger>
@@ -972,7 +969,7 @@ export default function MyPlayersFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Znani</span>
-                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
+                      <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
                         {tabCounts.known}
                       </span>
                     </TabsTrigger>
@@ -981,7 +978,7 @@ export default function MyPlayersFeature({
                       className="flex items-center gap-2"
                     >
                       <span>Nieznani</span>
-                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
+                      <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
                         {tabCounts.unknown}
                       </span>
                     </TabsTrigger>
@@ -993,8 +990,8 @@ export default function MyPlayersFeature({
               </div>
 
               {/* Center: Active filter chips (desktop) */}
-              <div className="hidden md:flex flex-1 items-start justify-center h-9">
-                <div className="flex items-center gap-1 h-9">
+              <div className="hidden h-9 flex-1 items-start justify-center md:flex">
+                <div className="flex h-9 items-center gap-1">
                   {inlineChips.map((c) => (
                     <Chip key={c.key} label={c.label} onClear={c.clear} />
                   ))}
@@ -1069,12 +1066,12 @@ export default function MyPlayersFeature({
             </div>
           }
           right={
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between min-h-9">
+            <div className="flex min-h-9 flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between">
               <div />
 
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
                 {/* Search */}
-                <div className="relative order-1 w-full min-w-0 sm:order-none sm:w-64 h-9">
+                <div className="relative order-1 h-9 w-full min-w-0 sm:order-none sm:w-64">
                   <Search
                     className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
                     aria-hidden="true"
@@ -1094,10 +1091,7 @@ export default function MyPlayersFeature({
 
                 {/* Filtry */}
                 <div className="relative inline-flex">
-                  <span
-                    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 
-               dark:bg-neutral-950 dark:text-neutral-300"
-                  >
+                  <span className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 dark:bg-neutral-950 dark:text-neutral-300">
                     Filtry
                   </span>
 
@@ -1129,9 +1123,9 @@ export default function MyPlayersFeature({
                   type="button"
                   title="Skrót: N"
                   onClick={() => router.push("/players/new")}
-                  className={`${controlH} h-9 w-9 primary inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
+                  className={`${controlH} primary inline-flex h-9 w-9 items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
                 >
-                  <AddPlayerIcon className="mr-0  h-4 w-4" />
+                  <AddPlayerIcon className="mr-0 h-4 w-4" />
                 </Button>
 
                 {/* Więcej */}
@@ -1151,7 +1145,7 @@ export default function MyPlayersFeature({
                     }
                   }}
                   variant="outline"
-                  className={`${controlH} h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 ml-auto sm:ml-0`}
+                  className={`${controlH} ml-auto h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 sm:ml-0`}
                 >
                   <EllipsisVertical className="h-5 w-5" />
                 </Button>
@@ -1163,35 +1157,35 @@ export default function MyPlayersFeature({
         {/* Tabs for mobile */}
         <div className="mt-2 md:hidden">
           <Tabs
-            className="items-center w-full"
+            className="w-full items-center"
             value={knownScope}
             onValueChange={(v) => changeKnownScope(v as KnownScope)}
           >
-            <TabsList className="w-full flex">
+            <TabsList className="flex w-full">
               <TabsTrigger
                 value="all"
-                className="flex-1 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2"
               >
                 <span>Wszyscy</span>
-                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
+                <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
                   {tabCounts.all}
                 </span>
               </TabsTrigger>
               <TabsTrigger
                 value="known"
-                className="flex-1 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2"
               >
                 <span>Znani</span>
-                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
+                <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
                   {tabCounts.known}
                 </span>
               </TabsTrigger>
               <TabsTrigger
                 value="unknown"
-                className="flex-1 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2"
               >
                 <span>Nieznani</span>
-                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
+                <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
                   {tabCounts.unknown}
                 </span>
               </TabsTrigger>
@@ -1309,11 +1303,15 @@ export default function MyPlayersFeature({
                     </Label>
                     <Input
                       type="number"
+                      min={0}
                       value={ageMin}
                       onChange={(e) => {
-                        setAgeMin(
-                          e.target.value === "" ? "" : Number(e.target.value)
-                        );
+                        const v = e.target.value;
+                        const n =
+                          v === ""
+                            ? ""
+                            : Math.max(0, Number.isNaN(Number(v)) ? 0 : Number(v));
+                        setAgeMin(n as any);
                         setPage(1);
                       }}
                       className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
@@ -1325,11 +1323,15 @@ export default function MyPlayersFeature({
                     </Label>
                     <Input
                       type="number"
+                      min={0}
                       value={ageMax}
                       onChange={(e) => {
-                        setAgeMax(
-                          e.target.value === "" ? "" : Number(e.target.value)
-                        );
+                        const v = e.target.value;
+                        const n =
+                          v === ""
+                            ? ""
+                            : Math.max(0, Number.isNaN(Number(v)) ? 0 : Number(v));
+                        setAgeMax(n as any);
                         setPage(1);
                       }}
                       className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
@@ -1508,11 +1510,15 @@ export default function MyPlayersFeature({
                   <Label className="text-xs">Wiek min</Label>
                   <Input
                     type="number"
+                    min={0}
                     value={ageMin}
                     onChange={(e) => {
-                      setAgeMin(
-                        e.target.value === "" ? "" : Number(e.target.value)
-                      );
+                      const v = e.target.value;
+                      const n =
+                        v === ""
+                          ? ""
+                          : Math.max(0, Number.isNaN(Number(v)) ? 0 : Number(v));
+                      setAgeMin(n as any);
                       setPage(1);
                     }}
                     className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
@@ -1522,11 +1528,15 @@ export default function MyPlayersFeature({
                   <Label className="text-xs">Wiek max</Label>
                   <Input
                     type="number"
+                    min={0}
                     value={ageMax}
                     onChange={(e) => {
-                      setAgeMax(
-                        e.target.value === "" ? "" : Number(e.target.value)
-                      );
+                      const v = e.target.value;
+                      const n =
+                        v === ""
+                          ? ""
+                          : Math.max(0, Number.isNaN(Number(v)) ? 0 : Number(v));
+                      setAgeMax(n as any);
                       setPage(1);
                     }}
                     className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
@@ -1662,7 +1672,7 @@ export default function MyPlayersFeature({
                   return (
                     <label
                       key={key}
-                      className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      className="flex cursor-pointer items-center justify_between px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
                       <span className="text-gray-800 dark:text-neutral-100">
                         {COL_LABELS[key]}
@@ -1687,7 +1697,7 @@ export default function MyPlayersFeature({
         {/* Floating selection pill */}
         {content === "table" && selected.size > 0 && (
           <Portal>
-            <div className="fixed left-1/2 bottom-4 z-[240] -translate-x-1/2">
+            <div className="fixed bottom-4 left-1/2 z-[240] -translate-x-1/2">
               <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
                 <button
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
@@ -1702,7 +1712,7 @@ export default function MyPlayersFeature({
                   {selected.size}
                 </span>
 
-                <span className="hidden sm:inline text-sm text-gray-800 dark:text-neutral-100">
+                <span className="hidden text-sm text-gray-800 dark:text-neutral-100 sm:inline">
                   zaznaczone
                 </span>
 
@@ -1876,9 +1886,9 @@ function PlayersTable({
   wrapRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const allChecked =
-    pageSliceCount > 0 && rows.every((r) => selected.has(r.id));
+    pageSliceCount > 0 && rows.every((r) => selected.has(r.id as number));
   const someChecked =
-    !allChecked && rows.some((r) => selected.has(r.id));
+    !allChecked && rows.some((r) => selected.has(r.id as number));
 
   // per-row confirmation for trash
   const [confirmTrashId, setConfirmTrashId] = useState<number | null>(null);
@@ -1933,7 +1943,7 @@ function PlayersTable({
   const KnownBadge = ({ known }: { known: boolean }) => {
     if (known) return null; // znany → no badge
     return (
-      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+      <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
         nieznany
       </span>
     );
@@ -1959,7 +1969,7 @@ function PlayersTable({
               ></th>
             )}
             {visibleCols.select && (
-              <th className={`${cellPad} text-left font-medium w-10`}>
+              <th className={`${cellPad} w-10 text-left font-medium`}>
                 <Checkbox
                   checked={
                     rows.length === 0
@@ -1973,11 +1983,11 @@ function PlayersTable({
                   onCheckedChange={(v) => {
                     if (v)
                       setSelected(
-                        new Set([...selected, ...rows.map((f) => f.id)])
+                        new Set([...selected, ...rows.map((f) => f.id as number)])
                       );
                     else {
                       const set = new Set(selected);
-                      rows.forEach((r) => set.delete(r.id));
+                      rows.forEach((r) => set.delete(r.id as number));
                       setSelected(set);
                     }
                   }}
@@ -2001,7 +2011,7 @@ function PlayersTable({
               </th>
             )}
             {visibleCols.age && (
-              <th className={`${cellPad} text-left`}>
+              <th className={`${cellPad} text_left`}>
                 <SortHeader k="age">Wiek</SortHeader>
               </th>
             )}
@@ -2023,13 +2033,13 @@ function PlayersTable({
         <tbody>
           {rows.map((r) => {
             const jersey = getJerseyNo(r.name);
-            const isConfirmingTrash = confirmTrashId === r.id;
+            const isConfirmingTrash = confirmTrashId === (r.id as number);
 
             return (
               <tr
                 key={r.id}
                 className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
-                onDoubleClick={() => onOpen(r.id)}
+                onDoubleClick={() => onOpen(r.id as number)}
               >
                 {visibleCols.photo && (
                   <td className={`${cellPad} w-px whitespace-nowrap`}>
@@ -2039,7 +2049,7 @@ function PlayersTable({
                           <img
                             src={r.photo}
                             alt={r.name}
-                            className="h-9  rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
+                            className="h-9 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
                             loading="lazy"
                           />
                         ) : (
@@ -2068,11 +2078,11 @@ function PlayersTable({
                 {visibleCols.select && (
                   <td className={cellPad}>
                     <Checkbox
-                      checked={selected.has(r.id)}
+                      checked={selected.has(r.id as number)}
                       onCheckedChange={(v) => {
                         const copy = new Set(selected);
-                        if (v) copy.add(r.id);
-                        else copy.delete(r.id);
+                        if (v) copy.add(r.id as number);
+                        else copy.delete(r.id as number);
                         setSelected(copy);
                       }}
                       aria-label={`Zaznacz ${r.name}`}
@@ -2127,7 +2137,7 @@ function PlayersTable({
                           }}
                         />
                       </div>
-                      <span className="text-[11px] font-medium text-gray-700 dark:text-neutral-300 tabular-nums">
+                      <span className="tabular-nums text-[11px] font-medium text-gray-700 dark:text-neutral-300">
                         {r._progress}%
                       </span>
                     </div>
@@ -2152,7 +2162,7 @@ function PlayersTable({
                             className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onOpen(r.id);
+                              onOpen(r.id as number);
                             }}
                             aria-label={r._known ? "Edytuj" : "Uzupełnij dane"}
                           >
@@ -2176,7 +2186,7 @@ function PlayersTable({
                               className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onTrash(r.id);
+                                onTrash(r.id as number);
                                 setConfirmTrashId(null);
                               }}
                             >
@@ -2203,7 +2213,7 @@ function PlayersTable({
                                 className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setConfirmTrashId(r.id);
+                                  setConfirmTrashId(r.id as number);
                                 }}
                                 aria-label="Przenieś do kosza"
                               >
@@ -2222,7 +2232,7 @@ function PlayersTable({
                               className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onRestore(r.id);
+                                onRestore(r.id as number);
                               }}
                               aria-label="Przywróć"
                             >
@@ -2410,7 +2420,7 @@ function QuickObservation({
             className="border-gray-300 dark:border-neutral-700"
             onClick={onBack}
           >
-            <ArrowLeft className="mr-0 md:mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-0 h-4 w-4 md:mr-2" />
             Wróć
           </Button>
         </div>
@@ -2427,14 +2437,14 @@ function QuickObservation({
               value="new"
               className="h-9 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
-              <PlusSquare className="mr-0 md:mr-2 h-4 w-4" />
+              <PlusSquare className="mr-0 h-4 w-4 md:mr-2" />
               Nowa
             </TabsTrigger>
             <TabsTrigger
               value="existing"
               className="h-9 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
-              <Download className="mr-0 md:mr-2 h-4 w-4" />
+              <Download className="mr-0 h-4 w-4 md:mr-2" />
               Istniejąca
             </TabsTrigger>
           </TabsList>
@@ -2475,7 +2485,7 @@ function QuickObservation({
                     className="mt-1"
                   />
                 </div>
-                <div className="sm:hidden text-center text-sm text-dark">
+                <div className="text-center text-sm text-dark sm:hidden">
                   vs
                 </div>
               </div>
@@ -2506,7 +2516,9 @@ function QuickObservation({
                 <span className="font-medium">
                   {qaMatch || "—"}
                 </span>
-                <span className="ml-2">{chip(qaMode === "tv" ? "TV" : "Live")}</span>
+                <span className="ml-2">
+                  {chip(qaMode === "tv" ? "TV" : "Live")}
+                </span>
               </div>
             </div>
 
@@ -2557,9 +2569,9 @@ function QuickObservation({
               </div>
             </div>
 
-            <div className="sticky bottom-0 mt-1 -mx-4 border-t border-gray-200 bg-white/90 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
+            <div className="sticky bottom-0 -mx-4 mt-1 border-t border-gray-200 bg-white/90 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
               <div className="flex items-center justify-end gap-2">
-                <div className="mr-auto hidden text-[11px] text-dark sm:block dark:text-neutral-400">
+                <div className="mr-auto hidden text-[11px] text-dark dark:text-neutral-400 sm:block">
                   Skróty: <span className="font-medium">Enter</span> — Zapisz,{" "}
                   <span className="font-medium">Esc</span> — Wróć
                 </div>
@@ -2635,14 +2647,14 @@ function QuickObservation({
                           ? "bg-blue-50/60 dark:bg-blue-900/20"
                           : ""
                       }`}
-                      onClick={() => setObsSelectedId(o.id)}
+                      onClick={() => setObsSelectedId(o.id as number)}
                     >
                       <td className="w-px whitespace-nowrap p-2">
                         <input
                           type="radio"
                           name="obsPick"
                           checked={obsSelectedId === o.id}
-                          onChange={() => setObsSelectedId(o.id)}
+                          onChange={() => setObsSelectedId(o.id as number)}
                         />
                       </td>
                       <td className="w-px whitespace-nowrap p-2">
@@ -2701,7 +2713,7 @@ function QuickObservation({
                 className="border-gray-300 dark:border-neutral-700"
                 onClick={onBack}
               >
-                <ArrowLeft className="mr-0 md:mr-2 h-4 w-4" />
+                <ArrowLeft className="mr-0 h-4 w-4 md:mr-2" />
                 Wróć
               </Button>
               <div className="flex items-center gap-2">

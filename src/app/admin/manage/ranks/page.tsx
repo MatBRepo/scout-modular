@@ -3,20 +3,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getSupabase } from "@/lib/supabaseClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  ArrowLeft,
-  Info,
   Loader2,
   Save,
   Sparkles,
   TriangleAlert,
   Plus,
   Minus,
+  Info,
 } from "lucide-react";
-import Link from "next/link";
 
 type RankKey = "bronze" | "silver" | "gold" | "platinum";
 
@@ -93,6 +91,10 @@ function calcRankFromThresholds(
   if (score >= thresholds.silver) return "silver";
   return "bronze";
 }
+
+/* shared layout tokens – spójne z Observations table */
+const cellPad = "p-1";
+const rowH = "h-10";
 
 export default function RankSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -186,9 +188,10 @@ export default function RankSettingsPage() {
   /* ============================= Handlers ============================= */
 
   const handleChange = (rank: RankKey, value: number) => {
+    const safe = Number.isNaN(value) ? 0 : Math.max(0, value);
     setThresholds((prev) => ({
       ...prev,
-      [rank]: Number.isNaN(value) ? 0 : value,
+      [rank]: safe,
     }));
     setError(null);
     setSuccess(null);
@@ -257,21 +260,19 @@ export default function RankSettingsPage() {
   /* ============================= Render ============================= */
 
   return (
-    <div className="flex h-full flex-col">
-      {/* zamiast Toolbar – zwykły header */}
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Poziomy scouta
-            </h1>
-            <p className="mt-1 text-sm text-dark dark:text-neutral-300">
-              Ustal, od ilu punktów użytkownik otrzymuje Bronze / Silver / Gold
-              / Platinum.
-            </p>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Poziomy scouta
+          </h1>
+          <p className="mt-1 text-sm text-dark dark:text-neutral-300">
+            Ustal, od ilu punktów użytkownik otrzymuje Bronze / Silver / Gold /
+            Platinum.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             variant="outline"
@@ -303,97 +304,139 @@ export default function RankSettingsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[minmax(0,2.2fr),minmax(0,1.1fr)]">
-        {/* Main configuration card */}
-        <Card className="border-stone-200 dark:border-neutral-800">
-          <CardHeader className="pb-3 space-y-3">
-            <CardTitle className="flex items-center justify-between text-md font-semibold">
-              <span>Konfiguracja poziomów</span>
-              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600 dark:bg-neutral-800 dark:text-neutral-300">
-                Bronze / Silver / Gold / Platinum:{" "}
-                <span className="font-semibold text-stone-900 dark:text-neutral-50">
-                  {thresholdsSummary}
-                </span>
-              </span>
-            </CardTitle>
-
-           
-
-            {/* Presety */}
-            <div className="flex flex-wrap items-center gap-2 text-[11px]">
-              <span className="text-muted-foreground">Presety skali:</span>
-              <div className="flex flex-wrap gap-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-6 rounded-md px-2 text-[11px]"
-                  onClick={() => applyPreset("light")}
-                  disabled={saving}
-                >
-                  Light
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-6 rounded-md px-2 text-[11px]"
-                  onClick={() => applyPreset("standard")}
-                  disabled={saving}
-                >
-                  Standard
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-6 rounded-md px-2 text-[11px]"
-                  onClick={() => applyPreset("intensive")}
-                  disabled={saving}
-                >
-                  Intensive
-                </Button>
-              </div>
+      <div className="grid gap-4 md:grid-cols-[minmax(0,2.1fr),minmax(0,1.1fr)]">
+        {/* LEFT: tabela progów – styl jak Observations table */}
+        <div className="space-y-3">
+          {/* Summary + presets */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs text-muted-foreground">
+              Ustaw minimalny wynik punktowy, od którego użytkownik otrzymuje
+              dany poziom.
             </div>
-          </CardHeader>
+            <span className="rounded-md bg-white px-2 py-0.5 text-[11px] text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
+              Bronze / Silver / Gold / Platinum:{" "}
+              <span className="font-semibold text-stone-900 dark:text-neutral-50">
+                {thresholdsSummary}
+              </span>
+            </span>
+          </div>
 
-          <CardContent className="space-y-4">
-            {loading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Ładowanie aktualnych progów…
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {ORDER.map((rankKey) => {
-                  const value = thresholds[rankKey] ?? 0;
-                  return (
-                    <div
-                      key={rankKey}
-                      className="flex flex-col gap-3 rounded-md border border-stone-200 bg-white/70 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/60"
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="text-muted-foreground">Presety skali:</span>
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 rounded-md px-2 text-[11px]"
+                onClick={() => applyPreset("light")}
+                disabled={saving}
+              >
+                Light
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="h-6 rounded-md px-2 text-[11px]"
+                onClick={() => applyPreset("standard")}
+                disabled={saving}
+              >
+                Standard
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 rounded-md px-2 text-[11px]"
+                onClick={() => applyPreset("intensive")}
+                disabled={saving}
+              >
+                Intensive
+              </Button>
+            </div>
+          </div>
+
+          {/* TABLE CARD */}
+          <div
+            className="
+              mt-1 w-full overflow-x-auto rounded-md border border-gray-200 bg-white p-0 shadow-sm
+              dark:border-neutral-700 dark:bg-neutral-950
+            "
+          >
+            <table className="w-full text-sm">
+              <thead className="bg-stone-100 text-gray-600 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:text-neutral-300">
+                <tr>
+                  <th className={`${cellPad} text-left font-medium`}>
+                    Poziom
+                  </th>
+                  <th className={`${cellPad} hidden text-left font-medium sm:table-cell`}>
+                    Opis
+                  </th>
+                  <th className={`${cellPad} text-right font-medium`}>
+                    Minimalny wynik
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className={`${cellPad} ${rowH} text-center text-sm text-muted-foreground`}
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${rankBadgeClass[rankKey]}`}
-                          >
-                            {rankLabelMap[rankKey]}
-                          </span>
+                      <div className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Ładowanie aktualnych progów…
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  ORDER.map((rankKey, idx) => {
+                    const value = thresholds[rankKey] ?? 0;
+                    return (
+                      <tr
+                        key={rankKey}
+                        className={`group border-t transition-colors duration-150 ${rowH}
+                          ${
+                            idx % 2 === 1
+                              ? "bg-stone-100/40 dark:bg-neutral-900/30"
+                              : "bg-transparent"
+                          }
+                          border-gray-200 hover:bg-stone-100/70 dark:border-neutral-800 dark:hover:bg-neutral-900/60`}
+                      >
+                        {/* Poziom */}
+                        <td className={`${cellPad} align-center`}>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${rankBadgeClass[rankKey]}`}
+                            >
+                              {rankLabelMap[rankKey]}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Opis – ukryty na bardzo małych ekranach */}
+                        <td
+                          className={`${cellPad} hidden align-center sm:table-cell`}
+                        >
                           <span className="text-[11px] text-muted-foreground">
                             {rankDescriptionMap[rankKey]}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-muted-foreground">
-                            Minimalny wynik
-                          </span>
-                          <div className="flex items-center gap-1.5">
+                        </td>
+
+                        {/* Minimalny wynik + przyciski +/- */}
+                        <td
+                          className={`${cellPad} align-center text-right`}
+                        >
+                          <div className="inline-flex items-center gap-1.5">
                             <Button
                               type="button"
                               size="icon"
                               variant="outline"
-                              className="h-7 w-7"
+                              className="h-7 w-7 border-gray-300 dark:border-neutral-700"
                               onClick={() => adjustValue(rankKey, -5)}
                               disabled={saving}
+                              aria-label={`Zmniejsz próg ${rankLabelMap[rankKey]}`}
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
@@ -403,123 +446,145 @@ export default function RankSettingsPage() {
                               min={0}
                               value={value}
                               onChange={(e) =>
-                                handleChange(
-                                  rankKey,
-                                  Number(e.target.value)
-                                )
+                                handleChange(rankKey, Number(e.target.value))
                               }
-                              className="h-7 w-20 text-center text-xs"
+                              className="h-7 w-20 border-gray-300 text-center text-xs dark:border-neutral-700"
+                              inputMode="numeric"
                             />
                             <Button
                               type="button"
                               size="icon"
                               variant="outline"
-                              className="h-7 w-7"
+                              className="h-7 w-7 border-gray-300 dark:border-neutral-700"
                               onClick={() => adjustValue(rankKey, +5)}
                               disabled={saving}
+                              aria-label={`Zwiększ próg ${rankLabelMap[rankKey]}`}
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
-            {validationMessage && (
-              <div className="!mt-1 inline-flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
-                <TriangleAlert className="mt-[1px] h-3.5 w-3.5 shrink-0" />
-                <span>{validationMessage}</span>
-              </div>
-            )}
-
-            {error && (
-              <div className="mt-1 inline-flex items-start gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-900 dark:border-red-900 dark:bg-red-950/60 dark:text-red-200">
-                <TriangleAlert className="mt-[1px] h-3.5 w-3.5 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {success && (
-              <div className="mt-1 inline-flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200">
-                <Sparkles className="mt-[1px] h-3.5 w-3.5 shrink-0" />
-                <span>{success}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Right column – szybka ściąga + preview */}
-        <Card className="border-stone-200 bg-stone-100/70 dark:border-neutral-800 dark:bg-neutral-900/40  pt-6">
-          <CardContent className="space-y-3 text-xs text-muted-foreground">
-            <div>
-              <p className="mb-1 font-medium text-foreground">
-                Co liczymy do wyniku?
-              </p>
-              <ul className="list-disc space-y-1 pl-4">
-                <li>
-                  Zawodnicy: tylko rekordy w{" "}
-                  <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
-                    players
-                  </code>{" "}
-                  ze statusem{" "}
-                  <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
-                    active
-                  </code>
-                  .
-                </li>
-                <li>
-                  Obserwacje: tylko rekordy w{" "}
-                  <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
-                    observations
-                  </code>{" "}
-                  ze statusem{" "}
-                  <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
-                    final
-                  </code>
-                  .
-                </li>
-              </ul>
+          {/* Messages under table */}
+          {validationMessage && (
+            <div className="!mt-1 inline-flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+              <TriangleAlert className="mt-[1px] h-3.5 w-3.5 shrink-0" />
+              <span>{validationMessage}</span>
             </div>
+          )}
 
-            <div className="rounded-md bg-white/70 p-2.5 text-[11px] ring-1 ring-stone-200 dark:bg-neutral-950/60 dark:ring-neutral-800">
-              <p className="font-medium text-foreground">
-                Przykład (podgląd poziomu)
-              </p>
-              <p className="mt-1">
-                Załóżmy:{" "}
-                <strong>{samplePlayers} aktywnych zawodników</strong> i{" "}
-                <strong>{sampleObs} obserwacji (final)</strong>.
-              </p>
-              <p className="mt-1">
-                <code className="rounded bg-black/5 px-1.5 py-0.5 text-[11px] dark:bg-white/10">
-                  wynik = 2 × {samplePlayers} + {sampleObs} = {sampleScore} pkt
-                </code>
-              </p>
-              <p className="mt-1">
-                Przy aktualnych progach taki użytkownik ma poziom{" "}
-                <strong>{rankLabelMap[sampleRank]}</strong>.
-              </p>
+          {error && (
+            <div className="mt-1 inline-flex items-start gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-900 dark:border-red-900 dark:bg-red-950/60 dark:text-red-200">
+              <TriangleAlert className="mt-[1px] h-3.5 w-3.5 shrink-0" />
+              <span>{error}</span>
             </div>
+          )}
 
-            <div>
-              <p className="mb-1 font-medium text-foreground">
-                Krótkie zasady
-              </p>
-              <ul className="list-disc space-y-1 pl-4">
-                <li>Progi powinny rosnąć: Bronze ≤ Silver ≤ Gold ≤ Platinum.</li>
-                <li>Bronze zwykle zostaw na 0 – każdy aktywny użytkownik.</li>
-                <li>
-                  Ustaw Silver/Gold/Platinum pod realną aktywność Twojego
-                  zespołu.
-                </li>
-              </ul>
+          {success && (
+            <div className="mt-1 inline-flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200">
+              <Sparkles className="mt-[1px] h-3.5 w-3.5 shrink-0" />
+              <span>{success}</span>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
+
+        {/* RIGHT: info & preview w prostym cardzie */}
+        <div>
+          <Card className="overflow-hidden border-gray-200 shadow-sm dark:border-neutral-800">
+            <CardContent className="border-gray-200 bg-white px-4 py-3 text-sm dark:border-neutral-800 dark:bg-neutral-950">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-dark ring-1 ring-gray-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+                  <Info className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-dark dark:text-neutral-50">
+                    Jak działa ranking?
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-dark/70 dark:text-neutral-400">
+                    Szybka ściąga logiki punktów i wizualny przykład poziomu
+                    dla przykładowej aktywności.
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-xs text-muted-foreground">
+                <div>
+                  <p className="mb-1 font-medium text-foreground">
+                    Co liczymy do wyniku?
+                  </p>
+                  <ul className="list-disc space-y-1 pl-4">
+                    <li>
+                      Zawodnicy: tylko rekordy w{" "}
+                      <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
+                        players
+                      </code>{" "}
+                      ze statusem{" "}
+                      <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
+                        active
+                      </code>
+                      .
+                    </li>
+                    <li>
+                      Obserwacje: tylko rekordy w{" "}
+                      <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
+                        observations
+                      </code>{" "}
+                      ze statusem{" "}
+                      <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
+                        final
+                      </code>
+                      .
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="rounded-md bg-white/80 p-2.5 text-[11px] ring-1 ring-stone-200 dark:bg-neutral-950/70 dark:ring-neutral-800">
+                  <p className="font-medium text-foreground">
+                    Przykład (podgląd poziomu)
+                  </p>
+                  <p className="mt-1">
+                    Załóżmy:{" "}
+                    <strong>{samplePlayers} aktywnych zawodników</strong> i{" "}
+                    <strong>{sampleObs} obserwacji (final)</strong>.
+                  </p>
+                  <p className="mt-1">
+                    <code className="rounded bg-black/5 px-1.5 py-0.5 text-[11px] dark:bg-white/10">
+                      wynik = 2 × {samplePlayers} + {sampleObs} = {sampleScore}{" "}
+                      pkt
+                    </code>
+                  </p>
+                  <p className="mt-1">
+                    Przy aktualnych progach taki użytkownik ma poziom{" "}
+                    <strong>{rankLabelMap[sampleRank]}</strong>.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1 font-medium text-foreground">
+                    Krótkie zasady
+                  </p>
+                  <ul className="list-disc space-y-1 pl-4">
+                    <li>
+                      Progi powinny rosnąć: Bronze ≤ Silver ≤ Gold ≤ Platinum.
+                    </li>
+                    <li>Bronze zwykle zostaw na 0 – każdy aktywny użytkownik.</li>
+                    <li>
+                      Ustaw Silver/Gold/Platinum pod realną aktywność Twojego
+                      zespołu.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

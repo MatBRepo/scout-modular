@@ -1,15 +1,14 @@
 // src/app/settings/metrics/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { getSupabase } from "@/lib/supabaseClient";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import {
   ChevronDown,
-  ChevronRight,
   Plus,
   ArrowUp,
   ArrowDown,
@@ -114,7 +113,8 @@ const DEFAULT_METRICS: DefaultMetric[] = [
   {
     group_key: "GK",
     key: "gk_build_up",
-    label: "Gra nogami & budowanie — decyzje w krótkiej budowie, długie wznowienia.",
+    label:
+      "Gra nogami & budowanie — decyzje w krótkiej budowie, długie wznowienia.",
     sort_order: 3,
   },
 
@@ -134,13 +134,15 @@ const DEFAULT_METRICS: DefaultMetric[] = [
   {
     group_key: "DEF",
     key: "def_build_up_press",
-    label: "Wyprowadzenie pod pressingiem — odwaga, łamanie linii, diagonale.",
+    label:
+      "Wyprowadzenie pod pressingiem — odwaga, łamanie linii, diagonale.",
     sort_order: 3,
   },
   {
     group_key: "DEF",
     key: "def_crossing_runs",
-    label: "Dośrodkowanie & wejścia (FB/WB) — jakość i wybór strefy.",
+    label:
+      "Dośrodkowanie & wejścia (FB/WB) — jakość i wybór strefy.",
     sort_order: 4,
   },
 
@@ -224,7 +226,7 @@ function InlineCell({
 
   return (
     <input
-      className="h-8 w-full rounded-md border border-transparent px-2 text-sm outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
+      className="h-8 w-full rounded-md border border-transparent bg-white px-2 text-sm outline-none focus:border-indigo-500 dark:bg-neutral-950 dark:focus:border-indigo-400"
       value={local}
       placeholder={placeholder}
       onChange={(e) => setLocal(e.target.value)}
@@ -251,13 +253,6 @@ export default function MetricsSettingsPage() {
     DEF: [],
     MID: [],
     ATT: [],
-  });
-  const [openGroups, setOpenGroups] = useState<Record<MetricGroupKey, boolean>>({
-    BASE: true,
-    GK: false,
-    DEF: false,
-    MID: false,
-    ATT: false,
   });
 
   const [loading, setLoading] = useState(true);
@@ -331,10 +326,6 @@ export default function MetricsSettingsPage() {
   }, []);
 
   /* ---------- Common helpers ---------- */
-
-  function toggleGroupOpen(g: MetricGroupKey) {
-    setOpenGroups((prev) => ({ ...prev, [g]: !prev[g] }));
-  }
 
   function updateLocalMetric(
     group: MetricGroupKey,
@@ -543,10 +534,12 @@ export default function MetricsSettingsPage() {
         idToSort[id] = idx + 1;
       });
 
-      const updatedGroup = prev[group].map((m) => ({
-        ...m,
-        sort_order: idToSort[m.id] ?? m.sort_order,
-      })).sort(sortMetrics);
+      const updatedGroup = prev[group]
+        .map((m) => ({
+          ...m,
+          sort_order: idToSort[m.id] ?? m.sort_order,
+        }))
+        .sort(sortMetrics);
 
       return { ...prev, [group]: updatedGroup };
     });
@@ -573,7 +566,9 @@ export default function MetricsSettingsPage() {
       );
     } catch (e: any) {
       console.error("Error reordering metrics (drag & drop):", e);
-      setError("Nie udało się zmienić kolejności (drag & drop). Odśwież widok.");
+      setError(
+        "Nie udało się zmienić kolejności (drag & drop). Odśwież widok."
+      );
     } finally {
       setSaving(false);
     }
@@ -655,7 +650,11 @@ export default function MetricsSettingsPage() {
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
             Konfiguracja metryk (obserwacje)
           </h1>
-         
+          <p className="mt-1 text-sm text-dark dark:text-neutral-300">
+            Definiuj pola używane w arkuszu obserwacji S4S. Metryki można
+            włączać/wyłączać, edytować i zmieniać ich kolejność (strzałkami
+            lub drag & drop).
+          </p>
         </div>
         <div className="flex flex-col items-end gap-2">
           {saving && (
@@ -663,6 +662,15 @@ export default function MetricsSettingsPage() {
               Zapisywanie zmian…
             </div>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-gray-300 text-xs dark:border-neutral-700"
+            onClick={seedDefaults}
+          >
+            Załaduj domyślne metryki S4S
+          </Button>
         </div>
       </div>
 
@@ -680,220 +688,249 @@ export default function MetricsSettingsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-gray-200 dark:border-neutral-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base font-semibold">
-              Grupy metryk
-            </CardTitle>
-            <div className="text-xs text-dark dark:text-neutral-400">
-              Rozwiń grupę, dodawaj metryki, edytuj je i przeciągaj w obrębie
-              grupy, żeby zmienić kolejność.
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(Object.keys(GROUP_LABEL) as MetricGroupKey[]).map((g) => {
-              const arr = groups[g] || [];
-              const open = openGroups[g];
-              return (
-                <div
-                  key={g}
-                  className="rounded-md border border-gray-200 dark:border-neutral-800"
-                >
-                  <button
-                    onClick={() => toggleGroupOpen(g)}
-                    className="flex w-full items-center justify-between gap-2 rounded-t-md bg-stone-100 px-3 py-2 text-left text-sm font-semibold dark:bg-neutral-900"
-                    aria-expanded={open}
+        <div className="space-y-3">
+          {(Object.keys(GROUP_LABEL) as MetricGroupKey[]).map((g) => {
+            const arr = groups[g] || [];
+            const activeCount = arr.filter((m) => m.enabled).length;
+
+            return (
+              <InterfaceSection
+                key={g}
+                icon={<Ruler className="h-4 w-4" />}
+                title={GROUP_LABEL[g]}
+                description="Dodawaj / edytuj pola, włączaj/wyłączaj i zmieniaj kolejność w obrębie grupy."
+                badge={
+                  <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] text-dark ring-1 ring-gray-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+                    {activeCount}/{arr.length} aktywnych
+                  </span>
+                }
+                defaultOpen={g === "BASE"}
+              >
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    onClick={() => addMetric(g)}
+                    className="bg-gray-900 text-white hover:bg-gray-800"
+                    size="sm"
                   >
-                    <span className="flex items-center gap-2">
-                      {open ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                      {GROUP_LABEL[g]}
-                    </span>
-                    <span className="text-xs text-dark dark:text-neutral-400">
-                      {arr.length} metryk
-                    </span>
-                  </button>
-
-                  {open && (
-                    <div className="p-2">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <Button
-                          onClick={() => addMetric(g)}
-                          className="bg-gray-900 text-white hover:bg-gray-800"
-                          size="sm"
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Dodaj metrykę
-                        </Button>
-                      </div>
-
-                      <div className="w-full overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-                            <tr>
-                              <th className="w-12 p-2 text-left font-medium">
-                                #
-                              </th>
-                              <th className="min-w-[260px] p-2 text-left font-medium">
-                                Etykieta
-                              </th>
-                              <th className="min-w-[160px] p-2 text-left font-medium">
-                                Key
-                              </th>
-                              <th className="w-28 p-2 text-left font-medium">
-                                Widoczna
-                              </th>
-                              <th className="w-28 p-2 text-left font-medium">
-                                Kolejność
-                              </th>
-                              <th className="w-28 p-2 text-right font-medium">
-                                Akcje
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {arr.map((m, index) => {
-                              const isDragging =
-                                dragging &&
-                                dragging.group === g &&
-                                dragging.id === m.id;
-                              return (
-                                <tr
-                                  key={m.id}
-                                  draggable
-                                  onDragStart={() =>
-                                    handleDragStart(g, m.id)
-                                  }
-                                  onDragEnd={handleDragEnd}
-                                  onDragOver={(e) => e.preventDefault()}
-                                  onDrop={() => handleDrop(g, m.id)}
-                                  className={`border-t border-gray-200 align-middle hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
-                                    isDragging
-                                      ? "opacity-60 ring-1 ring-indigo-500"
-                                      : ""
-                                  }`}
-                                >
-                                  <td className="p-2 text-xs text-dark">
-                                    {index + 1}
-                                  </td>
-
-                                  <td className="p-2">
-                                    <InlineCell
-                                      value={m.label}
-                                      onChange={(val) =>
-                                        updateMetric(g, m.id, { label: val })
-                                      }
-                                      placeholder="Etykieta metryki…"
-                                    />
-                                  </td>
-                                  <td className="p-2">
-                                    <InlineCell
-                                      value={m.key}
-                                      onChange={(val) =>
-                                        updateMetric(g, m.id, {
-                                          key: slugKey(val),
-                                        })
-                                      }
-                                      placeholder="krótki-klucz"
-                                    />
-                                  </td>
-
-                                  <td className="p-2">
-                                    <button
-                                      onClick={() =>
-                                        updateMetric(g, m.id, {
-                                          enabled: !m.enabled,
-                                        })
-                                      }
-                                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs transition hover:bg-stone-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                                      title={
-                                        m.enabled
-                                          ? "Wyłącz metrykę"
-                                          : "Włącz metrykę"
-                                      }
-                                    >
-                                      {m.enabled ? (
-                                        <ToggleRight className="h-4 w-4 text-emerald-600" />
-                                      ) : (
-                                        <ToggleLeft className="h-4 w-4 text-gray-400" />
-                                      )}
-                                      {m.enabled ? "Włączona" : "Wyłączona"}
-                                    </button>
-                                  </td>
-
-                                  <td className="p-2">
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        className="rounded-md border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                                        onClick={() =>
-                                          moveMetric(g, m.id, -1)
-                                        }
-                                        disabled={index === 0}
-                                        title="Przenieś w górę"
-                                      >
-                                        <ArrowUp className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        className="rounded-md border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                                        onClick={() =>
-                                          moveMetric(g, m.id, 1)
-                                        }
-                                        disabled={index === arr.length - 1}
-                                        title="Przenieś w dół"
-                                      >
-                                        <ArrowDown className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  </td>
-
-                                  <td className="p-2 text-right">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 border-gray-300 text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:hover:bg-red-900/20"
-                                      onClick={() => removeMetric(g, m.id)}
-                                      title="Usuń metrykę"
-                                    >
-                                      Usuń
-                                    </Button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-
-                            {arr.length === 0 && (
-                              <tr>
-                                <td
-                                  colSpan={6}
-                                  className="p-6 text-center text-sm text-dark dark:text-neutral-400"
-                                >
-                                  Brak metryk w tej grupie — dodaj pierwszą
-                                  metrykę albo użyj{" "}
-                                  <button
-                                    type="button"
-                                    className="underline"
-                                    onClick={seedDefaults}
-                                  >
-                                    domyślnych metryk S4S
-                                  </button>
-                                  .
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
+                    <Plus className="mr-2 h-4 w-4" />
+                    Dodaj metrykę
+                  </Button>
                 </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+
+                <div className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white text-sm dark:border-neutral-800 dark:bg-neutral-950">
+                  <table className="w-full min-w-[620px] text-sm">
+                    <thead className="bg-stone-100 text-[11px] uppercase tracking-wide text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                      <tr>
+                        <th className="w-10 p-2 text-left font-medium">#</th>
+                        <th className="min-w-[260px] p-2 text-left font-medium">
+                          Etykieta
+                        </th>
+                        <th className="min-w-[160px] p-2 text-left font-medium">
+                          Key
+                        </th>
+                        <th className="w-32 p-2 text-left font-medium">
+                          Widoczna
+                        </th>
+                        <th className="w-32 p-2 text-left font-medium">
+                          Kolejność
+                        </th>
+                        <th className="w-28 p-2 text-right font-medium">
+                          Akcje
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {arr.map((m, index) => {
+                        const isDragging =
+                          dragging &&
+                          dragging.group === g &&
+                          dragging.id === m.id;
+                        return (
+                          <tr
+                            key={m.id}
+                            draggable
+                            onDragStart={() => handleDragStart(g, m.id)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={() => handleDrop(g, m.id)}
+                            className={`border-t border-gray-200 align-middle hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
+                              isDragging
+                                ? "opacity-60 ring-1 ring-indigo-500"
+                                : ""
+                            }`}
+                          >
+                            <td className="p-2 text-xs text-dark dark:text-neutral-300">
+                              {index + 1}
+                            </td>
+
+                            <td className="p-2">
+                              <InlineCell
+                                value={m.label}
+                                onChange={(val) =>
+                                  updateMetric(g, m.id, { label: val })
+                                }
+                                placeholder="Etykieta metryki…"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <InlineCell
+                                value={m.key}
+                                onChange={(val) =>
+                                  updateMetric(g, m.id, {
+                                    key: slugKey(val),
+                                  })
+                                }
+                                placeholder="krótki-klucz"
+                              />
+                            </td>
+
+                            <td className="p-2">
+                              <button
+                                onClick={() =>
+                                  updateMetric(g, m.id, {
+                                    enabled: !m.enabled,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-stone-50 px-2 py-1 text-xs transition hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                title={
+                                  m.enabled
+                                    ? "Wyłącz metrykę"
+                                    : "Włącz metrykę"
+                                }
+                              >
+                                {m.enabled ? (
+                                  <ToggleRight className="h-4 w-4 text-emerald-600" />
+                                ) : (
+                                  <ToggleLeft className="h-4 w-4 text-gray-400" />
+                                )}
+                                {m.enabled ? "Włączona" : "Wyłączona"}
+                              </button>
+                            </td>
+
+                            <td className="p-2">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  className="rounded-md border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                  onClick={() => moveMetric(g, m.id, -1)}
+                                  disabled={index === 0}
+                                  title="Przenieś w górę"
+                                >
+                                  <ArrowUp className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  className="rounded-md border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                                  onClick={() => moveMetric(g, m.id, 1)}
+                                  disabled={index === arr.length - 1}
+                                  title="Przenieś w dół"
+                                >
+                                  <ArrowDown className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </td>
+
+                            <td className="p-2 text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 border-gray-300 text-xs text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:hover:bg-red-900/20"
+                                onClick={() => removeMetric(g, m.id)}
+                                title="Usuń metrykę"
+                              >
+                                Usuń
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {arr.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                          >
+                            Brak metryk w tej grupie — dodaj pierwszą
+                            metrykę lub użyj przycisku{" "}
+                            <button
+                              type="button"
+                              className="underline"
+                              onClick={seedDefaults}
+                            >
+                              domyślnych metryk S4S
+                            </button>
+                            .
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </InterfaceSection>
+            );
+          })}
+        </div>
       )}
     </div>
+  );
+}
+
+/* ======================= Interface section (accordion) ======================= */
+
+function InterfaceSection({
+  icon,
+  title,
+  description,
+  badge,
+  defaultOpen = true,
+  children,
+}: {
+  icon?: ReactNode;
+  title: string;
+  description?: ReactNode;
+  badge?: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <Card className="overflow-hidden border-gray-200 shadow-sm dark:border-neutral-800">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 bg-stone-50/70 px-4 py-3 text-left hover:bg-stone-100/80 dark:bg-neutral-950/70 dark:hover:bg-neutral-900/80"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          {icon && (
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-dark ring-1 ring-gray-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+              {icon}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-dark dark:text-neutral-50">
+              {title}
+            </div>
+            {description && (
+              <div className="mt-0.5 text-[11px] text-dark/70 dark:text-neutral-400">
+                {description}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {badge}
+          <ChevronDown
+            className={`h-4 w-4 text-dark/70 transition-transform dark:text-neutral-300 ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-gray-200 bg-white px-4 py-3 text-sm dark:border-neutral-800 dark:bg-neutral-950">
+          {children}
+        </div>
+      )}
+    </Card>
   );
 }

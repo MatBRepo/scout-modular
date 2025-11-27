@@ -6,7 +6,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createPortal } from "react-dom";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,9 +31,6 @@ import {
   ToggleLeft,
   ToggleRight,
   ChevronDown,
-  ChevronRight,
-  ArrowUp,
-  ArrowDown,
 } from "lucide-react";
 import {
   loadMetrics,
@@ -67,7 +65,12 @@ type Account = {
   lastActive?: string; // ISO z profiles.last_active
 };
 
-type InviteChannel = "email" | "whatsapp" | "messenger" | "link" | "system-share";
+type InviteChannel =
+  | "email"
+  | "whatsapp"
+  | "messenger"
+  | "link"
+  | "system-share";
 type InviteStatus = "pending" | "revoked";
 type Invite = {
   id: string; // token = scout_invites.id
@@ -81,7 +84,6 @@ type Invite = {
   url: string; // budowany z tokenu
 };
 
-/* Supabase rows */
 type ProfileRow = {
   id: string;
   full_name: string | null;
@@ -104,6 +106,16 @@ type InviteRow = {
   status: string | null;
 };
 
+type UserStats = {
+  playersTotal: number;
+  playersActive: number;
+  playersTrash: number;
+  observationsTotal: number;
+  observationsDraft: number;
+  observationsOther: number;
+  lastObservationAt?: string | null;
+};
+
 /* -------------------------- Constants --------------------------- */
 const ROLES: Role[] = ["admin", "scout", "scout-agent"];
 const GROUP_LABEL: Record<MetricGroupKey, string> = {
@@ -113,6 +125,8 @@ const GROUP_LABEL: Record<MetricGroupKey, string> = {
   MID: "Pomocnik (6/8/10)",
   ATT: "Napastnik (9/7/11)",
 };
+
+const MODAL_ROOT_ID = "global-modal-root";
 
 /* Helpers – mapping Supabase → UI */
 function mapProfileRow(row: ProfileRow): Account {
@@ -174,7 +188,9 @@ export default function ManagePage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"" | Role>("");
-  const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">("");
+  const [statusFilter, setStatusFilter] = useState<
+    "" | "active" | "inactive"
+  >("");
 
   /* Add user modal */
   const [addOpen, setAddOpen] = useState(false);
@@ -204,7 +220,26 @@ export default function ManagePage() {
 
   const [metricsLoading, setMetricsLoading] = useState(false);
 
+  /* Szczegóły z Supabase dla wybranego usera */
+  const [detailStats, setDetailStats] = useState<UserStats | null>(null);
+  const [loadingDetailStats, setLoadingDetailStats] = useState(false);
+  const [detailStatsError, setDetailStatsError] = useState<string | null>(null);
+
+  /* Usuwanie użytkownika – modal potwierdzenia */
+  const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
+
   /* ---------------------- Metrics from Supabase ------------------ */
+  const [mCfg, setMCfg] = useState<MetricsConfig>(loadMetrics());
+  const [openGroups, setOpenGroups] = useState<
+    Record<MetricGroupKey, boolean>
+  >({
+    BASE: true,
+    GK: false,
+    DEF: false,
+    MID: false,
+    ATT: false,
+  });
+
   useEffect(() => {
     let active = true;
 
@@ -222,6 +257,23 @@ export default function ManagePage() {
     return () => {
       active = false;
     };
+  }, []);
+
+  /* -------------------- Ratings configuration ------------------- */
+  const [rCfg, setRCfg] = useState<RatingsConfig>(loadRatings());
+
+  // keep metrics/ratings in sync with external changes
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "s4s.obs.metrics") {
+        setMCfg(loadMetrics());
+      }
+      if (e.key === "s4s.playerRatings.v1") {
+        setRCfg(loadRatings());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   /* --------------------------- Loaders -------------------------- */
@@ -300,6 +352,97 @@ export default function ManagePage() {
       mounted = false;
     };
   }, []);
+
+  /* ----------------------- User detail stats --------------------- */
+  useEffect(() => {
+    if (!detail) {
+      setDetailStats(null);
+      setDetailStatsError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadStats = async () => {
+      setLoadingDetailStats(true);
+      setDetailStatsError(null);
+
+      try {
+        const supabase = getSupabase();
+
+        const [playersRes, obsRes] = await Promise.all([
+          supabase
+            .from("players")
+            .select("status, created_at")
+            .eq("user_id", detail.id),
+          supabase
+            .from("observations")
+            .select("status, bucket, created_at")
+            .eq("user_id", detail.id),
+        ]);
+
+        if (playersRes.error) throw playersRes.error;
+        if (obsRes.error) throw obsRes.error;
+        if (cancelled) return;
+
+        const players =
+          (playersRes.data as { status: string; created_at?: string }[]) || [];
+        const observations =
+          (obsRes.data as {
+            status: string;
+            bucket: string;
+            created_at?: string;
+          }[]) || [];
+
+        const playersTotal = players.length;
+        const playersActive = players.filter(
+          (p) => p.status === "active"
+        ).length;
+        const playersTrash = players.filter(
+          (p) => p.status === "trash"
+        ).length;
+
+        const observationsTotal = observations.length;
+        const observationsDraft = observations.filter(
+          (o) => o.status === "draft"
+        ).length;
+        const observationsOther = observationsTotal - observationsDraft;
+
+        const lastObservationAt =
+          observations
+            .map((o) => o.created_at)
+            .filter(Boolean)
+            .sort()
+            .at(-1) ?? null;
+
+        setDetailStats({
+          playersTotal,
+          playersActive,
+          playersTrash,
+          observationsTotal,
+          observationsDraft,
+          observationsOther,
+          lastObservationAt,
+        });
+      } catch (e: any) {
+        if (cancelled) return;
+        console.error("Error loading user stats:", e);
+        setDetailStats(null);
+        setDetailStatsError(
+          e?.message ||
+            "Nie udało się pobrać statystyk użytkownika z Supabase."
+        );
+      } finally {
+        if (!cancelled) setLoadingDetailStats(false);
+      }
+    };
+
+    loadStats();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detail]);
 
   /* -------------------------- Persistence ----------------------- */
 
@@ -407,6 +550,29 @@ export default function ManagePage() {
     }
   }
 
+  /* Usuwanie użytkownika */
+  async function onDeleteUser(id: string) {
+    setErrorAccounts(null);
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.from("profiles").delete().eq("id", id);
+      if (error) throw error;
+
+      setAccounts((prev) => prev.filter((a) => a.id !== id));
+      if (detail?.id === id) {
+        setDetail(null);
+        setDetailStats(null);
+      }
+    } catch (e: any) {
+      console.error("Error deleting user:", e);
+      setErrorAccounts(
+        e?.message || "Nie udało się usunąć użytkownika z Supabase."
+      );
+    } finally {
+      setDeleteConfirm(null);
+    }
+  }
+
   /* ------------------------- Invite logic ----------------------- */
   function createInviteLink(token: string): string {
     return buildInviteUrl(token);
@@ -422,7 +588,8 @@ export default function ManagePage() {
   async function onCreateInvite() {
     const token = generateToken();
     const url = createInviteLink(token);
-    const expiresAt = iExpiresDays > 0 ? isoDaysFromNow(iExpiresDays) : undefined;
+    const expiresAt =
+      iExpiresDays > 0 ? isoDaysFromNow(iExpiresDays) : undefined;
 
     setCreatingInvite(true);
     setErrorInvites(null);
@@ -571,35 +738,8 @@ export default function ManagePage() {
   const totalScouts = accounts.filter((a) => a.role === "scout").length;
   const totalAgents = accounts.filter((a) => a.role === "scout-agent").length;
 
-  /* -------------------- Metrics configuration ------------------- */
-  const [mCfg, setMCfg] = useState<MetricsConfig>(loadMetrics());
-  const [openGroups, setOpenGroups] = useState<Record<MetricGroupKey, boolean>>({
-    BASE: true,
-    GK: false,
-    DEF: false,
-    MID: false,
-    ATT: false,
-  });
-
-  /* -------------------- Ratings configuration ------------------- */
-  const [rCfg, setRCfg] = useState<RatingsConfig>(loadRatings());
-  const [ratingsOpen, setRatingsOpen] = useState(true);
-
-  // keep metrics/ratings in sync with external changes
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "s4s.obs.metrics") {
-        setMCfg(loadMetrics());
-      }
-      if (e.key === "s4s.playerRatings.v1") {
-        setRCfg(loadRatings());
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  function setAndSave(next: MetricsConfig) {
+  /* -------------------- Metrics helpers ------------------------- */
+  function setAndSaveMetrics(next: MetricsConfig) {
     setMCfg(next);
     saveMetrics(next);
   }
@@ -609,7 +749,7 @@ export default function ManagePage() {
       ...mCfg,
       [group]: mCfg[group].map((m) => (m.id === id ? { ...m, label } : m)),
     };
-    setAndSave(next);
+    setAndSaveMetrics(next);
   }
   function updateKey(group: MetricGroupKey, id: string, key: string) {
     const safe = key.trim().toLowerCase().replace(/[^a-z0-9_.-]+/g, "-");
@@ -617,7 +757,7 @@ export default function ManagePage() {
       ...mCfg,
       [group]: mCfg[group].map((m) => (m.id === id ? { ...m, key: safe } : m)),
     };
-    setAndSave(next);
+    setAndSaveMetrics(next);
   }
   function toggleMetric(group: MetricGroupKey, id: string) {
     const next = {
@@ -626,7 +766,7 @@ export default function ManagePage() {
         m.id === id ? { ...m, enabled: !m.enabled } : m
       ),
     };
-    setAndSave(next);
+    setAndSaveMetrics(next);
   }
   function addMetric(group: MetricGroupKey) {
     const id = safeId();
@@ -634,14 +774,14 @@ export default function ManagePage() {
     const key = slugKey(label);
     const item: Metric = { id, key, label, enabled: true };
     const next = { ...mCfg, [group]: [...mCfg[group], item] };
-    setAndSave(next);
+    setAndSaveMetrics(next);
   }
   function removeMetric(group: MetricGroupKey, id: string) {
     const next = {
       ...mCfg,
       [group]: mCfg[group].filter((m) => m.id !== id),
     };
-    setAndSave(next);
+    setAndSaveMetrics(next);
   }
   function moveMetric(group: MetricGroupKey, id: string, dir: -1 | 1) {
     const arr = [...mCfg[group]];
@@ -652,7 +792,7 @@ export default function ManagePage() {
     const tmp = arr[idx];
     arr[idx] = arr[target];
     arr[target] = tmp;
-    setAndSave({ ...mCfg, [group]: arr });
+    setAndSaveMetrics({ ...mCfg, [group]: arr });
   }
   function toggleGroup(g: MetricGroupKey) {
     setOpenGroups((s) => ({ ...s, [g]: !s[g] }));
@@ -764,7 +904,7 @@ export default function ManagePage() {
       {/* Quick stats row */}
       <div className="grid gap-3 md:grid-cols-3">
         <Card className="border-gray-200 dark:border-neutral-800">
-          <CardContent className="flex items-center justify-between p-3">
+          <div className="flex items-center justify-between p-3">
             <div>
               <div className="text-xs text-dark dark:text-neutral-400">
                 Aktywne konta
@@ -774,10 +914,10 @@ export default function ManagePage() {
               </div>
             </div>
             <Users className="h-6 w-6 text-gray-400" />
-          </CardContent>
+          </div>
         </Card>
         <Card className="border-gray-200 dark:border-neutral-800">
-          <CardContent className="flex items-center justify-between p-3">
+          <div className="flex items-center justify-between p-3">
             <div>
               <div className="text-xs text-dark dark:text-neutral-400">
                 Rozkład ról
@@ -788,10 +928,10 @@ export default function ManagePage() {
               </div>
             </div>
             <Shield className="h-6 w-6 text-gray-400" />
-          </CardContent>
+          </div>
         </Card>
         <Card className="border-gray-200 dark:border-neutral-800">
-          <CardContent className="flex items-center justify-between p-3">
+          <div className="flex items-center justify-between p-3">
             <div>
               <div className="text-xs text-dark dark:text-neutral-400">
                 Oczekujące zaproszenia
@@ -801,19 +941,18 @@ export default function ManagePage() {
               </div>
             </div>
             <Send className="h-6 w-6 text-gray-400" />
-          </CardContent>
+          </div>
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card className="border-gray-200 dark:border-neutral-800">
-        <CardHeader className="space-y-1">
-          <CardTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
-            <Filter className="h-4 w-4" />
-            Filtry i wyszukiwanie
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 md:flex-row md:items-end"> 
+      {/* Filtry – sekcja w akordeonie */}
+      <InterfaceSection
+        icon={<Filter className="h-4 w-4" />}
+        title="Filtry i wyszukiwanie"
+        description="Zawężaj listę użytkowników po roli, statusie i danych kontaktowych."
+        defaultOpen
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-end">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
@@ -860,32 +999,22 @@ export default function ManagePage() {
               </select>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Errors for accounts */}
-      {errorAccounts && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
-          {errorAccounts}
         </div>
-      )}
+      </InterfaceSection>
 
-      {/* Pending invitations */}
-      <Card className="border-gray-200 dark:border-neutral-800">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base font-semibold">
-            Oczekujące zaproszenia ({pendingInvites.length})
-          </CardTitle>
-          <div className="text-xs text-dark dark:text-neutral-400">
-            Udostępnij link lub wyślij przez e-mail/komunikator.
+      {/* Zaproszenia – akordeon */}
+      <InterfaceSection
+        icon={<Send className="h-4 w-4" />}
+        title={`Oczekujące zaproszenia (${pendingInvites.length})`}
+        description="Udostępnij link lub wyślij przez e-mail / komunikator."
+        defaultOpen
+      >
+        {errorInvites && (
+          <div className="mb-2 rounded-md border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+            {errorInvites}
           </div>
-        </CardHeader>
-        <CardContent className="w-full overflow-x-auto">
-          {errorInvites && (
-            <div className="mb-2 rounded-md border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
-              {errorInvites}
-            </div>
-          )}
+        )}
+        <div className="w-full overflow-x-auto rounded-md border border-gray-200 dark:border-neutral-800">
           <table className="w-full text-sm">
             <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
@@ -915,9 +1044,7 @@ export default function ManagePage() {
                     className="border-t border-gray-200 align-middle dark:border-neutral-700"
                   >
                     <td className="p-3">
-                      <div className="font-medium">
-                        {inv.name || "—"}
-                      </div>
+                      <div className="font-medium">{inv.name || "—"}</div>
                       <div className="text-xs text-dark dark:text-neutral-400">
                         {inv.email || "brak e-maila"}
                       </div>
@@ -986,182 +1113,191 @@ export default function ManagePage() {
               )}
             </tbody>
           </table>
-        </CardContent>
-      </Card>
+        </div>
+      </InterfaceSection>
 
-      {/* Users list + right-side details */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Lista użytkowników */}
-        <Card className="border-gray-200 dark:border-neutral-800 lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base font-semibold">
-              <div className="flex flex-wrap items-center gap-2">
-                <Users className="h-4 w-4" />
-                Użytkownicy ({filtered.length})
-              </div>
-            </CardTitle>
-            <div className="text-xs text-dark dark:text-neutral-400">
-              Kliknij nazwę lub „Szczegóły”, aby podejrzeć profil po prawej.
-            </div>
-          </CardHeader>
-          <CardContent className="w-full overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-                <tr>
-                  <th className="p-3 text-left font-medium">Użytkownik</th>
-                  <th className="p-3 text-left font-medium">Kontakt</th>
-                  <th className="p-3 text-left font-medium">Rola</th>
-                  <th className="p-3 text-left font-medium">Status</th>
-                  <th className="p-3 text-left font-medium">Utworzono</th>
-                  <th className="p-3 text-right font-medium">Akcje</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingAccounts && (
+      {/* Użytkownicy + szczegóły – akordeon */}
+      <InterfaceSection
+        icon={<Users className="h-4 w-4" />}
+        title={`Użytkownicy (${filtered.length})`}
+        description="Kliknij pozycję, aby zobaczyć szczegóły po prawej i zarządzać statusem."
+        defaultOpen
+      >
+        {errorAccounts && (
+          <div className="mb-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+            {errorAccounts}
+          </div>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Lista użytkowników */}
+          <div className="lg:col-span-2">
+            <div className="w-full overflow-x-auto rounded-md border border-gray-200 dark:border-neutral-800">
+              <table className="w-full text-sm">
+                <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="p-4 text-center text-xs text-dark dark:text-neutral-400"
-                    >
-                      Ładowanie użytkowników…
-                    </td>
+                    <th className="p-3 text-left font-medium">Użytkownik</th>
+                    <th className="p-3 text-left font-medium">Kontakt</th>
+                    <th className="p-3 text-left font-medium">Rola</th>
+                    <th className="p-3 text-left font-medium">Status</th>
+                    <th className="p-3 text-left font-medium">Utworzono</th>
+                    <th className="p-3 text-right font-medium">Akcje</th>
                   </tr>
-                )}
-                {!loadingAccounts &&
-                  filtered.map((a) => (
-                    <tr
-                      key={a.id}
-                      className={`border-t border-gray-200 align-middle dark:border-neutral-700 ${
-                        detail?.id === a.id
-                          ? "bg-stone-50/80 dark:bg-neutral-900/60"
-                          : ""
-                      }`}
-                    >
-                      <td className="p-3">
-                        <button
-                          className="text-left font-medium hover:underline"
-                          onClick={() => onOpenDetail(a)}
-                          title="Pokaż szczegóły po prawej"
-                        >
-                          {a.name}
-                        </button>
-                        <div className="mt-0.5 flex items-center gap-1 text-[11px] text-dark dark:text-neutral-400">
-                          <Shield className="h-3.5 w-3.5" />
-                          {labelForRole(a.role)}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700 dark:text-neutral-300">
-                          <Mail className="h-3.5 w-3.5" /> {a.email}
-                        </div>
-                        {a.phone && (
-                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
-                            <Phone className="h-3.5 w-3.5" /> {a.phone}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <select
-                          className="rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-                          value={a.role}
-                          onChange={(e) =>
-                            onChangeRole(a.id, e.target.value as Role)
-                          }
-                        >
-                          {ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {labelForRole(r)}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="p-3">
-                        {a.active ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
-                            <CheckCircle className="h-3.5 w-3.5" /> Aktywne
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                            <Ban className="h-3.5 w-3.5" /> Nieaktywne
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3 text-xs text-dark dark:text-neutral-400">
-                        {fmtDate(a.createdAt)}
-                        <div className="opacity-70">
-                          {a.lastActive
-                            ? `Ost. aktywność: ${fmtDate(a.lastActive)}`
-                            : "—"}
-                        </div>
-                      </td>
-                      <td className="p-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 border-gray-300 dark:border-neutral-700"
-                            onClick={() => onOpenDetail(a)}
-                          >
-                            <Eye className="mr-1 h-4 w-4" /> Szczegóły
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 border-gray-300 dark:border-neutral-700"
-                            onClick={() => onToggleActive(a.id)}
-                            title={a.active ? "Deaktywuj" : "Aktywuj"}
-                          >
-                            {a.active ? (
-                              <>
-                                <XCircle className="mr-1 h-4 w-4" /> Deaktywuj
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="mr-1 h-4 w-4" /> Aktywuj
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                </thead>
+                <tbody>
+                  {loadingAccounts && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="p-4 text-center text-xs text-dark dark:text-neutral-400"
+                      >
+                        Ładowanie użytkowników…
                       </td>
                     </tr>
-                  ))}
-                {!loadingAccounts && filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="p-6 text-center text-sm text-dark dark:text-neutral-400"
-                    >
-                      Brak wyników — zmień filtry lub dodaj nowego użytkownika.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+                  )}
+                  {!loadingAccounts &&
+                    filtered.map((a) => (
+                      <tr
+                        key={a.id}
+                        className={`border-t border-gray-200 align-middle dark:border-neutral-700 ${
+                          detail?.id === a.id
+                            ? "bg-stone-50/80 dark:bg-neutral-900/60"
+                            : ""
+                        }`}
+                      >
+                        <td className="p-3">
+                          <button
+                            className="text-left font-medium hover:underline"
+                            onClick={() => onOpenDetail(a)}
+                            title="Pokaż szczegóły po prawej"
+                          >
+                            {a.name}
+                          </button>
+                          <div className="mt-0.5 flex items-center gap-1 text-[11px] text-dark dark:text-neutral-400">
+                            <Shield className="h-3.5 w-3.5" />
+                            {labelForRole(a.role)}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700 dark:text-neutral-300">
+                            <Mail className="h-3.5 w-3.5" /> {a.email}
+                          </div>
+                          {a.phone && (
+                            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
+                              <Phone className="h-3.5 w-3.5" /> {a.phone}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <select
+                            className="rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                            value={a.role}
+                            onChange={(e) =>
+                              onChangeRole(a.id, e.target.value as Role)
+                            }
+                          >
+                            {ROLES.map((r) => (
+                              <option key={r} value={r}>
+                                {labelForRole(r)}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="p-3">
+                          {a.active ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
+                              <CheckCircle className="h-3.5 w-3.5" /> Aktywne
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                              <Ban className="h-3.5 w-3.5" /> Nieaktywne
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-xs text-dark dark:text-neutral-400">
+                          {fmtDate(a.createdAt)}
+                          <div className="opacity-70">
+                            {a.lastActive
+                              ? `Ost. aktywność: ${fmtDate(a.lastActive)}`
+                              : "—"}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 border-gray-300 dark:border-neutral-700"
+                              onClick={() => onOpenDetail(a)}
+                            >
+                              <Eye className="mr-1 h-4 w-4" /> Szczegóły
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 border-gray-300 dark:border-neutral-700"
+                              onClick={() => onToggleActive(a.id)}
+                              title={a.active ? "Deaktywuj" : "Aktywuj"}
+                            >
+                              {a.active ? (
+                                <>
+                                  <XCircle className="mr-1 h-4 w-4" /> Deaktywuj
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="mr-1 h-4 w-4" />{" "}
+                                  Aktywuj
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
+                              onClick={() => setDeleteConfirm(a)}
+                              title="Usuń użytkownika"
+                            >
+                              <Trash2 className="mr-1 h-4 w-4" /> Usuń
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  {!loadingAccounts && filtered.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                      >
+                        Brak wyników — zmień filtry lub dodaj nowego
+                        użytkownika.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-        {/* Panel szczegółów po prawej */}
-        <Card className="border-gray-200 dark:border-neutral-800">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between text-sm font-semibold">
-              <span>Szczegóły konta</span>
+          {/* Panel szczegółów po prawej */}
+          <div className="rounded-md border border-gray-200 bg-white p-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold">Szczegóły konta</div>
               {detail && (
                 <span className="text-[11px] text-dark/70 dark:text-neutral-400">
                   ID: {detail.id.slice(0, 8)}…
                 </span>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
+            </div>
+
             {!detail && (
               <div className="text-xs text-dark dark:text-neutral-400">
-                Wybierz użytkownika z listy po lewej, aby zobaczyć szczegóły
-                konta.
+                Wybierz użytkownika z listy, aby zobaczyć szczegóły konta.
               </div>
             )}
 
             {detail && (
-              <>
+              <div className="space-y-4">
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-dark dark:text-neutral-400">
                     Imię i nazwisko
@@ -1197,7 +1333,9 @@ export default function ManagePage() {
                   </div>
                   <div className="inline-flex items-center gap-2">
                     <Shield className="h-3.5 w-3.5" />
-                    <span className="text-sm">{labelForRole(detail.role)}</span>
+                    <span className="text-sm">
+                      {labelForRole(detail.role)}
+                    </span>
                   </div>
                 </div>
 
@@ -1235,6 +1373,79 @@ export default function ManagePage() {
                   </div>
                 </div>
 
+                {/* Aktywność w Supabase */}
+                <div className="mt-1 space-y-2 border-t border-dashed border-gray-200 pt-2 dark:border-neutral-800">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-medium text-dark dark:text-neutral-400">
+                      Aktywność w S4S (Supabase)
+                    </div>
+                    {loadingDetailStats && (
+                      <span className="text-[11px] text-dark/60 dark:text-neutral-500">
+                        Ładowanie…
+                      </span>
+                    )}
+                  </div>
+
+                  {detailStatsError && (
+                    <div className="rounded-md border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+                      {detailStatsError}
+                    </div>
+                  )}
+
+                  {detailStats && !detailStatsError && (
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="rounded-md bg-stone-100 p-2 dark:bg-neutral-900">
+                        <div className="font-medium text-dark dark:text-neutral-200">
+                          Zawodnicy
+                        </div>
+                        <div className="mt-1 space-y-0.5 text-dark/80 dark:text-neutral-300">
+                          <div>
+                            Łącznie: <b>{detailStats.playersTotal}</b>
+                          </div>
+                          <div>
+                            Aktywni: <b>{detailStats.playersActive}</b>
+                          </div>
+                          <div>
+                            Kosz: <b>{detailStats.playersTrash}</b>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-stone-100 p-2 dark:bg-neutral-900">
+                        <div className="font-medium text-dark dark:text-neutral-200">
+                          Obserwacje
+                        </div>
+                        <div className="mt-1 space-y-0.5 text-dark/80 dark:text-neutral-300">
+                          <div>
+                            Łącznie: <b>{detailStats.observationsTotal}</b>
+                          </div>
+                          <div>
+                            Draft: <b>{detailStats.observationsDraft}</b>
+                          </div>
+                          <div>
+                            Inne statusy:{" "}
+                            <b>{detailStats.observationsOther}</b>
+                          </div>
+                          {detailStats.lastObservationAt && (
+                            <div className="mt-1 text-[10px] text-dark/70 dark:text-neutral-400">
+                              Ost. obserwacja:{" "}
+                              {fmtDate(detailStats.lastObservationAt)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!loadingDetailStats &&
+                    !detailStats &&
+                    !detailStatsError && (
+                      <div className="text-[11px] text-dark/60 dark:text-neutral-500">
+                        Brak danych o zawodnikach lub obserwacjach dla tego
+                        użytkownika.
+                      </div>
+                    )}
+                </div>
+
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-gray-200 pt-2 dark:border-neutral-800">
                   <div className="text-[11px] text-dark/70 dark:text-neutral-500">
                     Zarządzaj statusem użytkownika.
@@ -1259,6 +1470,14 @@ export default function ManagePage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="h-8 border-red-200 text-xs text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
+                      onClick={() => setDeleteConfirm(detail)}
+                    >
+                      <Trash2 className="mr-1 h-4 w-4" /> Usuń konto
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="h-8 border-gray-300 text-xs dark:border-neutral-700"
                       onClick={() => setDetail(null)}
                     >
@@ -1266,17 +1485,13 @@ export default function ManagePage() {
                     </Button>
                   </div>
                 </div>
-              </>
+              </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </InterfaceSection>
 
-      {/* ===== Konfiguracja metryk ===== */}
-      {/* (tutaj możesz mieć swoją istniejącą sekcję konfiguracji mCfg / rCfg;
-          logika powyżej pozostała kompatybilna) */}
-
-      {/* ===== Modals (invites, add user) ===== */}
+      {/* ===== Modals (invites, add user, delete confirm) ===== */}
       {inviteOpen && (
         <Modal
           onClose={() => setInviteOpen(false)}
@@ -1368,7 +1583,9 @@ export default function ManagePage() {
             <Button
               className="bg-gray-900 text-white hover:bg-gray-800"
               onClick={onCreateInvite}
-              disabled={creatingInvite || (iChannel === "email" && !iEmail.trim())}
+              disabled={
+                creatingInvite || (iChannel === "email" && !iEmail.trim())
+              }
               title={
                 iChannel === "email" && !iEmail.trim()
                   ? "Podaj e-mail albo wybierz inny kanał"
@@ -1444,9 +1661,7 @@ export default function ManagePage() {
                 onClick={() => setNActive((v) => !v)}
                 className="mt-[2px] inline-flex w-full items-center justify-between rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
               >
-                <span>
-                  {nActive ? "Aktywne" : "Nieaktywne"}
-                </span>
+                <span>{nActive ? "Aktywne" : "Nieaktywne"}</span>
                 {nActive ? (
                   <ToggleRight className="h-4 w-4 text-emerald-600" />
                 ) : (
@@ -1475,6 +1690,36 @@ export default function ManagePage() {
           </div>
         </Modal>
       )}
+
+      {deleteConfirm && (
+        <Modal
+          onClose={() => setDeleteConfirm(null)}
+          title="Usuń użytkownika"
+        >
+          <p className="text-sm text-dark dark:text-neutral-200">
+            Na pewno chcesz usunąć konto{" "}
+            <span className="font-semibold">{deleteConfirm.name}</span>?
+            <br />
+            Operacji nie można cofnąć.
+          </p>
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              className="border-gray-300 dark:border-neutral-700"
+              onClick={() => setDeleteConfirm(null)}
+            >
+              Anuluj
+            </Button>
+            <Button
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={() => onDeleteUser(deleteConfirm.id)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Usuń użytkownika
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1499,7 +1744,7 @@ function InlineCell({
 
   return (
     <input
-      className="h-8 w-full rounded-md border border-transparent px-2 text-sm outline-none focus:border-indigo-500 dark:focus:border-indigo-400"
+      className="h-8 w-full rounded-md border border-transparent bg-white px-2 text-sm outline-none focus:border-indigo-500 dark:bg-neutral-950 dark:focus:border-indigo-400"
       value={local}
       placeholder={placeholder}
       onChange={(e) => setLocal(e.target.value)}
@@ -1517,17 +1762,72 @@ function InlineCell({
   );
 }
 
+/* ======================= Interface section (accordion) ======================= */
+function InterfaceSection({
+  icon,
+  title,
+  description,
+  badge,
+  defaultOpen = true,
+  children,
+}: {
+  icon?: ReactNode;
+  title: string;
+  description?: ReactNode;
+  badge?: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <Card className="overflow-hidden border-gray-200 shadow-sm dark:border-neutral-800">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 bg-stone-50/70 px-4 py-3 text-left hover:bg-stone-100/80 dark:bg-neutral-950/70 dark:hover:bg-neutral-900/80"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          {icon && (
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-dark ring-1 ring-gray-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+              {icon}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-dark dark:text-neutral-50">
+              {title}
+            </div>
+            {description && (
+              <div className="mt-0.5 text-[11px] text-dark/70 dark:text-neutral-400">
+                {description}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {badge}
+          <ChevronDown
+            className={`h-4 w-4 text-dark/70 transition-transform dark:text-neutral-300 ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-gray-200 bg-white px-4 py-3 text-sm dark:border-neutral-800 dark:bg-neutral-950">
+          {children}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 /* ======================== Small components ====================== */
 
 function labelForRole(r: Role) {
   if (r === "admin") return "Admin";
   if (r === "scout-agent") return "Scout Agent";
   return "Scout";
-}
-function cycleRole(r: Role): Role {
-  const order: Role[] = ["scout", "scout-agent", "admin"];
-  const i = order.indexOf(r);
-  return order[(i + 1) % order.length];
 }
 function channelLabel(c: InviteChannel) {
   if (c === "email") return "E-mail";
@@ -1556,7 +1856,7 @@ function isoDaysFromNow(days: number) {
   return d.toISOString();
 }
 
-/* Minimal modal */
+/* Minimal modal – global, fullscreen, blur */
 function Modal({
   title,
   children,
@@ -1566,30 +1866,42 @@ function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
-  return (
+  if (typeof document === "undefined") return null;
+
+  const root = document.getElementById(MODAL_ROOT_ID) ?? document.body;
+
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-[100] bg-black/40" onClick={onClose} />
+      {/* Fullscreen blur overlay */}
       <div
-        className="fixed inset-x-3 top-[8vh] z-[101] mx-auto max-w-2xl rounded-md border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
+        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Popup */}
+      <div
+        className="fixed inset-0 z-[101] flex items-start justify-center overflow-y-auto pt-[8vh]"
         role="dialog"
         aria-modal="true"
       >
-        <div className="mb-3 flex flex-wrap items-center justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <Shield className="h-4 w-4" />
-            <h2 className="text-base font-semibold">{title}</h2>
+        <div className="mx-3 mb-10 w-full max-w-2xl rounded-md border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950">
+          <div className="mb-3 flex flex-wrap items-center justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <h2 className="text-base font-semibold">{title}</h2>
+            </div>
+            <button
+              className="rounded-md p-1 text-dark hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+              onClick={onClose}
+              aria-label="Zamknij"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          <button
-            className="rounded-md p-1 text-dark hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
-            onClick={onClose}
-            aria-label="Zamknij"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          {children}
         </div>
-        {children}
       </div>
-    </>
+    </>,
+    root
   );
 }
 

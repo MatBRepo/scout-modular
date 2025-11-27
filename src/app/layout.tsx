@@ -19,7 +19,7 @@ const dmSans = DM_Sans({
   subsets: ["latin", "latin-ext"],
   display: "swap",
   variable: "--font-sans",
-  weight: ["100","200","300","400","500","600","700","800","900"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -29,6 +29,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
         className={`${dmSans.variable} font-sans min-h-screen bg-white text-gray-900 antialiased dark:bg-neutral-950 dark:text-neutral-100`}
       >
+        {/* Globalny root na modale – wszystko portaluje się tutaj */}
+        <div id="global-modal-root" />
+
         <Suspense fallback={null}>
           <AuthGate>
             <ClientRoot>

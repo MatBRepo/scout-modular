@@ -31,6 +31,7 @@ import {
   MoveHorizontal,
   ChevronRight as ChevronRightIcon,
   Search,
+  XCircle, // NEW
 } from "lucide-react";
 import { ObservationEditor } from "./ObservationEditor";
 import type { XO as EditorXO } from "./ObservationEditor";
@@ -656,9 +657,9 @@ export default function ObservationsFeature({
   }, [filtered]);
 
   const allChecked =
-    filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+    filtered.length > 0 && filtered.every((r) => selected.has(r.id as number));
   const someChecked =
-    !allChecked && filtered.some((r) => selected.has(r.id));
+    !allChecked && filtered.some((r) => selected.has(r.id as number));
 
   function addNew() {
     setEditing({
@@ -710,7 +711,7 @@ export default function ObservationsFeature({
     const ids = selected;
     if (ids.size === 0) return;
     const next = rows.map((x) =>
-      ids.has(x.id) ? { ...x, bucket: "trash" as Bucket } : x
+      ids.has(x.id as number) ? { ...x, bucket: "trash" as Bucket } : x
     );
     onChange(next as unknown as Observation[]);
     setSelected(new Set());
@@ -719,7 +720,7 @@ export default function ObservationsFeature({
     const ids = selected;
     if (ids.size === 0) return;
     const next = rows.map((x) =>
-      ids.has(x.id) ? { ...x, bucket: "active" as Bucket } : x
+      ids.has(x.id as number) ? { ...x, bucket: "active" as Bucket } : x
     );
     onChange(next as unknown as Observation[]);
     setSelected(new Set());
@@ -916,6 +917,35 @@ export default function ObservationsFeature({
     return { all, draft };
   }, [rows, scope]);
 
+  /* ===== NEW: global trash count ===== */
+  const trashCount = useMemo(
+    () => rows.filter((r) => (r.bucket ?? "active") === "trash").length,
+    [rows]
+  );
+
+  /* ===== NEW: empty trash ===== */
+  function emptyTrash() {
+    const trashIds = rows
+      .filter((r) => (r.bucket ?? "active") === "trash")
+      .map((r) => r.id);
+
+    if (trashIds.length === 0) return;
+
+    const next = rows.filter((r) => (r.bucket ?? "active") !== "trash");
+    onChange(next as unknown as Observation[]);
+
+    setSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const copy = new Set(prev);
+      rows.forEach((r) => {
+        if ((r.bucket ?? "active") === "trash") {
+          copy.delete(r.id as number);
+        }
+      });
+      return copy;
+    });
+  }
+
   /* ===== Infinite scroll: reset visibleCount on filters/sort change ===== */
   useEffect(() => {
     setVisibleCount(INITIAL_VISIBLE);
@@ -1025,7 +1055,6 @@ export default function ObservationsFeature({
                         {counts.all}
                       </span>
                     </TabsTrigger>
-                    
                   </TabsList>
                   <TabsContent value="active" />
                   <TabsContent value="draft" />
@@ -1482,8 +1511,11 @@ export default function ObservationsFeature({
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="mb-1 flex items-center justify-between px-1">
+                <div className="mb-1 flex items-center justify-between px-1 gap-2">
                   <div className="text-sm font-semibold">Więcej</div>
+                  <div className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
+                    W koszu: {trashCount}
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
@@ -1510,6 +1542,7 @@ export default function ObservationsFeature({
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     onClick={() => {
                       setScope("active");
+                      setTab("active");
                       setMoreOpen(false);
                     }}
                   >
@@ -1519,11 +1552,29 @@ export default function ObservationsFeature({
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     onClick={() => {
                       setScope("trash");
+                      setTab("active"); // pokaż wszystkie w koszu
                       setMoreOpen(false);
                     }}
                   >
-                    <Trash2 className="h-4 w-4" /> Kosz
+                    <Trash2 className="h-4 w-4" />
+                    <span>Kosz</span>
+                    <span className="ml-auto inline-flex min-w-[20px] items-center justify-center rounded-full bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
+                      {trashCount}
+                    </span>
                   </button>
+
+                  {trashCount > 0 && (
+                    <button
+                      className="flex w-full items-center gap-2 bg-rose-50/70 px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:bg-rose-950/50"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        emptyTrash();
+                      }}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span>Opróżnij kosz</span>
+                    </button>
+                  )}
 
                   <button
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -1551,12 +1602,22 @@ export default function ObservationsFeature({
               anchorRef={moreBtnRef as any}
               open={true}
               onClose={() => setMoreOpen(false)}
-              width={224}
+              width={248}
               className="overflow-hidden rounded-md border border-gray-200 bg-white p-1 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
             >
+              {/* Header with trash count */}
+              <div className="flex items-center justify-between px-2 pb-1 pt-1">
+                <span className="text-[11px] font-medium text-stone-500 dark:text-neutral-400">
+                  Menu
+                </span>
+                <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
+                  W koszu: {trashCount}
+                </span>
+              </div>
+
               {/* Kolumny opens a separate popover anchored to the dots */}
               <button
-                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setMoreOpen(false);
                   setColsOpen(true);
@@ -1571,6 +1632,7 @@ export default function ObservationsFeature({
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setScope("active");
+                  setTab("active");
                   setMoreOpen(false);
                 }}
               >
@@ -1580,11 +1642,29 @@ export default function ObservationsFeature({
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setScope("trash");
+                  setTab("active"); // pokaż wszystkie w koszu
                   setMoreOpen(false);
                 }}
               >
-                <Trash2 className="h-4 w-4" /> Kosz
+                <Trash2 className="h-4 w-4" />
+                <span>Kosz</span>
+                <span className="ml-auto inline-flex min-w-[20px] items-center justify-center rounded-full bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
+                  {trashCount}
+                </span>
               </button>
+
+              {trashCount > 0 && (
+                <button
+                  className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    emptyTrash();
+                  }}
+                >
+                  <XCircle className="h-4 w-4" />
+                  <span>Opróżnij kosz</span>
+                </button>
+              )}
 
               <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
 
@@ -1720,7 +1800,9 @@ export default function ObservationsFeature({
                       }
                       onCheckedChange={(v) => {
                         if (Boolean(v))
-                          setSelected(new Set(filtered.map((r) => r.id)));
+                          setSelected(
+                            new Set(filtered.map((r) => r.id as number))
+                          );
                         else setSelected(new Set());
                       }}
                     />
@@ -1757,9 +1839,7 @@ export default function ObservationsFeature({
                   </th>
                 )}
                 {visibleCols.actions && (
-                  <th className={`${cellPad} text-right font-medium`}>
-                    Akcje
-                  </th>
+                  <th className={`${cellPad} text-right font-medium`}>Akcje</th>
                 )}
               </tr>
             </thead>
@@ -1783,11 +1863,11 @@ export default function ObservationsFeature({
                       <td className={`${cellPad}`}>
                         <Checkbox
                           aria-label={`Zaznacz obserwację #${r.id}`}
-                          checked={selected.has(r.id)}
+                          checked={selected.has(r.id as number)}
                           onCheckedChange={(v) => {
                             const copy = new Set(selected);
-                            if (Boolean(v)) copy.add(r.id);
-                            else copy.delete(r.id);
+                            if (Boolean(v)) copy.add(r.id as number);
+                            else copy.delete(r.id as number);
                             setSelected(copy);
                           }}
                         />
@@ -1841,7 +1921,9 @@ export default function ObservationsFeature({
                       <td
                         className={`${cellPad} hidden align-center sm:table-cell`}
                       >
-                         <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">{pCount} </span>
+                        <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">
+                          {pCount}
+                        </span>
                       </td>
                     )}
 
@@ -1874,7 +1956,7 @@ export default function ObservationsFeature({
                                 <Button
                                   size="sm"
                                   className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
-                                  onClick={() => moveToTrash(r.id)}
+                                  onClick={() => moveToTrash(r.id as number)}
                                 >
                                   Tak
                                 </Button>
@@ -1894,7 +1976,7 @@ export default function ObservationsFeature({
                                     size="icon"
                                     variant="outline"
                                     className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                    onClick={() => setConfirmTrashId(r.id)}
+                                    onClick={() => setConfirmTrashId(r.id as number)}
                                     aria-label="Przenieś do kosza"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -1912,7 +1994,7 @@ export default function ObservationsFeature({
                                   size="icon"
                                   variant="outline"
                                   className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                  onClick={() => restoreFromTrash(r.id)}
+                                  onClick={() => restoreFromTrash(r.id as number)}
                                   aria-label="Przywróć z kosza"
                                 >
                                   <Undo2 className="h-4 w-4" />
@@ -1990,7 +2072,7 @@ export default function ObservationsFeature({
               <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-neutral-800" />
 
               {rows.some(
-                (r) => selected.has(r.id) && (r.bucket ?? "active") === "active"
+                (r) => selected.has(r.id as number) && (r.bucket ?? "active") === "active"
               ) && scope === "active" ? (
                 <Button
                   className="h-8 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
