@@ -353,8 +353,8 @@ export function ObservationEditor({
   const frozenInitialRef = useRef<XO>(initial);
 
   const initialIdRef =
-    (frozenInitialRef.current as any)?.id ??
-    (frozenInitialRef.current as any)?.__listMeta?.id ??
+    (frozenInitialRef.current as any)?.id ?? 
+    (frozenInitialRef.current as any)?.__listMeta?.id ?? 
     0;
 
   const isNewObservation = !initialIdRef || initialIdRef === 0;
@@ -469,68 +469,6 @@ export function ObservationEditor({
     }));
   }
 
-  function addPlayerKnown(name: string, shirtNo?: string) {
-    const p: ObsPlayer = {
-      id: crypto.randomUUID(),
-      type: "known",
-      name: name.trim(),
-      shirtNo,
-      position: undefined,
-      overall: 3,
-      base: {},
-      gk: {},
-      def: {},
-      mid: {},
-      att: {},
-    };
-    setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
-  }
-
-  function addPlayerUnknownFromNumber(no: string) {
-    const n = no.trim();
-    if (!n) return;
-    const p: ObsPlayer = {
-      id: crypto.randomUUID(),
-      type: "unknown",
-      shirtNo: n,
-      name: `#${n}`,
-      position: undefined,
-      overall: 3,
-      base: {},
-      gk: {},
-      def: {},
-      mid: {},
-      att: {},
-    };
-    setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
-  }
-
-  function updatePlayer(id: string, patchPartial: Partial<ObsPlayer>) {
-    setO((prev) => ({
-      ...prev,
-      players: (prev.players ?? []).map((p) =>
-        p.id === id ? ({ ...p, ...patchPartial } as ObsPlayer) : p
-      ),
-    }));
-  }
-
-  function updateMetric(
-    group: keyof ObsPlayer,
-    _id: string,
-    key: string,
-    value: number,
-    player: ObsPlayer
-  ) {
-    setO((prev) => {
-      const players = (prev.players ?? []).map((p) => {
-        if (p.id !== player.id) return p;
-        const g = (p as any)[group] ?? {};
-        return { ...p, [group]: { ...g, [key]: value } } as ObsPlayer;
-      });
-      return { ...prev, players };
-    });
-  }
-
   const POSITIONS: PositionKey[] = [
     "GK",
     "CB",
@@ -555,13 +493,6 @@ export function ObservationEditor({
     RW: "Prawy skrzydłowy (7)",
     ST: "Środkowy napastnik (9)",
   };
-
-  function removePlayer(id: string) {
-    setO((prev) => ({
-      ...prev,
-      players: (prev.players ?? []).filter((p) => p.id !== id),
-    }));
-  }
 
   const [teamA, setTeamA] = useState(o.teamA ?? "");
   const [teamB, setTeamB] = useState(o.teamB ?? "");
@@ -592,13 +523,12 @@ export function ObservationEditor({
     "idle"
   );
 
-  useEffect(() => {
-    if (saveState !== "saved") return;
-    const t = setTimeout(() => setSaveState("idle"), 1500);
-    return () => clearTimeout(t);
-  }, [saveState]);
+
 
   const [quickInput, setQuickInput] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const filteredPlayers = useMemo(() => {
     const q = quickInput.trim().toLowerCase();
     if (!q || isNumberLike(q)) return [];
@@ -611,6 +541,77 @@ export function ObservationEditor({
       )
       .slice(0, 8);
   }, [allPlayers, quickInput]);
+
+  function addPlayerKnown(name: string, shirtNo?: string) {
+    const p: ObsPlayer = {
+      id: crypto.randomUUID(),
+      type: "known",
+      name: name.trim(),
+      shirtNo,
+      position: undefined,
+      overall: 0, // default 0
+      base: {},
+      gk: {},
+      def: {},
+      mid: {},
+      att: {},
+    };
+    setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
+    setExpandedId(p.id); // expand Ocena for new player
+  }
+
+  function addPlayerUnknownFromNumber(no: string) {
+    const n = no.trim();
+    if (!n) return;
+    const p: ObsPlayer = {
+      id: crypto.randomUUID(),
+      type: "unknown",
+      shirtNo: n,
+      name: `#${n}`,
+      position: undefined,
+      overall: 0, // default 0
+      base: {},
+      gk: {},
+      def: {},
+      mid: {},
+      att: {},
+    };
+    setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
+    setExpandedId(p.id); // expand Ocena for new player
+  }
+
+  function updatePlayer(id: string, patchPartial: Partial<ObsPlayer>) {
+    setO((prev) => ({
+      ...prev,
+      players: (prev.players ?? []).map((p) =>
+        p.id === id ? ({ ...p, ...patchPartial } as ObsPlayer) : p
+      ),
+    }));
+  }
+
+  function updateMetric(
+    group: keyof ObsPlayer,
+    _id: string,
+    key: string,
+    value: number,
+    player: ObsPlayer
+  ) {
+    setO((prev) => {
+      const players = (prev.players ?? []).map((p) => {
+        if (p.id !== player.id) return p;
+        const g = (p as any)[group] ?? {};
+        return { ...p, [group]: { ...g, [key]: value } } as ObsPlayer;
+      });
+      return { ...prev, players };
+    });
+  }
+
+  function removePlayer(id: string) {
+    setO((prev) => ({
+      ...prev,
+      players: (prev.players ?? []).filter((p) => p.id !== id),
+    }));
+  }
 
   function addPlayerFromInput(source?: Player) {
     if (source) {
@@ -639,7 +640,7 @@ export function ObservationEditor({
         type: "unknown",
         name: raw,
         position: undefined,
-        overall: 3,
+        overall: 0, // default 0
         base: {},
         gk: {},
         def: {},
@@ -647,12 +648,10 @@ export function ObservationEditor({
         att: {},
       };
       setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
+      setExpandedId(p.id); // expand Ocena for new player
     }
     setQuickInput("");
   }
-
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const CONDITIONS: Mode[] = ["live", "tv", "mix"];
 
@@ -785,11 +784,18 @@ export function ObservationEditor({
   const autoSaveLastKeyRef = useRef<string | null>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
 
-  async function saveObservation(opts: {
-    closeAfter: boolean;
-    externalSave: boolean;
+   async function saveObservation(opts?: {
+    closeAfter?: boolean;
+    externalSave?: boolean;
+    force?: boolean;
   }) {
-    if (!canSaveObservation) return;
+    const { closeAfter = false, externalSave = false, force = false } =
+      opts ?? {};
+
+    // ⬇️ jeśli NIE wymuszamy, to trzymaj się canSaveObservation
+    if (!force && !canSaveObservation) {
+      return;
+    }
 
     const supabase = getSupabase();
     setSaveState("saving");
@@ -940,15 +946,16 @@ export function ObservationEditor({
 
     setSaveState("saved");
 
-    if (opts.externalSave) {
+    if (externalSave) {
       onSave(payload);
-      if (opts.closeAfter) {
-        onClose();
-      }
+    }
+    if (closeAfter) {
+      onClose();
     }
 
     return payload;
   }
+
 
   useEffect(() => {
     if (!canSaveObservation || requiredLoading) return;
@@ -959,14 +966,15 @@ export function ObservationEditor({
       window.clearTimeout(autoSaveTimerRef.current);
     }
 
-autoSaveTimerRef.current = window.setTimeout(() => {
-  void saveObservation({ closeAfter: false, externalSave: false }).then(
-    () => {
-      autoSaveLastKeyRef.current = autoSaveKey;
-    }
-  );
-}, 1200) as unknown as number;
-
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      void saveObservation({
+        closeAfter: false,
+        externalSave: false,
+        force: false, // ⬅️ auto-save NIE wymusza
+      }).then(() => {
+        autoSaveLastKeyRef.current = autoSaveKey;
+      });
+    }, 1200) as unknown as number;
 
     return () => {
       if (autoSaveTimerRef.current) {
@@ -975,21 +983,21 @@ autoSaveTimerRef.current = window.setTimeout(() => {
     };
   }, [autoSaveKey, canSaveObservation, requiredLoading]);
 
+
   const infoCardRef = useRef<HTMLDivElement | null>(null);
 
   const [infoOpen, setInfoOpen] = useState(true);
   const [playersOpen, setPlayersOpen] = useState(true);
   const [noteOpen, setNoteOpen] = useState(true);
 
-const openPositionSelect = (playerId: string) => {
-  if (typeof document === "undefined") return;
-  const trigger = document.getElementById(`pos-${playerId}`);
-  if (trigger instanceof HTMLElement) {
-    trigger.focus();
-    trigger.click(); // otworzy Radix Select (combobox)
-  }
-};
-
+  const openPositionSelect = (playerId: string) => {
+    if (typeof document === "undefined") return;
+    const trigger = document.getElementById(`pos-${playerId}`);
+    if (trigger instanceof HTMLElement) {
+      trigger.focus();
+      trigger.click(); // otworzy Radix Select (combobox)
+    }
+  };
 
   useEffect(() => {
     setActions(
@@ -999,7 +1007,14 @@ const openPositionSelect = (playerId: string) => {
           variant="outline"
           size="sm"
           className="flex h-8 items-center justify-center px-2 text-xs"
-          onClick={onClose}
+          onClick={() => {
+            // ⬇️ wymuś zapis, dopiero potem wróć do listy
+            void saveObservation({
+              closeAfter: true,
+              externalSave: true,
+              force: true,
+            });
+          }}
         >
           <ChevronLeft className="h-4 w-4 md:mr-1" />
           <span className="hidden md:inline">Wróć do listy</span>
@@ -1010,7 +1025,8 @@ const openPositionSelect = (playerId: string) => {
     return () => {
       setActions(null);
     };
-  }, [setActions, saveState, onClose]);
+  }, [setActions, saveState]);
+
 
   const handleVoiceTranscription = (text: string) => {
     setO((prev) => {
@@ -1295,7 +1311,7 @@ const openPositionSelect = (playerId: string) => {
                 <AccordionContent id="players-panel" className="pt-4 pb-5">
                   <div className="space-y-4 sm:space-y-5">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <div className="relative flex-1">
+                      <div className="relative w-full sm:w-[360px]">
                         <Label className="text-sm">
                           Numer lub nazwisko zawodnika
                         </Label>
@@ -1342,7 +1358,7 @@ const openPositionSelect = (playerId: string) => {
 
                       <Button
                         variant="outline"
-                        className="mt-1 h-10 rounded-md border-gray-300 dark:border-neutral-700 sm:mt-6"
+                        className="mt-1 h-10 rounded-md border border-[#089569] text-[#089569] bg-white hover:bg-[#089569]/5 dark:border-[#089569] dark:text-[#089569] sm:mt-6"
                         onClick={() => addPlayerFromInput()}
                         disabled={!quickInput.trim()}
                         title="Dodaj do listy"
@@ -1430,8 +1446,6 @@ const openPositionSelect = (playerId: string) => {
                                           )}
                                         </div>
 
-
-
                                         {p.shirtNo && (
                                           <div className="mt-0.5 text-[11px] text-stone-700 dark:text-stone-200">
                                             Nr: {p.shirtNo}
@@ -1481,7 +1495,7 @@ const openPositionSelect = (playerId: string) => {
                                               key={posKey}
                                               value={posKey}
                                             >
-                                              {posKey} — {POS_INFO[posKey]}
+                                              {posKey}
                                             </SelectItem>
                                           ))}
                                         </SelectContent>
@@ -1616,35 +1630,39 @@ const openPositionSelect = (playerId: string) => {
                                   </td>
                                 </tr>
 
-{isOpen && (
-  <tr>
-    <td
-      colSpan={5}
-      className="border-t border-gray-200 bg-stone-50/80 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/70"
-    >
-      <div className="relative">
-        {!hasPosition && (
-          <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
-            <p className="mb-3 text-xs text-slate-700 dark:text-neutral-200 sm:text-sm">
-              Aby wprowadzić oceny, najpierw uzupełnij{" "}
-              <b>Pozycja w meczu</b>.
-            </p>
-            <button
-              type="button"
-              onClick={() => openPositionSelect(p.id)}
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 rounded-md px-3 btn-soft-hover bg-gray-900 text-white hover:bg-gray-800"
-            >
-              Pozycja w meczu
-            </button>
-          </div>
-        )}
+                                {isOpen && (
+                                  <tr>
+                                    <td
+                                      colSpan={5}
+                                      className="border-t border-gray-200 bg-stone-50/80 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/70"
+                                    >
+                                      <div className="relative">
+                                        {!hasPosition && (
+                                          <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
+                                            <p className="mb-3 text-xs text-slate-700 dark:text-neutral-200 sm:text-sm">
+                                              Aby wprowadzić oceny, najpierw
+                                              uzupełnij{" "}
+                                              <b>Pozycja w meczu</b>.
+                                            </p>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                openPositionSelect(p.id)
+                                              }
+                                              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 rounded-md px-3 btn-soft-hover bg-gray-900 text-white hover:bg-gray-800"
+                                            >
+                                              Pozycja w meczu
+                                            </button>
+                                          </div>
+                                        )}
 
-        <div
-          className={cn(
-            "space-y-4",
-            !hasPosition && "pointer-events-none blur-[1.5px]"
-          )}
-        >
+                                        <div
+                                          className={cn(
+                                            "space-y-4",
+                                            !hasPosition &&
+                                              "pointer-events-none blur-[1.5px]"
+                                          )}
+                                        >
                                           <Group title="Kategorie bazowe">
                                             {metrics.BASE.filter(
                                               (m) => m.enabled
@@ -1693,7 +1711,7 @@ const openPositionSelect = (playerId: string) => {
                                             <Group title="Obrońca (CB/FB/WB)">
                                               {metrics.DEF.filter(
                                                 (m) => m.enabled
-                                             ).map((m) => (
+                                              ).map((m) => (
                                                 <MetricItem
                                                   key={m.id}
                                                   label={m.label}
