@@ -1,11 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as cheerio from "cheerio";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const BASE = "https://www.transfermarkt.com";
+
+/* -------------------- Supabase (lazy, safe) -------------------- */
+
+let supabase: SupabaseClient | null = null;
+
+function getSupabase(): SupabaseClient | null {
+  if (supabase) return supabase;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    console.warn(
+      "[tm-scraper] Supabase envs missing (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY). Cache disabled."
+    );
+    return null;
+  }
+
+  supabase = createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+  return supabase;
+}
 
 /* -------------------- helpers: HTTP -------------------- */
 function ensurePath(p?: string | null) {
@@ -158,9 +187,7 @@ type PlayerRow = {
   contract_until: string | null;
 };
 
-/** Płaski wiersz: rozgrywki + klub + zawodnik
- * idealny pod jedną tabelę w UI
- */
+/** Płaski wiersz: rozgrywki + klub + zawodnik */
 type FlatClubPlayerRow = {
   competition_code: string;
   competition_name: string;
@@ -223,7 +250,6 @@ function parseCompetitionsDetailed(
     const clubs_count = parseIntLoose($(tds[1]).text().trim());
     const players_count = parseIntLoose($(tds[2]).text().trim());
     const avg_age = parseFloatEU($(tds[3]).text().trim());
-    // foreigners cell like "23.9 %"
     const foreigners_pct =
       parseFloat(
         $(tds[4]).text().trim().replace("%", "").replace(",", ".")
@@ -393,6 +419,7 @@ export async function GET(req: Request) {
     const seasonStr = searchParams.get("season");
     const details = searchParams.get("details") === "1"; // pobieraj kluby + zawodników
     const flat = searchParams.get("flat") === "1"; // zwróć płaską tabelę
+    const refresh = searchParams.get("refresh") === "1";
 
     if (!country || !seasonStr) {
       return new Response(
@@ -409,6 +436,39 @@ export async function GET(req: Request) {
       );
     }
 
+    const supa = getSupabase();
+
+    /* ---------- 1) Spróbuj odczytać cache z Supabase ---------- */
+    if (supa && !refresh && details && flat) {
+      const { data, error } = await supa
+        .from("tm_cached_scrapes")
+        .select(
+          "rows_json, competitions_count, clubs_count, players_count, downloaded_at"
+        )
+        .eq("country_id", country)
+        .eq("season_id", season)
+        .maybeSingle();
+
+      if (!error && data && data.rows_json) {
+        const rows = (data.rows_json as any[]) || [];
+        return new Response(
+          JSON.stringify({
+            cached: true,
+            downloadedAt: data.downloaded_at,
+            competitionsCount: data.competitions_count ?? 0,
+            clubsCount: data.clubs_count ?? 0,
+            playersCount: data.players_count ?? rows.length,
+            rows,
+          }),
+          {
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
+
+    /* ---------- 2) Scrapowanie z TM (fresh) ---------- */
+
     // detailed competitions table (includes season stats)
     const url = `${BASE}/wettbewerbe/national/wettbewerbe/${encodeURIComponent(
       country
@@ -417,7 +477,7 @@ export async function GET(req: Request) {
     const html = await fetchHtml(url);
     const competitions = parseCompetitionsDetailed(html, country, season);
 
-    // Jeśli nie chcemy detali, zwracamy tylko rozgrywki (jak wcześniej)
+    // Jeśli nie chcemy detali, zwracamy tylko rozgrywki
     if (!details) {
       return new Response(
         JSON.stringify({
@@ -479,13 +539,16 @@ export async function GET(req: Request) {
       }
     }
 
-    // Jeśli flat=1 -> budujemy płaską tabelę: competition + club + player
+    /* ---------- 3) Jeśli flat=1 -> budujemy płaską tabelę ---------- */
     if (flat) {
       const rows: FlatClubPlayerRow[] = [];
+      const clubsSet = new Set<string>();
 
       for (const comp of competitions) {
         const clubs = comp.clubs || [];
         for (const club of clubs) {
+          clubsSet.add(`${comp.code}:${club.name}`);
+
           const players = club.players || [];
           for (const p of players) {
             rows.push({
@@ -516,19 +579,41 @@ export async function GET(req: Request) {
         }
       }
 
-      const clubsSet = new Set<string>();
-      for (const comp of competitions) {
-        (comp.clubs || []).forEach((club) => {
-          clubsSet.add(`${comp.code}:${club.name}`);
-        });
+      const competitionsCount = competitions.length;
+      const clubsCount = clubsSet.size;
+      const playersCount = rows.length;
+      const downloadedAt = new Date().toISOString();
+
+      // 3a) Zapisz do cache (Supabase), jeśli dostępny
+      const supa2 = getSupabase();
+      if (supa2) {
+        try {
+          await supa2.from("tm_cached_scrapes").upsert(
+            {
+              country_id: country,
+              season_id: season,
+              rows_json: rows,
+              competitions_count: competitionsCount,
+              clubs_count: clubsCount,
+              players_count: playersCount,
+              downloaded_at: downloadedAt,
+            },
+            { onConflict: "country_id,season_id" }
+          );
+        } catch (err) {
+          console.warn("[tm-scraper] Failed to upsert cache:", err);
+        }
       }
 
+      // 3b) Zwróć odpowiedź
       return new Response(
         JSON.stringify({
+          cached: false,
+          downloadedAt,
           details: true,
-          competitionsCount: competitions.length,
-          clubsCount: clubsSet.size,
-          playersCount: rows.length,
+          competitionsCount,
+          clubsCount,
+          playersCount,
           rows, // ← idealne pod jedną „piękną tabelę”
         }),
         {
@@ -537,7 +622,7 @@ export async function GET(req: Request) {
       );
     }
 
-    // Domyślnie (details=1, flat!=1) – pełne drzewko competitions -> clubs -> players
+    /* ---------- 4) Domyślnie: pełne drzewko ---------- */
     return new Response(
       JSON.stringify({
         competitions,
@@ -548,6 +633,7 @@ export async function GET(req: Request) {
       }
     );
   } catch (e: any) {
+    console.error("[tm-scraper] GET error:", e);
     return new Response(
       JSON.stringify({ error: e?.message || "Failed" }),
       { status: 500 }

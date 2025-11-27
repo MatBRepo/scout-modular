@@ -28,6 +28,8 @@ import {
   Loader2,
 } from "lucide-react";
 
+import { supabase } from "@/shared/supabase-client";
+
 /* ======================= Typy & stałe ======================= */
 
 type GlobalPlayer = {
@@ -558,24 +560,32 @@ function TmScraperPanel() {
     players: number;
   }>({ competitions: 0, clubs: 0, players: 0 });
 
+  const [saving, setSaving] = useState(false);
+
+  const [downloadedAt, setDownloadedAt] = useState<string | null>(null);
+  const [cachedFlag, setCachedFlag] = useState<boolean | null>(null);
+
   /* ----- pobierz listę zawodników (flat=1, details=1) ----- */
-  const loadPlayers = async () => {
+  const loadPlayers = async (opts?: { refresh?: boolean }) => {
     setLoading(true);
     setErrorMsg(null);
     setLastApiMessage(null);
 
     try {
-      const url =
+      let url =
         `/api/admin/tm/scrape/competition/list` +
         `?country=${encodeURIComponent(country)}` +
         `&season=${encodeURIComponent(season)}` +
         `&details=1&flat=1`;
 
+      if (opts?.refresh) {
+        url += `&refresh=1`;
+      }
+
       const r = await fetch(url, { cache: "no-store" });
       const text = await r.text();
 
       if (!r.ok) {
-        // jeśli backend zwrócił JSON z error, spróbuj go wyciągnąć
         let apiErr = "";
         try {
           const parsed = JSON.parse(text);
@@ -592,6 +602,8 @@ function TmScraperPanel() {
         setLastApiMessage(msg);
         setRows([]);
         setStats({ competitions: 0, clubs: 0, players: 0 });
+        setDownloadedAt(null);
+        setCachedFlag(null);
         toast.error(msg);
         return;
       }
@@ -609,6 +621,8 @@ function TmScraperPanel() {
         setLastApiMessage(msg);
         setRows([]);
         setStats({ competitions: 0, clubs: 0, players: 0 });
+        setDownloadedAt(null);
+        setCachedFlag(null);
         toast.error(msg);
         return;
       }
@@ -661,7 +675,16 @@ function TmScraperPanel() {
         players: Number(j.playersCount || list.length),
       });
 
-      const okMsg = `Pobrano ${list.length} zawodników (kraj: ${country}, sezon: ${season})`;
+      setDownloadedAt(j.downloadedAt ?? null);
+      setCachedFlag(
+        typeof j.cached === "boolean" ? (j.cached as boolean) : null
+      );
+
+      const originLabel =
+        j.cached === true
+          ? " (Supabase cache)"
+          : " (świeże pobranie z TM)";
+      const okMsg = `Pobrano ${list.length} zawodników (kraj: ${country}, sezon: ${season})${originLabel}`;
       setLastApiMessage(okMsg);
       toast.success(okMsg);
     } catch (e: any) {
@@ -671,6 +694,8 @@ function TmScraperPanel() {
       setLastApiMessage(msg);
       setRows([]);
       setStats({ competitions: 0, clubs: 0, players: 0 });
+      setDownloadedAt(null);
+      setCachedFlag(null);
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -678,7 +703,7 @@ function TmScraperPanel() {
   };
 
   useEffect(() => {
-    // automat: pierwszy load
+    // automat: pierwszy load (z cache jeśli istnieje)
     loadPlayers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -738,14 +763,122 @@ function TmScraperPanel() {
   const total = rows.length;
   const visible = filtered.length;
 
+  /* ----- agregacja klubów i zawodników (dla widoku listy) ----- */
+  const clubsAgg = useMemo(() => {
+    const map = new Map<
+      string,
+      { club_name: string; playersCount: number }
+    >();
+
+    for (const p of filtered) {
+      const name = p.club_name || "Bez klubu";
+      const existing = map.get(name);
+      if (existing) {
+        existing.playersCount += 1;
+      } else {
+        map.set(name, { club_name: name, playersCount: 1 });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+      a.club_name.localeCompare(b.club_name, "pl")
+    );
+  }, [filtered]);
+
+  const sortedPlayers = useMemo(() => {
+    const list = [...filtered];
+    list.sort((a, b) =>
+      a.player_name.localeCompare(b.player_name, "pl")
+    );
+    return list;
+  }, [filtered]);
+
+  const handleClubFilter = (clubName: string) => {
+    setSearch(clubName);
+  };
+
+  /* ----- zapis do Supabase: global_players (opcjonalny, ręczny) ----- */
+  const saveToSupabase = async () => {
+    if (!filtered.length) return;
+    setSaving(true);
+
+    try {
+      const payload = filtered.map((p) => ({
+        key: `tm:${p.tm_player_id}`, // UNIQUE key
+        name: p.player_name,
+        pos: p.position || "UNK",
+        age: p.age ?? null,
+        club: p.club_name || null,
+        nationality:
+          p.nationalities && p.nationalities.length
+            ? p.nationalities.join(", ")
+            : null,
+        source: "tm",
+        ext_id: String(p.tm_player_id),
+        birth_date: p.date_of_birth,
+        meta: {
+          competition_code: p.competition_code,
+          competition_name: p.competition_name,
+          tier_label: p.tier_label,
+          club_tm_id: p.club_tm_id,
+          club_profile_path: p.club_profile_path,
+          number: p.number,
+          height_cm: p.height_cm,
+          foot: p.foot,
+          contract_until: p.contract_until,
+          player_path: p.player_path,
+          country,
+          season,
+        },
+        added_at: new Date().toISOString(),
+      }));
+
+      const { error } = await supabase
+        .from("global_players")
+        .upsert(payload, { onConflict: "key" });
+
+      if (error) throw error;
+
+      toast.success(
+        `Zapisano ${payload.length} zawodników do tabeli global_players`
+      );
+    } catch (e: any) {
+      console.error(e);
+      toast.error(
+        `Błąd zapisu do Supabase: ${e?.message || "nieznany błąd"}`
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Nagłówek */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-lg font-semibold">
-          <Database className="h-5 w-5" />
-          Scraper zawodników (Transfermarkt – kraj / sezon)
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-lg font-semibold">
+            <Database className="h-5 w-5" />
+            Scraper zawodników (Transfermarkt – kraj / sezon)
+          </div>
+          {downloadedAt && (
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center rounded-full border px-2 py-0.5">
+                Ostatnie pobranie:{" "}
+                {new Date(downloadedAt).toLocaleString("pl-PL")}
+              </span>
+              {cachedFlag !== null && (
+                <span className="inline-flex items-center rounded-full border px-2 py-0.5">
+                  Źródło:{" "}
+                  {cachedFlag
+                    ? "Supabase cache (bez ponownego scrapowania)"
+                    : "świeże pobranie z TM"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
+
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center rounded-full border px-2 py-0.5">
             Rozgrywek: {stats.competitions}
@@ -766,6 +899,7 @@ function TmScraperPanel() {
             </span>
           )}
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="outline">
             <Link href="/admin/scraper/data">Pobrane dane</Link>
@@ -782,7 +916,7 @@ function TmScraperPanel() {
               className="w-28"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              onBlur={loadPlayers}
+              onBlur={() => loadPlayers()}
               disabled={loading}
             />
           </div>
@@ -792,7 +926,7 @@ function TmScraperPanel() {
               className="w-28"
               value={season}
               onChange={(e) => setSeason(e.target.value)}
-              onBlur={loadPlayers}
+              onBlur={() => loadPlayers()}
               disabled={loading}
             />
           </div>
@@ -823,11 +957,29 @@ function TmScraperPanel() {
             <Button
               variant="outline"
               className="gap-2"
-              onClick={loadPlayers}
+              onClick={() => loadPlayers({ refresh: true })}
               disabled={loading}
             >
               <RotateCw className="h-4 w-4" />
-              Odśwież listę
+              Pobierz dane ponownie
+            </Button>
+
+            <Button
+              className="gap-2 bg-emerald-600 text-white hover:bg-emerald-500"
+              onClick={saveToSupabase}
+              disabled={saving || !filtered.length}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Zapisywanie…
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Zapisz widocznych do global_players
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -906,7 +1058,7 @@ function TmScraperPanel() {
 
                       {/* Zawodnik */}
                       <td className="p-3">
-                        <div className="font-medium truncate">
+                        <div className="truncate font-medium">
                           {p.player_name || "—"}
                         </div>
                       </td>
@@ -994,6 +1146,81 @@ function TmScraperPanel() {
           </table>
         </div>
       </Card>
+
+      {/* Podsumowanie: lista klubów i zawodników (z widocznego zestawu) */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Lista klubów */}
+        <Card className="p-4">
+          <CardTitle className="flex items-center justify-between text-sm">
+            <span>Lista klubów</span>
+            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] dark:bg-neutral-800">
+              {clubsAgg.length}
+            </span>
+          </CardTitle>
+          <div className="mt-2 max-h-72 space-y-1 overflow-y-auto text-xs">
+            {clubsAgg.length === 0 && (
+              <div className="text-muted-foreground">
+                Brak klubów w aktualnym widoku.
+              </div>
+            )}
+            {clubsAgg.map((c) => (
+              <button
+                key={c.club_name}
+                type="button"
+                onClick={() =>
+                  c.club_name !== "Bez klubu" &&
+                  handleClubFilter(c.club_name)
+                }
+                className="flex w-full items-center justify-between rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-neutral-800"
+              >
+                <span className="truncate">
+                  {c.club_name || "Bez klubu"}
+                </span>
+                <span className="ml-2 text-[11px] text-muted-foreground">
+                  {c.playersCount}{" "}
+                  {c.playersCount === 1 ? "zawodnik" : "zawodników"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* Lista zawodników */}
+        <Card className="p-4">
+          <CardTitle className="flex items-center justify-between text-sm">
+            <span>Lista zawodników</span>
+            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] dark:bg-neutral-800">
+              {sortedPlayers.length}
+            </span>
+          </CardTitle>
+          <div className="mt-2 max-h-72 overflow-y-auto text-xs">
+            {sortedPlayers.length === 0 && (
+              <div className="text-muted-foreground">
+                Brak zawodników w aktualnym widoku.
+              </div>
+            )}
+            {sortedPlayers.map((p) => (
+              <div
+                key={p.tm_player_id}
+                className="flex items-center justify-between gap-2 border-b border-dashed border-stone-200 py-1 last:border-b-0 dark:border-neutral-800"
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-medium">
+                    {p.player_name || "—"}
+                  </div>
+                  <div className="truncate text-[11px] text-muted-foreground">
+                    {p.club_name || "—"}
+                    {p.position && ` • ${p.position}`}
+                  </div>
+                </div>
+                <div className="shrink-0 text-[11px] text-muted-foreground">
+                  {p.age ?? ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

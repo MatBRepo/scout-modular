@@ -11,17 +11,38 @@ export const dynamic = "force-dynamic";
 export default function ObservationsPage() {
   const [observations, setObservations] = useState<Observation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  // 1) Ładowanie z Supabase
+  // 1) Ładowanie z Supabase – tylko obserwacje bieżącego użytkownika
   useEffect(() => {
     let cancelled = false;
     const supabase = getSupabase();
 
     (async () => {
       try {
+        // Najpierw pobieramy zalogowanego usera
+        const { data: authData, error: authError } =
+          await supabase.auth.getUser();
+        if (authError) throw authError;
+
+        const user = authData?.user;
+        if (!user) {
+          // brak zalogowanego usera – nic nie ładujemy
+          if (!cancelled) {
+            setUserId(null);
+            setObservations([]);
+          }
+          return;
+        }
+
+        if (cancelled) return;
+        setUserId(user.id);
+
+        // Tylko rekordy tego usera
         const { data, error } = await supabase
           .from("observations")
           .select("*")
+          .eq("user_id", user.id)
           .order("id", { ascending: true });
 
         if (error) throw error;
@@ -49,24 +70,35 @@ export default function ObservationsPage() {
     // optymistycznie aktualizujemy UI
     setObservations(next);
 
+    if (!userId) {
+      console.warn(
+        "[observations/page] Brak userId – pomijam zapis do Supabase."
+      );
+      return;
+    }
+
     try {
       const supabase = getSupabase();
 
-      // next to tak naprawdę XO[] z ObservationsFeature (ma dodatkowe pola),
-      // więc traktujemy je jako any – Supabase upsertuje pełne rekordy.
+      // Upewniamy się, że każdy rekord ma user_id bieżącego użytkownika
+      const payload = (next as any[]).map((row) => ({
+        ...row,
+        user_id: row.user_id ?? userId,
+      }));
+
       const { error } = await supabase
         .from("observations")
-        .upsert(next as any[], { onConflict: "id" }); // wymagany PRIMARY KEY (id)
+        .upsert(payload, { onConflict: "id" }); // wymagany PRIMARY KEY (id)
 
       if (error) throw error;
     } catch (err) {
       console.error("[observations/page] Błąd zapisu do Supabase:", err);
-      // w przyszłości można tu dorzucić toast / baner
+      // TODO: toast / komunikat w UI
     }
   };
 
   if (loading) {
-    // możesz tu wrzucić skeleton / spinner, na razie prosto:
+    // możesz wrzucić spinner / skeleton
     return null;
   }
 
