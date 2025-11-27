@@ -23,10 +23,24 @@ export function NumericField({
   placeholder,
   ...props
 }: NumericFieldProps) {
-  const finalMinValue = props.minValue ?? 0;
+  // Destructure so we can override minValue / formatOptions safely
+  const { minValue, formatOptions, ...restProps } = props;
+
+  // No negatives
+  const finalMinValue = minValue ?? 0;
+
+  // Force integer-only (no fraction digits) – blocks 122,22 / 122.22 as decimal
+  const mergedFormatOptions: Intl.NumberFormatOptions = {
+    ...formatOptions,
+    maximumFractionDigits: 0,
+  };
 
   return (
-    <NumberField {...props} minValue={finalMinValue}>
+    <NumberField
+      {...restProps}
+      minValue={finalMinValue}
+      formatOptions={mergedFormatOptions}
+    >
       <div className={cn("*:not-first:mt-2", className)}>
         {label && (
           <Label className="mb-1 block text-sm font-medium text-foreground">
@@ -46,7 +60,14 @@ export function NumericField({
             className="h-8 w-full sm:w-20 bg-background px-3 py-2 text-left text-foreground tabular-nums"
             placeholder={placeholder}
             onKeyDown={(e) => {
-              if (e.key === "-" || e.key === "Subtract") {
+              // Block minus & decimals (including numpad + locale comma)
+              if (
+                e.key === "-" ||
+                e.key === "Subtract" ||
+                e.key === "." ||
+                e.key === "Decimal" ||
+                e.key === ","
+              ) {
                 e.preventDefault();
               }
             }}

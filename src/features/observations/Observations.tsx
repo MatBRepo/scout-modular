@@ -1025,15 +1025,7 @@ export default function ObservationsFeature({
                         {counts.all}
                       </span>
                     </TabsTrigger>
-                    <TabsTrigger
-                      value="draft"
-                      className="flex items-center gap-2"
-                    >
-                      <span>Szkice</span>
-                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
-                        {counts.draft}
-                      </span>
-                    </TabsTrigger>
+                    
                   </TabsList>
                   <TabsContent value="active" />
                   <TabsContent value="draft" />
@@ -1352,7 +1344,6 @@ export default function ObservationsFeature({
                       className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                     >
                       <option value="">— dowolny —</option>
-                      <option value="draft">Szkic</option>
                       <option value="final">Finalna</option>
                     </select>
                   </div>
@@ -1850,7 +1841,7 @@ export default function ObservationsFeature({
                       <td
                         className={`${cellPad} hidden align-center sm:table-cell`}
                       >
-                        <GrayTag>{pCount}</GrayTag>
+                         <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">{pCount} </span>
                       </td>
                     )}
 
