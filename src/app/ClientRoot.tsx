@@ -247,12 +247,14 @@ function AppShell({
 
   return (
     <>
-      <div className="pl-64 max-lg:pl-0">
+      {/* wrapper dla treści: padding-left pod sidebar + padding-top tylko na lg, gdzie header jest fixed */}
+      <div className="pl-64 max-lg:pl-0 lg:pt-[64px]">
         <header
-          className="sticky top-0 z-40 border-b border-transparent bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent dark:bg-transparent"
+          className="top-0 left-0 right-0 z-[9] border-b border-transparent bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent dark:bg-transparent lg:fixed"
           role="banner"
         >
-          <div className="relative mx-auto w-full">
+          {/* osobny container, żeby header też respektował przestrzeń sidebaru */}
+          <div className="relative mx-auto w-full lg:pl-64 max-lg:pl-0">
             {isAuthed && (
               <button
                 className="lg:hidden absolute left-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60"
@@ -264,10 +266,10 @@ function AppShell({
             )}
 
             {/* BREADCRUMB W HEADERZE */}
-            <nav
-              aria-label="Breadcrumb"
-              className="absolute left-[55px] top-1/2 -translate-y-1/2 min-w-0 pr-2 lg:left-3"
-            >
+<nav
+  aria-label="Breadcrumb"
+  className="absolute left-[60px] top-[45px] min-w-0 pr-2 lg:relative lg:top-[30px] lg:-translate-y-5 lg:left-3"
+>
               {/* DESKTOP: pełna ścieżka */}
               <ol className="hidden items-center gap-1 text-sm text-slate-600 dark:text-neutral-300 md:flex">
                 {crumbs.map((c, i) => {
@@ -408,9 +410,7 @@ function AppShell({
               )}
             </nav>
 
-<div
-  className="flex items-end mx-auto justify-end w-full max-w-[1400px] py-2 md:py-3 pr-0 md:pr-5 2xl:pr-0"
->
+            <div className="flex items-end mx-auto justify-end w-full max-w-[1400px] py-2 md:py-3 pr-0 md:pr-5 2xl:pr-0">
               {isAuthed ? (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
@@ -439,7 +439,7 @@ function AppShell({
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-9 w-9 rounded-md  dark:border-neutral-70 border border-stone-300"
+                          className="h-9 w-9 rounded-md dark:border-neutral-70 border border-stone-300"
                           aria-label="Dodaj obserwację"
                           onClick={onAddObservation}
                           title="Dodaj obserwację"
@@ -509,7 +509,7 @@ function AppShell({
 export default function ClientRoot({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();

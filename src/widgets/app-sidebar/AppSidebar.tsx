@@ -1,6 +1,3 @@
-// + autroscroll change view
-
-
 // src/widgets/app-sidebar/AppSidebar.tsx
 "use client";
 
@@ -341,6 +338,9 @@ export default function AppSidebar({
   const playersBadge = playersCount > 0 ? String(playersCount) : undefined;
   const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
 
+  /* ===== Mobile accordion for "Zarządzanie" (collapsed by default on mobile) ===== */
+  const [manageOpen, setManageOpen] = useState(variant === "desktop");
+
   /* ===== Logout via Supabase ===== */
   async function handleLogout() {
     try {
@@ -464,41 +464,122 @@ export default function AppSidebar({
                 </div>
 
                 {/* Zarządzanie + submenu: Metryki & Oceny & Ranki */}
-                <div>
-                  <NavItem
-                    href="/admin/manage"
-                    icon={<Settings className="h-4 w-4" />}
-                    label="Zarządzanie"
-                    active={isManageSection}
-                  />
-                  <div className="mt-0.5 space-y-0.5 pl-9">
-                    <SubNavItem
+                {variant === "desktop" ? (
+                  <div>
+                    <NavItem
                       href="/admin/manage"
-                      label="Użytkownicy"
-                      active={manageBaseActive}
+                      icon={<Settings className="h-4 w-4" />}
+                      label="Zarządzanie"
+                      active={isManageSection}
                     />
-                    <SubNavItem
-                      href="/admin/manage/metrics"
-                      label="Metryki obserwacji"
-                      active={manageMetricsActive}
-                    />
-                    <SubNavItem
-                      href="/admin/manage/ratings"
-                      label="Oceny zawodnika"
-                      active={manageRatingsActive}
-                    />
-                    <SubNavItem
-                      href="/admin/manage/ranks"
-                      label="Rangi użytkowników"
-                      active={manageRanksActive}
-                    />
-                    <SubNavItem
-                      href="/admin/manage/required-fields"
-                      label="Wymagane pola"
-                      active={manageRequiredActive}
-                    />
+                    <div className="mt-0.5 space-y-0.5 pl-9">
+                      <SubNavItem
+                        href="/admin/manage"
+                        label="Użytkownicy"
+                        active={manageBaseActive}
+                      />
+                      <SubNavItem
+                        href="/admin/manage/metrics"
+                        label="Metryki obserwacji"
+                        active={manageMetricsActive}
+                      />
+                      <SubNavItem
+                        href="/admin/manage/ratings"
+                        label="Oceny zawodnika"
+                        active={manageRatingsActive}
+                      />
+                      <SubNavItem
+                        href="/admin/manage/ranks"
+                        label="Rangi użytkowników"
+                        active={manageRanksActive}
+                      />
+                      <SubNavItem
+                        href="/admin/manage/required-fields"
+                        label="Wymagane pola"
+                        active={manageRequiredActive}
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    {/* Accordion header (button) on mobile */}
+                    <button
+                      type="button"
+                      onClick={() => setManageOpen((v) => !v)}
+                      aria-expanded={manageOpen}
+                      className={`group flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
+                        isManageSection
+                          ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+                          : "text-gray-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                      }`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="shrink-0">
+                          <Settings className="h-4 w-4" />
+                        </span>
+                        <span className="truncate">
+                          Zarządzanie
+                        </span>
+                      </span>
+                      <motion.span
+                        aria-hidden
+                        initial={false}
+                        animate={{ rotate: manageOpen ? 180 : 0 }}
+                        transition={{
+                          duration: prefersReduced ? 0 : 0.18,
+                          ease: [0.2, 0.7, 0.2, 1],
+                        }}
+                        className="ml-2 inline-flex h-4 w-4 shrink-0 items-center justify-center text-[11px] opacity-70"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </motion.span>
+                    </button>
+
+                    {/* Accordion content (submenu) */}
+                    <AnimatePresence initial={false}>
+                      {manageOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{
+                            duration: prefersReduced ? 0 : 0.18,
+                            ease: "easeOut",
+                          }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-0.5 space-y-0.5 pl-9">
+                            <SubNavItem
+                              href="/admin/manage"
+                              label="Użytkownicy"
+                              active={manageBaseActive}
+                            />
+                            <SubNavItem
+                              href="/admin/manage/metrics"
+                              label="Metryki obserwacji"
+                              active={manageMetricsActive}
+                            />
+                            <SubNavItem
+                              href="/admin/manage/ratings"
+                              label="Oceny zawodnika"
+                              active={manageRatingsActive}
+                            />
+                            <SubNavItem
+                              href="/admin/manage/ranks"
+                              label="Rangi użytkowników"
+                              active={manageRanksActive}
+                            />
+                            <SubNavItem
+                              href="/admin/manage/required-fields"
+                              label="Wymagane pola"
+                              active={manageRequiredActive}
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
 
                 <NavItem
                   href="/scouts"
@@ -830,7 +911,7 @@ function NavItem({
       <span className="truncate">{label}</span>
       {badge && (
         <span
-className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          className="ml-auto inline-flex max-w-[6rem] shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
           title={badgeTitle}
         >
           <span className="truncate">{badge}</span>

@@ -8,6 +8,8 @@ import {
   useRef,
   useState,
   useId,
+  type Dispatch,
+  type SetStateAction,
 } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -445,7 +447,461 @@ function getDefaultExt() {
   };
 }
 
+type ExtState = ReturnType<typeof getDefaultExt>;
 type ExtKey = "profile" | "eligibility" | "stats365" | "contact";
+
+type ExtContentProps = {
+  view: ExtKey;
+  ext: ExtState;
+  setExt: Dispatch<SetStateAction<ExtState>>;
+};
+
+function ExtContent({ view, ext, setExt }: ExtContentProps) {
+  switch (view) {
+    case "profile": {
+      const bucketLabels: Record<BucketPos, string> = {
+        GK: "Bramkarz",
+        DF: "Obrona",
+        MF: "Pomoc",
+        FW: "Atak",
+      };
+
+      const byBucket: Record<BucketPos, typeof POS_DATA> = {
+        GK: [],
+        DF: [],
+        MF: [],
+        FW: [],
+      };
+
+      POS_DATA.forEach((opt) => {
+        const bucket = toBucket(opt.value as DetailedPos);
+        byBucket[bucket] = [...byBucket[bucket], opt];
+      });
+
+      // Nie pokazujemy bramkarza w pozycjach alternatywnych
+      const bucketOrder: BucketPos[] = ["DF", "MF", "FW"];
+
+      return (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <Label className="text-sm">Wzrost (cm)</Label>
+              <NumericField
+                value={ext.height === "" ? undefined : Number(ext.height)}
+                onChange={(val) =>
+                  setExt((s) => ({
+                    ...s,
+                    height: val == null ? "" : String(val),
+                  }))
+                }
+                placeholder="np. 182"
+              />
+            </div>
+
+            <div>
+              <Label className="text-sm">Waga (kg)</Label>
+              <NumericField
+                value={ext.weight === "" ? undefined : Number(ext.weight)}
+                onChange={(val) =>
+                  setExt((s) => ({
+                    ...s,
+                    weight: val == null ? "" : String(val),
+                  }))
+                }
+                placeholder="np. 76"
+              />
+            </div>
+
+            <div>
+              <Label className="text-sm">Dominująca noga</Label>
+              <Select
+                value={ext.dominantFoot || undefined}
+                onValueChange={(val) =>
+                  setExt((s) => ({ ...s, dominantFoot: val }))
+                }
+              >
+                <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
+                  <SelectValue placeholder="Wybierz" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="R">Prawa (R)</SelectItem>
+                  <SelectItem value="L">Lewa (L)</SelectItem>
+                  <SelectItem value="Both">Obunożny</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-sm">Pozycje alternatywne</Label>
+            <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              {bucketOrder.map((bucket) => {
+                const group = byBucket[bucket];
+                if (!group.length) return null;
+
+                return (
+                  <div key={bucket} className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
+                      {bucketLabels[bucket]}
+                    </p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {group.map((opt) => {
+                        const checked = ext.altPositions.includes(opt.value);
+                        const itemId = `alt-pos-${opt.value}`;
+
+                        return (
+                          <div
+                            key={opt.value}
+                            className={cn(
+                              "relative flex w-full items-start gap-2 rounded-md border border-input p-3 text-xs shadow-xs outline-none",
+                              "has-[data-state=checked]:border-primary/60 has-[data-state=checked]:bg-primary/5"
+                            )}
+                          >
+                            <Checkbox
+                              id={itemId}
+                              aria-describedby={`${itemId}-description`}
+                              className="order-1 mt-0.5 after:absolute after:inset-0"
+                              checked={checked}
+                              onCheckedChange={(next) => {
+                                const isChecked = Boolean(next);
+                                setExt((s) => {
+                                  const current = s.altPositions;
+                                  const nextPositions = isChecked
+                                    ? [...current, opt.value]
+                                    : current.filter((x) => x !== opt.value);
+                                  return {
+                                    ...s,
+                                    altPositions: nextPositions,
+                                  };
+                                });
+                              }}
+                            />
+                            <div className="grid grow gap-1">
+                              <Label
+                                htmlFor={itemId}
+                                className="text-xs font-medium text-foreground"
+                              >
+                                {opt.code}{" "}
+                                <span className="font-normal text-muted-foreground text-[11px] leading-[inherit]">
+                                  ({opt.name})
+                                </span>
+                              </Label>
+                              <p
+                                className="text-[11px] text-muted-foreground"
+                                id={`${itemId}-description`}
+                              >
+                                {opt.desc}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    case "eligibility":
+      return (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <RadioChipGroup
+                legend="Znajomość języka angielskiego"
+                layout="grid-2"
+                value={
+                  ext.english === true
+                    ? "yes"
+                    : ext.english === false
+                    ? "no"
+                    : ""
+                }
+                options={[
+                  { value: "yes", label: "Tak" },
+                  { value: "no", label: "Nie" },
+                ]}
+                onChange={(val) =>
+                  setExt((s) => ({
+                    ...s,
+                    english:
+                      val === "yes" ? true : val === "no" ? false : null,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <RadioChipGroup
+                legend="Paszport UE"
+                layout="grid-2"
+                value={
+                  ext.euPassport === true
+                    ? "yes"
+                    : ext.euPassport === false
+                    ? "no"
+                    : ""
+                }
+                options={[
+                  { value: "yes", label: "Tak" },
+                  { value: "no", label: "Nie" },
+                ]}
+                onChange={(val) =>
+                  setExt((s) => ({
+                    ...s,
+                    euPassport:
+                      val === "yes" ? true : val === "no" ? false : null,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Kraj urodzenia</Label>
+              <CountrySearchCombobox
+                value={ext.birthCountry}
+                onChange={(val) =>
+                  setExt((s) => ({ ...s, birthCountry: val }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+            <div>
+              <Label className="text-sm">Status kontraktu</Label>
+              <Input
+                value={ext.contractStatus}
+                onChange={(e) =>
+                  setExt((s) => ({
+                    ...s,
+                    contractStatus: e.target.value,
+                  }))
+                }
+                placeholder="np. do 2027, wolny agent…"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Agencja menadżerska</Label>
+              <Input
+                value={ext.agency}
+                onChange={(e) =>
+                  setExt((s) => ({ ...s, agency: e.target.value }))
+                }
+                placeholder="np. XYZ Management"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Klauzula wykupu</Label>
+              <Input
+                value={ext.releaseClause}
+                onChange={(e) =>
+                  setExt((s) => ({
+                    ...s,
+                    releaseClause: e.target.value,
+                  }))
+                }
+                placeholder="Kwota, zapis, uwagi…"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">
+                Poziom rozgrywkowy obecnego klubu
+              </Label>
+              <Input
+                value={ext.leagueLevel}
+                onChange={(e) =>
+                  setExt((s) => ({ ...s, leagueLevel: e.target.value }))
+                }
+                placeholder="np. Ekstraklasa, CLJ U19, 3 liga…"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm">Linki do klipów / time-codes</Label>
+              <Textarea
+                value={ext.clipsLinks}
+                onChange={(e) =>
+                  setExt((s) => ({ ...s, clipsLinks: e.target.value }))
+                }
+                placeholder="Lista linków (po jednym w linii)…"
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+              <div>
+                <Label className="text-sm">Link do Transfermarkt</Label>
+                <Input
+                  value={ext.transfermarkt}
+                  onChange={(e) =>
+                    setExt((s) => ({
+                      ...s,
+                      transfermarkt: e.target.value,
+                    }))
+                  }
+                  placeholder="https://www.transfermarkt…"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Link do Wyscout</Label>
+                <Input
+                  value={ext.wyscout}
+                  onChange={(e) =>
+                    setExt((s) => ({ ...s, wyscout: e.target.value }))
+                  }
+                  placeholder="https://platform.wyscout…"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+    case "stats365":
+      return (
+        <div className="space-y-5">
+          <div>
+            <Label className="text-sm">
+              Historia urazów (jeśli dostępna)
+            </Label>
+            <Textarea
+              value={ext.injuryHistory}
+              onChange={(e) =>
+                setExt((s) => ({
+                  ...s,
+                  injuryHistory: e.target.value,
+                }))
+              }
+              placeholder="Krótki opis kontuzji, przerw, operacji…"
+              className="mt-1"
+            />
+          </div>
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+            <div>
+              <NumericField
+                label="Minuty w ostatnich 365 dniach"
+                value={ext.minutes365 === "" ? undefined : Number(ext.minutes365)}
+                onChange={(val) =>
+                  setExt((s) => ({
+                    ...s,
+                    minutes365: val == null ? "" : String(val),
+                  }))
+                }
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <NumericField
+                label="Mecze jako starter"
+                value={ext.starts365 === "" ? undefined : Number(ext.starts365)}
+                onChange={(val) =>
+                  setExt((s) => ({
+                    ...s,
+                    starts365: val == null ? "" : String(val),
+                  }))
+                }
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <NumericField
+                label="Mecze jako rezerwowy"
+                value={ext.subs365 === "" ? undefined : Number(ext.subs365)}
+                onChange={(val) =>
+                  setExt((s) => ({
+                    ...s,
+                    subs365: val == null ? "" : String(val),
+                  }))
+                }
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <NumericField
+                label="Gole w ostatnich 365 dniach"
+                value={ext.goals365 === "" ? undefined : Number(ext.goals365)}
+                onChange={(val) =>
+                  setExt((s) => ({
+                    ...s,
+                    goals365: val == null ? "" : String(val),
+                  }))
+                }
+                placeholder="0"
+              />
+            </div>
+          </div>
+        </div>
+      );
+
+    case "contact":
+      return (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+            <div>
+              <Label className="text-sm">Telefon kontaktowy</Label>
+              <Input
+                value={ext.phone}
+                onChange={(e) =>
+                  setExt((s) => ({ ...s, phone: e.target.value }))
+                }
+                placeholder="+48…"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">E-mail kontaktowy</Label>
+              <Input
+                type="email"
+                value={ext.email}
+                onChange={(e) =>
+                  setExt((s) => ({ ...s, email: e.target.value }))
+                }
+                placeholder="mail@przyklad.pl"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <Label className="text-sm">Link FB</Label>
+              <Input
+                value={ext.fb}
+                onChange={(e) =>
+                  setExt((s) => ({ ...s, fb: e.target.value }))
+                }
+                placeholder="https://facebook.com/…"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Link IG</Label>
+              <Input
+                value={ext.ig}
+                onChange={(e) =>
+                  setExt((s) => ({ ...s, ig: e.target.value }))
+                }
+                placeholder="https://instagram.com/…"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Link TikTok</Label>
+              <Input
+                value={ext.tiktok}
+                onChange={(e) =>
+                  setExt((s) => ({ ...s, tiktok: e.target.value }))
+                }
+                placeholder="https://tiktok.com/@…"
+              />
+            </div>
+          </div>
+        </div>
+      );
+  }
+}
 
 export default function PlayerEditorPage() {
   const params = useParams<{ id?: string }>();
@@ -479,7 +935,7 @@ export default function PlayerEditorPage() {
   const [posDet, setPosDet] = useState<DetailedPos>("CM");
   const [uPosDet, setUPosDet] = useState<DetailedPos>("CM");
 
-  const [ext, setExt] = useState(getDefaultExt);
+  const [ext, setExt] = useState<ExtState>(getDefaultExt);
 
   const [ratingConfig, setRatingConfig] = useState<RatingsConfig>(() =>
     loadRatings()
@@ -516,6 +972,10 @@ export default function PlayerEditorPage() {
   );
 
   // Ładowanie zawodnika z Supabase do edycji
+  const [observations, setObservations] = useState<ObsRec[]>([]);
+  const [obsQuery, setObsQuery] = useState("");
+  const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
+
   useEffect(() => {
     if (!playerId) return;
     let cancelled = false;
@@ -733,10 +1193,6 @@ export default function PlayerEditorPage() {
     ? toBucket(effectiveMainPos)
     : null;
 
-  const [observations, setObservations] = useState<ObsRec[]>([]);
-  const [obsQuery, setObsQuery] = useState("");
-  const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
-
   const [qaMatch, setQaMatch] = useState("");
   const [qaDate, setQaDate] = useState("");
   const [qaTime, setQaTime] = useState("");
@@ -874,462 +1330,6 @@ export default function PlayerEditorPage() {
 
   const [extView, setExtView] = useState<ExtKey>("profile");
 
-  /* ===== ExtContent ===== */
-  function ExtContent({ view }: { view: ExtKey }) {
-    switch (view) {
-      case "profile": {
-        const bucketLabels: Record<BucketPos, string> = {
-          GK: "Bramkarz",
-          DF: "Obrona",
-          MF: "Pomoc",
-          FW: "Atak",
-        };
-
-        const byBucket: Record<BucketPos, typeof POS_DATA> = {
-          GK: [],
-          DF: [],
-          MF: [],
-          FW: [],
-        };
-
-        POS_DATA.forEach((opt) => {
-          const bucket = toBucket(opt.value as DetailedPos);
-          byBucket[bucket] = [...byBucket[bucket], opt];
-        });
-
-        // Nie pokazujemy bramkarza w pozycjach alternatywnych
-        const bucketOrder: BucketPos[] = ["DF", "MF", "FW"];
-
-        return (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div>
-                <Label className="text-sm">Wzrost (cm)</Label>
-                <NumericField
-                  value={ext.height === "" ? undefined : Number(ext.height)}
-                  onChange={(val) =>
-                    setExt((s) => ({
-                      ...s,
-                      height: val == null ? "" : String(val),
-                    }))
-                  }
-                  placeholder="np. 182"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm">Waga (kg)</Label>
-                <NumericField
-                  value={ext.weight === "" ? undefined : Number(ext.weight)}
-                  onChange={(val) =>
-                    setExt((s) => ({
-                      ...s,
-                      weight: val == null ? "" : String(val),
-                    }))
-                  }
-                  placeholder="np. 76"
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm">Dominująca noga</Label>
-                <Select
-                  value={ext.dominantFoot || undefined}
-                  onValueChange={(val) =>
-                    setExt((s) => ({ ...s, dominantFoot: val }))
-                  }
-                >
-                  <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
-                    <SelectValue placeholder="Wybierz" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="R">Prawa (R)</SelectItem>
-                    <SelectItem value="L">Lewa (L)</SelectItem>
-                    <SelectItem value="Both">Obunożny</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm">Pozycje alternatywne</Label>
-              <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-3">
-                {bucketOrder.map((bucket) => {
-                  const group = byBucket[bucket];
-                  if (!group.length) return null;
-
-                  return (
-                    <div key={bucket} className="space-y-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">
-                        {bucketLabels[bucket]}
-                      </p>
-                      <div className="grid grid-cols-1 gap-2">
-                        {group.map((opt) => {
-                          const checked = ext.altPositions.includes(
-                            opt.value
-                          );
-                          const itemId = `alt-pos-${opt.value}`;
-
-                          return (
-                            <div
-                              key={opt.value}
-                              className={cn(
-                                "relative flex w-full items-start gap-2 rounded-md border border-input p-3 text-xs shadow-xs outline-none",
-                                "has-[data-state=checked]:border-primary/60 has-[data-state=checked]:bg-primary/5"
-                              )}
-                            >
-                              <Checkbox
-                                id={itemId}
-                                aria-describedby={`${itemId}-description`}
-                                className="order-1 mt-0.5 after:absolute after:inset-0"
-                                checked={checked}
-                                onCheckedChange={(next) => {
-                                  const isChecked = Boolean(next);
-                                  setExt((s) => {
-                                    const current = s.altPositions;
-                                    const nextPositions = isChecked
-                                      ? [...current, opt.value]
-                                      : current.filter(
-                                          (x) => x !== opt.value
-                                        );
-                                    return {
-                                      ...s,
-                                      altPositions: nextPositions,
-                                    };
-                                  });
-                                }}
-                              />
-                              <div className="grid grow gap-1">
-                                <Label
-                                  htmlFor={itemId}
-                                  className="text-xs font-medium text-foreground"
-                                >
-                                  {opt.code}{" "}
-                                  <span className="font-normal text-muted-foreground text-[11px] leading-[inherit]">
-                                    ({opt.name})
-                                  </span>
-                                </Label>
-                                <p
-                                  className="text-[11px] text-muted-foreground"
-                                  id={`${itemId}-description`}
-                                >
-                                  {opt.desc}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      case "eligibility":
-        return (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div>
-                <RadioChipGroup
-                  legend="Znajomość języka angielskiego"
-                  layout="grid-2"
-                  value={
-                    ext.english === true
-                      ? "yes"
-                      : ext.english === false
-                      ? "no"
-                      : ""
-                  }
-                  options={[
-                    { value: "yes", label: "Tak" },
-                    { value: "no", label: "Nie" },
-                  ]}
-                  onChange={(val) =>
-                    setExt((s) => ({
-                      ...s,
-                      english:
-                        val === "yes" ? true : val === "no" ? false : null,
-                    }))
-                  }
-                />
-              </div>
-              <div>
-                <RadioChipGroup
-                  legend="Paszport UE"
-                  layout="grid-2"
-                  value={
-                    ext.euPassport === true
-                      ? "yes"
-                      : ext.euPassport === false
-                      ? "no"
-                      : ""
-                  }
-                  options={[
-                    { value: "yes", label: "Tak" },
-                    { value: "no", label: "Nie" },
-                  ]}
-                  onChange={(val) =>
-                    setExt((s) => ({
-                      ...s,
-                      euPassport:
-                        val === "yes" ? true : val === "no" ? false : null,
-                    }))
-                  }
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Kraj urodzenia</Label>
-                <CountrySearchCombobox
-                  value={ext.birthCountry}
-                  onChange={(val) =>
-                    setExt((s) => ({ ...s, birthCountry: val }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              <div>
-                <Label className="text-sm">Status kontraktu</Label>
-                <Input
-                  value={ext.contractStatus}
-                  onChange={(e) =>
-                    setExt((s) => ({
-                      ...s,
-                      contractStatus: e.target.value,
-                    }))
-                  }
-                  placeholder="np. do 2027, wolny agent…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Agencja menadżerska</Label>
-                <Input
-                  value={ext.agency}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, agency: e.target.value }))
-                  }
-                  placeholder="np. XYZ Management"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Klauzula wykupu</Label>
-                <Input
-                  value={ext.releaseClause}
-                  onChange={(e) =>
-                    setExt((s) => ({
-                      ...s,
-                      releaseClause: e.target.value,
-                    }))
-                  }
-                  placeholder="Kwota, zapis, uwagi…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">
-                  Poziom rozgrywkowy obecnego klubu
-                </Label>
-                <Input
-                  value={ext.leagueLevel}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, leagueLevel: e.target.value }))
-                  }
-                  placeholder="np. Ekstraklasa, CLJ U19, 3 liga…"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm">Linki do klipów / time-codes</Label>
-                <Textarea
-                  value={ext.clipsLinks}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, clipsLinks: e.target.value }))
-                  }
-                  placeholder="Lista linków (po jednym w linii)…"
-                  className="mt-1"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                <div>
-                  <Label className="text-sm">Link do Transfermarkt</Label>
-                  <Input
-                    value={ext.transfermarkt}
-                    onChange={(e) =>
-                      setExt((s) => ({
-                        ...s,
-                        transfermarkt: e.target.value,
-                      }))
-                    }
-                    placeholder="https://www.transfermarkt…"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Link do Wyscout</Label>
-                  <Input
-                    value={ext.wyscout}
-                    onChange={(e) =>
-                      setExt((s) => ({ ...s, wyscout: e.target.value }))
-                    }
-                    placeholder="https://platform.wyscout…"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case "stats365":
-        return (
-          <div className="space-y-5">
-            <div>
-              <Label className="text-sm">
-                Historia urazów (jeśli dostępna)
-              </Label>
-              <Textarea
-                value={ext.injuryHistory}
-                onChange={(e) =>
-                  setExt((s) => ({
-                    ...s,
-                    injuryHistory: e.target.value,
-                  }))
-                }
-                placeholder="Krótki opis kontuzji, przerw, operacji…"
-                className="mt-1"
-              />
-            </div>
-            <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
-              <div>
-                <NumericField
-                  label="Minuty w ostatnich 365 dniach"
-                  value={
-                    ext.minutes365 === "" ? undefined : Number(ext.minutes365)
-                  }
-                  onChange={(val) =>
-                    setExt((s) => ({
-                      ...s,
-                      minutes365: val == null ? "" : String(val),
-                    }))
-                  }
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <NumericField
-                  label="Mecze jako starter"
-                  value={
-                    ext.starts365 === "" ? undefined : Number(ext.starts365)
-                  }
-                  onChange={(val) =>
-                    setExt((s) => ({
-                      ...s,
-                      starts365: val == null ? "" : String(val),
-                    }))
-                  }
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <NumericField
-                  label="Mecze jako rezerwowy"
-                  value={ext.subs365 === "" ? undefined : Number(ext.subs365)}
-                  onChange={(val) =>
-                    setExt((s) => ({
-                      ...s,
-                      subs365: val == null ? "" : String(val),
-                    }))
-                  }
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <NumericField
-                  label="Gole w ostatnich 365 dniach"
-                  value={ext.goals365 === "" ? undefined : Number(ext.goals365)}
-                  onChange={(val) =>
-                    setExt((s) => ({
-                      ...s,
-                      goals365: val == null ? "" : String(val),
-                    }))
-                  }
-                  placeholder="0"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case "contact":
-        return (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              <div>
-                <Label className="text-sm">Telefon kontaktowy</Label>
-                <Input
-                  value={ext.phone}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, phone: e.target.value }))
-                  }
-                  placeholder="+48…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">E-mail kontaktowy</Label>
-                <Input
-                  type="email"
-                  value={ext.email}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, email: e.target.value }))
-                  }
-                  placeholder="mail@przyklad.pl"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div>
-                <Label className="text-sm">Link FB</Label>
-                <Input
-                  value={ext.fb}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, fb: e.target.value }))
-                  }
-                  placeholder="https://facebook.com/…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Link IG</Label>
-                <Input
-                  value={ext.ig}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, ig: e.target.value }))
-                  }
-                  placeholder="https://instagram.com/…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Link TikTok</Label>
-                <Input
-                  value={ext.tiktok}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, tiktok: e.target.value }))
-                  }
-                  placeholder="https://tiktok.com/@…"
-                />
-              </div>
-            </div>
-          </div>
-        );
-    }
-  }
-
   function RatingRow({ aspect }: { aspect: RatingAspect }) {
     const val = ratings[aspect.key] ?? 0;
     const hasTooltip = !!aspect.tooltip;
@@ -1406,6 +1406,7 @@ export default function PlayerEditorPage() {
   );
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedSnapshotRef = useRef<string | null>(null);
 
   // Autozapis do Supabase (update istniejącego zawodnika)
   useEffect(() => {
@@ -1426,6 +1427,30 @@ export default function PlayerEditorPage() {
 
     if (!hasAnyBasic) {
       setSaveState("idle");
+      return;
+    }
+
+    // snapshot tego, co faktycznie zapisujesz
+    const currentSnapshot = JSON.stringify({
+      choice,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      birthYear: birthYear.trim(),
+      club: club.trim(),
+      clubCountry: clubCountry.trim(),
+      jerseyNumber: jerseyNumber.trim(),
+      posDet,
+      uPosDet,
+      ext,
+      ratings,
+      notes,
+      uNote,
+      obsSelectedId,
+      observations: normalizedObservations,
+    });
+
+    // jeśli nic się nie zmieniło – nie odpalaj save
+    if (lastSavedSnapshotRef.current === currentSnapshot) {
       return;
     }
 
@@ -1528,6 +1553,7 @@ export default function PlayerEditorPage() {
           }
 
           if (!cancelled) {
+            lastSavedSnapshotRef.current = currentSnapshot;
             setSaveState("saved");
           }
         } catch (err) {
@@ -1715,7 +1741,7 @@ export default function PlayerEditorPage() {
               className="mr-1.5 h-4 w-4 text-rose-700"
               strokeWidth={1.4}
             />
-           Zawodnik nieznany
+            Zawodnik nieznany
           </span>
         )}
       </div>
@@ -1817,16 +1843,18 @@ export default function PlayerEditorPage() {
                           placeholder="np. Kowalski"
                         />
                       </div>
-                     <div>
-  <Label className="text-sm">Rok urodzenia</Label>
-  <NumericField
-    value={birthYear === "" ? undefined : Number(birthYear)}
-    onChange={(val) =>
-      setBirthYear(val == null ? "" : String(val))
-    }
-    placeholder="np. 2006"
-  />
-</div>
+                      <div>
+                        <Label className="text-sm">Rok urodzenia</Label>
+                        <NumericField
+                          value={
+                            birthYear === "" ? undefined : Number(birthYear)
+                          }
+                          onChange={(val) =>
+                            setBirthYear(val == null ? "" : String(val))
+                          }
+                          placeholder="np. 2006"
+                        />
+                      </div>
 
                       <div>
                         <NumericField
@@ -1971,7 +1999,7 @@ export default function PlayerEditorPage() {
                       </option>
                     </select>
                     <div className="mt-4">
-                      <ExtContent view={extView} />
+                      <ExtContent view={extView} ext={ext} setExt={setExt} />
                     </div>
                   </div>
 
@@ -1997,16 +2025,28 @@ export default function PlayerEditorPage() {
                       </TabsList>
 
                       <TabsContent value="profile" className="mt-4">
-                        <ExtContent view="profile" />
+                        <ExtContent view="profile" ext={ext} setExt={setExt} />
                       </TabsContent>
                       <TabsContent value="eligibility" className="mt-4">
-                        <ExtContent view="eligibility" />
+                        <ExtContent
+                          view="eligibility"
+                          ext={ext}
+                          setExt={setExt}
+                        />
                       </TabsContent>
                       <TabsContent value="stats365" className="mt-4">
-                        <ExtContent view="stats365" />
+                        <ExtContent
+                          view="stats365"
+                          ext={ext}
+                          setExt={setExt}
+                        />
                       </TabsContent>
                       <TabsContent value="contact" className="mt-4">
-                        <ExtContent view="contact" />
+                        <ExtContent
+                          view="contact"
+                          ext={ext}
+                          setExt={setExt}
+                        />
                       </TabsContent>
                     </Tabs>
                   </div>
@@ -2101,7 +2141,10 @@ export default function PlayerEditorPage() {
                           </p>
                         )}
 
-                        <RatingGroup title="Podstawowe" aspects={baseAspects} />
+                        <RatingGroup
+                          title="Podstawowe"
+                          aspects={baseAspects}
+                        />
 
                         {effectiveBucket === "GK" && (
                           <RatingGroup
