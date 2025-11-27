@@ -18,7 +18,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 import type { ReadonlyURLSearchParams } from "next/navigation";
-import { Menu, ChevronRight, ChevronDown } from "lucide-react";
+import { Menu, ChevronRight, ChevronDown, PlusCircle } from "lucide-react";
 import { HomeIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,9 @@ import {
 } from "framer-motion";
 
 import { AddPlayerIcon, AddObservationIcon } from "@/components/icons";
+import { getSupabase } from "@/lib/supabaseClient";
+
+
 
 /* ===== Easing & Variants ===== */
 const easeOutCustom = cubicBezier(0.2, 0.7, 0.2, 1);
@@ -266,10 +269,10 @@ function AppShell({
             )}
 
             {/* BREADCRUMB W HEADERZE */}
-<nav
-  aria-label="Breadcrumb"
-  className="absolute left-[60px] top-[12px] min-w-0 pr-2 lg:relative lg:top-[30px] lg:-translate-y-5 lg:left-3"
->
+            <nav
+              aria-label="Breadcrumb"
+              className="absolute left-[60px] top-[12px] min-w-0 pr-2 lg:relative lg:top-[30px] lg:-translate-y-5 lg:left-3"
+            >
               {/* DESKTOP: pełna ścieżka */}
               <ol className="hidden items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:flex">
                 {crumbs.map((c, i) => {
@@ -521,6 +524,44 @@ export default function ClientRoot({
   const [headerActions, setHeaderActions] = useState<ReactNode | null>(
     null
   );
+
+  // ===== LAST ACTIVE TRACKER (Supabase) =====
+  useEffect(() => {
+    const supabase = getSupabase();
+    let cancelled = false;
+
+    const touch = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session?.user || cancelled) return;
+
+        await supabase.rpc("touch_profile_last_active");
+      } catch (e) {
+        console.error("Failed to update last_active:", e);
+      }
+    };
+
+    // na starcie – jeśli jest sesja, zaktualizuj last_active
+    touch();
+
+    // reaguj na zmiany auth (login / logout)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) return;
+      supabase
+        .rpc("touch_profile_last_active")
+       
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (prefersReduced) return;
