@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { Crumb, Toolbar } from "@/shared/ui/atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -108,6 +108,32 @@ export default function GlobalSearchPage() {
           </Tabs>
         }
       />
+
+      {/* Krótkie wyjaśnienie kontekstu widoku */}
+      <div className="mt-3">
+        <Card className="border-dashed border-stone-200 bg-stone-50/70 text-xs text-stone-700 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-200">
+          <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p>
+                <span className="font-semibold">LNP</span> – szybkie dodawanie
+                pojedynczych zawodników z wyszukiwarki.
+              </p>
+              <p>
+                <span className="font-semibold">Transfermarkt</span> – masowy
+                import zawodników (kraj / sezon) z opcjonalnym zapisem do
+                globalnej bazy.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1 sm:pt-0">
+              <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-stone-700 shadow-sm ring-1 ring-stone-200 dark:bg-neutral-950 dark:text-neutral-200 dark:ring-neutral-700">
+                <Database className="mr-1 h-3 w-3" />
+                Dane globalne tylko do odczytu – gracze trafiają do{" "}
+                <span className="ml-1 font-semibold">global_players</span>.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="mt-4 space-y-4">
         {tab === "lnp" ? <LnpSearchPanel /> : <TmScraperPanel />}
@@ -292,78 +318,123 @@ function LnpSearchPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Sterowanie */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              run();
-            }
-          }}
-          placeholder="Szukaj w LNP (nazwisko, klub…) "
-          className="h-9 w-full max-w-xs sm:max-w-md"
-        />
-        <Button
-          className="h-9 bg-gray-900 text-white hover:bg-gray-800"
-          onClick={run}
-          disabled={running || !q.trim()}
-        >
-          <Search className="mr-2 h-4 w-4" /> Szukaj
-        </Button>
-        <Button
-          variant="outline"
-          className="h-9 border-gray-300 dark:border-neutral-700"
-          onClick={stop}
-          disabled={!running}
-        >
-          <XCircle className="mr-2 h-4 w-4" /> Przerwij
-        </Button>
+      {/* Panel sterowania LNP */}
+      <Card className="border-gray-200 bg-white/60 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/60">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-1 flex-col gap-2 sm:max-w-xl">
+              <Label className="text-xs uppercase tracking-wide text-stone-500 dark:text-neutral-400">
+                Wyszukiwanie w LNP
+              </Label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative w-full">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        run();
+                      }
+                    }}
+                    placeholder="Nazwisko, klub, fraza…"
+                    className="h-9 w-full pl-8"
+                  />
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    className="h-9 bg-gray-900 text-white hover:bg-gray-800"
+                    onClick={run}
+                    disabled={running || !q.trim()}
+                  >
+                    {running ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Szukanie…
+                      </>
+                    ) : (
+                      <>
+                        <Search className="mr-2 h-4 w-4" />
+                        Szukaj
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-9 border-gray-300 dark:border-neutral-700"
+                    onClick={stop}
+                    disabled={!running}
+                  >
+                    <XCircle className="mr-2 h-4 w-4" /> Stop
+                  </Button>
+                </div>
+              </div>
+            </div>
 
-        <div className="ml-0 inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-neutral-700 dark:bg-neutral-950 sm:ml-2">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="only-new"
-              checked={onlyNew}
-              onCheckedChange={(v) => setOnlyNew(Boolean(v))}
-              className="h-4 w-4"
-            />
-            <Label
-              htmlFor="only-new"
-              className="cursor-pointer text-[12px] leading-none"
-            >
-              Pokaż tylko nowe rekordy
-            </Label>
+            <div className="flex flex-col gap-2 text-xs sm:items-end">
+              <span className="inline-flex items-center rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
+                <Users className="mr-1 h-3 w-3" />
+                W lokalnej bazie: {db.length}
+              </span>
+              <Button
+                variant="outline"
+                className="h-8 gap-2 border-gray-300 text-xs dark:border-neutral-700"
+                onClick={importCSV}
+              >
+                <Upload className="h-3.5 w-3.5" /> Import z CSV
+              </Button>
+            </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-7 border-gray-300 px-2 text-xs dark:border-neutral-700"
-            onClick={() => setResults([])}
-            title="Wyczyść wyniki wyszukiwania"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span className="ml-1">Wyczyść</span>
-          </Button>
-        </div>
 
-        <Button
-          variant="outline"
-          className="h-9 border-gray-300 dark:border-neutral-700"
-          onClick={importCSV}
-        >
-          <Upload className="mr-2 h-4 w-4" /> Import CSV
-        </Button>
-      </div>
+          <div className="flex flex-wrap items-center gap-3 border-t pt-3 text-xs text-muted-foreground">
+            <div className="inline-flex items-center gap-2 rounded-md bg-stone-50 px-2 py-1 ring-1 ring-stone-200 dark:bg-neutral-900 dark:ring-neutral-800">
+              <Checkbox
+                id="only-new"
+                checked={onlyNew}
+                onCheckedChange={(v) => setOnlyNew(Boolean(v))}
+                className="h-4 w-4"
+              />
+              <Label
+                htmlFor="only-new"
+                className="cursor-pointer text-[12px] leading-none"
+              >
+                Pokaż tylko nowych (nieobecnych w lokalnej bazie)
+              </Label>
+            </div>
 
-      {/* Status */}
-      {statusMsg && (
-        <div className="mb-1 inline-flex items-center rounded-md bg-stone-50 px-2.5 py-1 text-xs text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
-          {statusMsg}
-        </div>
-      )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 px-2 text-[11px]"
+              onClick={() => setResults([])}
+              title="Wyczyść wyniki wyszukiwania"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Wyczyść wyniki
+            </Button>
+
+            {statusMsg && (
+              <span className="inline-flex items-center rounded-md bg-stone-50 px-2 py-1 text-[11px] text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
+                {statusMsg}
+              </span>
+            )}
+          </div>
+
+          {typeof tookMs === "number" && (
+            <div className="text-[11px] text-muted-foreground">
+              Czas odpowiedzi źródła: {tookMs} ms
+            </div>
+          )}
+          {error && (
+            <div className="flex items-center gap-1 text-[11px] text-rose-600 dark:text-rose-300">
+              <AlertTriangle className="h-3 w-3" />
+              Błąd źródła LNP: {error}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Wyniki */}
       <ResultsTable
@@ -399,22 +470,23 @@ function ResultsTable({
   error?: string;
 }) {
   return (
-    <Card className="border-gray-200 dark:border-neutral-800">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="border-gray-200 bg-white/60 dark:border-neutral-800 dark:bg-neutral-950/60">
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <div>
-          <CardTitle className="text-sm">
-            {sourceLabel ? `Wyniki: ${sourceLabel}` : "Wyniki"}{" "}
-            <span className="ml-1 rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
-              {rows.length}
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <span>{sourceLabel ? `Wyniki: ${sourceLabel}` : "Wyniki"}</span>
+            <span className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-stone-800 dark:text-stone-200 dark:ring-stone-700">
+              {rows.length} rekordów
             </span>
           </CardTitle>
           {typeof tookMs === "number" && (
-            <div className="mt-1 text-[11px] text-dark dark:text-neutral-400">
+            <div className="mt-1 text-[11px] text-muted-foreground">
               Czas odpow.: {tookMs} ms
             </div>
           )}
           {error && (
-            <div className="mt-1 text-[11px] text-rose-600 dark:text-rose-300">
+            <div className="mt-1 flex items-center gap-1 text-[11px] text-rose-600 dark:text-rose-300">
+              <AlertTriangle className="h-3 w-3" />
               Błąd źródła LNP: {error}
             </div>
           )}
@@ -434,53 +506,61 @@ function ResultsTable({
       <CardContent className="p-0">
         <div className="w-full overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+            <thead className="sticky top-0 z-10 bg-stone-100 text-[12px] font-medium text-stone-700 shadow-sm dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
-                <th className="p-3 text-left font-medium">Zawodnik</th>
-                <th className="p-3 text-left font-medium">Klub</th>
-                <th className="p-3 text-left font-medium">Pozycja</th>
-                <th className="p-3 text-left font-medium">Wiek</th>
-                <th className="p-3 text-left font-medium">Źródło</th>
-                <th className="p-3 text-right font-medium">Akcje</th>
+                <th className="p-3 text-left">Zawodnik</th>
+                <th className="p-3 text-left">Klub</th>
+                <th className="p-3 text-left">Pozycja</th>
+                <th className="p-3 text-left">Wiek</th>
+                <th className="p-3 text-left">Źródło</th>
+                <th className="p-3 text-right">Akcje</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => {
                 const inDb = dbKeys.has(dedupeKey(r));
+                const rowClass = inDb
+                  ? "bg-emerald-50/60 text-stone-700 dark:bg-emerald-950/25 dark:text-neutral-100"
+                  : "hover:bg-stone-50 dark:hover:bg-neutral-900";
+
                 return (
                   <tr
                     key={`${r.id}-${r.source}-${r.extId || ""}`}
-                    className="border-t border-gray-200 dark:border-neutral-800"
+                    className={`border-t border-gray-200 transition-colors dark:border-neutral-800 ${rowClass}`}
                   >
                     <td className="p-3">
                       <div className="font-medium text-gray-900 dark:text-neutral-100">
                         {r.name || "—"}
                       </div>
                       {r.nationality && (
-                        <div className="text-xs text-dark dark:text-neutral-400">
+                        <div className="mt-0.5 text-xs text-muted-foreground">
                           {r.nationality}
                         </div>
                       )}
                     </td>
-                    <td className="p-3">{r.club || "—"}</td>
+                    <td className="p-3 text-sm text-stone-800 dark:text-neutral-200">
+                      {r.club || "—"}
+                    </td>
                     <td className="p-3">
                       {r.pos ? (
-                        <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                        <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 ring-1 ring-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:ring-neutral-700">
                           {r.pos}
                         </span>
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td className="p-3">{r.age ?? "—"}</td>
-                    <td className="p-3">
+                    <td className="p-3 text-sm text-stone-800 dark:text-neutral-200">
+                      {r.age ?? "—"}
+                    </td>
+                    <td className="p-3 text-sm text-muted-foreground">
                       {labelForSource(r.source as ScraperId | string)}
                     </td>
                     <td className="p-3 text-right">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 border-gray-300 dark:border-neutral-700"
+                        className="h-8 gap-1 border-gray-300 text-xs dark:border-neutral-700"
                         onClick={() => onAddOne(r)}
                         disabled={inDb}
                         title={
@@ -491,11 +571,11 @@ function ResultsTable({
                       >
                         {inDb ? (
                           <>
-                            <CopyCheck className="mr-1 h-4 w-4" /> W bazie
+                            <CopyCheck className="h-3.5 w-3.5" /> W bazie
                           </>
                         ) : (
                           <>
-                            <Users className="mr-1 h-4 w-4" /> Dodaj
+                            <Users className="h-3.5 w-3.5" /> Dodaj
                           </>
                         )}
                       </Button>
@@ -507,9 +587,10 @@ function ResultsTable({
                 <tr>
                   <td
                     colSpan={6}
-                    className="p-5 text-center text-sm text-dark dark:text-neutral-400"
+                    className="p-6 text-center text-sm text-muted-foreground"
                   >
-                    Brak wyników do wyświetlenia. Użyj wyszukiwarki powyżej.
+                    Brak wyników do wyświetlenia. Użyj wyszukiwarki powyżej lub
+                    zaimportuj plik CSV.
                   </td>
                 </tr>
               )}
@@ -546,6 +627,19 @@ type TmPlayerRow = {
   contract_until: string | null;
 };
 
+type ParsedTable = {
+  headers: string[];
+  rows: string[][];
+};
+
+type PlayerDetailsResponse = {
+  slug: string;
+  playerId: string;
+  urls: Record<string, string>;
+  tables?: Record<string, ParsedTable | null>;
+  errors?: Record<string, string>;
+};
+
 function TmScraperPanel() {
   const [country, setCountry] = useState("135");
   const [season, setSeason] = useState("2025");
@@ -566,6 +660,31 @@ function TmScraperPanel() {
 
   const [downloadedAt, setDownloadedAt] = useState<string | null>(null);
   const [cachedFlag, setCachedFlag] = useState<boolean | null>(null);
+
+  // --- nowe filtry ---
+  type PosFilter = "all" | "GK" | "DF" | "MF" | "FW" | "other";
+  const [posFilter, setPosFilter] = useState<PosFilter>("all");
+  const [competitionFilter, setCompetitionFilter] = useState<string>("all");
+
+  // szczegóły TM dla wybranego zawodnika
+  const [selectedPlayer, setSelectedPlayer] = useState<TmPlayerRow | null>(
+    null
+  );
+  const [playerDetails, setPlayerDetails] =
+    useState<PlayerDetailsResponse | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+
+  // lista dostępnych rozgrywek (do selecta)
+  const competitionOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of rows) {
+      if (p.competition_name) set.add(p.competition_name);
+    }
+    return Array.from(set.values()).sort((a, b) =>
+      a.localeCompare(b, "pl")
+    );
+  }, [rows]);
 
   /* ----- pobierz listę zawodników (Supabase cache / TM) ----- */
   const loadPlayers = async (opts?: { refresh?: boolean }) => {
@@ -725,33 +844,6 @@ function TmScraperPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ----- filtrowanie (wielowyrazowe) ----- */
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    const tokens = q.split(/\s+/).filter(Boolean);
-
-    return rows.filter((p) => {
-      const haystack = (
-        p.player_name +
-        " " +
-        p.club_name +
-        " " +
-        (p.position || "") +
-        " " +
-        (p.nationalities || []).join(" ") +
-        " " +
-        p.competition_name +
-        " " +
-        (p.tier_label || "")
-      )
-        .toLowerCase()
-        .replace(/\s+/g, " ");
-
-      return tokens.every((t) => haystack.includes(t));
-    });
-  }, [rows, search]);
-
   const openTmUrl = (path?: string | null) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;
@@ -778,14 +870,108 @@ function TmScraperPanel() {
   };
 
   const total = rows.length;
+
+  /* ----- filtrowanie (po rozgrywkach, pozycji, oraz full-text) ----- */
+  const filtered = useMemo(() => {
+    let data = [...rows];
+
+    // 1) rozgrywki
+    if (competitionFilter !== "all") {
+      data = data.filter(
+        (p) => p.competition_name === competitionFilter
+      );
+    }
+
+    // 2) pozycja
+    if (posFilter !== "all") {
+      data = data.filter((p) => {
+        const pos = (p.position || "").toUpperCase();
+        if (!pos) return false;
+        if (posFilter === "GK") return pos.startsWith("GK");
+        if (posFilter === "DF")
+          return pos.startsWith("DF") || pos.includes("BACK");
+        if (posFilter === "MF")
+          return pos.startsWith("MF") || pos.includes("MIDFIELD");
+        if (posFilter === "FW")
+          return (
+            pos.startsWith("FW") ||
+            pos.includes("STRIKER") ||
+            pos.includes("WINGER")
+          );
+        if (posFilter === "other")
+          return !(
+            pos.startsWith("GK") ||
+            pos.startsWith("DF") ||
+            pos.startsWith("MF") ||
+            pos.startsWith("FW")
+          );
+        return true;
+      });
+    }
+
+    // 3) free-text
+    const q = search.trim().toLowerCase();
+    if (!q) return data;
+    const tokens = q.split(/\s+/).filter(Boolean);
+
+    return data.filter((p) => {
+      const haystack = (
+        p.player_name +
+        " " +
+        p.club_name +
+        " " +
+        (p.position || "") +
+        " " +
+        (p.nationalities || []).join(" ") +
+        " " +
+        p.competition_name +
+        " " +
+        (p.tier_label || "")
+      )
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+
+      return tokens.every((t) => haystack.includes(t));
+    });
+  }, [rows, search, competitionFilter, posFilter]);
+
   const visible = filtered.length;
 
-  /* ----- agregacja klubów i zawodników (dla widoku listy) ----- */
+  /* ----- grupowanie po klubach do głównej tabeli ----- */
+  const groupedByClub = useMemo(() => {
+    type ClubGroup = {
+      club_name: string;
+      competitions: Set<string>;
+      players: TmPlayerRow[];
+    };
+
+    const map = new Map<string, ClubGroup>();
+
+    for (const p of filtered) {
+      const name = p.club_name || "Bez klubu";
+      let entry = map.get(name);
+      if (!entry) {
+        entry = {
+          club_name: name,
+          competitions: new Set<string>(),
+          players: [],
+        };
+        map.set(name, entry);
+      }
+      if (p.competition_name) {
+        entry.competitions.add(p.competition_name);
+      }
+      entry.players.push(p);
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+      a.club_name.localeCompare(b.club_name, "pl")
+    );
+  }, [filtered]);
+
+  /* ----- agregacja klubów i zawodników (dla bocznych boxów) ----- */
   const clubsAgg = useMemo(() => {
-    const map = new Map<
-      string,
-      { club_name: string; playersCount: number }
-    >();
+    const map = new Map<string, { club_name: string; playersCount: number }>();
 
     for (const p of filtered) {
       const name = p.club_name || "Bez klubu";
@@ -804,9 +990,7 @@ function TmScraperPanel() {
 
   const sortedPlayers = useMemo(() => {
     const list = [...filtered];
-    list.sort((a, b) =>
-      a.player_name.localeCompare(b.player_name, "pl")
-    );
+    list.sort((a, b) => a.player_name.localeCompare(b.player_name, "pl"));
     return list;
   }, [filtered]);
 
@@ -869,27 +1053,129 @@ function TmScraperPanel() {
     }
   };
 
+  /* ----- ładowanie szczegółów TM dla jednego zawodnika ----- */
+const loadPlayerDetails = async (player: TmPlayerRow) => {
+  if (!player.player_path) {
+    toast.error("Brak ścieżki TM dla tego zawodnika");
+    return;
+  }
+  setSelectedPlayer(player);
+  setPlayerDetails(null);
+  setDetailsError(null);
+  setDetailsLoading(true);
+
+  try {
+    const res = await fetch(
+      `/api/tm/player/details?path=${encodeURIComponent(
+        player.player_path
+      )}`
+    );
+    const text = await res.text();
+    if (!res.ok) {
+      let err = "";
+      try {
+        const parsed = JSON.parse(text);
+        err = parsed?.error || "";
+      } catch {
+        // ignore
+      }
+      throw new Error(err || text || `HTTP ${res.status}`);
+    }
+    const json = text
+      ? (JSON.parse(text) as PlayerDetailsResponse)
+      : ({} as PlayerDetailsResponse);
+    setPlayerDetails(json);
+  } catch (e: any) {
+    console.error(e);
+    const msg =
+      e?.message || "Nie udało się pobrać detali zawodnika z TM";
+    setDetailsError(msg);
+    toast.error(msg);
+  } finally {
+    setDetailsLoading(false);
+  }
+};
+
+
+  const renderParsedTable = (table?: ParsedTable | null) => {
+    if (!table) {
+      return (
+        <div className="text-xs text-muted-foreground">
+          Brak danych w tej zakładce (lub tabela nie została rozpoznana).
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full overflow-x-auto">
+        <table className="w-full border-collapse text-[11px]">
+          <thead className="bg-stone-100 text-[11px] font-semibold text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
+            <tr>
+              {table.headers.map((h, idx) => (
+                <th
+                  key={`${h}-${idx}`}
+                  className="border-b border-stone-200 px-2 py-1 text-left dark:border-neutral-800"
+                >
+                  {h || "—"}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={table.headers.length || 1}
+                  className="px-2 py-2 text-center text-xs text-muted-foreground"
+                >
+                  Brak wierszy w tabeli.
+                </td>
+              </tr>
+            )}
+            {table.rows.map((row, rIdx) => (
+              <tr
+                key={rIdx}
+                className="border-b border-dashed border-stone-200 last:border-b-0 dark:border-neutral-800"
+              >
+                {row.map((cell, cIdx) => (
+                  <td
+                    key={cIdx}
+                    className="px-2 py-1 align-top text-[11px]"
+                  >
+                    {cell || "—"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Nagłówek */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2 text-lg font-semibold">
             <Database className="h-5 w-5" />
             Scraper zawodników (Transfermarkt – kraj / sezon)
           </div>
           {downloadedAt && (
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="inline-flex items-center rounded-full border px-2 py-0.5">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
                 Ostatnie pobranie:{" "}
                 {new Date(downloadedAt).toLocaleString("pl-PL")}
               </span>
               {cachedFlag !== null && (
-                <span className="inline-flex items-center rounded-full border px-2 py-0.5">
+                <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
                   Źródło:{" "}
-                  {cachedFlag
-                    ? "Supabase cache (bez ponownego scrapowania)"
-                    : "świeże pobranie z TM"}
+                  <span className="ml-1 font-medium">
+                    {cachedFlag
+                      ? "Supabase cache (bez ponownego scrapowania)"
+                      : "świeże pobranie z TM"}
+                  </span>
                 </span>
               )}
             </div>
@@ -897,20 +1183,20 @@ function TmScraperPanel() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="inline-flex items-center rounded-full border px-2 py-0.5">
+          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
             Rozgrywek: {stats.competitions}
           </span>
-          <span className="inline-flex items-center rounded-full border px-2 py-0.5">
+          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
             Klubów: {stats.clubs}
           </span>
-          <span className="inline-flex items-center rounded-full border px-2 py-0.5">
+          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
             Zawodników: {stats.players}
           </span>
-          <span className="inline-flex items-center rounded-full border px-2 py-0.5">
+          <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
             Widoczne (filtr): {visible}/{total}
           </span>
           {loading && (
-            <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900">
               <Loader2 className="h-3 w-3 animate-spin" />
               Ładowanie z TM…
             </span>
@@ -918,19 +1204,21 @@ function TmScraperPanel() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline">
-            <Link href="/admin/scraper/data">Pobrane dane</Link>
+          <Button asChild variant="outline" className="h-8 text-xs">
+            <Link href="/admin/scraper/data">Historia pobrań</Link>
           </Button>
         </div>
       </div>
 
-      {/* Sterowanie */}
-      <Card className="space-y-3 p-4">
+      {/* Sterowanie + filtry */}
+      <Card className="space-y-3 border-gray-200 bg-white/60 p-4 dark:border-neutral-800 dark:bg-neutral-950/60">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-sm">Kraj (ID TM)</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Kraj (ID TM)
+            </label>
             <Input
-              className="w-28"
+              className="h-8 w-24 text-sm"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
               onBlur={() => loadPlayers()}
@@ -938,9 +1226,11 @@ function TmScraperPanel() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm">Sezon</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Sezon
+            </label>
             <Input
-              className="w-28"
+              className="h-8 w-24 text-sm"
               value={season}
               onChange={(e) => setSeason(e.target.value)}
               onBlur={() => loadPlayers()}
@@ -949,31 +1239,98 @@ function TmScraperPanel() {
           </div>
 
           <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
-            <div className="relative w-full sm:w-[260px]">
+            <div className="relative w-full sm:w-[280px]">
               <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Filtruj po nazwie / klubie / rozgrywkach / pozycji…"
-                className="pl-8"
+                className="h-8 pl-8 text-sm"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 disabled={loading}
               />
             </div>
             <Button
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={() => setSearch("")}
               disabled={!search || loading}
+              className="h-8 px-2 text-[11px]"
             >
               Wyczyść filtr
             </Button>
           </div>
 
-          <div className="my-1 w-full border-t" />
+          <div className="w-full border-t pt-3" />
+
+          {/* Dodatkowe filtry: rozgrywki + pozycja */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Rozgrywki */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                Rozgrywki:
+              </span>
+              <select
+                className="h-8 rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                value={competitionFilter}
+                onChange={(e) => setCompetitionFilter(e.target.value)}
+                disabled={loading}
+              >
+                <option value="all">Wszystkie</option>
+                {competitionOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Pozycja */}
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="mr-1 text-xs text-muted-foreground">
+                Pozycja:
+              </span>
+              {(
+                [
+                  "all",
+                  "GK",
+                  "DF",
+                  "MF",
+                  "FW",
+                  "other",
+                ] as PosFilter[]
+              ).map((key) => {
+                const label =
+                  key === "all"
+                    ? "Wszystkie"
+                    : key === "other"
+                    ? "Inne"
+                    : key;
+                const active = posFilter === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPosFilter(key)}
+                    className={[
+                      "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]",
+                      active
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500/70 dark:bg-emerald-900/40 dark:text-emerald-200"
+                        : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="w-full border-t pt-3" />
 
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              className="gap-2"
+              className="h-8 gap-2 text-xs"
               onClick={() => loadPlayers()}
               disabled={loading}
             >
@@ -983,16 +1340,16 @@ function TmScraperPanel() {
 
             <Button
               variant="outline"
-              className="gap-2"
+              className="h-8 gap-2 text-xs"
               onClick={() => loadPlayers({ refresh: true })}
               disabled={loading}
             >
               <RotateCw className="h-4 w-4" />
-              Pobierz dane ponownie
+              Pobierz dane ponownie (pomijając cache)
             </Button>
 
             <Button
-              className="gap-2 bg-emerald-600 text-white hover:bg-emerald-500"
+              className="h-8 gap-2 bg-emerald-600 text-xs text-white hover:bg-emerald-500"
               onClick={saveToSupabase}
               disabled={saving || !filtered.length}
             >
@@ -1012,34 +1369,34 @@ function TmScraperPanel() {
         </div>
 
         {errorMsg && (
-          <div className="mt-2 flex items-start gap-2 rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
+          <div className="mt-2 flex items-start gap-2 rounded-md bg-red-50 p-2 text-xs text-red-700 ring-1 ring-red-200 dark:bg-red-950/40 dark:text-red-200 dark:ring-red-900">
             <AlertTriangle className="mt-[1px] h-4 w-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {lastApiMessage && !errorMsg && (
-          <div className="mt-2 rounded-md bg-emerald-50 p-2 text-xs text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+          <div className="mt-2 rounded-md bg-emerald-50 p-2 text-xs text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-900">
             {lastApiMessage}
           </div>
         )}
       </Card>
 
-      {/* Tabela: rozgrywki + klub + zawodnik */}
+      {/* Tabela: grupy klubów + zawodnicy */}
       <Card className="p-0">
         <div className="w-full overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+            <thead className="sticky top-0 z-10 bg-stone-100 text-[12px] font-medium text-stone-700 shadow-sm dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
-                <th className="p-3 text-left font-medium">Rozgrywki</th>
-                <th className="p-3 text-left font-medium">Klub</th>
-                <th className="p-3 text-left font-medium">Zawodnik</th>
-                <th className="p-3 text-left font-medium">Pozycja</th>
-                <th className="p-3 text-left font-medium">Wiek</th>
-                <th className="p-3 text-left font-medium">Narodowość</th>
-                <th className="p-3 text-left font-medium">Data ur.</th>
-                <th className="p-3 text-left font-medium">Kontrakt do</th>
-                <th className="p-3 text-right font-medium">TM</th>
+                <th className="p-3 text-left">Rozgrywki</th>
+                <th className="p-3 text-left">Klub</th>
+                <th className="p-3 text-left">Zawodnik</th>
+                <th className="p-3 text-left">Pozycja</th>
+                <th className="p-3 text-left">Wiek</th>
+                <th className="p-3 text-left">Narodowość</th>
+                <th className="p-3 text-left">Data ur.</th>
+                <th className="p-3 text-left">Kontrakt do</th>
+                <th className="p-3 text-right">TM</th>
               </tr>
             </thead>
             <tbody>
@@ -1058,108 +1415,187 @@ function TmScraperPanel() {
               )}
 
               {!loading &&
-                filtered.map((p) => {
-                  const tmHref = openTmUrl(p.player_path);
-
+                groupedByClub.map((group) => {
+                  const comps = Array.from(group.competitions.values());
                   return (
-                    <tr
-                      key={p.tm_player_id}
-                      className="border-t border-gray-200 align-top dark:border-neutral-800"
+                    <React.Fragment
+                      key={`club-${group.club_name || "none"}`}
                     >
-                      {/* Rozgrywki */}
-                      <td className="p-3">
-                        <div className="truncate text-xs font-medium">
-                          {p.competition_name}
-                        </div>
-                        {p.tier_label && (
-                          <div className="mt-0.5 inline-flex rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">
-                            {p.tier_label}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Klub */}
-                      <td className="p-3">
-                        <div className="truncate">{p.club_name || "—"}</div>
-                      </td>
-
-                      {/* Zawodnik */}
-                      <td className="p-3">
-                        <div className="truncate font-medium">
-                          {p.player_name || "—"}
-                        </div>
-                      </td>
-
-                      {/* Pozycja */}
-                      <td className="p-3">
-                        {p.position ? (
-                          <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
-                            {p.position}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-
-                      {/* Wiek */}
-                      <td className="p-3">{p.age ?? "—"}</td>
-
-                      {/* Narodowość */}
-                      <td className="p-3">
-                        {p.nationalities && p.nationalities.length > 0
-                          ? p.nationalities.join(", ")
-                          : "—"}
-                      </td>
-
-                      {/* Data ur. */}
-                      <td className="p-3">
-                        {p.date_of_birth ? p.date_of_birth : "—"}
-                      </td>
-
-                      {/* Kontrakt */}
-                      <td className="p-3">
-                        {p.contract_until ? p.contract_until : "—"}
-                      </td>
-
-                      {/* TM link + copy */}
-                      <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-2 text-[11px] font-mono text-muted-foreground">
-                          {p.player_path ? (
-                            <>
-                              <span className="hidden max-w-[200px] truncate sm:inline">
-                                {p.player_path}
+                      {/* Wiersz grupy-klubu */}
+                      <tr className="border-t border-stone-200 bg-stone-50/80 text-xs font-medium uppercase tracking-wide text-stone-700 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-200">
+                        <td colSpan={9} className="p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                {group.club_name || "Bez klubu"}
                               </span>
-                              <button
-                                className="inline-flex items-center rounded border px-1 py-0.5 hover:bg-muted"
-                                onClick={() => copyPath(p.player_path)}
-                                title="Skopiuj ścieżkę"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </button>
-                              {tmHref && (
-                                <a
-                                  href={tmHref}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center rounded border px-1 py-0.5 hover:bg-muted"
-                                  title="Otwórz na Transfermarkt"
+                              <span className="text-[11px] text-muted-foreground">
+                                Zawodników: {group.players.length}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {comps.map((c) => (
+                                <span
+                                  key={c}
+                                  className="rounded-full bg-white px-2 py-0.5 text-[10px] text-muted-foreground ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-700"
                                 >
-                                  <ExternalLink className="h-3 w-3" />
-                                </a>
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Wiersze zawodników w danym klubie */}
+                      {group.players.map((p, idx) => {
+                        const tmHref = openTmUrl(p.player_path);
+                        const showClubName = idx === 0; // tylko przy pierwszym zawodniku w grupie
+                        const isSelected =
+                          selectedPlayer?.tm_player_id === p.tm_player_id;
+
+                        return (
+                          <tr
+                            key={p.tm_player_id}
+                            className={[
+                              "border-t border-gray-200 align-top transition-colors dark:border-neutral-800",
+                              isSelected
+                                ? "bg-emerald-50/60 dark:bg-emerald-950/20"
+                                : "hover:bg-stone-50 dark:hover:bg-neutral-900",
+                            ].join(" ")}
+                          >
+                            {/* Rozgrywki */}
+                            <td className="p-3">
+                              <div className="truncate text-xs font-medium">
+                                {p.competition_name}
+                              </div>
+                              {p.tier_label && (
+                                <div className="mt-0.5 inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] text-muted-foreground ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-700">
+                                  {p.tier_label}
+                                </div>
                               )}
-                            </>
-                          ) : (
-                            <span className="text-muted-foreground/70">
-                              Brak linku TM
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                            </td>
+
+                            {/* Klub */}
+                            <td className="p-3">
+                              {showClubName && (
+                                <div className="truncate text-sm text-stone-800 dark:text-neutral-100">
+                                  {p.club_name || "—"}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Zawodnik */}
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                onClick={() => loadPlayerDetails(p)}
+                                className="truncate text-left font-medium text-stone-900 underline-offset-2 hover:underline dark:text-neutral-50"
+                              >
+                                {p.player_name || "—"}
+                              </button>
+                            </td>
+
+                            {/* Pozycja */}
+                            <td className="p-3">
+                              {p.position ? (
+                                <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 ring-1 ring-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:ring-neutral-700">
+                                  {p.position}
+                                </span>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+
+                            {/* Wiek */}
+                            <td className="p-3 text-sm text-stone-800 dark:text-neutral-200">
+                              {p.age ?? "—"}
+                            </td>
+
+                            {/* Narodowość */}
+                            <td className="p-3 text-sm text-stone-800 dark:text-neutral-200">
+                              {p.nationalities && p.nationalities.length > 0
+                                ? p.nationalities.join(", ")
+                                : "—"}
+                            </td>
+
+                            {/* Data ur. */}
+                            <td className="p-3 text-sm text-stone-800 dark:text-neutral-200">
+                              {p.date_of_birth ? p.date_of_birth : "—"}
+                            </td>
+
+                            {/* Kontrakt */}
+                            <td className="p-3 text-sm text-stone-800 dark:text-neutral-200">
+                              {p.contract_until ? p.contract_until : "—"}
+                            </td>
+
+                            {/* TM link + copy + szczegóły */}
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end gap-1 text-[11px] font-mono text-muted-foreground">
+                                {p.player_path ? (
+                                  <>
+                                    <div className="flex items-center gap-2">
+                                      <span className="hidden max-w-[200px] truncate sm:inline">
+                                        {p.player_path}
+                                      </span>
+                                      <button
+                                        className="inline-flex items-center rounded border px-1 py-0.5 hover:bg-muted"
+                                        onClick={() =>
+                                          copyPath(p.player_path)
+                                        }
+                                        title="Skopiuj ścieżkę"
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </button>
+                                      {tmHref && (
+                                        <a
+                                          href={tmHref}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center rounded border px-1 py-0.5 hover:bg-muted"
+                                          title="Otwórz na Transfermarkt"
+                                        >
+                                          <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                      )}
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 gap-1 border-stone-300 px-2 text-[10px] dark:border-neutral-700"
+                                      onClick={() => loadPlayerDetails(p)}
+                                    >
+                                      {detailsLoading &&
+                                      selectedPlayer?.tm_player_id ===
+                                        p.tm_player_id ? (
+                                        <>
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                          Ładowanie detali…
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Database className="h-3 w-3" />
+                                          Szczegóły TM
+                                        </>
+                                      )}
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <span className="text-muted-foreground/70">
+                                    Brak linku TM
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
                   );
                 })}
 
-              {!loading && !filtered.length && (
+              {!loading && !groupedByClub.length && (
                 <tr>
                   <td
                     colSpan={9}
@@ -1174,12 +1610,131 @@ function TmScraperPanel() {
         </div>
       </Card>
 
-      {/* Podsumowanie: lista klubów i zawodników (z widocznego zestawu) */}
+      {/* Szczegóły wybranego zawodnika z Transfermarkt */}
+      {selectedPlayer && (
+        <Card className="border-emerald-200 bg-emerald-50/40 p-4 text-xs dark:border-emerald-900 dark:bg-emerald-950/20">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold ring-1 ring-emerald-200 dark:bg-neutral-950 dark:ring-emerald-800">
+                  {selectedPlayer.player_name}
+                </span>
+                {selectedPlayer.position && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-100 dark:ring-emerald-700">
+                    {selectedPlayer.position}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {selectedPlayer.club_name || "Bez klubu"} •{" "}
+                {selectedPlayer.competition_name || "—"}
+              </div>
+              {selectedPlayer.age !== null && (
+                <div className="text-[11px] text-muted-foreground">
+                  Wiek: {selectedPlayer.age}{" "}
+                  {selectedPlayer.date_of_birth &&
+                    `• ur. ${selectedPlayer.date_of_birth}`}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedPlayer.player_path && (
+                <a
+                  href={openTmUrl(selectedPlayer.player_path) || "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center rounded-md border border-emerald-300 bg-white px-2 py-1 text-[11px] font-medium text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-neutral-900 dark:text-emerald-100 dark:hover:bg-emerald-900/40"
+                >
+                  <ExternalLink className="mr-1 h-3 w-3" />
+                  Otwórz profil TM
+                </a>
+              )}
+              {detailsLoading && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-100 dark:ring-emerald-800">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Ładowanie detali TM…
+                </span>
+              )}
+            </div>
+          </div>
+
+          {detailsError && (
+            <div className="mb-3 flex items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-[11px] text-red-700 ring-1 ring-red-200 dark:bg-red-950/40 dark:text-red-200 dark:ring-red-900">
+              <AlertTriangle className="h-3 w-3" />
+              {detailsError}
+            </div>
+          )}
+
+          {!detailsLoading && !playerDetails && !detailsError && (
+            <div className="text-[11px] text-muted-foreground">
+              Brak danych szczegółowych (endpoint nie zwrócił JSON). Sprawdź,
+              czy działa <code>/api/admin/tm/player/details</code>.
+            </div>
+          )}
+
+          {playerDetails && (
+            <Tabs
+              defaultValue="allSeasons"
+              className="mt-2 w-full text-xs"
+            >
+              <TabsList className="mb-2 flex flex-wrap gap-1 bg-emerald-100/60 p-1 text-[11px] dark:bg-emerald-950/40">
+                <TabsTrigger
+                  value="allSeasons"
+                  className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
+                >
+                  All seasons
+                </TabsTrigger>
+                <TabsTrigger
+                  value="byClub"
+                  className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
+                >
+                  Stats by club
+                </TabsTrigger>
+                <TabsTrigger
+                  value="injuries"
+                  className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
+                >
+                  Injury history
+                </TabsTrigger>
+                <TabsTrigger
+                  value="marketValue"
+                  className="px-2 py-1 text-[11px] data-[state=active]:bg-white data-[state=active]:text-emerald-800 dark:data-[state=active]:bg-neutral-900 dark:data-[state=active]:text-emerald-100"
+                >
+                  Market value
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="allSeasons" className="mt-0">
+                {renderParsedTable(
+                  playerDetails.tables?.["statsAllSeasons"]
+                )}
+              </TabsContent>
+              <TabsContent value="byClub" className="mt-0">
+                {renderParsedTable(
+                  playerDetails.tables?.["statsByClub"]
+                )}
+              </TabsContent>
+              <TabsContent value="injuries" className="mt-0">
+                {renderParsedTable(
+                  playerDetails.tables?.["injuryHistory"]
+                )}
+              </TabsContent>
+              <TabsContent value="marketValue" className="mt-0">
+                {renderParsedTable(
+                  playerDetails.tables?.["marketValue"]
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
+        </Card>
+      )}
+
+      {/* Podsumowania boczne (kluby + zawodnicy) */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Lista klubów */}
         <Card className="p-4">
           <CardTitle className="flex items-center justify-between text-sm">
-            <span>Lista klubów</span>
+            <span>Lista klubów (z aktualnego filtra)</span>
             <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] dark:bg-neutral-800">
               {clubsAgg.length}
             </span>
@@ -1198,7 +1753,7 @@ function TmScraperPanel() {
                   c.club_name !== "Bez klubu" &&
                   handleClubFilter(c.club_name)
                 }
-                className="flex w-full items-center justify-between rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-neutral-800"
+                className="flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-[12px] hover:bg-stone-100 dark:hover:bg-neutral-800"
               >
                 <span className="truncate">
                   {c.club_name || "Bez klubu"}
@@ -1215,7 +1770,7 @@ function TmScraperPanel() {
         {/* Lista zawodników */}
         <Card className="p-4">
           <CardTitle className="flex items-center justify-between text-sm">
-            <span>Lista zawodników</span>
+            <span>Lista zawodników (posortowana alfabetycznie)</span>
             <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] dark:bg-neutral-800">
               {sortedPlayers.length}
             </span>

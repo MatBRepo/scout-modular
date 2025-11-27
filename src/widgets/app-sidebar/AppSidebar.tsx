@@ -460,6 +460,17 @@ export default function AppSidebar({
                       label="Wyszukaj"
                       active={globalSearchActive}
                     />
+                    {/* 3rd level under Wyszukaj */}
+                    <div className="space-y-0.5 pl-6">
+                      <SubNavItem
+                        href="/players/global/search#tm"
+                        label="Transfermarkt"
+                      />
+                      <SubNavItem
+                        href="/players/global/search#lnp"
+                        label="LNP"
+                      />
+                    </div>
                   </div>
                 </div>
 
