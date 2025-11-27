@@ -28,8 +28,6 @@ import {
   FileDown,
   FileSpreadsheet,
   Users,
-  ChevronLeft,
-  ChevronRight,
   MoveHorizontal,
   ChevronRight as ChevronRightIcon,
   Search,
@@ -238,6 +236,10 @@ const controlH = "h-9";
 const cellPad = "p-1";
 const rowH = "h-10";
 
+/* infinite scroll config */
+const INITIAL_VISIBLE = 50;
+const STEP_VISIBLE = 50;
+
 /* ----------------------------- Small helpers ---------------------------- */
 
 function fmtDate(d?: string) {
@@ -374,9 +376,13 @@ export default function ObservationsFeature({
   // search ref
   const searchRef = useRef<HTMLInputElement | null>(null);
 
-  // table scroll hint
+  // table scroll hint (horiz)
   const tableWrapRef = useRef<HTMLDivElement | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
+
+  // infinite scroll sentinel
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
 
   useEffect(() => {
     const dismissed = localStorage.getItem(HINT_DISMISS_KEY) === "1";
@@ -672,19 +678,17 @@ export default function ObservationsFeature({
     setPageMode("editor");
   }
 
-function save(obs: XO) {
-  const exists = rows.some((x) => x.id === obs.id);
+  function save(obs: XO) {
+    const exists = rows.some((x) => x.id === obs.id);
 
-  const next: XO[] = exists
-    ? rows.map((x) => (x.id === obs.id ? obs : x))
-    : [obs, ...rows];
+    const next: XO[] = exists
+      ? rows.map((x) => (x.id === obs.id ? obs : x))
+      : [obs, ...rows];
 
-  onChange(next as unknown as Observation[]);
-  setPageMode("list");
-  setEditing(null);
-}
-
-
+    onChange(next as unknown as Observation[]);
+    setPageMode("list");
+    setEditing(null);
+  }
 
   function moveToTrash(id: number) {
     const next = rows.map((x) =>
@@ -912,12 +916,9 @@ function save(obs: XO) {
     return { all, draft };
   }, [rows, scope]);
 
-  /* -------- Pagination -------- */
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(1000); // 10/20/50
-
+  /* ===== Infinite scroll: reset visibleCount on filters/sort change ===== */
   useEffect(() => {
-    setPage(1);
+    setVisibleCount(INITIAL_VISIBLE);
   }, [
     scope,
     tab,
@@ -929,20 +930,39 @@ function save(obs: XO) {
     dateTo,
     sortKey,
     sortDir,
+    rows,
   ]);
 
-  const totalItems = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const startIdx = (page - 1) * pageSize;
-  const endIdx = Math.min(startIdx + pageSize, totalItems);
-  const pageRows = filtered.slice(startIdx, endIdx);
+  /* ===== Visible rows slice ===== */
+  const visibleRows = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount]
+  );
 
-  function gotoPrev() {
-    setPage((p) => Math.max(1, p - 1));
-  }
-  function gotoNext() {
-    setPage((p) => Math.min(totalPages, p + 1));
-  }
+  /* ===== Infinite scroll observer ===== */
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+    if (visibleCount >= filtered.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry.isIntersecting) return;
+        setVisibleCount((prev) =>
+          Math.min(prev + STEP_VISIBLE, filtered.length)
+        );
+      },
+      {
+        root: null,
+        rootMargin: "160px 0px 0px 0px",
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visibleCount, filtered.length]);
 
   // CHIP atom (desktop height = h-9)
   const Chip = ({ label, onClear }: { label: string; onClear: () => void }) => (
@@ -1112,7 +1132,7 @@ function save(obs: XO) {
                     ref={searchRef}
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
-                    placeholder="Szukaj po meczu lub zawodnikach… (/)"
+                    placeholder="Szukaj po meczu lub zawodnikach… (/"
                     className={`${controlH} w-full pl-8 pr-3 text-sm`}
                     aria-label="Szukaj w obserwacjach"
                   />
@@ -1753,7 +1773,7 @@ function save(obs: XO) {
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((r, idx) => {
+              {visibleRows.map((r, idx) => {
                 const mode = r.mode ?? "live";
                 const pCount = r.players?.length ?? 0;
 
@@ -1931,6 +1951,16 @@ function save(obs: XO) {
             </tbody>
           </table>
 
+          {/* Infinite scroll loader sentinel */}
+          {filtered.length > 0 && visibleRows.length < filtered.length && (
+            <div
+              ref={loadMoreRef}
+              className="flex w-full items-center justify-center py-3 text-[11px] text-stone-500 dark:text-neutral-400"
+            >
+              Ładowanie kolejnych obserwacji…
+            </div>
+          )}
+
           {/* Mobile scroll hint */}
           {showScrollHint && (
             <div className="pointer-events-none sm:hidden">
@@ -1941,65 +1971,6 @@ function save(obs: XO) {
               <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white dark:from-neutral-950" />
             </div>
           )}
-        </div>
-
-        {/* Pagination footer – same style as players */}
-        <div className="mt-3 flex flex-row flex-wrap items-center justify-center lg:justify-between gap-2 rounded-md p-2 text-sm shadow-sm dark:bg-neutral-950">
-          <div className="flex flex-row flex-wrap items-center gap-2">
-            <span className="text-dark dark:text-neutral-300">
-              Wiersze na stronę:
-            </span>
-            <select
-              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
-              value={pageSize}
-              onChange={(e) => {
-                const n = Number(e.target.value) || 10;
-                setPageSize(n);
-                setPage(1);
-              }}
-              aria-label="Liczba wierszy na stronę"
-            >
-              {[10, 20, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-
-            <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
-              {totalItems === 0
-                ? "0"
-                : `${startIdx + 1}–${endIdx} z ${totalItems}`}
-            </span>
-          </div>
-
-          <div className="flex flex-row flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
-              disabled={page <= 1}
-              onClick={gotoPrev}
-              aria-label="Poprzednia strona"
-              title="Poprzednia strona"
-            >
-              <ChevronLeft className="h-[1.1em] w-[1.1em]" />
-            </Button>
-
-            <div className="min-w-[80px] text-center leading-none">
-              Strona {page} / {totalPages}
-            </div>
-
-            <Button
-              variant="outline"
-              className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
-              disabled={page >= totalPages}
-              onClick={gotoNext}
-              aria-label="Następna strona"
-              title="Następna strona"
-            >
-              <ChevronRight className="h-[1.1em] w-[1.1em]" />
-            </Button>
-          </div>
         </div>
       </div>
 

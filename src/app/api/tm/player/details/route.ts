@@ -40,6 +40,59 @@ async function fetchHtml(pathOrUrl: string, referer?: string) {
   return res.text();
 }
 
+/* -------------------- generic helpers for parsing -------------------- */
+
+const clean = (s?: string | null) => (s ?? "").replace(/\s+/g, " ").trim();
+
+function parseIntLoose(s?: string | null) {
+  if (!s) return null;
+  const n = parseInt(s.replace(/[^\d]/g, ""), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseFloatEU(s?: string | null) {
+  if (!s) return null;
+  const n = parseFloat(s.replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseEuroToInt(s?: string | null) {
+  if (!s) return null;
+  const raw = s.replace(/[€\s]/g, "").toLowerCase();
+  if (!raw || raw === "-") return null;
+  let mult = 1,
+    num = raw;
+  if (raw.endsWith("m")) {
+    mult = 1_000_000;
+    num = raw.slice(0, -1);
+  } else if (raw.endsWith("k")) {
+    mult = 1_000;
+    num = raw.slice(0, -1);
+  }
+  const f = parseFloat(num.replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(f) ? Math.round(f * mult) : null;
+}
+
+function parseHeightCm(s?: string | null) {
+  // “1,86m” -> 186
+  if (!s) return null;
+  const m = s.match(/(\d)[,\.](\d{2})\s*m/i);
+  if (m) {
+    const cm = parseInt(m[1] + m[2], 10);
+    return Number.isFinite(cm) ? cm : null;
+  }
+  return parseIntLoose(s);
+}
+
+function parseDateEUtoISO(s?: string | null) {
+  // “07.04.2004 (21)” -> 2004-04-07
+  if (!s) return null;
+  const m = s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (!m) return null;
+  const [_, dd, mm, yyyy] = m;
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 /* -------------------- generic table parser -------------------- */
 
 type ParsedTable = {
@@ -81,7 +134,90 @@ function parseFirstTable(html: string): ParsedTable | null {
   return { headers, rows };
 }
 
-/* -------------------- player URL generator -------------------- */
+/* ---------------- player profile parser (CHEERIO) ---------------- */
+
+function parsePlayerProfile(html: string) {
+  const $ = cheerio.load(html);
+  const data: any = {};
+
+  const h1 = clean($("h1").first().text());
+  if (h1) data.name = h1;
+
+  // high-res portrait if available
+  const pic =
+    $("img[data-src*='/portrait/'], img[src*='/portrait/']").attr("data-src") ||
+    $("img[data-src*='/header/'], img[src*='/header/']").attr("data-src") ||
+    $("img[src*='/portrait/']").attr("src") ||
+    null;
+  if (pic) data.portrait_url = pic.startsWith("http") ? pic : `${BASE}${pic}`;
+
+  // generic label -> value extraction
+  const grab = (label: string) => {
+    // <tr><th>Label</th><td>Value</td>
+    const th = $(`th:contains("${label}")`).first();
+    if (th.length) return clean(th.next("td").text());
+    // fallback search in definition lists
+    const dl = $(`.data-header__list dd:contains("${label}")`).first();
+    return dl.length ? clean(dl.text()) : null;
+  };
+
+  const dateOfBirth =
+    $('span[itemprop="birthDate"]').attr("data-date") ||
+    grab("Date of birth:");
+  if (dateOfBirth) {
+    data.date_of_birth = parseDateEUtoISO(dateOfBirth) || clean(dateOfBirth);
+  }
+
+  const heightText = $('span[itemprop="height"]').text() || grab("Height:");
+  if (heightText) data.height_cm = parseHeightCm(heightText);
+
+  const footText = grab("Foot:") || grab("Preferred foot:");
+  if (footText) data.foot = clean(footText).toLowerCase();
+
+  // positions, nationalities
+  const mainPos = $('div:contains("Main position:")').next().text();
+  if (clean(mainPos)) data.main_position = clean(mainPos);
+  const otherPosItems: string[] = [];
+  $('div:contains("Other position(s):")')
+    .next()
+    .find("li")
+    .each((_, li) => {
+      const t = clean($(li).text());
+      if (t) otherPosItems.push(t);
+    });
+  if (otherPosItems.length) data.other_positions = otherPosItems;
+
+  const nats: string[] = [];
+  $(".data-header__box .data-header__items img[title]").each((_, im) => {
+    const t = $(im).attr("title");
+    if (t) nats.push(clean(t));
+  });
+  if (nats.length) data.nationalities = nats;
+
+  // current club, agent, contract
+  const currClub = grab("Current club:") || grab("Club:");
+  if (currClub) data.current_club = currClub;
+  const agent = grab("Player agent:");
+  if (agent) data.agent = agent;
+  const contract = grab("Contract expires:") || grab("Contract until:");
+  if (contract) {
+    data.contract_until_text = contract;
+    const iso = parseDateEUtoISO(contract);
+    if (iso) data.contract_until = iso;
+  }
+
+  // market value (current)
+  const mv = clean(
+    $(
+      ".data-header__box .data-header__market-value-wrapper .data-header__market-value"
+    ).text()
+  );
+  if (mv) data.market_value_eur = parseEuroToInt(mv);
+
+  return data;
+}
+
+/* ---------------- player URL generator ---------------- */
 
 type PlayerTabKey =
   | "profile"
@@ -118,9 +254,7 @@ function buildPlayerUrls(playerPath: string): {
   const cleanPath = ensurePath(playerPath);
   const m = cleanPath.match(/^\/([^/]+)\/[^/]+\/spieler\/(\d+)/);
   if (!m) {
-    throw new Error(
-      `Nieoczekiwany format player_path: ${playerPath}`
-    );
+    throw new Error(`Nieoczekiwany format player_path: ${playerPath}`);
   }
   const slug = m[1];
   const playerId = m[2];
@@ -208,6 +342,8 @@ export async function GET(req: Request) {
       error?: string;
     }> = [];
 
+    let profile: any | null = null;
+
     // równoległe pobieranie (uwaga na limit / throttling – w razie czego można zrobić sekwencyjnie)
     await Promise.all(
       tabsToFetch.map(async (key) => {
@@ -215,6 +351,19 @@ export async function GET(req: Request) {
         try {
           const html = await fetchHtml(url, urls.profile);
           const table = parseFirstTable(html);
+
+          if (key === "profile") {
+            try {
+              profile = parsePlayerProfile(html);
+            } catch (e: any) {
+              // profile parsing is best-effort; don't break whole request
+              console.error(
+                "[TM PLAYER DETAILS] Failed to parse profile meta:",
+                e?.message || e
+              );
+            }
+          }
+
           results.push({ key, table });
         } catch (err: any) {
           results.push({
@@ -240,6 +389,7 @@ export async function GET(req: Request) {
           slug,
           playerId,
           urls,
+          profile, // <--- NEW: structured meta (name, portrait, positions, MV, etc.)
           tables,
           errors,
         },

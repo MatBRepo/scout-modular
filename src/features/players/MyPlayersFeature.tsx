@@ -275,6 +275,9 @@ type PlayerRow = Player & {
   _progress: number;
 };
 
+// ile wierszy „dociąga” jedno doładowanie
+const PAGE_SIZE = 50;
+
 /* =======================================
    Main feature
 ======================================= */
@@ -377,9 +380,8 @@ export default function MyPlayersFeature({
   const [chipsOpen, setChipsOpen] = useState(false);
   const chipsHoverTimer = useRef<number | null>(null);
 
-  // Pagination
+  // „Pagination” → infinity scroll: numer „paczki”
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<10 | 25 | 50 | 100>(25);
 
   // Quick creator fields
   const [qaMatch, setQaMatch] = useState("");
@@ -396,6 +398,9 @@ export default function MyPlayersFeature({
   // scroll-hint (mobile horizontal overflow)
   const tableWrapRef = useRef<HTMLDivElement | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
+
+  // sentinel do infinity scroll
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   /* URL param -> tab sync; default = all */
   useEffect(() => {
@@ -490,17 +495,50 @@ export default function MyPlayersFeature({
     return base;
   }, [baseFilteredNoKnown, knownScope, sortKey, sortDir]);
 
-  // Pagination slice
+  // ======= INFINITY SCROLL: widoczne wiersze =======
   const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, currentPage, pageSize]);
+  const visible = useMemo(
+    () => filtered.slice(0, page * PAGE_SIZE),
+    [filtered, page]
+  );
+
+  // clamp page gdy zmienia się lista
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [totalPages, page]);
+    const maxPage = Math.max(1, Math.ceil(Math.max(total, 1) / PAGE_SIZE));
+    if (page > maxPage) setPage(maxPage);
+  }, [total, page]);
+
+  const hasMore = visible.length < total;
+
+  // IntersectionObserver: dociąganie kolejnych paczek
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        setPage((p) => {
+          const maxPage = Math.max(
+            1,
+            Math.ceil(Math.max(total, 1) / PAGE_SIZE)
+          );
+          if (p >= maxPage) return p;
+          return p + 1;
+        });
+      },
+      {
+        root: null,
+        rootMargin: "0px 0px 200px 0px",
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, total]);
 
   // ====== actions ======
   function trash(id: number) {
@@ -767,14 +805,6 @@ export default function MyPlayersFeature({
       });
     }
 
-    // if (knownScope !== "all") {
-    //   chips.push({
-    //     key: "known",
-    //     label: knownScope === "known" ? "Znani" : "Nieznani",
-    //     clear: () => changeKnownScope("all"),
-    //   });
-    // }
-
     return chips;
   }, [q, pos, club, ageMin, ageMax, knownScope]);
 
@@ -792,9 +822,7 @@ export default function MyPlayersFeature({
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       const typing =
-        tag === "input" ||
-        tag === "textarea" ||
-        (e as any).isComposing;
+        tag === "input" || tag === "textarea" || (e as any).isComposing;
       if (typing) return;
 
       if (e.key === "/") {
@@ -844,8 +872,7 @@ export default function MyPlayersFeature({
   const anyActiveSelected = useMemo(() => {
     return ownedPlayers.some(
       (p) =>
-        selected.has(p.id) &&
-        ((p.status ?? "active") === "active")
+        selected.has(p.id) && (p.status ?? "active") === "active"
     );
   }, [ownedPlayers, selected]);
 
@@ -855,9 +882,7 @@ export default function MyPlayersFeature({
     if (!el) return;
     const check = () => {
       const should =
-        isMobile &&
-        el.scrollWidth > el.clientWidth &&
-        el.scrollLeft < 8;
+        isMobile && el.scrollWidth > el.clientWidth && el.scrollLeft < 8;
       setShowScrollHint(should);
     };
     check();
@@ -869,13 +894,10 @@ export default function MyPlayersFeature({
     } as any);
     window.addEventListener("resize", check);
     return () => {
-      el.removeEventListener(
-        "scroll",
-        onScroll as any
-      );
+      el.removeEventListener("scroll", onScroll as any);
       window.removeEventListener("resize", check);
     };
-  }, [isMobile, paginated.length, JSON.stringify(visibleCols)]);
+  }, [isMobile, visible.length, JSON.stringify(visibleCols)]);
 
   // Helpers for chips (desktop height = h-9)
   const Chip = ({
@@ -885,10 +907,8 @@ export default function MyPlayersFeature({
     label: string;
     onClear: () => void;
   }) => (
-    <span className="inline-flex h-9  items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
-      <span className="max-w-[200px] truncate">
-        {label}
-      </span>
+    <span className="inline-flex h-9 items-center rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-200">
+      <span className="max-w-[200px] truncate">{label}</span>
       <button
         className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
         onClick={onClear}
@@ -935,9 +955,7 @@ export default function MyPlayersFeature({
                 <Tabs
                   className="items-center"
                   value={knownScope}
-                  onValueChange={(v) =>
-                    changeKnownScope(v as KnownScope)
-                  }
+                  onValueChange={(v) => changeKnownScope(v as KnownScope)}
                 >
                   <TabsList>
                     <TabsTrigger
@@ -978,11 +996,7 @@ export default function MyPlayersFeature({
               <div className="hidden md:flex flex-1 items-start justify-center h-9">
                 <div className="flex items-center gap-1 h-9">
                   {inlineChips.map((c) => (
-                    <Chip
-                      key={c.key}
-                      label={c.label}
-                      onClear={c.clear}
-                    />
+                    <Chip key={c.key} label={c.label} onClear={c.clear} />
                   ))}
 
                   {overflowChips.length > 0 && (
@@ -990,25 +1004,20 @@ export default function MyPlayersFeature({
                       <button
                         ref={chipsMoreBtnRef}
                         type="button"
-                        className="inline-flex h-9  items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
+                        className="inline-flex h-9 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
                         onClick={() => setChipsOpen((v) => !v)}
                         onMouseEnter={() => {
                           if (chipsHoverTimer.current)
-                            window.clearTimeout(
-                              chipsHoverTimer.current
-                            );
+                            window.clearTimeout(chipsHoverTimer.current);
                           setChipsOpen(true);
                         }}
                         onMouseLeave={() => {
                           if (chipsHoverTimer.current)
-                            window.clearTimeout(
-                              chipsHoverTimer.current
-                            );
-                          chipsHoverTimer.current =
-                            window.setTimeout(
-                              () => setChipsOpen(false),
-                              160
-                            ) as unknown as number;
+                            window.clearTimeout(chipsHoverTimer.current);
+                          chipsHoverTimer.current = window.setTimeout(
+                            () => setChipsOpen(false),
+                            160
+                          ) as unknown as number;
                         }}
                         aria-expanded={chipsOpen}
                         title="Pokaż więcej filtrów"
@@ -1027,21 +1036,16 @@ export default function MyPlayersFeature({
                           className="w-full p-2"
                           onMouseEnter={() => {
                             if (chipsHoverTimer.current)
-                              window.clearTimeout(
-                                chipsHoverTimer.current
-                              );
+                              window.clearTimeout(chipsHoverTimer.current);
                             setChipsOpen(true);
                           }}
                           onMouseLeave={() => {
                             if (chipsHoverTimer.current)
-                              window.clearTimeout(
-                                chipsHoverTimer.current
-                              );
-                            chipsHoverTimer.current =
-                              window.setTimeout(
-                                () => setChipsOpen(false),
-                                140
-                              ) as unknown as number;
+                              window.clearTimeout(chipsHoverTimer.current);
+                            chipsHoverTimer.current = window.setTimeout(
+                              () => setChipsOpen(false),
+                              140
+                            ) as unknown as number;
                           }}
                         >
                           <div className="mb-1 px-1 text-[11px] font-semibold text-gray-700 dark:text-neutral-200">
@@ -1089,38 +1093,36 @@ export default function MyPlayersFeature({
                 </div>
 
                 {/* Filtry */}
-<div className="relative inline-flex">
-  <span
-    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 
+                <div className="relative inline-flex">
+                  <span
+                    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 
                dark:bg-neutral-950 dark:text-neutral-300"
-  >
-    Filtry
-  </span>
+                  >
+                    Filtry
+                  </span>
 
-    <Button
-    ref={filterBtnRef}
-    type="button"
-    variant="outline"
-    className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
-    aria-pressed={filtersOpen}
-    onClick={() => {
-      setFiltersOpen((v) => !v);
-      setColsOpen(false);
-      setMoreOpen(false);
-      setMoreSheetOpen(false);
-    }}
-    title="Filtry"
-  >
-    <ListFilter className="h-4 w-4" />
-    {filtersCount ? (
-      <span className="hidden sm:inline">
-        {` (${filtersCount})`}
-      </span>
-    ) : null}
-  </Button>
-
-</div>
-
+                  <Button
+                    ref={filterBtnRef}
+                    type="button"
+                    variant="outline"
+                    className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+                    aria-pressed={filtersOpen}
+                    onClick={() => {
+                      setFiltersOpen((v) => !v);
+                      setColsOpen(false);
+                      setMoreOpen(false);
+                      setMoreSheetOpen(false);
+                    }}
+                    title="Filtry"
+                  >
+                    <ListFilter className="h-4 w-4" />
+                    {filtersCount ? (
+                      <span className="hidden sm:inline">
+                        {` (${filtersCount})`}
+                      </span>
+                    ) : null}
+                  </Button>
+                </div>
 
                 {/* Dodaj */}
                 <Button
@@ -1163,9 +1165,7 @@ export default function MyPlayersFeature({
           <Tabs
             className="items-center w-full"
             value={knownScope}
-            onValueChange={(v) =>
-              changeKnownScope(v as KnownScope)
-            }
+            onValueChange={(v) => changeKnownScope(v as KnownScope)}
           >
             <TabsList className="w-full flex">
               <TabsTrigger
@@ -1209,9 +1209,7 @@ export default function MyPlayersFeature({
                   key={c.key}
                   className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
                 >
-                  <span className="max-w-[120px] truncate">
-                    {c.label}
-                  </span>
+                  <span className="max-w-[120px] truncate">{c.label}</span>
                   <button
                     className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
                     onClick={c.clear}
@@ -1262,14 +1260,10 @@ export default function MyPlayersFeature({
                         aria-label="Wyczyść wszystko"
                       >
                         <Eraser className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">
-                          Wyczyść
-                        </span>
+                        <span className="hidden sm:inline">Wyczyść</span>
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      Wyczyść filtry
-                    </TooltipContent>
+                    <TooltipContent>Wyczyść filtry</TooltipContent>
                   </Tooltip>
                 </div>
 
@@ -1318,9 +1312,7 @@ export default function MyPlayersFeature({
                       value={ageMin}
                       onChange={(e) => {
                         setAgeMin(
-                          e.target.value === ""
-                            ? ""
-                            : Number(e.target.value)
+                          e.target.value === "" ? "" : Number(e.target.value)
                         );
                         setPage(1);
                       }}
@@ -1336,9 +1328,7 @@ export default function MyPlayersFeature({
                       value={ageMax}
                       onChange={(e) => {
                         setAgeMax(
-                          e.target.value === ""
-                            ? ""
-                            : Number(e.target.value)
+                          e.target.value === "" ? "" : Number(e.target.value)
                         );
                         setPage(1);
                       }}
@@ -1354,11 +1344,7 @@ export default function MyPlayersFeature({
                     </div>
                     <div className="flex flex-wrap items-center gap-1">
                       {activeChips.map((c) => (
-                        <Chip
-                          key={c.key}
-                          label={c.label}
-                          onClear={c.clear}
-                        />
+                        <Chip key={c.key} label={c.label} onClear={c.clear} />
                       ))}
                     </div>
                   </div>
@@ -1436,6 +1422,7 @@ export default function MyPlayersFeature({
                   onClick={() => {
                     setScope("active");
                     setMoreOpen(false);
+                    setPage(1);
                   }}
                 >
                   <Users className="h-4 w-4" /> Aktywni
@@ -1445,6 +1432,7 @@ export default function MyPlayersFeature({
                   onClick={() => {
                     setScope("trash");
                     setMoreOpen(false);
+                    setPage(1);
                   }}
                 >
                   <Trash2 className="h-4 w-4" /> Kosz
@@ -1523,9 +1511,7 @@ export default function MyPlayersFeature({
                     value={ageMin}
                     onChange={(e) => {
                       setAgeMin(
-                        e.target.value === ""
-                          ? ""
-                          : Number(e.target.value)
+                        e.target.value === "" ? "" : Number(e.target.value)
                       );
                       setPage(1);
                     }}
@@ -1539,9 +1525,7 @@ export default function MyPlayersFeature({
                     value={ageMax}
                     onChange={(e) => {
                       setAgeMax(
-                        e.target.value === ""
-                          ? ""
-                          : Number(e.target.value)
+                        e.target.value === "" ? "" : Number(e.target.value)
                       );
                       setPage(1);
                     }}
@@ -1629,6 +1613,7 @@ export default function MyPlayersFeature({
                   onClick={() => {
                     setScope("active");
                     setMoreSheetOpen(false);
+                    setPage(1);
                   }}
                 >
                   <Users className="h-4 w-4" /> Aktywni
@@ -1638,6 +1623,7 @@ export default function MyPlayersFeature({
                   onClick={() => {
                     setScope("trash");
                     setMoreSheetOpen(false);
+                    setPage(1);
                   }}
                 >
                   <Trash2 className="h-4 w-4" /> Kosz
@@ -1752,27 +1738,21 @@ export default function MyPlayersFeature({
             <>
               <div className="relative">
                 <PlayersTable
-                  rows={paginated as PlayerRow[]}
+                  rows={visible as PlayerRow[]}
                   observations={ownedObservations}
                   visibleCols={visibleCols}
                   selected={selected}
                   setSelected={setSelected}
                   scope={scope}
                   onOpen={(id) => {
-                    const p = (players as any[]).find(
-                      (pl) => pl.id === id
-                    );
+                    const p = (players as any[]).find((pl) => pl.id === id);
                     let label: string | undefined;
 
                     if (p) {
-                      const fn = (
-                        p.firstName ?? p.imie ?? ""
-                      )
+                      const fn = (p.firstName ?? p.imie ?? "")
                         .toString()
                         .trim();
-                      const ln = (
-                        p.lastName ?? p.nazwisko ?? ""
-                      )
+                      const ln = (p.lastName ?? p.nazwisko ?? "")
                         .toString()
                         .trim();
 
@@ -1784,9 +1764,7 @@ export default function MyPlayersFeature({
                     }
 
                     const qs = label
-                      ? `?playerName=${encodeURIComponent(
-                          label
-                        )}`
+                      ? `?playerName=${encodeURIComponent(label)}`
                       : "";
                     router.push(`/players/${id}${qs}`);
                   }}
@@ -1795,13 +1773,14 @@ export default function MyPlayersFeature({
                   onSortChange={(k, d) => {
                     setSortKey(k);
                     setSortDir(d);
+                    setPage(1);
                   }}
                   sortKey={sortKey}
                   sortDir={sortDir}
                   onQuick={(p) => openQuick(p)}
                   cellPad={cellPad}
                   rowH={rowH}
-                  pageSliceCount={paginated.length}
+                  pageSliceCount={visible.length}
                   wrapRef={tableWrapRef}
                 />
 
@@ -1814,77 +1793,15 @@ export default function MyPlayersFeature({
                 )}
               </div>
 
-              {/* Pagination footer */}
-              <div className="mt-3 flex flex-row flex-wrap items-center justify-center lg:justify-between gap-2 rounded-md p-2 text-sm shadow-sm dark:bg-neutral-950">
-                <div className="flex flex-row flex-wrap items-center gap-2">
-                  <span className="text-dark dark:text-neutral-300 leading-none">
-                    Wiersze na stronę:
-                  </span>
-                  <select
-                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm leading-none dark:border-neutral-700 dark:bg-neutral-900"
-                    value={pageSize}
-                    onChange={(e) => {
-                      setPageSize(
-                        Number(e.target.value) as any
-                      );
-                      setPage(1);
-                    }}
-                    aria-label="Liczba wierszy na stronę"
-                  >
-                    {[10, 25, 50, 100].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-
-                  <span className="ml-2 text-dark dark:text-neutral-300 leading-none">
-                    {total === 0
-                      ? "0"
-                      : (currentPage - 1) * pageSize + 1}
-                    –
-                    {Math.min(
-                      currentPage * pageSize,
-                      total
-                    )}{" "}
-                    z {total}
-                  </span>
+              {/* Sentinel do infinite scroll */}
+              {hasMore && (
+                <div
+                  ref={loadMoreRef}
+                  className="mt-3 flex justify-center py-2 text-xs text-gray-500 dark:text-neutral-400"
+                >
+                  Ładuję kolejne wiersze…
                 </div>
-
-                <div className="flex flex-row flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
-                    disabled={currentPage <= 1}
-                    onClick={() =>
-                      setPage((p) => Math.max(1, p - 1))
-                    }
-                    aria-label="Poprzednia strona"
-                    title="Poprzednia strona"
-                  >
-                    <ChevronLeft className="h-[1.1em] w-[1.1em]" />
-                  </Button>
-
-                  <div className="min-w-[80px] text-center leading-none">
-                    Strona {currentPage} / {totalPages}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    className="h-auto px-2 py-1 leading-none border-gray-300 dark:border-neutral-700"
-                    disabled={currentPage >= totalPages}
-                    onClick={() =>
-                      setPage((p) =>
-                        Math.min(totalPages, p + 1)
-                      )
-                    }
-                    aria-label="Następna strona"
-                    title="Następna strona"
-                  >
-                    <ChevronRight className="h-[1.1em] w-[1.1em]" />
-                  </Button>
-                </div>
-              </div>
+              )}
             </>
           ) : (
             <QuickObservation
@@ -1964,9 +1881,7 @@ function PlayersTable({
     !allChecked && rows.some((r) => selected.has(r.id));
 
   // per-row confirmation for trash
-  const [confirmTrashId, setConfirmTrashId] = useState<number | null>(
-    null
-  );
+  const [confirmTrashId, setConfirmTrashId] = useState<number | null>(null);
 
   useEffect(() => {
     // reset confirmation on page/scope change
@@ -1985,15 +1900,10 @@ function PlayersTable({
       <button
         className={
           "flex items-center gap-1 font-medium " +
-          (active
-            ? "text-gray-900 dark:text-neutral-100"
-            : "")
+          (active ? "text-gray-900 dark:text-neutral-100" : "")
         }
         onClick={() =>
-          onSortChange(
-            k,
-            active && sortDir === "asc" ? "desc" : "asc"
-          )
+          onSortChange(k, active && sortDir === "asc" ? "desc" : "asc")
         }
       >
         {children}
@@ -2011,8 +1921,7 @@ function PlayersTable({
   const getInitials = (name: string) => {
     const parts = name.trim().split(/\s+/);
     const first = parts[0]?.[0] ?? "";
-    const last =
-      parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
+    const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
     return (first + last).toUpperCase();
   };
 
@@ -2041,339 +1950,308 @@ function PlayersTable({
       ref={wrapRef as any}
       className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
     >
-<table className="w-full table-auto text-sm">
-  <thead className="sticky top-0 z-10 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-    <tr>
-      {visibleCols.photo && (
-        <th
-          className={`${cellPad} w-px whitespace-nowrap text-left font-medium`}
-        ></th>
-      )}
-      {visibleCols.select && (
-        <th
-          className={`${cellPad} text-left font-medium w-10`}
-        >
-          <Checkbox
-            checked={
-              rows.length === 0
-                ? false
-                : allChecked
-                ? true
-                : someChecked
-                ? "indeterminate"
-                : false
-            }
-            onCheckedChange={(v) => {
-              if (v)
-                setSelected(
-                  new Set([
-                    ...selected,
-                    ...rows.map((f) => f.id),
-                  ])
-                );
-              else {
-                const set = new Set(selected);
-                rows.forEach((r) => set.delete(r.id));
-                setSelected(set);
-              }
-            }}
-            aria-label="Zaznacz wszystkie widoczne"
-          />
-        </th>
-      )}
-      {visibleCols.name && (
-        <th className={`${cellPad} text-left`}>
-          <SortHeader k="name">Nazwa</SortHeader>
-        </th>
-      )}
-      {visibleCols.club && (
-        <th className={`${cellPad} text-left`}>
-          <SortHeader k="club">Klub</SortHeader>
-        </th>
-      )}
-      {visibleCols.pos && (
-        <th className={`${cellPad} text-left`}>
-          <SortHeader k="pos">Pozycja</SortHeader>
-        </th>
-      )}
-      {visibleCols.age && (
-        <th className={`${cellPad} text-left`}>
-          <SortHeader k="age">Wiek</SortHeader>
-        </th>
-      )}
-      {visibleCols.progress && (
-        <th className={`${cellPad} text-left`}>
-          <SortHeader k="progress">Wypełnienie profilu</SortHeader>
-        </th>
-      )}
-      {visibleCols.obs && (
-        <th className={`${cellPad} text-left`}>
-          <SortHeader k="obs">Obserwacje</SortHeader>
-        </th>
-      )}
-      {visibleCols.actions && (
-        <th
-          className={`${cellPad} text-right font-medium`}
-        >
-          Akcje
-        </th>
-      )}
-    </tr>
-  </thead>
-  <tbody>
-    {rows.map((r) => {
-      const jersey = getJerseyNo(r.name);
-      const isConfirmingTrash = confirmTrashId === r.id;
+      <table className="w-full table-auto text-sm">
+        <thead className="sticky top-0 z-10 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+          <tr>
+            {visibleCols.photo && (
+              <th
+                className={`${cellPad} w-px whitespace-nowrap text-left font-medium`}
+              ></th>
+            )}
+            {visibleCols.select && (
+              <th className={`${cellPad} text-left font-medium w-10`}>
+                <Checkbox
+                  checked={
+                    rows.length === 0
+                      ? false
+                      : allChecked
+                      ? true
+                      : someChecked
+                      ? "indeterminate"
+                      : false
+                  }
+                  onCheckedChange={(v) => {
+                    if (v)
+                      setSelected(
+                        new Set([...selected, ...rows.map((f) => f.id)])
+                      );
+                    else {
+                      const set = new Set(selected);
+                      rows.forEach((r) => set.delete(r.id));
+                      setSelected(set);
+                    }
+                  }}
+                  aria-label="Zaznacz wszystkie widoczne"
+                />
+              </th>
+            )}
+            {visibleCols.name && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="name">Nazwa</SortHeader>
+              </th>
+            )}
+            {visibleCols.club && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="club">Klub</SortHeader>
+              </th>
+            )}
+            {visibleCols.pos && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="pos">Pozycja</SortHeader>
+              </th>
+            )}
+            {visibleCols.age && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="age">Wiek</SortHeader>
+              </th>
+            )}
+            {visibleCols.progress && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="progress">Wypełnienie profilu</SortHeader>
+              </th>
+            )}
+            {visibleCols.obs && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="obs">Obserwacje</SortHeader>
+              </th>
+            )}
+            {visibleCols.actions && (
+              <th className={`${cellPad} text-right font-medium`}>Akcje</th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const jersey = getJerseyNo(r.name);
+            const isConfirmingTrash = confirmTrashId === r.id;
 
-      return (
-        <tr
-          key={r.id}
-          className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
-          onDoubleClick={() => onOpen(r.id)}
-        >
-          {visibleCols.photo && (
-            <td className={`${cellPad} w-px whitespace-nowrap`}>
-              <div className="relative">
-                {r._known ? (
-                  r.photo ? (
-                    <img
-                      src={r.photo}
-                      alt={r.name}
-                      className="h-9  rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
-                      {getInitials(r.name)}
-                    </div>
-                  )
-                ) : jersey ? (
-                  // NIEZNANY + jest numer koszulki → pokazujemy sam numer
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
-                    {jersey}
-                  </div>
-                ) : (
-                  // NIEZNANY + brak numeru → sama koszulka
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
-                    <PlayerOnlyTshirt
-                      className="h-6 w-6"
-                      strokeWidthAll={14}
-                    />
-                  </div>
-                )}
-              </div>
-            </td>
-          )}
-
-          {visibleCols.select && (
-            <td className={cellPad}>
-              <Checkbox
-                checked={selected.has(r.id)}
-                onCheckedChange={(v) => {
-                  const copy = new Set(selected);
-                  if (v) copy.add(r.id);
-                  else copy.delete(r.id);
-                  setSelected(copy);
-                }}
-                aria-label={`Zaznacz ${r.name}`}
-              />
-            </td>
-          )}
-
-          {visibleCols.name && (
-            <td
-              className={`${cellPad} max-w-[260px] text-gray-900 dark:text-neutral-100`}
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="truncate"
-                  title={r.name}
-                >
-                  {r.name}
-                </span>
-                <KnownBadge known={r._known} />
-              </div>
-            </td>
-          )}
-          {visibleCols.club && (
-            <td
-              className={`${cellPad} max-w-[220px] text-gray-700 dark:text-neutral-200`}
-            >
-              <span
-                className="truncate"
-                title={r.club}
+            return (
+              <tr
+                key={r.id}
+                className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
+                onDoubleClick={() => onOpen(r.id)}
               >
-                {r.club}
-              </span>
-            </td>
-          )}
-          {visibleCols.pos && (
-            <td className={cellPad}>
-              <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
-                {r.pos}
-              </span>
-            </td>
-          )}
-          {visibleCols.age && (
-            <td
-              className={`${cellPad} text-gray-700 dark:text-neutral-200`}
-            >
-              {r.age}
-            </td>
-          )}
-
-          {visibleCols.progress && (
-            <td className={cellPad}>
-              <div className="flex items-center gap-2">
-                <div className="relative h-2 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-800">
-                  <div
-                    className={`h-full ${progressBarColor(
-                      r._progress
-                    )} transition-[width] duration-300`}
-                    style={{
-                      width: `${r._progress}%`,
-                    }}
-                  />
-                </div>
-                <span className="text-[11px] font-medium text-gray-700 dark:text-neutral-300 tabular-nums">
-                  {r._progress}%
-                </span>
-              </div>
-            </td>
-          )}
-
-          {visibleCols.obs && (
-            <td className={cellPad}>
-              <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">
-                {r._obs}
-              </span>
-            </td>
-          )}
-          {visibleCols.actions && (
-            <td
-              className={`${cellPad} text-right`}
-            >
-              <div className="flex justify-end gap-1.5">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpen(r.id);
-                      }}
-                      aria-label={
-                        r._known
-                          ? "Edytuj"
-                          : "Uzupełnij dane"
-                      }
-                    >
+                {visibleCols.photo && (
+                  <td className={`${cellPad} w-px whitespace-nowrap`}>
+                    <div className="relative">
                       {r._known ? (
-                        <Pencil className="h-4 w-4" />
+                        r.photo ? (
+                          <img
+                            src={r.photo}
+                            alt={r.name}
+                            className="h-9  rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
+                            {getInitials(r.name)}
+                          </div>
+                        )
+                      ) : jersey ? (
+                        // NIEZNANY + jest numer koszulki → pokazujemy sam numer
+                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
+                          {jersey}
+                        </div>
                       ) : (
-                        <FileEdit className="h-4 w-4" />
+                        // NIEZNANY + brak numeru → sama koszulka
+                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
+                          <PlayerOnlyTshirt
+                            className="h-6 w-6"
+                            strokeWidthAll={14}
+                          />
+                        </div>
                       )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {r._known
-                      ? "Edytuj"
-                      : "Uzupełnij dane"}
-                  </TooltipContent>
-                </Tooltip>
-
-                {scope === "active" ? (
-                  isConfirmingTrash ? (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTrash(r.id);
-                          setConfirmTrashId(null);
-                        }}
-                      >
-                        Tak
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmTrashId(null);
-                        }}
-                      >
-                        Nie
-                      </Button>
                     </div>
-                  ) : (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmTrashId(r.id);
-                          }}
-                          aria-label="Przenieś do kosza"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Przenieś do kosza
-                      </TooltipContent>
-                    </Tooltip>
-                  )
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRestore(r.id);
-                        }}
-                        aria-label="Przywróć"
-                      >
-                        <Undo2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Przywróć
-                    </TooltipContent>
-                  </Tooltip>
+                  </td>
                 )}
-              </div>
-            </td>
-          )}
-        </tr>
-      );
-    })}
-    {rows.length === 0 && (
-      <tr>
-        <td
-          colSpan={
-            Object.values(visibleCols).filter(Boolean)
-              .length || 1
-          }
-          className={`${cellPad} text-center text-sm text-dark dark:text-neutral-400`}
-        >
-          Brak wyników dla bieżących filtrów.
-        </td>
-      </tr>
-    )}
-  </tbody>
-</table>
 
+                {visibleCols.select && (
+                  <td className={cellPad}>
+                    <Checkbox
+                      checked={selected.has(r.id)}
+                      onCheckedChange={(v) => {
+                        const copy = new Set(selected);
+                        if (v) copy.add(r.id);
+                        else copy.delete(r.id);
+                        setSelected(copy);
+                      }}
+                      aria-label={`Zaznacz ${r.name}`}
+                    />
+                  </td>
+                )}
+
+                {visibleCols.name && (
+                  <td
+                    className={`${cellPad} max-w-[260px] text-gray-900 dark:text-neutral-100`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="truncate" title={r.name}>
+                        {r.name}
+                      </span>
+                      <KnownBadge known={r._known} />
+                    </div>
+                  </td>
+                )}
+                {visibleCols.club && (
+                  <td
+                    className={`${cellPad} max-w-[220px] text-gray-700 dark:text-neutral-200`}
+                  >
+                    <span className="truncate" title={r.club}>
+                      {r.club}
+                    </span>
+                  </td>
+                )}
+                {visibleCols.pos && (
+                  <td className={cellPad}>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                      {r.pos}
+                    </span>
+                  </td>
+                )}
+                {visibleCols.age && (
+                  <td className={`${cellPad} text-gray-700 dark:text-neutral-200`}>
+                    {r.age}
+                  </td>
+                )}
+
+                {visibleCols.progress && (
+                  <td className={cellPad}>
+                    <div className="flex items-center gap-2">
+                      <div className="relative h-2 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-800">
+                        <div
+                          className={`h-full ${progressBarColor(
+                            r._progress
+                          )} transition-[width] duration-300`}
+                          style={{
+                            width: `${r._progress}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-medium text-gray-700 dark:text-neutral-300 tabular-nums">
+                        {r._progress}%
+                      </span>
+                    </div>
+                  </td>
+                )}
+
+                {visibleCols.obs && (
+                  <td className={cellPad}>
+                    <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">
+                      {r._obs}
+                    </span>
+                  </td>
+                )}
+                {visibleCols.actions && (
+                  <td className={`${cellPad} text-right`}>
+                    <div className="flex justify-end gap-1.5">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpen(r.id);
+                            }}
+                            aria-label={r._known ? "Edytuj" : "Uzupełnij dane"}
+                          >
+                            {r._known ? (
+                              <Pencil className="h-4 w-4" />
+                            ) : (
+                              <FileEdit className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {r._known ? "Edytuj" : "Uzupełnij dane"}
+                        </TooltipContent>
+                      </Tooltip>
+
+                      {scope === "active" ? (
+                        isConfirmingTrash ? (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onTrash(r.id);
+                                setConfirmTrashId(null);
+                              }}
+                            >
+                              Tak
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmTrashId(null);
+                              }}
+                            >
+                              Nie
+                            </Button>
+                          </div>
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmTrashId(r.id);
+                                }}
+                                aria-label="Przenieś do kosza"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Przenieś do kosza</TooltipContent>
+                          </Tooltip>
+                        )
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRestore(r.id);
+                              }}
+                              aria-label="Przywróć"
+                            >
+                              <Undo2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Przywróć</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+          {rows.length === 0 && (
+            <tr>
+              <td
+                colSpan={
+                  Object.values(visibleCols).filter(Boolean).length || 1
+                }
+                className={`${cellPad} text-center text-sm text-dark dark:text-neutral-400`}
+              >
+                Brak wyników dla bieżących filtrów.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -2542,11 +2420,9 @@ function QuickObservation({
       <div className="px-4 pt-3">
         <Tabs
           value={quickTab}
-          onValueChange={(v) =>
-            setQuickTab(v as "new" | "existing")
-          }
+          onValueChange={(v) => setQuickTab(v as "new" | "existing")}
         >
-          <TabsList className="mb-2 inline-flex h-9  items-center rounded-md bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
+          <TabsList className="mb-2 inline-flex h-9 items-center rounded-md bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
             <TabsTrigger
               value="new"
               className="h-9 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
@@ -2570,8 +2446,7 @@ function QuickObservation({
                 Mecz
               </div>
               <div className="mb-3 text-xs text-dark dark:text-neutral-400">
-                Wpisz drużyny — pole „Mecz” składa się
-                automatycznie.
+                Wpisz drużyny — pole „Mecz” składa się automatycznie.
               </div>
 
               <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
@@ -2611,9 +2486,7 @@ function QuickObservation({
                   <Input
                     type="date"
                     value={qaDate}
-                    onChange={(e) =>
-                      setQaDate(e.target.value)
-                    }
+                    onChange={(e) => setQaDate(e.target.value)}
                     className="mt-1"
                   />
                 </div>
@@ -2622,9 +2495,7 @@ function QuickObservation({
                   <Input
                     type="time"
                     value={qaTime}
-                    onChange={(e) =>
-                      setQaTime(e.target.value)
-                    }
+                    onChange={(e) => setQaTime(e.target.value)}
                     className="mt-1"
                   />
                 </div>
@@ -2635,11 +2506,7 @@ function QuickObservation({
                 <span className="font-medium">
                   {qaMatch || "—"}
                 </span>
-                <span className="ml-2">
-                  {chip(
-                    qaMode === "tv" ? "TV" : "Live"
-                  )}
-                </span>
+                <span className="ml-2">{chip(qaMode === "tv" ? "TV" : "Live")}</span>
               </div>
             </div>
 
@@ -2693,9 +2560,7 @@ function QuickObservation({
             <div className="sticky bottom-0 mt-1 -mx-4 border-t border-gray-200 bg-white/90 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
               <div className="flex items-center justify-end gap-2">
                 <div className="mr-auto hidden text-[11px] text-dark sm:block dark:text-neutral-400">
-                  Skróty:{" "}
-                  <span className="font-medium">Enter</span> —
-                  Zapisz,{" "}
+                  Skróty: <span className="font-medium">Enter</span> — Zapisz,{" "}
                   <span className="font-medium">Esc</span> — Wróć
                 </div>
                 <Button
@@ -2738,95 +2603,96 @@ function QuickObservation({
             </div>
 
             <div className="max-h-90 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
-            <table className="table-auto w-fit text-sm">
-              <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-                <tr>
-                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                    #
-                  </th>
-                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                    Mecz
-                  </th>
-                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                    Zawodnik
-                  </th>
-                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                    Data
-                  </th>
-                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                    Tryb
-                  </th>
-                  <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {existingFiltered.map((o) => (
-                  <tr
-                    key={o.id}
-                    className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
-                      obsSelectedId === o.id
-                        ? "bg-blue-50/60 dark:bg-blue-900/20"
-                        : ""
-                    }`}
-                    onClick={() => setObsSelectedId(o.id)}
-                  >
-                    <td className="w-px whitespace-nowrap p-2">
-                      <input
-                        type="radio"
-                        name="obsPick"
-                        checked={obsSelectedId === o.id}
-                        onChange={() => setObsSelectedId(o.id)}
-                      />
-                    </td>
-                    <td className="w-px whitespace-nowrap p-2">
-                      {o.match || "—"}
-                    </td>
-                    <td className="w-px whitespace-nowrap p-2">
-                      {o.player || "—"}
-                    </td>
-                    <td className="w-px whitespace-nowrap p-2">
-                      {[o.date || "—", o.time || ""].filter(Boolean).join(" ")}
-                    </td>
-                    <td className="w-px whitespace-nowrap p-2">
-                      <span
-                        className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
-                          // @ts-ignore
-                          (o as any).mode === "tv"
-                            ? "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200"
-                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                        }`}
-                      >
-                        {(o as any).mode === "tv" ? "TV" : "Live"}
-                      </span>
-                    </td>
-                    <td className="w-px whitespace-nowrap p-2">
-                      <span
-                        className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
-                          o.status === "final"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
-                            : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-                        }`}
-                      >
-                        {o.status === "final" ? "Finalna" : "Szkic"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {existingFiltered.length === 0 && (
+              <table className="table-auto w-fit text-sm">
+                <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="p-6 text-center text-sm text-dark dark:text-neutral-400"
-                    >
-                      Brak obserwacji dla podanych kryteriów.
-                    </td>
+                    <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                      #
+                    </th>
+                    <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                      Mecz
+                    </th>
+                    <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                      Zawodnik
+                    </th>
+                    <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                      Data
+                    </th>
+                    <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                      Tryb
+                    </th>
+                    <th className="w-px whitespace-nowrap p-2 text-left font-medium">
+                      Status
+                    </th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-
+                </thead>
+                <tbody>
+                  {existingFiltered.map((o) => (
+                    <tr
+                      key={o.id}
+                      className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
+                        obsSelectedId === o.id
+                          ? "bg-blue-50/60 dark:bg-blue-900/20"
+                          : ""
+                      }`}
+                      onClick={() => setObsSelectedId(o.id)}
+                    >
+                      <td className="w-px whitespace-nowrap p-2">
+                        <input
+                          type="radio"
+                          name="obsPick"
+                          checked={obsSelectedId === o.id}
+                          onChange={() => setObsSelectedId(o.id)}
+                        />
+                      </td>
+                      <td className="w-px whitespace-nowrap p-2">
+                        {o.match || "—"}
+                      </td>
+                      <td className="w-px whitespace-nowrap p-2">
+                        {o.player || "—"}
+                      </td>
+                      <td className="w-px whitespace-nowrap p-2">
+                        {[o.date || "—", o.time || ""]
+                          .filter(Boolean)
+                          .join(" ")}
+                      </td>
+                      <td className="w-px whitespace-nowrap p-2">
+                        <span
+                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
+                            // @ts-ignore
+                            (o as any).mode === "tv"
+                              ? "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200"
+                              : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
+                          }`}
+                        >
+                          {(o as any).mode === "tv" ? "TV" : "Live"}
+                        </span>
+                      </td>
+                      <td className="w-px whitespace-nowrap p-2">
+                        <span
+                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
+                            o.status === "final"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+                          }`}
+                        >
+                          {o.status === "final" ? "Finalna" : "Szkic"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {existingFiltered.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                      >
+                        Brak obserwacji dla podanych kryteriów.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
             <div className="flex flex-wrap items-start justify-between">
