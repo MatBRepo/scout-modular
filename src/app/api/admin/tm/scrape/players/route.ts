@@ -2,18 +2,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as cheerio from "cheerio";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const maxDuration = 300;
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+/* -------- lazy Supabase client (no crash on import) -------- */
+
+let _supabase: SupabaseClient | null = null;
+
+function getSupabase() {
+  if (_supabase) return _supabase;
+
+  const SUPABASE_URL =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+  const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!SUPABASE_URL || !SERVICE_ROLE) {
+    // This will only throw when the route is actually called,
+    // not during Next.js build import.
+    throw new Error(
+      "Supabase env vars missing. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+    );
+  }
+
+  _supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return _supabase;
+}
 
 const BASE = "https://www.transfermarkt.com";
 
@@ -165,9 +184,8 @@ function parsePlayerProfile(html: string) {
 /* ---------------- db helpers ---------------- */
 async function upsert(table: string, rows: any[], onConflict: string) {
   if (!rows.length) return;
-  const { error } = await supabase
-    .from(table)
-    .upsert(rows, { onConflict });
+  const supabase = getSupabase();
+  const { error } = await supabase.from(table).upsert(rows, { onConflict });
   if (error) throw error;
 }
 
@@ -260,6 +278,9 @@ type IncomingPlayer = {
 
 export async function POST(req: Request) {
   try {
+    // Ensure env is present early (but only when route is actually hit)
+    getSupabase();
+
     const body = await req.json();
     const seasonId = parseInt(body?.season || "2025", 10);
     const players: IncomingPlayer[] = body?.players || [];
