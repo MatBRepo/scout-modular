@@ -472,7 +472,7 @@ export default function AppSidebar({
         className="group flex items-center gap-2"
         aria-label="entrisoScouting - Start"
       >
-        <div className="grid h-8 w-8 place-items-center rounded-md bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
+        <div className="grid h-8 w-8 place-items-center rounded-md bg-gray-900 text-white dark:bg.white dark:text-neutral-900">
           <span className="text-[13px] font-bold leading-none">S</span>
         </div>
         {showName && (
@@ -800,7 +800,7 @@ export default function AppSidebar({
         <div ref={accountRef} className="relative">
           <button
             onClick={() => setAccountOpen((v) => !v)}
-            className="relative z-[60] flex w-full items-center justify-between rounded-md py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900 bg-white px-2"
+            className="relative z-[60] flex w-full items-center justify-between rounded-md bg-white px-2 py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:ring-indigo-500 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:bg-neutral-900"
             aria-haspopup="menu"
             aria-expanded={accountOpen}
           >
@@ -875,7 +875,7 @@ export default function AppSidebar({
                   {/* Rank card */}
                   <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
                     <div className="mb-1 flex flex-wrap items-center justify-between">
-                      <span className="font-semibold whitespace-normal break-words">
+                      <span className="whitespace-normal break-words font-semibold">
                         Twój poziom
                       </span>
                       <span
@@ -901,7 +901,7 @@ export default function AppSidebar({
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <div className="mt-1 text-[10px] opacity-70 whitespace-normal break-words">
+                      <div className="mt-1 whitespace-normal break-words text-[10px] opacity-70">
                         Brakuje {remaining} pkt (np.{" "}
                         {Math.ceil(remaining / 2)} aktywnych zawodników lub{" "}
                         {remaining} obserwacji).
@@ -935,12 +935,45 @@ export default function AppSidebar({
                     </div>
                   </div>
 
-                  <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
-                    Szybkie akcje
+                  {/* EXTENDED: stats + theme toggle row (no left trophy) */}
+                  <div className="mt-2 space-y-1 px-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div
+                        className="min-w-0 flex flex-1 items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-[11px] text-gray-700 dark:border-neutral-800 dark:text-neutral-300"
+                        title={`Aktywni: ${playersCount} • Obserwacje: ${obsCount} • Score: ${score}`}
+                      >
+                        <TrendingUp className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                        <span className="truncate">
+                          {formatNum(playersCount)} zawodników •{" "}
+                          {formatNum(obsCount)} obserwacji
+                        </span>
+                      </div>
+
+                      <button
+                        className="shrink-0 rounded-md border border-gray-300 p-1.5 text-xs transition hover:bg-stone-100 active:scale-[0.98] focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                        onClick={() =>
+                          setTheme(theme === "dark" ? "light" : "dark")
+                        }
+                        aria-label="Przełącz motyw (T)"
+                        title="Przełącz motyw (T)"
+                      >
+                        {theme === "dark" ? (
+                          <Sun className="h-3 w-3" />
+                        ) : (
+                          <Moon className="h-3 w-3" />
+                        )}
+                      </button>
+                    </div>
+
+                    <p className="px-0.5 text-[10px] text-gray-500 dark:text-neutral-500">
+                      Wskazówka: dodawaj pełne profile i finalne obserwacje, aby
+                      szybciej awansować.
+                    </p>
                   </div>
+
                   <Link
                     role="menuitem"
-                    className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 focus:ring-indigo-500 dark:hover:bg-neutral-900"
+                    className="mt-2 flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 focus:ring-indigo-500 dark:hover:bg-neutral-900"
                     href="/settings"
                     onClick={() => {
                       setAccountOpen(false);
@@ -949,18 +982,6 @@ export default function AppSidebar({
                     }}
                   >
                     <Settings className="h-4 w-4" /> Ustawienia
-                  </Link>
-                  <Link
-                    role="menuitem"
-                    className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 focus:ring-indigo-500 dark:hover:bg-neutral-900"
-                    href="/settings/navigation"
-                    onClick={() => {
-                      setAccountOpen(false);
-                      onClose?.();
-                      handleNavClick("/settings/navigation");
-                    }}
-                  >
-                    <Map className="h-4 w-4" /> Nawigacja
                   </Link>
 
                   <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
@@ -989,37 +1010,6 @@ export default function AppSidebar({
               </>
             )}
           </AnimatePresence>
-
-          <div className="mt-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Trophy className={`h-3.5 w-3.5 ${rankTrophyColor(rank)}`} />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div
-                className="hidden min-w-0 shrink items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-[11px] text-gray-700 sm:flex dark:border-neutral-800 dark:text-neutral-300"
-                title={`Aktywni: ${playersCount} • Obserwacje: ${obsCount} • Score: ${score}`}
-              >
-                <TrendingUp className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                <span className="truncate">
-                  {formatNum(playersCount)} / {formatNum(obsCount)}
-                </span>
-              </div>
-              <button
-                className="rounded-md border border-gray-300 p-1.5 text-xs transition hover:bg-stone-100 active:scale-[0.98] focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                onClick={() =>
-                  setTheme(theme === "dark" ? "light" : "dark")
-                }
-                aria-label="Przełącz motyw (T)"
-                title="Przełącz motyw (T)"
-              >
-                {theme === "dark" ? (
-                  <Sun className="h-3 w-3" />
-                ) : (
-                  <Moon className="h-3 w-3" />
-                )}
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
