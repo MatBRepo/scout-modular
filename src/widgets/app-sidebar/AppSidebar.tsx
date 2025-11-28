@@ -397,7 +397,7 @@ export default function AppSidebar({
   const playersBadge = playersCount > 0 ? String(playersCount) : undefined;
   const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
 
-  /* ===== Mobile accordion for "Zarządzanie" (collapsed by default on mobile) ===== */
+  /* ===== Mobile/desktop accordion state for "Zarządzanie" ===== */
   const [manageOpen, setManageOpen] = useState(variant === "desktop");
 
   /* ===== Logout via Supabase ===== */
@@ -461,7 +461,7 @@ export default function AppSidebar({
         className="group flex items-center gap-2"
         aria-label="entrisoScouting - Start"
       >
-        <div className="grid h-8 w-8 place-items-center rounded-md bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
+        <div className="grid h-8 w-8 place-items-center rounded-md bg-gray-900 text-white dark:bg.white dark:text-neutral-900">
           <span className="text-[13px] font-bold leading-none">S</span>
         </div>
         {showName && (
@@ -557,58 +557,103 @@ export default function AppSidebar({
                 {/* Zarządzanie + submenu: Metryki & Oceny & Ranki */}
                 {variant === "desktop" ? (
                   <div>
-                    <NavItem
-                      href="/admin/manage"
-                      icon={<Settings className="h-4 w-4" />}
-                      label="Zarządzanie"
-                      active={isManageSection}
-                      pending={pendingHref === "/admin/manage"}
-                      onClickHref={handleNavClick}
-                    />
-                    <div className="mt-0.5 space-y-0.5 pl-9">
-                      <SubNavItem
-                        href="/admin/manage"
-                        label="Użytkownicy"
-                        active={manageBaseActive}
-                        pending={pendingHref === "/admin/manage"}
-                        onClickHref={handleNavClick}
-                      />
-                      <SubNavItem
-                        href="/admin/manage/metrics"
-                        label="Metryki obserwacji"
-                        active={manageMetricsActive}
-                        pending={
-                          pendingHref === "/admin/manage/metrics"
-                        }
-                        onClickHref={handleNavClick}
-                      />
-                      <SubNavItem
-                        href="/admin/manage/ratings"
-                        label="Oceny zawodnika"
-                        active={manageRatingsActive}
-                        pending={
-                          pendingHref === "/admin/manage/ratings"
-                        }
-                        onClickHref={handleNavClick}
-                      />
-                      <SubNavItem
-                        href="/admin/manage/ranks"
-                        label="Rangi użytkowników"
-                        active={manageRanksActive}
-                        pending={pendingHref === "/admin/manage/ranks"}
-                        onClickHref={handleNavClick}
-                      />
-                      <SubNavItem
-                        href="/admin/manage/required-fields"
-                        label="Wymagane pola"
-                        active={manageRequiredActive}
-                        pending={
-                          pendingHref ===
-                          "/admin/manage/required-fields"
-                        }
-                        onClickHref={handleNavClick}
-                      />
-                    </div>
+                    {/* Accordion header (button) on desktop */}
+                    <button
+                      type="button"
+                      onClick={() => setManageOpen((v) => !v)}
+                      aria-expanded={manageOpen}
+                      className={`group flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
+                        isManageSection
+                          ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+                          : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                      }`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="shrink-0">
+                          <Settings className="h-4 w-4" />
+                        </span>
+                        <span className="truncate">
+                          Zarządzanie
+                        </span>
+                      </span>
+                      <motion.span
+                        aria-hidden
+                        initial={false}
+                        animate={{ rotate: manageOpen ? 180 : 0 }}
+                        transition={{
+                          duration: prefersReduced ? 0 : 0.18,
+                          ease: [0.2, 0.7, 0.2, 1],
+                        }}
+                        className="ml-2 inline-flex h-4 w-4 shrink-0 items-center justify-center text-[11px] opacity-70"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </motion.span>
+                    </button>
+
+                    {/* Accordion content (submenu) on desktop */}
+                    <AnimatePresence initial={false}>
+                      {manageOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{
+                            duration: prefersReduced ? 0 : 0.18,
+                            ease: "easeOut",
+                          }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-0.5 space-y-0.5 pl-9">
+                            <SubNavItem
+                              href="/admin/manage"
+                              label="Użytkownicy"
+                              active={manageBaseActive}
+                              pending={
+                                pendingHref === "/admin/manage"
+                              }
+                              onClickHref={handleNavClick}
+                            />
+                            <SubNavItem
+                              href="/admin/manage/metrics"
+                              label="Metryki obserwacji"
+                              active={manageMetricsActive}
+                              pending={
+                                pendingHref ===
+                                "/admin/manage/metrics"
+                              }
+                              onClickHref={handleNavClick}
+                            />
+                            <SubNavItem
+                              href="/admin/manage/ratings"
+                              label="Oceny zawodnika"
+                              active={manageRatingsActive}
+                              pending={
+                                pendingHref ===
+                                "/admin/manage/ratings"
+                              }
+                              onClickHref={handleNavClick}
+                            />
+                            <SubNavItem
+                              href="/admin/manage/ranks"
+                              label="Rangi użytkowników"
+                              active={manageRanksActive}
+                              pending={pendingHref === "/admin/manage/ranks"}
+                              onClickHref={handleNavClick}
+                            />
+                            <SubNavItem
+                              href="/admin/manage/required-fields"
+                              label="Wymagane pola"
+                              active={manageRequiredActive}
+                              pending={
+                                pendingHref ===
+                                "/admin/manage/required-fields"
+                              }
+                              onClickHref={handleNavClick}
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 ) : (
                   <div>
@@ -645,7 +690,7 @@ export default function AppSidebar({
                       </motion.span>
                     </button>
 
-                    {/* Accordion content (submenu) */}
+                    {/* Accordion content (submenu) on mobile */}
                     <AnimatePresence initial={false}>
                       {manageOpen && (
                         <motion.div
@@ -1112,7 +1157,6 @@ function RankUpgradeOverlay({
             >
               OK, super
             </button>
-           
           </div>
         </div>
       </div>
