@@ -1751,21 +1751,26 @@ useEffect(() => {
                       </div>
                      <div>
   <Label className="text-sm">Rok urodzenia</Label>
-  <NumericField
-    value={birthYear === "" ? undefined : Number(birthYear)}
-    onChange={(val) => {
-      if (val == null) {
-        setBirthYear("");
-        return;
-      }
+                      <NumericField
+                          value={
+                            birthYear === "" ? undefined : Number(birthYear)
+                          }
+                          onChange={(val) => {
+                            if (val == null) {
+                              setBirthYear("");
+                              return;
+                            }
 
-      // max 4 cyfry -> max 9999
-      const clamped = Math.min(9999, Math.max(0, val));
-      setBirthYear(String(clamped));
-    }}
-    placeholder="np. 2006"
-    maxValue={9999}
-  />
+                            const next = String(Math.max(0, val));
+                            // blokada > 4 cyfr, bez podmiany na 9999
+                            if (next.length > 4) {
+                              return;
+                            }
+
+                            setBirthYear(next);
+                          }}
+                          placeholder="0"
+                        />
 </div>
 
                       <div>

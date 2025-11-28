@@ -31,6 +31,7 @@ import {
   Tv,
   Radio,
   Eraser,
+  XCircle, // NEW
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -873,6 +874,41 @@ export default function MyPlayersFeature({
     );
   }, [ownedPlayers, selected]);
 
+  /* ===== NEW: global trash count for players ===== */
+  const trashCount = useMemo(
+    () =>
+      (ownedPlayers as PlayerWithOwner[]).filter(
+        (p) => (p.status ?? "active") === "trash"
+      ).length,
+    [ownedPlayers]
+  );
+
+  /* ===== NEW: empty trash (only players belonging to this user) ===== */
+  function emptyTrash() {
+    if (!authUserId) return;
+
+    const trashIds = (players as PlayerWithOwner[])
+      .filter(
+        (p) =>
+          (p.status ?? "active") === "trash" &&
+          (p.user_id === authUserId || p.profile_id === authUserId)
+      )
+      .map((p) => p.id as number);
+
+    if (trashIds.length === 0) return;
+
+    const trashSet = new Set(trashIds);
+    const next = players.filter((p) => !trashSet.has(p.id as number));
+    onChangePlayers(next);
+
+    setSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const copy = new Set(prev);
+      trashIds.forEach((id) => copy.delete(id));
+      return copy;
+    });
+  }
+
   // ====== MOBILE: detect horizontal overflow & first scroll ======
   useEffect(() => {
     const el = tableWrapRef.current;
@@ -1083,7 +1119,7 @@ export default function MyPlayersFeature({
                       setQ(e.target.value);
                       setPage(1);
                     }}
-                    placeholder="Szukaj po nazwisku/klubie… (/)"
+                    placeholder="Szukaj po nazwisku/klubie… (/) "
                     className={`${controlH} w-full pl-8 pr-3 text-sm`}
                     aria-label="Szukaj w bazie zawodników"
                   />
@@ -1310,7 +1346,10 @@ export default function MyPlayersFeature({
                         const n =
                           v === ""
                             ? ""
-                            : Math.max(0, Number.isNaN(Number(v)) ? 0 : Number(v));
+                            : Math.max(
+                                0,
+                                Number.isNaN(Number(v)) ? 0 : Number(v)
+                              );
                         setAgeMin(n as any);
                         setPage(1);
                       }}
@@ -1330,7 +1369,10 @@ export default function MyPlayersFeature({
                         const n =
                           v === ""
                             ? ""
-                            : Math.max(0, Number.isNaN(Number(v)) ? 0 : Number(v));
+                            : Math.max(
+                                0,
+                                Number.isNaN(Number(v)) ? 0 : Number(v)
+                              );
                         setAgeMax(n as any);
                         setPage(1);
                       }}
@@ -1400,7 +1442,7 @@ export default function MyPlayersFeature({
               </div>
             </AnchoredPopover>
 
-            {/* More popover */}
+            {/* More popover – with trash count + "Opróżnij kosz" */}
             <AnchoredPopover
               open={moreOpen}
               onClose={() => setMoreOpen(false)}
@@ -1409,8 +1451,18 @@ export default function MyPlayersFeature({
               maxWidth={260}
             >
               <div className="w-full p-1">
+                {/* Header with trash badge */}
+                <div className="flex items-center justify-between px-2 pb-1 pt-1">
+                  <span className="text-[11px] font-medium text-stone-500 dark:text-neutral-400">
+                    Menu
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
+                    W koszu: {trashCount}
+                  </span>
+                </div>
+
                 <button
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                  className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => {
                     setColsOpen(true);
                     setMoreOpen(false);
@@ -1437,8 +1489,26 @@ export default function MyPlayersFeature({
                     setPage(1);
                   }}
                 >
-                  <Trash2 className="h-4 w-4" /> Kosz
+                  <Trash2 className="h-4 w-4" />
+                  <span>Kosz</span>
+                  <span className="ml-auto inline-flex min-w-[20px] items-center justify-center rounded-full bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
+                    {trashCount}
+                  </span>
                 </button>
+
+                {trashCount > 0 && (
+                  <button
+                    className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      emptyTrash();
+                    }}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    <span>Opróżnij kosz</span>
+                  </button>
+                )}
+
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
@@ -1601,12 +1671,22 @@ export default function MyPlayersFeature({
               </div>
             </MobileSheet>
 
-            {/* Więcej */}
+            {/* Więcej – with trash count + Opróżnij kosz */}
             <MobileSheet
               open={moreSheetOpen}
               onClose={() => setMoreSheetOpen(false)}
               title="Więcej"
             >
+              {/* Small header with trash count */}
+              <div className="mb-1 flex items-center justify-between px-1 gap-2">
+                <div className="text-xs font-medium text-stone-500 dark:text-neutral-400">
+                  Stan kosza
+                </div>
+                <div className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
+                  W koszu: {trashCount}
+                </div>
+              </div>
+
               <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -1636,8 +1716,25 @@ export default function MyPlayersFeature({
                     setPage(1);
                   }}
                 >
-                  <Trash2 className="h-4 w-4" /> Kosz
+                  <Trash2 className="h-4 w-4" />
+                  <span>Kosz</span>
+                  <span className="ml-auto inline-flex min-w-[20px] items-center justify-center rounded-full bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
+                    {trashCount}
+                  </span>
                 </button>
+
+                {trashCount > 0 && (
+                  <button
+                    className="flex w-full items-center gap-2 bg-rose-50/70 px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:bg-rose-950/50"
+                    onClick={() => {
+                      setMoreSheetOpen(false);
+                      emptyTrash();
+                    }}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    <span>Opróżnij kosz</span>
+                  </button>
+                )}
 
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -2038,8 +2135,8 @@ function PlayersTable({
             return (
               <tr
                 key={r.id}
-                className={`group border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
-                onDoubleClick={() => onOpen(r.id as number)}
+                className={`group cursor-pointer border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
+                onClick={() => onOpen(r.id as number)}
               >
                 {visibleCols.photo && (
                   <td className={`${cellPad} w-px whitespace-nowrap`}>
@@ -2076,7 +2173,10 @@ function PlayersTable({
                 )}
 
                 {visibleCols.select && (
-                  <td className={cellPad}>
+                  <td
+                    className={cellPad}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Checkbox
                       checked={selected.has(r.id as number)}
                       onCheckedChange={(v) => {
@@ -2119,7 +2219,9 @@ function PlayersTable({
                   </td>
                 )}
                 {visibleCols.age && (
-                  <td className={`${cellPad} text-gray-700 dark:text-neutral-200`}>
+                  <td
+                    className={`${cellPad} text-gray-700 dark:text-neutral-200`}
+                  >
                     {r.age}
                   </td>
                 )}

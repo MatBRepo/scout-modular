@@ -402,7 +402,7 @@ type DateTimeValue = {
 type Choice = "known" | "unknown" | null;
 
 type ObsRec = {
-  id: number;
+  id: number | string; // IMPORTANT: can be string or number
   match?: string | any;
   date?: string | any;
   time?: string | any;
@@ -974,7 +974,9 @@ export default function PlayerEditorPage() {
   // Ładowanie zawodnika z Supabase do edycji
   const [observations, setObservations] = useState<ObsRec[]>([]);
   const [obsQuery, setObsQuery] = useState("");
-  const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
+  const [obsSelectedId, setObsSelectedId] = useState<number | string | null>(
+    null
+  );
 
   useEffect(() => {
     if (!playerId) return;
@@ -1240,7 +1242,7 @@ export default function PlayerEditorPage() {
 
         if (!cancelled && data) {
           const mapped: ObsRec[] = data.map((row: any) => ({
-            id: row.id,
+            id: row.id, // numeric from Supabase
             match: safeText(row.match),
             date: safeText(row.date),
             time: safeText(row.time),
@@ -1266,7 +1268,7 @@ export default function PlayerEditorPage() {
 
   function addObservation() {
     const next: ObsRec = {
-      id: Date.now(),
+      id: Date.now(), // local temporary ID
       match: qaMatch.trim() || "—",
       date: qaDate || "",
       time: qaTime || "",
@@ -1335,7 +1337,7 @@ export default function PlayerEditorPage() {
     const hasTooltip = !!aspect.tooltip;
 
     return (
-      <div className="flex w-full max-w-[320px] flex-col justify-between rounded-md border border-stone-200 bg-white/90 p-3 text-xs shadow-sm transition-shadow dark:border-neutral-700 dark:bg-neutral-950/80">
+      <div className="flex w-full max-w-[320px] flex-col justify_between rounded-md border border-stone-200 bg-white/90 p-3 text-xs shadow-sm transition-shadow dark:border-neutral-700 dark:bg-neutral-950/80">
         <div className="mb-2 flex items-start gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-1">
@@ -1636,8 +1638,8 @@ export default function PlayerEditorPage() {
 
   // Helper to avoid infinite loop in observations onChange
   function mapTableRowsToObservations(rows: any[]): ObsRec[] {
-    return (rows || []).map((o: any) => ({
-      id: Number(o.id) || Date.now(),
+    return (rows || []).map((o: any, index: number) => ({
+      id: o.id ?? `tmp-${index}`, // PRESERVE id as-is; only fallback if missing
       match: safeText(o.match),
       date: safeText(o.date),
       time: safeText(o.time),
@@ -1668,7 +1670,36 @@ export default function PlayerEditorPage() {
     return true;
   }
 
-  // Header actions like in AddPlayerPage + PROGRESS BAR
+  // Title with badge + icon (only current stage)
+  const editorTitle = (
+    <div className="w-full">
+      <div className="flex items-center gap-2 w-full">
+        <h2 className="mt-1 text-xl font-semibold leading-none tracking-tight">
+          Edycja zawodnika
+        </h2>
+        {choice === "known" && (
+          <span className="ml-auto inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-100">
+            <KnownPlayerIcon
+              className="mr-1.5 h-4 w-4 text-emerald-700"
+              strokeWidth={1.4}
+            />
+            Zawodnik znany
+          </span>
+        )}
+        {choice === "unknown" && (
+          <span className="ml-auto inline-flex items-center rounded px-2 py-0.5 text-[12px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+            <UnknownPlayerIcon
+              className="mr-1.5 h-4 w-4 text-rose-700"
+              strokeWidth={1.4}
+            />
+            Zawodnik nieznany
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  // Header actions like in AddPlayerPage + PROGRESS BAR – global header
   useEffect(() => {
     const node = (
       <div className="flex items-center gap-3">
@@ -1718,35 +1749,6 @@ export default function PlayerEditorPage() {
       setActions(null);
     };
   }, [setActions, saveState, router, completionPercent]);
-
-  // Title with badge + icon (only current stage)
-  const editorTitle = (
-    <div className="w-full">
-      <div className="flex items-center gap-2 w-full">
-        <h2 className="mt-1 text-xl font-semibold leading-none tracking-tight">
-          Edycja zawodnika
-        </h2>
-        {choice === "known" && (
-          <span className="ml-auto inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-100">
-            <KnownPlayerIcon
-              className="mr-1.5 h-4 w-4 text-emerald-700"
-              strokeWidth={1.4}
-            />
-            Zawodnik znany
-          </span>
-        )}
-        {choice === "unknown" && (
-          <span className="ml-auto inline-flex items-center rounded px-2 py-0.5 text-[12px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-            <UnknownPlayerIcon
-              className="mr-1.5 h-4 w-4 text-rose-700"
-              strokeWidth={1.4}
-            />
-            Zawodnik nieznany
-          </span>
-        )}
-      </div>
-    </div>
-  );
 
   if (!playerId) {
     return (
@@ -1843,25 +1845,29 @@ export default function PlayerEditorPage() {
                           placeholder="np. Kowalski"
                         />
                       </div>
-<div>
-  <Label className="text-sm">Rok urodzenia</Label>
-  <NumericField
-    value={birthYear === "" ? undefined : Number(birthYear)}
-    onChange={(val) => {
-      if (val == null) {
-        setBirthYear("");
-        return;
-      }
+                      <div>
+                        <Label className="text-sm">Rok urodzenia</Label>
+                        <NumericField
+                          value={
+                            birthYear === "" ? undefined : Number(birthYear)
+                          }
+                          onChange={(val) => {
+                            if (val == null) {
+                              setBirthYear("");
+                              return;
+                            }
 
-      // max 4 cyfry -> max 9999
-      const clamped = Math.min(9999, Math.max(0, val));
-      setBirthYear(String(clamped));
-    }}
-    placeholder="np. 2006"
-    maxValue={9999}
-  />
-</div>
+                            const next = String(Math.max(0, val));
+                            // blokada > 4 cyfr, bez podmiany na 9999
+                            if (next.length > 4) {
+                              return;
+                            }
 
+                            setBirthYear(next);
+                          }}
+                          placeholder="0"
+                        />
+                      </div>
 
                       <div>
                         <NumericField
