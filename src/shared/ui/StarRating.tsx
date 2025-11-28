@@ -17,8 +17,8 @@ type Props = {
 export default function StarRating({
   value,
   onChange,
-  max = 6,
-  size = 18,
+  max = 5,
+  size = 27,
   readOnly,
   className = "",
   label = "Ocena w gwiazdkach",

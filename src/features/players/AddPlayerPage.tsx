@@ -1749,20 +1749,25 @@ useEffect(() => {
                           placeholder="np. Kowalski"
                         />
                       </div>
-                      <div>
-                        <Label className="text-sm">Rok urodzenia</Label>
-                        <NumericField
-                          value={
-                            birthYear === "" ? undefined : Number(birthYear)
-                          }
-                          onChange={(val) =>
-                            setBirthYear(
-                              val == null ? "" : String(val)
-                            )
-                          }
-                          placeholder="np. 2006"
-                        />
-                      </div>
+                     <div>
+  <Label className="text-sm">Rok urodzenia</Label>
+  <NumericField
+    value={birthYear === "" ? undefined : Number(birthYear)}
+    onChange={(val) => {
+      if (val == null) {
+        setBirthYear("");
+        return;
+      }
+
+      // max 4 cyfry -> max 9999
+      const clamped = Math.min(9999, Math.max(0, val));
+      setBirthYear(String(clamped));
+    }}
+    placeholder="np. 2006"
+    maxValue={9999}
+  />
+</div>
+
                       <div>
                         <NumericField
                           label="Numer na koszulce"
@@ -2105,10 +2110,10 @@ useEffect(() => {
 
         {/* KROK 4 – Obserwacje */}
         <Card className="mt-1">
-          <CardHeader
+         <CardHeader
             className={cn(
-              "group flex rounded-md items-center justify-between  border-gray-200 px-4 py-4 transition-colors hover:bg-stone-50/80 md:px-4 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
-              obsOpen && "bg-stone-100 dark:bg-neutral-900/70"
+              "group bg-[#E3E0F9] flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-[#D4CEFF] p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              obsOpen && "bg-[#E3E0F9] dark:bg-neutral-900/70"
             )}
           >
             <button

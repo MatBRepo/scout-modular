@@ -1,36 +1,42 @@
-import * as React from "react";
-
+import type * as React from "react";
 import { cn } from "@/lib/utils";
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type = "text", ...props }, ref) => {
-    return (
-      <input
-        type={type}
-        ref={ref}
-        className={cn(
-          // size & layout
-          "flex h-10 w-full px-3 py-2 text-sm",
-          // base visual: 1px inset ring works as the border
-          "rounded-md bg-background/90 text-foreground shadow-sm",
-          "ring-1 ring-inset ring-border",
-          // placeholder
-          "placeholder:text-muted-foreground",
-          // focus – same thickness, only color change
-          "focus-visible:outline-none",
-          "focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-emerald-500",
-          // disabled
-          "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted",
-          // optional invalid state: <Input data-invalid />
-          "data-[invalid=true]:ring-destructive",
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  return (
+    <input
+      className={cn(
+        // base
+        "flex h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-sm outline-none",
+        "transition-[color,box-shadow,border-color]",
+        // ==== DEFAULT BORDER & SHADOW ====
+        // border in stone-400
+        "border border-stone-400",
+        // subtle 1px shadow in stone-100 (#f5f5f4)
+        "shadow-[0_0_0_1px_#f5f5f4]",
+        // ================================
+        "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm",
+        "placeholder:text-muted-foreground/70 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
 
-Input.displayName = "Input";
+        // focus (optional – can tweak if you want)
+        "focus-visible:border-stone-500",
+        "focus-visible:ring-[3px] focus-visible:ring-stone-200/70",
+
+        // invalid state
+        "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
+
+        // special types
+        type === "search" &&
+          "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none",
+        type === "file" &&
+          "p-0 pr-3 text-muted-foreground/70 italic file:me-3 file:h-full file:border-0 file:border-input file:border-r file:border-solid file:bg-transparent file:px-3 file:font-medium file:text-foreground file:text-sm file:not-italic",
+
+        className,
+      )}
+      data-slot="input"
+      type={type}
+      {...props}
+    />
+  );
+}
 
 export { Input };

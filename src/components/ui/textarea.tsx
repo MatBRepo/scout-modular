@@ -1,31 +1,33 @@
-import * as React from "react";
+import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const Textarea = React.forwardRef<
-  HTMLTextAreaElement,
-  React.ComponentProps<"textarea">
->(({ className, rows = 4, ...props }, ref) => {
+function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea
-      ref={ref}
-      rows={rows}
       className={cn(
-        // 2px cut from left & right (4px total) + center
-        "flex min-h-[96px] w-[calc(100%-4px)] mx-auto",
-        // base styles
-        "rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-        "placeholder:text-muted-foreground",
-        // focus styles (same as Input)
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-dark focus-visible:ring-offset-1",
-        // disabled state
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        className
+        // base
+        "flex w-full min-w-0 rounded-md bg-transparent px-3 py-2 text-sm outline-none",
+        "transition-[color,box-shadow,border-color]",
+        // === DEFAULT BORDER & SHADOW (same idea as Input) ===
+        "border border-stone-400",
+        "shadow-[0_0_0_1px_#f5f5f4]",
+        // placeholder / disabled
+        "placeholder:text-muted-foreground/70 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+        // focus
+        "focus-visible:border-stone-500",
+        "focus-visible:ring-[3px] focus-visible:ring-stone-200/70",
+        // invalid
+        "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
+        // min height
+        "min-h-[78px]", // ~19.5 * 4px, możesz zmienić
+        className,
       )}
+      data-slot="textarea"
       {...props}
     />
   );
-});
+}
 Textarea.displayName = "Textarea";
 
 export { Textarea };

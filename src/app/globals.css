@@ -11,12 +11,7 @@ html, body { height: 100%; }
 
 
 @layer utilities {
-  /* exclude radios/checkboxes */
-  input:not([type="checkbox"]):not([type="radio"]),
-  textarea,
-  select {
-    @apply focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0;
-  }
+
 
   .primary {background:#089569 !important;}
   .secondary {background: #4F47E6 !important; color:#fff !important;}

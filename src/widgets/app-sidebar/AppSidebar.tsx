@@ -25,6 +25,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useMemo,
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -372,6 +373,15 @@ export default function AppSidebar({
   }, []);
   useEffect(() => setAccountOpen(false), [pathname]);
 
+  const initials = useMemo(() => {
+    if (!displayName) return "S";
+    const parts = displayName.trim().split(/\s+/);
+    const first = parts[0]?.[0] ?? "";
+    const second = parts[1]?.[0] ?? "";
+    const res = (first + second).toUpperCase();
+    return res || "S";
+  }, [displayName]);
+
   /* ===== Active flags ===== */
   const isGlobalSection = pathname?.startsWith("/players/global");
   const isPlayersSection = pathname?.startsWith("/players") && !isGlobalSection;
@@ -398,7 +408,8 @@ export default function AppSidebar({
   const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
 
   /* ===== Mobile/desktop accordion state for "Zarządzanie" ===== */
-  const [manageOpen, setManageOpen] = useState(variant === "desktop");
+  // Rolled (collapsed) by default
+  const [manageOpen, setManageOpen] = useState(false);
 
   /* ===== Logout via Supabase ===== */
   async function handleLogout() {
@@ -461,7 +472,7 @@ export default function AppSidebar({
         className="group flex items-center gap-2"
         aria-label="entrisoScouting - Start"
       >
-        <div className="grid h-8 w-8 place-items-center rounded-md bg-gray-900 text-white dark:bg.white dark:text-neutral-900">
+        <div className="grid h-8 w-8 place-items-center rounded-md bg-gray-900 text-white dark:bg-white dark:text-neutral-900">
           <span className="text-[13px] font-bold leading-none">S</span>
         </div>
         {showName && (
@@ -499,7 +510,7 @@ export default function AppSidebar({
             {/* ADMIN section */}
             <div className="mt-1 rounded-md border border-stone-200 bg-stone-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
               <div className="mb-2 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
+                <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
                   <Settings className="h-3.5 w-3.5" />
                   Administracja
                 </span>
@@ -789,20 +800,25 @@ export default function AppSidebar({
         <div ref={accountRef} className="relative">
           <button
             onClick={() => setAccountOpen((v) => !v)}
-            className="flex w-full items-center justify-between rounded-md py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900"
+            className="relative z-[60] flex w-full items-center justify-between rounded-md py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:ring-indigo-500 dark:text-neutral-100 dark:hover:bg-neutral-900 bg-white px-2"
             aria-haspopup="menu"
             aria-expanded={accountOpen}
           >
-            {/* Name | Role */}
-            <span className="flex min-w-0 items-center gap-1 text-[11px] opacity-80">
-              <span className="truncate">
-                {displayName || "Użytkownik"}
+            {/* Avatar + Name | Role */}
+            <span className="flex min-w-0 items-center gap-2 text-[11px] opacity-80">
+              <span className="flex h-5 w-5 items-center justify-center rounded bg-indigo-500 text-[10px] font-semibold text-white">
+                {initials}
               </span>
-              <span aria-hidden className="opacity-40">
-                |
-              </span>
-              <span className="truncate">
-                {labelForRole(role)}
+              <span className="flex min-w-0 items-center gap-1">
+                <span className="truncate">
+                  {displayName || "Użytkownik"}
+                </span>
+                <span aria-hidden className="opacity-40">
+                  |
+                </span>
+                <span className="truncate">
+                  {labelForRole(role)}
+                </span>
               </span>
             </span>
 
@@ -821,136 +837,156 @@ export default function AppSidebar({
             </motion.span>
           </button>
 
+          {/* FULLSCREEN BLUR + MENU (only this button + menu above blur) */}
           <AnimatePresence initial={false}>
             {accountOpen && (
-              <motion.div
-                role="menu"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{
-                  duration: prefersReduced ? 0 : 0.14,
-                  ease: "easeOut",
-                }}
-                className="
-  absolute bottom-[40px] left-0 right-0 z-40 w-auto max-w-full
-  overflow-x-hidden rounded-md rounded-l-none border border-gray-200 bg-white p-2 shadow-2xl
-    lg:left-full lg:right-auto lg:ml-3
-    lg:min-w-[260px] lg:max-w-[420px]
-  "
-              >
-                {/* Rank card */}
-                <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
-                  <div className="mb-1 flex flex-wrap items-center justify-between">
-                    <span className="font-semibold whitespace-normal break-words">
-                      Twój poziom
-                    </span>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(
-                        rank
-                      )}`}
-                    >
-                      <Trophy className="h-3.5 w-3.5" />
-                      {rankLabel(rank)}
-                    </span>
-                  </div>
+              <>
+                {/* Blur layer over whole page incl. nav */}
+                <motion.div
+                  className="fixed inset-0 z-50 bg-white/30 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    duration: prefersReduced ? 0 : 0.14,
+                    ease: "easeOut",
+                  }}
+                  onClick={() => setAccountOpen(false)}
+                  aria-hidden
+                />
 
-                  <div className="mt-1">
-                    <div className="mb-1 flex flex-wrap items-center justify-between whitespace-normal break-words">
-                      <span className="opacity-70">
-                        Postęp do {rankLabel(next as Rank)}
+                {/* Account menu card – width 286, above the button, shifted right by half sidebar width */}
+                <motion.div
+                  role="menu"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{
+                    duration: prefersReduced ? 0 : 0.14,
+                    ease: "easeOut",
+                  }}
+                  className="
+                    absolute bottom-[calc(100%+8px)] left-32 z-[60]
+                    w-[286px] max-w-[286px]
+                    overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl
+                    dark:border-neutral-800 dark:bg-neutral-950
+                  "
+                >
+                  {/* Rank card */}
+                  <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
+                    <div className="mb-1 flex flex-wrap items-center justify-between">
+                      <span className="font-semibold whitespace-normal break-words">
+                        Twój poziom
                       </span>
-                      <span className="opacity-70">{pct}%</span>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(
+                          rank
+                        )}`}
+                      >
+                        <Trophy className="h-3.5 w-3.5" />
+                        {rankLabel(rank)}
+                      </span>
                     </div>
-                    <div className="h-2 w-full rounded-md bg-gray-200 dark:bg-neutral-800">
-                      <div
-                        className="h-2 rounded-md bg-indigo-500 transition-[width]"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <div className="mt-1 text-[10px] opacity-70 whitespace-normal break-words">
-                      Brakuje {remaining} pkt (np.{" "}
-                      {Math.ceil(remaining / 2)} aktywnych zawodników lub{" "}
-                      {remaining} obserwacji).
-                    </div>
-                  </div>
 
-                  <div className="mt-2 grid grid-cols-2 gap-1 text-[11px]">
-                    <div className="rounded-md p-2">
-                      <div className="opacity-60">Zawodnicy</div>
-                      <div className="text-sm font-semibold">
-                        {formatNum(playersCount)}
+                    <div className="mt-1">
+                      <div className="mb-1 flex flex-wrap items-center justify-between whitespace-normal break-words">
+                        <span className="opacity-70">
+                          Postęp do {rankLabel(next as Rank)}
+                        </span>
+                        <span className="opacity-70">{pct}%</span>
+                      </div>
+                      <div className="h-2 w-full rounded-md bg-gray-200 dark:bg-neutral-800">
+                        <div
+                          className="h-2 rounded-md bg-indigo-500 transition-[width]"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <div className="mt-1 text-[10px] opacity-70 whitespace-normal break-words">
+                        Brakuje {remaining} pkt (np.{" "}
+                        {Math.ceil(remaining / 2)} aktywnych zawodników lub{" "}
+                        {remaining} obserwacji).
                       </div>
                     </div>
-                    <div className="rounded-md p-2">
-                      <div className="opacity-60">Obserwacje</div>
-                      <div className="text-sm font-semibold">
-                        {formatNum(obsCount)}
+
+                    <div className="mt-2 grid grid-cols-2 gap-1 text-[11px]">
+                      <div className="rounded-md p-2">
+                        <div className="opacity-60">Zawodnicy</div>
+                        <div className="text-sm font-semibold">
+                          {formatNum(playersCount)}
+                        </div>
                       </div>
+                      <div className="rounded-md p-2">
+                        <div className="opacity-60">Obserwacje</div>
+                        <div className="text-sm font-semibold">
+                          {formatNum(obsCount)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                        onClick={readCounts}
+                        title="Odśwież liczniki"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Odśwież
+                      </button>
                     </div>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <button
-                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                      onClick={readCounts}
-                      title="Odśwież liczniki"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Odśwież
-                    </button>
+                  <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
+                    Szybkie akcje
                   </div>
-                </div>
+                  <Link
+                    role="menuitem"
+                    className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 focus:ring-indigo-500 dark:hover:bg-neutral-900"
+                    href="/settings"
+                    onClick={() => {
+                      setAccountOpen(false);
+                      onClose?.();
+                      handleNavClick("/settings");
+                    }}
+                  >
+                    <Settings className="h-4 w-4" /> Ustawienia
+                  </Link>
+                  <Link
+                    role="menuitem"
+                    className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 focus:ring-indigo-500 dark:hover:bg-neutral-900"
+                    href="/settings/navigation"
+                    onClick={() => {
+                      setAccountOpen(false);
+                      onClose?.();
+                      handleNavClick("/settings/navigation");
+                    }}
+                  >
+                    <Map className="h-4 w-4" /> Nawigacja
+                  </Link>
 
-                <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
-                  Szybkie akcje
-                </div>
-                <Link
-                  role="menuitem"
-                  className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 focus:ring-indigo-500 dark:hover:bg-neutral-900"
-                  href="/settings"
-                  onClick={() => {
-                    onClose?.();
-                    handleNavClick("/settings");
-                  }}
-                >
-                  <Settings className="h-4 w-4" /> Ustawienia
-                </Link>
-                <Link
-                  role="menuitem"
-                  className="flex flex-wrap items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-stone-100 focus:ring-indigo-500 dark:hover:bg-neutral-900"
-                  href="/settings/navigation"
-                  onClick={() => {
-                    onClose?.();
-                    handleNavClick("/settings/navigation");
-                  }}
-                >
-                  <Map className="h-4 w-4" /> Nawigacja
-                </Link>
+                  <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
 
-                <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
+                  <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
+                    Rola
+                  </div>
+                  <div className="px-2 pb-2 text-sm text-dark dark:text-neutral-200">
+                    {displayName
+                      ? `${displayName} | ${labelForRole(role)}`
+                      : labelForRole(role)}
+                  </div>
 
-                <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
-                  Rola
-                </div>
-                <div className="px-2 pb-2 text-sm text-dark dark:text-neutral-200">
-                  {displayName
-                    ? `${displayName} | ${labelForRole(role)}`
-                    : labelForRole(role)}
-                </div>
+                  <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
 
-                <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
-
-                <button
-                  role="menuitem"
-                  onClick={handleLogout}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
-                  title="Wyloguj się"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Wyloguj
-                </button>
-              </motion.div>
+                  <button
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
+                    title="Wyloguj się"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Wyloguj
+                  </button>
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
 
@@ -1008,7 +1044,7 @@ export default function AppSidebar({
       <>
         {rankUpgradeOverlay}
 
-        {/* Backdrop */}
+        {/* Backdrop for mobile sheet (separate from account menu blur) */}
         <AnimatePresence>
           {open && (
             <motion.div
@@ -1091,7 +1127,7 @@ function RankUpgradeOverlay({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-[120] bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 z-[1] bg-white/30 backdrop-blur-sm"
         onClick={onClose}
       />
       <div className="fixed inset-0 z-[121] flex items-center justify-center px-4">

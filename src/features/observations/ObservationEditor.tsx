@@ -201,7 +201,7 @@ function MetricItem({
           value={value ?? 0}
           onChange={onChange}
           /* @ts-ignore */
-          max={6}
+          max={5}
         />
       </div>
     </div>
@@ -1529,7 +1529,7 @@ export function ObservationEditor({
                                         updatePlayer(p.id, { overall: v })
                                       }
                                       /* @ts-ignore */
-                                      max={6}
+                                      max={5}
                                     />
                                   </td>
 
@@ -1883,10 +1883,7 @@ export function ObservationEditor({
                       className="min-h-[140px] rounded-md"
                     />
                     <div className="inline-flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
-                      <span className="inline-flex items-center gap-1">
-                        <FileEdit className="h-3.5 w-3.5" />
-                        <span>Notatka dot. całej obserwacji.</span>
-                      </span>
+                     
                       <VoiceNoteButton
                         onTranscription={handleVoiceTranscription}
                       />
