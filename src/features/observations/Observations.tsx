@@ -42,8 +42,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AddObservationIcon, AddPlayerIcon } from "@/components/icons";
+import { AddObservationIcon } from "@/components/icons";
 
 /* -------------------------------- helpers -------------------------------- */
 
@@ -177,7 +176,6 @@ function AnchoredPopover({
 
 type Bucket = "active" | "trash";
 type Mode = "live" | "tv";
-type TabKey = "active" | "draft";
 
 type PositionKey = string;
 
@@ -425,8 +423,7 @@ export default function ObservationsFeature({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Tabs + filters + state
-  const [tab, setTab] = useState<TabKey>("active");
+  // Filters + state
   const [scope, setScope] = useState<Bucket>("active");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -473,7 +470,6 @@ export default function ObservationsFeature({
       if (!raw) return;
       const u = JSON.parse(raw);
       if (u.scope) setScope(u.scope);
-      if (u.tab) setTab(u.tab);
       if (u.q) setQ(u.q);
       if (u.matchFilter) setMatchFilter(u.matchFilter);
       if (u.modeFilter) setModeFilter(u.modeFilter);
@@ -490,7 +486,6 @@ export default function ObservationsFeature({
     try {
       const u = {
         scope,
-        tab,
         q,
         matchFilter,
         modeFilter,
@@ -505,7 +500,6 @@ export default function ObservationsFeature({
     } catch {}
   }, [
     scope,
-    tab,
     q,
     matchFilter,
     modeFilter,
@@ -573,8 +567,6 @@ export default function ObservationsFeature({
       .filter((r) => (dateFrom ? (r.date ?? "") >= dateFrom : true))
       .filter((r) => (dateTo ? (r.date ?? "") <= dateTo : true));
 
-    if (tab === "draft") base = base.filter((r) => r.status === "draft");
-
     const dir = sortDir === "asc" ? 1 : -1;
     base.sort((a, b) => {
       const av = (() => {
@@ -622,7 +614,6 @@ export default function ObservationsFeature({
   }, [
     rows,
     scope,
-    tab,
     q,
     matchFilter,
     modeFilter,
@@ -909,14 +900,6 @@ export default function ObservationsFeature({
     );
   }
 
-  /* ===== Counters for tabs ===== */
-  const counts = useMemo(() => {
-    const withinScope = rows.filter((r) => (r.bucket ?? "active") === scope);
-    const all = withinScope.length;
-    const draft = withinScope.filter((r) => r.status === "draft").length;
-    return { all, draft };
-  }, [rows, scope]);
-
   /* ===== NEW: global trash count ===== */
   const trashCount = useMemo(
     () => rows.filter((r) => (r.bucket ?? "active") === "trash").length,
@@ -951,7 +934,6 @@ export default function ObservationsFeature({
     setVisibleCount(INITIAL_VISIBLE);
   }, [
     scope,
-    tab,
     q,
     matchFilter,
     modeFilter,
@@ -1037,29 +1019,6 @@ export default function ObservationsFeature({
               <span className="font-semibold text-xl md:text-2xl shrink-0 leading-none h-9 flex items-center">
                 Obserwacje
               </span>
-
-              {/* Desktop tabs for status (Aktywne / Szkice) */}
-              <div className="hidden md:block shrink-0">
-                <Tabs
-                  className="items-center"
-                  value={tab}
-                  onValueChange={(v) => setTab(v as TabKey)}
-                >
-                  <TabsList>
-                    <TabsTrigger
-                      value="active"
-                      className="flex items-center gap-2"
-                    >
-                      <span>Aktywne</span>
-                      <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
-                        {counts.all}
-                      </span>
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="active" />
-                  <TabsContent value="draft" />
-                </Tabs>
-              </div>
 
               {/* Center: Active filter chips (desktop) */}
               <div className="hidden md:flex flex-1 items-start justify-center h-9">
@@ -1223,73 +1182,41 @@ export default function ObservationsFeature({
           }
         />
 
-        {/* Mobile tabs (Aktywne / Szkice) – same style as players tabs */}
-        <div className="mt-2 md:hidden">
-          <Tabs
-            className="items-center w-full"
-            value={tab}
-            onValueChange={(v) => setTab(v as TabKey)}
-          >
-            <TabsList className="w-full flex">
-              <TabsTrigger
-                value="active"
-                className="flex-1 flex items-center justify-center gap-2"
+        {/* Mobile: active filter chips below header */}
+        {activeChips.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1 md:hidden">
+            {activeChips.map((c) => (
+              <span
+                key={c.key}
+                className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
               >
-                <span>Aktywne</span>
-                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
-                  {counts.all}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="draft"
-                className="flex-1 flex items-center justify-center gap-2"
-              >
-                <span>Szkice</span>
-                <span className="rounded-full bg-white px-1.5 text-[10px] font-medium border border-stone-300">
-                  {counts.draft}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="active" />
-            <TabsContent value="draft" />
-          </Tabs>
-
-          {/* Mobile: active filter chips below tabs */}
-          {activeChips.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center gap-1">
-              {activeChips.map((c) => (
-                <span
-                  key={c.key}
-                  className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
+                <span className="max-w-[120px] truncate">{c.label}</span>
+                <button
+                  className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
+                  onClick={c.clear}
+                  aria-label="Wyczyść filtr"
                 >
-                  <span className="max-w-[120px] truncate">{c.label}</span>
-                  <button
-                    className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
-                    onClick={c.clear}
-                    aria-label="Wyczyść filtr"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-              <button
-                onClick={() => {
-                  setMatchFilter("");
-                  setModeFilter("");
-                  setLifecycleFilter("");
-                  setDateFrom("");
-                  setDateTo("");
-                  setQ("");
-                }}
-                className="ml-1 inline-flex items-center gap-1 rounded-md bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700 ring-1 ring-stone-200 hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-stone-800 dark:text-stone-200 dark:ring-stone-700"
-                title="Wyczyść wszystkie filtry"
-                type="button"
-              >
-                Wyczyść wszystkie
-              </button>
-            </div>
-          )}
-        </div>
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <button
+              onClick={() => {
+                setMatchFilter("");
+                setModeFilter("");
+                setLifecycleFilter("");
+                setDateFrom("");
+                setDateTo("");
+                setQ("");
+              }}
+              className="ml-1 inline-flex items-center gap-1 rounded-md bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700 ring-1 ring-stone-200 hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-stone-800 dark:text-stone-200 dark:ring-stone-700"
+              title="Wyczyść wszystkie filtry"
+              type="button"
+            >
+              Wyczyść wszystkie
+            </button>
+          </div>
+        )}
 
         {/* FILTERS PANEL(s) */}
         {filtersOpen &&
@@ -1542,7 +1469,6 @@ export default function ObservationsFeature({
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     onClick={() => {
                       setScope("active");
-                      setTab("active");
                       setMoreOpen(false);
                     }}
                   >
@@ -1552,7 +1478,6 @@ export default function ObservationsFeature({
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     onClick={() => {
                       setScope("trash");
-                      setTab("active"); // pokaż wszystkie w koszu
                       setMoreOpen(false);
                     }}
                   >
@@ -1632,7 +1557,6 @@ export default function ObservationsFeature({
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setScope("active");
-                  setTab("active");
                   setMoreOpen(false);
                 }}
               >
@@ -1642,7 +1566,6 @@ export default function ObservationsFeature({
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
                   setScope("trash");
-                  setTab("active"); // pokaż wszystkie w koszu
                   setMoreOpen(false);
                 }}
               >
@@ -1734,6 +1657,7 @@ export default function ObservationsFeature({
                             [key]: Boolean(v),
                           })
                         }
+                        onClick={(e) => e.stopPropagation()}
                       />
                     </label>
                   );
@@ -1769,6 +1693,7 @@ export default function ObservationsFeature({
                           [key]: Boolean(v),
                         })
                       }
+                      onClick={(e) => e.stopPropagation()}
                     />
                   </label>
                 );
@@ -1805,6 +1730,7 @@ export default function ObservationsFeature({
                           );
                         else setSelected(new Set());
                       }}
+                      onClick={(e) => e.stopPropagation()}
                     />
                   </th>
                 )}
@@ -1851,13 +1777,17 @@ export default function ObservationsFeature({
                 return (
                   <tr
                     key={r.id}
-                    className={`group border-t transition-colors duration-150 ${rowH}
+                    className={`group border-t transition-colors duration-150 ${rowH} cursor-pointer
                                 ${
                                   idx % 2 === 1
                                     ? "bg-stone-100/40 dark:bg-neutral-900/30"
                                     : "bg-transparent"
                                 }
                                 border-gray-200 hover:bg-stone-100/70 dark:border-neutral-800 dark:hover:bg-neutral-900/60`}
+                    onClick={() => {
+                      setEditing(r);
+                      setPageMode("editor");
+                    }}
                   >
                     {visibleCols.select && (
                       <td className={`${cellPad}`}>
@@ -1870,6 +1800,7 @@ export default function ObservationsFeature({
                             else copy.delete(r.id as number);
                             setSelected(copy);
                           }}
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </td>
                     )}
@@ -1937,7 +1868,8 @@ export default function ObservationsFeature({
                                 size="icon"
                                 variant="outline"
                                 className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setEditing(r);
                                   setPageMode("editor");
                                 }}
@@ -1952,7 +1884,10 @@ export default function ObservationsFeature({
                           {/* Kosz / Przywróć z potwierdzeniem Tak / Nie dla Kosza */}
                           {(r.bucket ?? "active") === "active" ? (
                             confirmTrashId === r.id ? (
-                              <div className="inline-flex items-center gap-1 text-sm">
+                              <div
+                                className="inline-flex items-center gap-1 text-sm"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Button
                                   size="sm"
                                   className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
@@ -1976,7 +1911,10 @@ export default function ObservationsFeature({
                                     size="icon"
                                     variant="outline"
                                     className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                    onClick={() => setConfirmTrashId(r.id as number)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setConfirmTrashId(r.id as number);
+                                    }}
                                     aria-label="Przenieś do kosza"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -1994,7 +1932,10 @@ export default function ObservationsFeature({
                                   size="icon"
                                   variant="outline"
                                   className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                  onClick={() => restoreFromTrash(r.id as number)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    restoreFromTrash(r.id as number);
+                                  }}
                                   aria-label="Przywróć z kosza"
                                 >
                                   <Undo2 className="h-4 w-4" />
@@ -2072,7 +2013,9 @@ export default function ObservationsFeature({
               <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-neutral-800" />
 
               {rows.some(
-                (r) => selected.has(r.id as number) && (r.bucket ?? "active") === "active"
+                (r) =>
+                  selected.has(r.id as number) &&
+                  (r.bucket ?? "active") === "active"
               ) && scope === "active" ? (
                 <Button
                   className="h-8 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"

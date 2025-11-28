@@ -1430,7 +1430,9 @@ export function ObservationEditor({
 
                             return (
                               <Fragment key={p.id}>
-                                <tr className="border-t border-gray-200 align-middle hover:bg-stone-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+<tr className="border-t border-gray-200 align-middle hover:bg-stone-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+
+
                                   <td className="p-2 sm:p-3">
                                     <div className="flex items-start gap-2">
                                       <div className="min-w-0">
@@ -1630,12 +1632,12 @@ export function ObservationEditor({
                                   </td>
                                 </tr>
 
-                                {isOpen && (
-                                  <tr>
-                                    <td
-                                      colSpan={5}
-                                      className="border-t border-gray-200 bg-stone-50/80 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/70"
-                                    >
+{isOpen && (
+  <tr>
+    <td
+      colSpan={5}
+      className="bg-[#E8FBF5] p-3 text-sm"
+      >
                                       <div className="relative">
                                         {!hasPosition && (
                                           <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">

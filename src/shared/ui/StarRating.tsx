@@ -18,7 +18,7 @@ export default function StarRating({
   value,
   onChange,
   max = 5,
-  size = 27,
+  size = 22,
   readOnly,
   className = "",
   label = "Ocena w gwiazdkach",
