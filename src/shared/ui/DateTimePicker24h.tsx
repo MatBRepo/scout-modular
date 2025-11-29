@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type * as React from "react";
+import type { DropdownNavProps, DropdownProps } from "react-day-picker";
 import { format } from "date-fns";
 import { CalendarDaysIcon } from "lucide-react";
 
@@ -12,6 +14,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export type DateTimeValue = {
@@ -54,16 +63,25 @@ export function DateTimePicker24h({
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const minutes = Array.from({ length: 12 }, (_, i) => i * 5);
 
+  // ✅ Use local parts instead of toISOString (no timezone shift)
   function emit(next: Date | undefined) {
     if (!next) {
       setDateObj(undefined);
       onChange({ date: "", time: "" });
       return;
     }
+
     setDateObj(next);
-    const iso = next.toISOString();
-    const dateStr = iso.slice(0, 10); // YYYY-MM-DD
-    const timeStr = iso.slice(11, 16); // HH:mm
+
+    const year = next.getFullYear();
+    const month = String(next.getMonth() + 1).padStart(2, "0");
+    const day = String(next.getDate()).padStart(2, "0");
+    const hoursStr = String(next.getHours()).padStart(2, "0");
+    const minutesStr = String(next.getMinutes()).padStart(2, "0");
+
+    const dateStr = `${year}-${month}-${day}`; // YYYY-MM-DD
+    const timeStr = `${hoursStr}:${minutesStr}`; // HH:mm
+
     onChange({ date: dateStr, time: timeStr });
   }
 
@@ -92,6 +110,18 @@ export function DateTimePicker24h({
     emit(next);
   }
 
+  const handleCalendarChange = (
+    _value: string | number,
+    _e: React.ChangeEventHandler<HTMLSelectElement>,
+  ) => {
+    const _event = {
+      target: {
+        value: String(_value),
+      },
+    } as React.ChangeEvent<HTMLSelectElement>;
+    _e(_event);
+  };
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -100,7 +130,7 @@ export function DateTimePicker24h({
           variant="outline"
           className={cn(
             "w-full justify-start text-left font-normal border-gray-300 dark:border-neutral-700",
-            !dateObj && "text-muted-foreground"
+            !dateObj && "text-muted-foreground",
           )}
         >
           <CalendarDaysIcon className="mr-2 h-4 w-4" />
@@ -112,61 +142,123 @@ export function DateTimePicker24h({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent
+        side="bottom"
+        align="end"
+        sideOffset={4}
+        className="w-auto max-w-[100vw] p-0"
+      >
         <div className="sm:flex">
-          <Calendar
-            mode="single"
-            selected={dateObj}
-            onSelect={handleDateSelect}
-            initialFocus
-          />
+          {/* Calendar with dropdown month/year */}
+          <div className="flex-1">
+            <Calendar
+              mode="single"
+              selected={dateObj}
+              onSelect={handleDateSelect}
+              initialFocus
+              captionLayout="dropdown"
+              hideNavigation
+              defaultMonth={dateObj || new Date()}
+              className="p-2"
+              classNames={{
+                month_caption: "mx-0",
+              }}
+              components={{
+                Dropdown: (props: DropdownProps) => {
+                  return (
+                    <Select
+                      onValueChange={(value) => {
+                        if (props.onChange) {
+                          handleCalendarChange(value, props.onChange);
+                        }
+                      }}
+                      value={String(props.value)}
+                    >
+                      <SelectTrigger className="h-8 w-fit font-medium first:grow">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[min(26rem,var(--radix-select-content-available-height))]">
+                        {props.options?.map((option) => (
+                          <SelectItem
+                            disabled={option.disabled}
+                            key={option.value}
+                            value={String(option.value)}
+                          >
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                },
+                DropdownNav: (props: DropdownNavProps) => {
+                  return (
+                    <div className="flex w-full items-center gap-2">
+                      {props.children}
+                    </div>
+                  );
+                },
+              }}
+            />
+          </div>
 
-          <div className="flex flex-col divide-y sm:h-[300px] sm:flex-row sm:divide-y-0 sm:divide-x">
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex p-2 sm:flex-col">
-                {hours.map((hour) => (
-                  <Button
-                    key={hour}
-                    type="button"
-                    size="icon"
-                    variant={
-                      dateObj && dateObj.getHours() === hour
-                        ? "default"
-                        : "ghost"
-                    }
-                    className="aspect-square shrink-0 sm:w-full"
-                    onClick={() => handleTimeChange("hour", hour.toString())}
-                  >
-                    {hour.toString().padStart(2, "0")}
-                  </Button>
-                ))}
+          {/* Time picker */}
+          <div className="flex flex-col sm:flex-row sm:divide-x">
+            {/* Hours column */}
+            <div className="flex w-32 flex-col bg-stone-50 sm:w-36 dark:bg-stone-900/70">
+              <div className="px-3 py-1 text-xs font-medium text-muted-foreground">
+                Godzina
               </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
+              <ScrollArea className="h-64 w-full">
+                <div className="space-y-1 p-2">
+                  {hours.map((hour) => (
+                    <Button
+                      key={hour}
+                      type="button"
+                      variant={
+                        dateObj && dateObj.getHours() === hour
+                          ? "default"
+                          : "ghost"
+                      }
+                      className="h-7 w-full justify-center px-2 text-xs"
+                      onClick={() => handleTimeChange("hour", hour.toString())}
+                    >
+                      {hour.toString().padStart(2, "0")}
+                    </Button>
+                  ))}
+                </div>
+                <ScrollBar orientation="vertical" />
+              </ScrollArea>
+            </div>
 
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex p-2 sm:flex-col">
-                {minutes.map((minute) => (
-                  <Button
-                    key={minute}
-                    type="button"
-                    size="icon"
-                    variant={
-                      dateObj && dateObj.getMinutes() === minute
-                        ? "default"
-                        : "ghost"
-                    }
-                    className="aspect-square shrink-0 sm:w-full"
-                    onClick={() =>
-                      handleTimeChange("minute", minute.toString())
-                    }
-                  >
-                    {minute.toString().padStart(2, "0")}
-                  </Button>
-                ))}
+            {/* Minutes column */}
+            <div className="flex w-32 flex-col bg-stone-50 sm:w-36 dark:bg-stone-900/70">
+              <div className="px-3 py-1 text-xs font-medium text-muted-foreground">
+                Minuta
               </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
+              <ScrollArea className="h-64 w-full">
+                <div className="space-y-1 p-2">
+                  {minutes.map((minute) => (
+                    <Button
+                      key={minute}
+                      type="button"
+                      variant={
+                        dateObj && dateObj.getMinutes() === minute
+                          ? "default"
+                          : "ghost"
+                      }
+                      className="h-7 w-full justify-center px-2 text-xs"
+                      onClick={() =>
+                        handleTimeChange("minute", minute.toString())
+                      }
+                    >
+                      {minute.toString().padStart(2, "0")}
+                    </Button>
+                  ))}
+                </div>
+                <ScrollBar orientation="vertical" />
+              </ScrollArea>
+            </div>
           </div>
         </div>
       </PopoverContent>

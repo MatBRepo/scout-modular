@@ -319,32 +319,37 @@ export default function AppSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  /* ===== Detect rank upgrade & trigger popup ONCE per rank ===== */
+    /* ===== Detect rank upgrade & trigger popup ONCE per rank & user ===== */
   useEffect(() => {
-    if (!mounted || !hasRankData) return;
+    if (!mounted || !hasRankData || !userId) return;
     if (typeof window === "undefined") return;
 
-    const key = "s4s.rank.last";
+    const key = `s4s.rank.last.${userId}`;
+
     const stored = window.localStorage.getItem(key);
     const isRank = (v: any): v is Rank =>
       v === "bronze" || v === "silver" || v === "gold" || v === "platinum";
 
     const last = isRank(stored) ? stored : null;
 
-    // pierwszy raz – tylko zapisz
+    // first time for this user – just store current rank, no popup
     if (!last) {
       window.localStorage.setItem(key, rank);
       return;
     }
 
-    // awans – nowy rank > poprzedni => popup JEDEN raz dla tego awansu
-    if (RANK_ORDER.indexOf(rank) > RANK_ORDER.indexOf(last)) {
+    const prevIdx = RANK_ORDER.indexOf(last);
+    const currIdx = RANK_ORDER.indexOf(rank);
+
+    // only if we REALLY moved to a strictly higher rank
+    if (currIdx > prevIdx) {
       setRankPopup({ from: last, to: rank });
     }
 
-    // aktualizuj zawsze – dzięki temu ten sam rank nie odpali popupu 2x
+    // always persist latest rank so the same rank never triggers again
     window.localStorage.setItem(key, rank);
-  }, [rank, mounted, hasRankData]);
+  }, [rank, mounted, hasRankData, userId]);
+
 
   /* ===== Shortcuts ===== */
   useEffect(() => {

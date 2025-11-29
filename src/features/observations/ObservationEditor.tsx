@@ -1159,19 +1159,18 @@ export function ObservationEditor({
                           {isRequired("teamB") && !teamB.trim() && <ReqChip />}
                         </div>
                       </div>
-
-                      <div>
-                        <Label className="text-sm">Data i godzina meczu</Label>
-                        <div className="mt-1 rounded-md">
-                          <DateTimePicker24h
-                            value={{ date: matchDate, time: matchTime }}
-                            onChange={({ date, time }) => {
-                              setField("reportDate", date || undefined);
-                              setMeta("time", (time || "") as any);
-                            }}
-                          />
-                        </div>
-                      </div>
+<div>
+  <Label className="text-sm">Data i godzina meczu</Label>
+  <div className="mt-1 rounded-md">
+    <DateTimePicker24h
+      value={{ date: matchDate, time: matchTime }}
+      onChange={({ date, time }) => {
+        setField("reportDate", date || undefined);
+        setMeta("time", (time || "") as any);
+      }}
+    />
+  </div>
+</div>
                     </div>
 
                     <div>
