@@ -18,13 +18,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 import type { ReadonlyURLSearchParams } from "next/navigation";
-import {
-  Menu,
-  ChevronRight,
-  ChevronDown,
-  Users,
-  Eye,
-} from "lucide-react";
+import { Menu, ChevronRight, ChevronDown } from "lucide-react";
 import { HomeIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import {
@@ -464,7 +458,7 @@ function AppShell({
                   ) : hideHeaderActions ? (
                     <div className="min-h-[36px]" />
                   ) : isObservationsRoot ? (
-                    // Na "Obserwacje": cross-link do Zawodnicy (ikona na mobile, tekst na desktopie)
+                    // Na "Obserwacje": cross-link do Zawodnicy (ikona + mała strzałka)
                     <div className="flex items-center gap-2">
                       <AnimatePresence>
                         {showHeaderQuickActions && (
@@ -493,22 +487,31 @@ function AppShell({
                       <Button
                         asChild
                         variant="outline"
-                        className="flex h-9 w-9 items-center justify-center rounded-md border-stone-300 bg-white px-0 text-sm font-medium text-stone-800 hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800 md:w-auto md:px-3"
+                        className="gap-2 whitespace-nowrap btn-soft-hover flex h-9 w-fit px-1 items-center justify-center rounded-md border-stone-300 bg-white text-sm font-medium text-stone-800 hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800 md:w-auto md:px-3"
                         aria-label="Zawodnicy"
                       >
                         <Link href="/players">
-                          {/* Mobile: ikona, Desktop: tekst */}
-                          <span className="inline-flex md:hidden">
-                            <Users className="h-4 w-4" />
+                          {/* Mobile: ikona + mała strzałka */}
+                          <span className="inline-flex items-center md:hidden">
+                            <AddPlayerIcon className="h-4 w-4" />
+                            <ChevronRight
+                              className="ml-1 h-3 w-3 opacity-70"
+                              aria-hidden="true"
+                            />
                           </span>
-                          <span className="hidden md:inline">
-                            Zawodnicy →
+                          {/* Desktop: tekst + mała strzałka */}
+                          <span className="hidden items-center md:inline-flex">
+                            <span>Zawodnicy</span>
+                            <ChevronRight
+                              className="ml-1 h-3.5 w-3.5 opacity-70"
+                              aria-hidden="true"
+                            />
                           </span>
                         </Link>
                       </Button>
                     </div>
                   ) : isPlayersRoot ? (
-                    // Na "Zawodnicy": cross-link do Obserwacje (ikona na mobile, tekst na desktopie)
+                    // Na "Zawodnicy": cross-link do Obserwacje (ikona + mała strzałka)
                     <div className="flex items-center gap-2">
                       <AnimatePresence>
                         {showHeaderQuickActions && (
@@ -537,16 +540,25 @@ function AppShell({
                       <Button
                         asChild
                         variant="outline"
-                        className="flex h-9 w-9 items-center justify-center rounded-md border-stone-300 bg-white px-0 text-sm font-medium text-stone-800 hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800 md:w-auto md:px-3"
+                        className="gap-2 whitespace-nowrap btn-soft-hover flex h-9 w-fit px-1 items-center justify-center rounded-md border-stone-300 bg-white text-sm font-medium text-stone-800 hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800 md:w-auto md:px-3"
                         aria-label="Obserwacje"
                       >
                         <Link href="/observations">
-                          {/* Mobile: ikona, Desktop: tekst */}
-                          <span className="inline-flex md:hidden">
-                            <Eye className="h-4 w-4" />
+                          {/* Mobile: ikona + mała strzałka */}
+                          <span className="inline-flex items-center md:hidden">
+                            <AddObservationIcon className="h-4 w-4" />
+                            <ChevronRight
+                              className="ml-1 h-3 w-3 opacity-70"
+                              aria-hidden="true"
+                            />
                           </span>
-                          <span className="hidden md:inline">
-                            Obserwacje →
+                          {/* Desktop: tekst + mała strzałka */}
+                          <span className="hidden items-center md:inline-flex">
+                            <span>Obserwacje</span>
+                            <ChevronRight
+                              className="ml-1 h-3.5 w-3.5 opacity-70"
+                              aria-hidden="true"
+                            />
                           </span>
                         </Link>
                       </Button>
@@ -674,8 +686,8 @@ export default function ClientRoot({
 
     // reaguj na zmiany auth (login / logout)
     const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) return;
       supabase.rpc("touch_profile_last_active");
     });
