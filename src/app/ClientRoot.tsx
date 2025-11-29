@@ -18,7 +18,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 import type { ReadonlyURLSearchParams } from "next/navigation";
-import { Menu, ChevronRight, ChevronDown, PlusCircle } from "lucide-react";
+import { Menu, ChevronRight, ChevronDown } from "lucide-react";
 import { HomeIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,12 +26,11 @@ import {
   cubicBezier,
   type Variants,
   useReducedMotion,
+  AnimatePresence,
 } from "framer-motion";
 
 import { AddPlayerIcon, AddObservationIcon } from "@/components/icons";
 import { getSupabase } from "@/lib/supabaseClient";
-
-
 
 /* ===== Easing & Variants ===== */
 const easeOutCustom = cubicBezier(0.2, 0.7, 0.2, 1);
@@ -230,8 +229,30 @@ function AppShell({
 
   const [breadcrumbsExpanded, setBreadcrumbsExpanded] = useState(false);
 
+  // Scroll-based visibility for small quick-add icon
+  const [showHeaderQuickActions, setShowHeaderQuickActions] =
+    useState(false);
+
   useEffect(() => {
     setBreadcrumbsExpanded(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (typeof window === "undefined") return;
+      setShowHeaderQuickActions(window.scrollY > 80);
+    };
+
+    if (typeof window !== "undefined") {
+      onScroll(); // initial state
+      window.addEventListener("scroll", onScroll, { passive: true });
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("scroll", onScroll);
+      }
+    };
   }, [pathname]);
 
   const isObsCreateQuery =
@@ -248,12 +269,17 @@ function AppShell({
   const hideHeaderActions =
     isPlayersSubpage || isObservationsSubpage || isObsCreateQuery;
 
+  const currentCrumbLabel =
+    crumbs.length > 0
+      ? crumbs[crumbs.length - 1]?.label || "Bieżąca strona"
+      : "Bieżąca strona";
+
   return (
     <>
-      {/* wrapper dla treści: padding-left pod sidebar + padding-top tylko na lg, gdzie header jest fixed */}
-      <div className="pl-64 max-lg:pl-0 lg:pt-[64px]">
+      {/* wrapper dla treści: padding-left pod sidebar + padding-top pod fixed header (także na mobile) */}
+      <div className="pl-64 max-lg:pl-0 pt-[64px]">
         <header
-          className="top-0 left-0 right-0 z-[9] border-b border-transparent bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent dark:bg-transparent lg:fixed"
+          className="fixed top-0 left-0 right-0 z-[40] border-b border-transparent bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent dark:bg-transparent"
           role="banner"
         >
           {/* osobny container, żeby header też respektował przestrzeń sidebaru */}
@@ -271,7 +297,7 @@ function AppShell({
             {/* BREADCRUMB W HEADERZE */}
             <nav
               aria-label="Breadcrumb"
-              className="absolute left-[60px] top-[12px] min-w-0 pr-2 lg:relative lg:top-[30px] lg:-translate-y-5 lg:left-3"
+              className="absolute left-[60px] top-[12px] min-w-0 pr-2 lg:relative lg:left-3 lg:top-[30px] lg:-translate-y-5"
             >
               {/* DESKTOP: pełna ścieżka */}
               <ol className="hidden items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:flex">
@@ -315,7 +341,7 @@ function AppShell({
                 })}
               </ol>
 
-              {/* MOBILE: tylko home + przycisk do rozwinięcia pełnej ścieżki */}
+              {/* MOBILE: home + bieżąca strona (truncated) + przycisk rozwinięcia pełnej ścieżki */}
               <div className="flex items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:hidden">
                 <Link
                   href="/"
@@ -328,12 +354,15 @@ function AppShell({
                   className="h-4 w-4 opacity-60"
                   aria-hidden="true"
                 />
+                <span className="max-w-[150px] truncate font-medium text-stone-900 dark:text-neutral-50">
+                  {currentCrumbLabel}
+                </span>
                 <button
                   type="button"
                   onClick={() =>
                     setBreadcrumbsExpanded((prev) => !prev)
                   }
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-stone-200 bg-white/70 text-stone-600 shadow-sm hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                  className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full border border-stone-200 bg-white/80 text-stone-600 shadow-sm hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100 dark:hover:bg-neutral-800"
                   aria-label={
                     breadcrumbsExpanded
                       ? "Ukryj pełną ścieżkę nawigacji"
@@ -359,7 +388,7 @@ function AppShell({
                     aria-hidden="true"
                     onClick={() => setBreadcrumbsExpanded(false)}
                   />
-                  <div className="absolute left-[40px] top-full z-[71] mt-2 max-w-[90vw] rounded-md border border-stone-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900 md:hidden">
+                  <div className="absolute left-[0px] top-full z-[71] mt-2 max-w-[90vw] rounded-md border border-stone-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900 md:hidden">
                     <ol className="flex flex-wrap items-center gap-1 text-stone-700 dark:text-neutral-100">
                       {crumbs.map((c, i) => {
                         const last = i === crumbs.length - 1;
@@ -413,6 +442,7 @@ function AppShell({
               )}
             </nav>
 
+            {/* PASEK AKCJI W PRAWYM GÓRNYM ROGU */}
             <div className="flex items-end mx-auto justify-end w-full max-w-[1400px] py-2 md:py-3 pr-0 md:pr-5 2xl:pr-0">
               {isAuthed ? (
                 <motion.div
@@ -427,7 +457,82 @@ function AppShell({
                     </div>
                   ) : hideHeaderActions ? (
                     <div className="min-h-[36px]" />
+                  ) : isObservationsRoot ? (
+                    // Na "Obserwacje": tekstowy przycisk Zawodnicy → zawsze widoczny
+                    // + po scrollu mały przycisk Dodaj obserwację (ikona)
+                    <div className="flex items-center gap-2">
+                      <AnimatePresence>
+                        {showHeaderQuickActions && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -6, scale: 0.9 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -4, scale: 0.9 }}
+                            transition={{
+                              duration: 0.22,
+                              ease: easeOutCustom,
+                            }}
+                          >
+                            <Button
+                              size="icon"
+                              className="h-9 w-9 secondary rounded-md bg-gray-900 text-white hover:bg-gray-800"
+                              aria-label="Dodaj obserwację"
+                              title="Dodaj obserwację"
+                              onClick={onAddObservation}
+                            >
+                              <AddObservationIcon className="h-4 w-4" />
+                            </Button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="h-9 rounded-md border-stone-300 bg-white px-3 text-sm font-medium text-stone-800 hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800"
+                        aria-label="Zawodnicy"
+                      >
+                        <Link href="/players">Zawodnicy →</Link>
+                      </Button>
+                    </div>
+                  ) : isPlayersRoot ? (
+                    // Na "Zawodnicy": tekstowy przycisk Obserwacje → zawsze widoczny
+                    // + po scrollu mały przycisk Dodaj zawodnika (ikona)
+                    <div className="flex items-center gap-2">
+                      <AnimatePresence>
+                        {showHeaderQuickActions && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -6, scale: 0.9 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -4, scale: 0.9 }}
+                            transition={{
+                              duration: 0.22,
+                              ease: easeOutCustom,
+                            }}
+                          >
+                            <Button
+                              size="icon"
+                              className="h-9 w-9 primary rounded-md bg-gray-900 text-white hover:bg-gray-800"
+                              aria-label="Dodaj zawodnika"
+                              title="Dodaj zawodnika"
+                              onClick={onAddPlayer}
+                            >
+                              <AddPlayerIcon className="h-4 w-4" />
+                            </Button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="h-9 rounded-md border-stone-300 bg-white px-3 text-sm font-medium text-stone-800 hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800"
+                        aria-label="Obserwacje"
+                      >
+                        <Link href="/observations">Obserwacje →</Link>
+                      </Button>
+                    </div>
                   ) : (
+                    // Inne widoki: oryginalne przyciski "Dodaj"
                     <>
                       <div className="flex items-center gap-2 md:hidden">
                         <Button
@@ -442,7 +547,7 @@ function AppShell({
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-9 w-9 rounded-md dark:border-neutral-70 border border-stone-300"
+                          className="h-9 w-9 rounded-md border border-stone-300 dark:border-neutral-700"
                           aria-label="Dodaj obserwację"
                           onClick={onAddObservation}
                           title="Dodaj obserwację"
@@ -552,9 +657,7 @@ export default function ClientRoot({
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) return;
-      supabase
-        .rpc("touch_profile_last_active")
-       
+      supabase.rpc("touch_profile_last_active");
     });
 
     return () => {

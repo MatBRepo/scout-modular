@@ -1011,7 +1011,7 @@ export default function ObservationsFeature({
   return (
     <TooltipProvider delayDuration={150}>
       <div className="w-full">
-        {/* TOOLBAR – aligned with MyPlayersFeature */}
+        {/* TOOLBAR */}
         <Toolbar
           title={
             <div className="flex items-start gap-3 w-full min-h-9">
@@ -1098,85 +1098,85 @@ export default function ObservationsFeature({
             </div>
           }
           right={
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between min-h-9">
-              <div />
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+                {/* PRIMARY: Dodaj obserwację – mobile: full width, desktop: auto */}
+                <Button
+                  type="button"
+                  onClick={addNew}
+                  className={`${controlH} secondary inline-flex h-9 w-full shrink-0 items-center justify-center rounded-md bg-gray-900 px-3.5 text-sm font-semibold text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 sm:w-auto`}
+                >
+                  <AddObservationIcon className="mr-2 h-4 w-4" />
+                  Dodaj obserwację
+                </Button>
 
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
-                {/* Search */}
-                <div className="relative order-1 w-full min-w-0 sm:order-none sm:w-64 h-9">
-                  <Search
-                    className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-                    aria-hidden="true"
-                  />
-                  <Input
-                    ref={searchRef}
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="Szukaj po meczu lub zawodnikach… (/"
-                    className={`${controlH} w-full pl-8 pr-3 text-sm`}
-                    aria-label="Szukaj w obserwacjach"
-                  />
-                </div>
+                {/* Row: Search + Filtry + 3 dots – ALWAYS single row on mobile */}
+                <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:justify-start sm:gap-3">
+                  {/* Search */}
+                  <div className="relative h-9 min-w-[160px] flex-1 sm:w-72 sm:flex-none">
+                    <Search
+                      className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      ref={searchRef}
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Szukaj po meczu lub zawodnikach… (/) "
+                      className={`${controlH} w-full pl-8 pr-3 text-sm`}
+                      aria-label="Szukaj w obserwacjach"
+                    />
+                  </div>
 
-                {/* Filtry */}
-                <div className="relative inline-flex">
-                  <span
-                    className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 
-               dark:bg-neutral-950 dark:text-neutral-300"
-                  >
-                    Filtry
-                  </span>
+                  {/* Filtry */}
+                  <div className="relative inline-flex shrink-0">
+                    <span
+                      className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 
+             dark:bg-neutral-950 dark:text-neutral-300"
+                    >
+                      Filtry
+                    </span>
 
+                    <Button
+                      ref={filtersBtnRef}
+                      size="sm"
+                      variant="outline"
+                      className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+                      onClick={() => {
+                        setFiltersOpen((v) => !v);
+                        setColsOpen(false);
+                        setMoreOpen(false);
+                      }}
+                      aria-pressed={filtersOpen}
+                      type="button"
+                      title="Filtry"
+                    >
+                      <ListFilter className="h-4 w-4" />
+                      {filtersCount ? (
+                        <span className="hidden sm:inline">
+                          {` (${filtersCount})`}
+                        </span>
+                      ) : null}
+                    </Button>
+                  </div>
+
+                  {/* 3 dots */}
                   <Button
-                    ref={filtersBtnRef}
-                    size="sm"
+                    ref={moreBtnRef}
                     variant="outline"
-                    className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+                    className={`${controlH} h-9 w-9 shrink-0 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
                     onClick={() => {
-                      setFiltersOpen((v) => !v);
-                      setColsOpen(false);
-                      setMoreOpen(false);
+                      setMoreOpen((o) => !o);
+                      setFiltersOpen(false);
+                      // colsOpen opened from menu item
                     }}
-                    aria-pressed={filtersOpen}
+                    aria-label="Więcej"
+                    aria-pressed={moreOpen}
                     type="button"
-                    title="Filtry"
                   >
-                    <ListFilter className="h-4 w-4" />
-                    {filtersCount ? (
-                      <span className="hidden sm:inline">
-                        {` (${filtersCount})`}
-                      </span>
-                    ) : null}
+                    <EllipsisVertical className="h-5 w-5" />
                   </Button>
                 </div>
-
-                {/* Dodaj */}
-                <Button
-                  size="sm"
-                  className={`${controlH} h-9 w-9 inline-flex secondary items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
-                  onClick={addNew}
-                  title="Skrót: N"
-                  type="button"
-                >
-                  <AddObservationIcon className="mr-0 h-4 w-4" />
-                </Button>
-
-                {/* Więcej (zawiera Kolumny) */}
-                <Button
-                  ref={moreBtnRef}
-                  variant="outline"
-                  className={`${controlH} h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 ml-auto sm:ml-0`}
-                  onClick={() => {
-                    setMoreOpen((o) => !o);
-                    setFiltersOpen(false);
-                    // colsOpen opened from menu item
-                  }}
-                  aria-label="Więcej"
-                  aria-pressed={moreOpen}
-                  type="button"
-                >
-                  <EllipsisVertical className="h-5 w-5" />
-                </Button>
               </div>
             </div>
           }

@@ -1101,93 +1101,100 @@ export default function MyPlayersFeature({
               </div>
             </div>
           }
-          right={
-            <div className="flex min-h-9 flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between">
-              <div />
+right={
+  <div className="flex min-h-9 w-full flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between">
 
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
-                {/* Search */}
-                <div className="relative order-1 h-9 w-full min-w-0 sm:order-none sm:w-64">
-                  <Search
-                    className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-                    aria-hidden="true"
-                  />
-                  <Input
-                    ref={searchRef}
-                    value={q}
-                    onChange={(e) => {
-                      setQ(e.target.value);
-                      setPage(1);
-                    }}
-                    placeholder="Szukaj po nazwisku/klubie… (/) "
-                    className={`${controlH} w-full pl-8 pr-3 text-sm`}
-                    aria-label="Szukaj w bazie zawodników"
-                  />
-                </div>
+    <div />
 
-                {/* Filtry */}
-                <div className="relative inline-flex">
-                  <span className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 dark:bg-neutral-950 dark:text-neutral-300">
-                    Filtry
-                  </span>
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+      {/* Dodaj zawodnika – mobile: 100% width, desktop: auto */}
+      <Button
+        type="button"
+        title="Skrót: N"
+        aria-label="Dodaj zawodnika"
+        onClick={() => router.push("/players/new")}
+        className={`${controlH} w-full sm:w-auto primary inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
+      >
+        <AddPlayerIcon className="h-4 w-4" />
+        <span>Dodaj zawodnika</span>
+      </Button>
 
-                  <Button
-                    ref={filterBtnRef}
-                    type="button"
-                    variant="outline"
-                    className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
-                    aria-pressed={filtersOpen}
-                    onClick={() => {
-                      setFiltersOpen((v) => !v);
-                      setColsOpen(false);
-                      setMoreOpen(false);
-                      setMoreSheetOpen(false);
-                    }}
-                    title="Filtry"
-                  >
-                    <ListFilter className="h-4 w-4" />
-                    {filtersCount ? (
-                      <span className="hidden sm:inline">
-                        {` (${filtersCount})`}
-                      </span>
-                    ) : null}
-                  </Button>
-                </div>
+      {/* Wiersz: search + filtry + 3 kropki */}
+      <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:justify-start sm:gap-3">
+        {/* Search */}
+        <div className="relative h-9 min-w-[160px] flex-1 sm:w-64 sm:flex-none">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+            aria-hidden="true"
+          />
+          <Input
+            ref={searchRef}
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Szukaj po nazwisku/klubie… (/) "
+            className={`${controlH} w-full pl-8 pr-3 text-sm`}
+            aria-label="Szukaj w bazie zawodników"
+          />
+        </div>
 
-                {/* Dodaj */}
-                <Button
-                  type="button"
-                  title="Skrót: N"
-                  onClick={() => router.push("/players/new")}
-                  className={`${controlH} primary inline-flex h-9 w-9 items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
-                >
-                  <AddPlayerIcon className="mr-0 h-4 w-4" />
-                </Button>
+        {/* Filtry */}
+        <div className="relative inline-flex">
+          <span className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 dark:bg-neutral-950 dark:text-neutral-300">
+            Filtry
+          </span>
 
-                {/* Więcej */}
-                <Button
-                  ref={moreBtnRef}
-                  type="button"
-                  aria-label="Więcej"
-                  aria-pressed={moreOpen}
-                  onClick={() => {
-                    if (isMobile) {
-                      setMoreSheetOpen(true);
-                      setFiltersOpen(false);
-                      setColsSheetOpen(false);
-                    } else {
-                      setMoreOpen((o) => !o);
-                      setFiltersOpen(false);
-                    }
-                  }}
-                  variant="outline"
-                  className={`${controlH} ml-auto h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 sm:ml-0`}
-                >
-                  <EllipsisVertical className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-          }
+          <Button
+            ref={filterBtnRef}
+            type="button"
+            variant="outline"
+            className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+            aria-pressed={filtersOpen}
+            onClick={() => {
+              setFiltersOpen((v) => !v);
+              setColsOpen(false);
+              setMoreOpen(false);
+              setMoreSheetOpen(false);
+            }}
+            title="Filtry"
+          >
+            <ListFilter className="h-4 w-4" />
+            {filtersCount ? (
+              <span className="hidden sm:inline">
+                {` (${filtersCount})`}
+              </span>
+            ) : null}
+          </Button>
+        </div>
+
+        {/* Więcej (3 kropki) */}
+        <Button
+          ref={moreBtnRef}
+          type="button"
+          aria-label="Więcej"
+          aria-pressed={moreOpen}
+          onClick={() => {
+            if (isMobile) {
+              setMoreSheetOpen(true);
+              setFiltersOpen(false);
+              setColsSheetOpen(false);
+            } else {
+              setMoreOpen((o) => !o);
+              setFiltersOpen(false);
+            }
+          }}
+          variant="outline"
+          className={`${controlH} h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+        >
+          <EllipsisVertical className="h-5 w-5" />
+        </Button>
+      </div>
+    </div>
+  </div>
+}
+
         />
 
         {/* Tabs for mobile */}
@@ -1264,7 +1271,7 @@ export default function MyPlayersFeature({
               maxWidth={440}
             >
               <div className="w-full p-3 text-sm">
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex items_center justify-between">
                   <div className="text-xs font-semibold text-dark dark:text-neutral-300">
                     Filtry
                   </div>
@@ -2080,7 +2087,10 @@ function PlayersTable({
                   onCheckedChange={(v) => {
                     if (v)
                       setSelected(
-                        new Set([...selected, ...rows.map((f) => f.id as number)])
+                        new Set([
+                          ...selected,
+                          ...rows.map((f) => f.id as number),
+                        ])
                       );
                     else {
                       const set = new Set(selected);
