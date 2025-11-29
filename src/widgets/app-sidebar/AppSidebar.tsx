@@ -861,22 +861,23 @@ export default function AppSidebar({
                 />
 
                 {/* Account menu card – width 286, above the button, shifted right by half sidebar width */}
-                <motion.div
-                  role="menu"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  transition={{
-                    duration: prefersReduced ? 0 : 0.14,
-                    ease: "easeOut",
-                  }}
-                  className="
-                    absolute bottom-[calc(100%+8px)] left-32 z-[60]
-                    w-[286px] max-w-[286px]
-                    overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl
-                    dark:border-neutral-800 dark:bg-neutral-950
-                  "
-                >
+<motion.div
+  role="menu"
+  initial={{ opacity: 0, y: 8 }}
+  animate={{ opacity: 1, y: 0 }}
+  exit={{ opacity: 0, y: 8 }}
+  transition={{
+    duration: prefersReduced ? 0 : 0.14,
+    ease: "easeOut",
+  }}
+  className="
+    absolute bottom-[calc(100%+8px)] 
+    left-auto right-0 sm:left-32 sm:right-auto z-[60]
+    w-[286px] max-w-[286px]
+    overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl
+    dark:border-neutral-800 dark:bg-neutral-950
+  "
+>
                   {/* Rank card */}
                   <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
                     <div className="mb-1 flex flex-wrap items-center justify-between">
