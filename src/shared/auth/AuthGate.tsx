@@ -230,6 +230,41 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     }
   };
 
+  // ===== 3a. Google OAuth (login / utworzenie konta) =====
+  const handleGoogleAuth = async () => {
+    setError(null);
+    setInfo(null);
+    setBusy(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        // opcjonalnie możesz dodać redirectTo jeśli masz dedykowany callback:
+        // options: {
+        //   redirectTo:
+        //     typeof window !== "undefined"
+        //       ? `${window.location.origin}/auth/callback`
+        //       : undefined,
+        // },
+      });
+
+      if (error) {
+        console.error("[AuthGate] Google OAuth error:", error);
+        setError(error.message || "Nie udało się połączyć z Google.");
+        setBusy(false);
+        return;
+      }
+
+      // Supabase przekieruje użytkownika do Google, więc tutaj zwykle już nie wracasz
+      // ale na wszelki wypadek zwalniamy busy:
+      setBusy(false);
+    } catch (err: any) {
+      console.error("[AuthGate] Google OAuth error:", err);
+      setError("Nie udało się połączyć z Google. Spróbuj ponownie.");
+      setBusy(false);
+    }
+  };
+
   // ===== 4. Wylogowanie =====
   const logout = async () => {
     try {
@@ -263,10 +298,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <div className="w-full max-w-lg">
             {/* Główny nagłówek */}
             <div className="mb-5 text-center">
-<p className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-medium text-stone-700 shadow-sm dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">
-  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-  <span>entrisoScouting • panel logowania</span>
-</p>
+              <p className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-medium text-stone-700 shadow-sm dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span>entrisoScouting • panel logowania</span>
+              </p>
 
               <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
                 entrisoScouting
@@ -356,7 +391,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       ) : (
                         <>
                           Rejestrując się, tworzysz własną przestrzeń roboczą w{" "}
-                          <span className="font-medium">entrisoScouting</span> —
+                          <span className="font-medium">entrisoScouting</span> —{" "}
                           buduj bazę zawodników, dodawaj obserwacje meczowe i
                           generuj raporty. Jeśli korzystasz z systemu klubowo,
                           użyj służbowego adresu e-mail.
@@ -637,6 +672,40 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                     )}
                   </AnimatePresence>
                 </div>
+
+                {/* Separator + Google */}
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center gap-2 text-[11px] text-stone-500 dark:text-stone-400">
+                    <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
+                    <span className="uppercase tracking-[0.18em]">
+                      lub
+                    </span>
+                    <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleGoogleAuth}
+                    disabled={busy}
+                    variant="outline"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 bg-white text-[11px] font-medium text-stone-800 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-50 dark:hover:bg-stone-800"
+                  >
+                    {/* Prosty „G” jako ikona Google */}
+                    <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-white text-[11px] font-bold text-sky-500 dark:bg-stone-900">
+                      G
+                    </span>
+                    <span className="truncate">
+                      {busy
+                        ? "Łączenie z Google…"
+                        : mode === "login"
+                        ? "Zaloguj się przez Google"
+                        : "Utwórz konto / zaloguj przez Google"}
+                    </span>
+                  </Button>
+                  <p className="text-center text-[10px] text-stone-500 dark:text-stone-400">
+                    Konto Google automatycznie tworzy lub łączy Twoje konto
+                    entrisoScouting na podstawie adresu e-mail.
+                  </p>
+                </div>
               </motion.div>
             </div>
           </div>
@@ -664,9 +733,5 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   // ===== 7. Zalogowany użytkownik -> aplikacja =====
-  return (
-    <>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

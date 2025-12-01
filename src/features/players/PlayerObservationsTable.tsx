@@ -1,4 +1,3 @@
-// src/features/players/PlayerObservationsTable.tsx
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -21,6 +20,7 @@ type Bucket = "active" | "trash";
 type Mode = "live" | "tv" | "mix";
 type PositionKey = string;
 
+// ⬇️ ratings jako dowolna mapa aspektów (klucz -> liczba 0–5)
 type ObsPlayer = {
   id: string;
   type: "known" | "unknown";
@@ -31,7 +31,7 @@ type ObsPlayer = {
   overall?: number;
   voiceUrl?: string | null;
   note?: string;
-  ratings?: { off: number; def: number; tech: number; motor: number };
+  ratings?: Record<string, number>; // <-- TU
 };
 
 type XO = Observation & {
@@ -86,12 +86,16 @@ function toEditorXO(row: XO): EditorXO {
     position: p.position,
     overall: p.overall,
     note: p.note,
+    // ⬇️ PRZENOSIMY wszystkie ratings i ewentualne id gracza
+    ratings: (p as any).ratings ?? undefined,
+    playerId: (p as any).playerId ?? (p as any).player_id ?? undefined,
+    voiceUrl: (p as any).voiceUrl ?? null,
   }));
 
   const editorObj: any = {
     id: row.id,
     reportDate: row.date || "",
-    competition: row.competition ?? "", // <- Liga do edytora
+    competition: row.competition ?? "",
     teamA: teamA || "",
     teamB: teamB || "",
     conditions: row.mode ?? "live",
@@ -128,6 +132,8 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     position: p.position as PositionKey,
     overall: p.overall,
     note: p.note,
+    ratings: p.ratings ?? undefined, // ⬅️ zachowujemy mapę aspektów
+    voiceUrl: (p as any).voiceUrl ?? null,
   }));
 
   const meta = anyE.__listMeta || {};
@@ -141,7 +147,7 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     status: meta.status ?? prev?.status ?? "draft",
     bucket: meta.bucket ?? prev?.bucket ?? "active",
     mode: (anyE.conditions ?? prev?.mode ?? "live") as Mode,
-    competition: anyE.competition ?? prev?.competition ?? null, // <- Liga z edytora
+    competition: anyE.competition ?? prev?.competition ?? null,
     note: anyE.note ?? anyE.contextNote ?? prev?.note ?? "",
     voiceUrl: prev?.voiceUrl ?? null,
     players,
@@ -210,6 +216,51 @@ export default function PlayerObservationsTable({
     );
     return byName ?? list[0];
   }
+
+  // ⬇️ PODSUMOWANIE "Ocena:" – bierzemy wszystkie Ocena z wierszy
+  // i liczymy sumę, liczbę oraz średnią (sum / count)
+  const performanceSummary = useMemo(() => {
+    if (!rows.length) return null;
+
+    const values: number[] = [];
+
+    for (const r of rows) {
+      const mainPlayer = getMainPlayer(r);
+      if (!mainPlayer) continue;
+
+      const ratingsMap = mainPlayer.ratings;
+      if (
+        ratingsMap &&
+        typeof ratingsMap === "object" &&
+        Object.keys(ratingsMap).length > 0
+      ) {
+        const vals = Object.values(ratingsMap).filter(
+          (v): v is number => typeof v === "number" && !Number.isNaN(v)
+        );
+        if (vals.length) {
+          const avgPerObs =
+            vals.reduce((acc, v) => acc + v, 0) / vals.length;
+          values.push(avgPerObs);
+          continue;
+        }
+      }
+
+      if (
+        typeof mainPlayer.overall === "number" &&
+        !Number.isNaN(mainPlayer.overall)
+      ) {
+        values.push(mainPlayer.overall);
+      }
+    }
+
+    if (!values.length) return null;
+
+    const sum = values.reduce((a, b) => a + b, 0);
+    const count = values.length;
+    const avg = sum / count;
+
+    return { sum, count, avg };
+  }, [rows, normalizedPlayerName]);
 
   function addNew() {
     const mainName = (playerName ?? "").trim() || "Nieznany zawodnik";
@@ -294,6 +345,14 @@ export default function PlayerObservationsTable({
             Wszystkie obserwacje powiązane z:{" "}
             <strong>{(playerName ?? "").trim() || "Nieznany zawodnik"}</strong>
           </p>
+
+          {performanceSummary && (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Średnia ocena z{" "}
+              <strong>{performanceSummary.count}</strong> występów:{" "}
+              <strong>{performanceSummary.avg.toFixed(2)}</strong>
+            </p>
+          )}
         </div>
 
         <Button size="sm" className="h-9 gap-1" onClick={addNew}>
@@ -324,10 +383,31 @@ export default function PlayerObservationsTable({
                   ? `${mainPlayer.minutes}′`
                   : undefined;
               const posLabel = mainPlayer?.position || undefined;
-              const ratingLabel =
-                typeof mainPlayer?.overall === "number"
-                  ? mainPlayer.overall.toFixed(1)
-                  : undefined;
+
+              // ⬇️ AVG z wszystkich ocen w mainPlayer.ratings; fallback na .overall
+              const ratingLabel = (() => {
+                const ratingsMap = mainPlayer?.ratings;
+                if (
+                  ratingsMap &&
+                  typeof ratingsMap === "object" &&
+                  Object.keys(ratingsMap).length > 0
+                ) {
+                  const vals = Object.values(ratingsMap).filter(
+                    (v): v is number =>
+                      typeof v === "number" && !Number.isNaN(v)
+                  );
+                  if (vals.length) {
+                    const avg =
+                      vals.reduce((acc, v) => acc + v, 0) / vals.length;
+                    return avg.toFixed(1);
+                  }
+                }
+
+                if (typeof mainPlayer?.overall === "number") {
+                  return mainPlayer.overall.toFixed(1);
+                }
+                return undefined;
+              })();
 
               const statusLabel =
                 r.status === "final" ? "Raport finalny" : "Szkic";

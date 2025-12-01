@@ -86,6 +86,7 @@ type ObsPlayer = {
   def?: Record<string, number>;
   mid?: Record<string, number>;
   att?: Record<string, number>;
+  ratings?: Record<string, number>; // ⬅️ płaska mapa wszystkich ocen (BASE/GK/DEF/MID/ATT)
 
   note?: string;
 };
@@ -353,8 +354,8 @@ export function ObservationEditor({
   const frozenInitialRef = useRef<XO>(initial);
 
   const initialIdRef =
-    (frozenInitialRef.current as any)?.id ?? 
-    (frozenInitialRef.current as any)?.__listMeta?.id ?? 
+    (frozenInitialRef.current as any)?.id ??
+    (frozenInitialRef.current as any)?.__listMeta?.id ??
     0;
 
   const isNewObservation = !initialIdRef || initialIdRef === 0;
@@ -523,8 +524,6 @@ export function ObservationEditor({
     "idle"
   );
 
-
-
   const [quickInput, setQuickInput] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -555,6 +554,7 @@ export function ObservationEditor({
       def: {},
       mid: {},
       att: {},
+      ratings: {}, // ⬅️ start z pustą mapą
     };
     setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
     setExpandedId(p.id); // expand Ocena for new player
@@ -575,6 +575,7 @@ export function ObservationEditor({
       def: {},
       mid: {},
       att: {},
+      ratings: {}, // ⬅️
     };
     setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
     setExpandedId(p.id); // expand Ocena for new player
@@ -590,7 +591,7 @@ export function ObservationEditor({
   }
 
   function updateMetric(
-    group: keyof ObsPlayer,
+    group: "base" | "gk" | "def" | "mid" | "att",
     _id: string,
     key: string,
     value: number,
@@ -599,8 +600,24 @@ export function ObservationEditor({
     setO((prev) => {
       const players = (prev.players ?? []).map((p) => {
         if (p.id !== player.id) return p;
-        const g = (p as any)[group] ?? {};
-        return { ...p, [group]: { ...g, [key]: value } } as ObsPlayer;
+
+        const currentGroup =
+          ((p as any)[group] as Record<string, number> | undefined) ?? {};
+        const nextGroup: Record<string, number> = {
+          ...currentGroup,
+          [key]: value,
+        };
+
+        const nextRatings: Record<string, number> = {
+          ...(p.ratings ?? {}),
+          [key]: value,
+        };
+
+        return {
+          ...p,
+          [group]: nextGroup,
+          ratings: nextRatings, // ⬅️ aktualizujemy płaską mapę
+        } as ObsPlayer;
       });
       return { ...prev, players };
     });
@@ -646,6 +663,7 @@ export function ObservationEditor({
         def: {},
         mid: {},
         att: {},
+        ratings: {}, // ⬅️
       };
       setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
       setExpandedId(p.id); // expand Ocena for new player
@@ -784,116 +802,115 @@ export function ObservationEditor({
   const autoSaveLastKeyRef = useRef<string | null>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
 
-async function saveObservation(opts?: {
-  closeAfter?: boolean;
-  externalSave?: boolean;
-  force?: boolean;
-}) {
-  const { closeAfter = false, externalSave = false, force = false } =
-    opts ?? {};
+  async function saveObservation(opts?: {
+    closeAfter?: boolean;
+    externalSave?: boolean;
+    force?: boolean;
+  }) {
+    const { closeAfter = false, externalSave = false, force = false } =
+      opts ?? {};
 
-  if (!force && !canSaveObservation) {
-    return;
-  }
+    if (!force && !canSaveObservation) {
+      return;
+    }
 
-  const supabase = getSupabase();
-  setSaveState("saving");
-  setDuplicateError(null);
+    const supabase = getSupabase();
+    setSaveState("saving");
+    setDuplicateError(null);
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  if (userError || !user) {
-    console.error("[ObservationEditor] Brak użytkownika przy zapisie", {
-      userError,
-    });
-    setSaveState("idle");
-    return;
-  }
+    if (userError || !user) {
+      console.error("[ObservationEditor] Brak użytkownika przy zapisie", {
+        userError,
+      });
+      setSaveState("idle");
+      return;
+    }
 
-  let id =
-    (o.id as number | undefined) ??
-    ((o.__listMeta as any)?.id as number | undefined) ??
-    initialIdRef;
+    let id =
+      (o.id as number | undefined) ??
+      ((o.__listMeta as any)?.id as number | undefined) ??
+      initialIdRef;
 
-  if (!id || id === 0) {
-    id = Date.now();
-  }
+    if (!id || id === 0) {
+      id = Date.now();
+    }
 
-  const baseMeta =
-    o.__listMeta ??
-    ({
+    const baseMeta =
+      o.__listMeta ??
+      ({
+        id,
+        status: "draft",
+        bucket: "active",
+        time: (o as any).time ?? "",
+        player: (o as any).player ?? "",
+      } as XO["__listMeta"]);
+
+    const primaryPlayerName =
+      (baseMeta?.player && baseMeta.player.trim().length > 0
+        ? baseMeta.player
+        : (o.players && o.players[0]
+            ? (o.players[0].name ||
+                (o.players[0].shirtNo
+                  ? `#${o.players[0].shirtNo}`
+                  : "")) ?? ""
+            : "")) || "";
+
+    const meta: XO["__listMeta"] = {
+      ...baseMeta,
       id,
-      status: "draft",
-      bucket: "active",
-      time: (o as any).time ?? "",
-      player: (o as any).player ?? "",
-    } as XO["__listMeta"]);
+      player: primaryPlayerName,
+      status: autoStatus,
+    };
 
-  const primaryPlayerName =
-    (baseMeta?.player && baseMeta.player.trim().length > 0
-      ? baseMeta.player
-      : (o.players && o.players[0]
-          ? (o.players[0].name ||
-              (o.players[0].shirtNo
-                ? `#${o.players[0].shirtNo}`
-                : "")) ?? ""
-          : "")) || "";
+    const matchDate = o.reportDate ?? "";
+    const matchTime = o.__listMeta?.time ?? "";
 
-  const meta: XO["__listMeta"] = {
-    ...baseMeta,
-    id,
-    player: primaryPlayerName,
-    status: autoStatus,
-  };
+    const trimmedTeamA = (teamA || "").trim();
+    const trimmedTeamB = (teamB || "").trim();
+    const composedMatch =
+      trimmedTeamA && trimmedTeamB
+        ? `${trimmedTeamA} vs ${trimmedTeamB}`
+        : o.match ?? (trimmedTeamA || trimmedTeamB || "");
 
-  const matchDate = o.reportDate ?? "";
-  const matchTime = o.__listMeta?.time ?? "";
+    const payload: XO = {
+      ...o,
+      id,
+      match: composedMatch,
+      reportDate: matchDate || undefined,
+      __listMeta: {
+        ...meta,
+        time: matchTime || "",
+      },
+    };
 
-  // ⬇️ NOWE: zawsze składaj match z Drużyna A / Drużyna B
-  const trimmedTeamA = (teamA || "").trim();
-  const trimmedTeamB = (teamB || "").trim();
-  const composedMatch =
-    trimmedTeamA && trimmedTeamB
-      ? `${trimmedTeamA} vs ${trimmedTeamB}`
-      : o.match ?? (trimmedTeamA || trimmedTeamB || "");
+    const rowDate = payload.reportDate ?? (payload as any).date ?? null;
+    const rowTime = payload.__listMeta?.time || null;
+    const rowTeamA = payload.teamA ?? (trimmedTeamA || null);
+    const rowTeamB = payload.teamB ?? (trimmedTeamB || null);
+    const rowCompetition = payload.competition ?? null;
 
-  const payload: XO = {
-    ...o,
-    id,
-    match: composedMatch, // ⬅️ zawsze ustawiamy match
-    reportDate: matchDate || undefined,
-    __listMeta: {
-      ...meta,
-      time: matchTime || "",
-    },
-  };
-
-  const rowDate = payload.reportDate ?? (payload as any).date ?? null;
-  const rowTime = payload.__listMeta?.time || null;
-  const rowTeamA = payload.teamA ?? (trimmedTeamA || null);
-  const rowTeamB = payload.teamB ?? (trimmedTeamB || null);
-  const rowCompetition = payload.competition ?? null;
-
-  const row: any = {
-    id,
-    user_id: user.id,
-    player: primaryPlayerName || null,
-    match: composedMatch || null, // ⬅️ zamiast payload.match ?? null
-    team_a: rowTeamA,
-    team_b: rowTeamB,
-    competition: rowCompetition,
-    date: rowDate,
-    time: rowTime,
-    status: meta.status,
-    bucket: meta.bucket,
-    mode: (payload.conditions ?? "live") as string,
-    note: payload.note ?? null,
-    players: (payload.players ?? []) as any,
-    payload,
-  };
+    const row: any = {
+      id,
+      user_id: user.id,
+      player: primaryPlayerName || null,
+      match: composedMatch || null,
+      team_a: rowTeamA,
+      team_b: rowTeamB,
+      competition: rowCompetition,
+      date: rowDate,
+      time: rowTime,
+      status: meta.status,
+      bucket: meta.bucket,
+      mode: (payload.conditions ?? "live") as string,
+      note: payload.note ?? null,
+      players: (payload.players ?? []) as any,
+      payload,
+    };
 
     const { data, error } = await supabase
       .from("observations")
@@ -931,7 +948,6 @@ async function saveObservation(opts?: {
     return payload;
   }
 
-
   useEffect(() => {
     if (!canSaveObservation || requiredLoading) return;
 
@@ -945,7 +961,7 @@ async function saveObservation(opts?: {
       void saveObservation({
         closeAfter: false,
         externalSave: false,
-        force: false, // ⬅️ auto-save NIE wymusza
+        force: false,
       }).then(() => {
         autoSaveLastKeyRef.current = autoSaveKey;
       });
@@ -958,7 +974,6 @@ async function saveObservation(opts?: {
     };
   }, [autoSaveKey, canSaveObservation, requiredLoading]);
 
-
   const infoCardRef = useRef<HTMLDivElement | null>(null);
 
   const [infoOpen, setInfoOpen] = useState(true);
@@ -970,7 +985,7 @@ async function saveObservation(opts?: {
     const trigger = document.getElementById(`pos-${playerId}`);
     if (trigger instanceof HTMLElement) {
       trigger.focus();
-      trigger.click(); // otworzy Radix Select (combobox)
+      trigger.click();
     }
   };
 
@@ -983,7 +998,6 @@ async function saveObservation(opts?: {
           size="sm"
           className="flex h-8 items-center justify-center px-2 text-xs"
           onClick={() => {
-            // ⬇️ wymuś zapis, dopiero potem wróć do listy
             void saveObservation({
               closeAfter: true,
               externalSave: true,
@@ -1001,7 +1015,6 @@ async function saveObservation(opts?: {
       setActions(null);
     };
   }, [setActions, saveState]);
-
 
   const handleVoiceTranscription = (text: string) => {
     setO((prev) => {
@@ -1134,18 +1147,18 @@ async function saveObservation(opts?: {
                           {isRequired("teamB") && !teamB.trim() && <ReqChip />}
                         </div>
                       </div>
-<div>
-  <Label className="text-sm">Data i godzina meczu</Label>
-  <div className="mt-1 rounded-md">
-    <DateTimePicker24h
-      value={{ date: matchDate, time: matchTime }}
-      onChange={({ date, time }) => {
-        setField("reportDate", date || undefined);
-        setMeta("time", (time || "") as any);
-      }}
-    />
-  </div>
-</div>
+                      <div>
+                        <Label className="text-sm">Data i godzina meczu</Label>
+                        <div className="mt-1 rounded-md">
+                          <DateTimePicker24h
+                            value={{ date: matchDate, time: matchTime }}
+                            onChange={({ date, time }) => {
+                              setField("reportDate", date || undefined);
+                              setMeta("time", (time || "") as any);
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     <div>
@@ -1404,9 +1417,7 @@ async function saveObservation(opts?: {
 
                             return (
                               <Fragment key={p.id}>
-<tr className="border-t border-gray-200 align-middle hover:bg-stone-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
-
-
+                                <tr className="border-t border-gray-200 align-middle hover:bg-stone-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
                                   <td className="p-2 sm:p-3">
                                     <div className="flex items-start gap-2">
                                       <div className="min-w-0">
@@ -1606,12 +1617,12 @@ async function saveObservation(opts?: {
                                   </td>
                                 </tr>
 
-{isOpen && (
-  <tr>
-    <td
-      colSpan={5}
-      className="bg-[#E8FBF5] p-3 text-sm"
-      >
+                                {isOpen && (
+                                  <tr>
+                                    <td
+                                      colSpan={5}
+                                      className="bg-[#E8FBF5] p-3 text-sm"
+                                    >
                                       <div className="relative">
                                         {!hasPosition && (
                                           <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
@@ -1859,7 +1870,6 @@ async function saveObservation(opts?: {
                       className="min-h-[140px] rounded-md"
                     />
                     <div className="inline-flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
-                     
                       <VoiceNoteButton
                         onTranscription={handleVoiceTranscription}
                       />

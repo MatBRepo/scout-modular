@@ -1826,25 +1826,37 @@ useEffect(() => {
   }
 
 
-  function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-      const x = a[i];
-      const y = b[i];
-      if (
-        x.id !== y.id ||
-        safeText(x.match) !== safeText(y.match) ||
-        safeText(x.date) !== safeText(y.date) ||
-        safeText(x.time) !== safeText(y.time) ||
-        x.status !== y.status ||
-        x.mode !== y.mode ||
-        safeText(x.opponentLevel) !== safeText(y.opponentLevel)
-      ) {
-        return false;
-      }
+function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
+  if (a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+
+    const sameMeta =
+      x.id === y.id &&
+      safeText(x.match) === safeText(y.match) &&
+      safeText(x.date) === safeText(y.date) &&
+      safeText(x.time) === safeText(y.time) &&
+      x.status === y.status &&
+      x.mode === y.mode &&
+      safeText(x.opponentLevel) === safeText(y.opponentLevel) &&
+      safeText(x.competition) === safeText(y.competition);
+
+    if (!sameMeta) return false;
+
+    const px = Array.isArray(x.players) ? x.players : [];
+    const py = Array.isArray(y.players) ? y.players : [];
+
+    if (JSON.stringify(px) !== JSON.stringify(py)) {
+      return false;
     }
-    return true;
   }
+
+  return true;
+}
+
+
 
   // Title with badge + icon (only current stage)
   const editorTitle = (

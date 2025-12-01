@@ -1,7 +1,13 @@
 // src/features/players/MyPlayersFeature.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useLayoutEffect,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -46,23 +52,30 @@ import { supabase } from "@/shared/supabase-client";
 import { computePlayerProfileProgress } from "@/shared/playerProfileProgress";
 
 /* ====== helpers: mobile detection + portal ====== */
+
 function useIsMobile(maxPx = 640) {
   const [is, setIs] = useState(false);
+
   useEffect(() => {
     const mq = window.matchMedia(`(max-width:${maxPx - 1}px)`);
     const on = (e: MediaQueryListEvent | MediaQueryList) =>
       setIs((e as any).matches ?? mq.matches);
+
     setIs(mq.matches);
     mq.addEventListener?.("change", on as any);
+
     return () => mq.removeEventListener?.("change", on as any);
   }, [maxPx]);
+
   return is;
 }
+
 function Portal({ children }: { children: React.ReactNode }) {
   const [el, setEl] = useState<HTMLElement | null>(null);
   useEffect(() => setEl(document.getElementById("portal-root")), []);
   return el ? createPortal(children, el) : null;
 }
+
 function MobileSheet({
   open,
   onClose,
@@ -108,12 +121,14 @@ function MobileSheet({
 }
 
 /* ================= Anchored popover (desktop) ================= */
+
 type AnchorAlign = "start" | "end";
+
 function useAnchoredPosition(
   open: boolean,
   anchorRef: React.RefObject<HTMLElement>,
   align: AnchorAlign = "end",
-  gap = 8
+  gap = 8,
 ) {
   const [style, setStyle] = useState<React.CSSProperties | null>(null);
 
@@ -122,7 +137,10 @@ function useAnchoredPosition(
     if (!a) return;
     const r = a.getBoundingClientRect();
     const vw = window.innerWidth;
-    const left = align === "end" ? Math.min(vw - 12, r.left + r.width) : r.left;
+
+    const left =
+      align === "end" ? Math.min(vw - 12, r.left + r.width) : r.left;
+
     setStyle({
       position: "fixed",
       top: r.top + r.height + gap,
@@ -164,19 +182,24 @@ function AnchoredPopover({
   children: React.ReactNode;
 }) {
   const style = useAnchoredPosition(open, anchorRef, align);
+
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && onClose();
+
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       const a = anchorRef.current;
       const p =
         (document.querySelector(
-          "[data-popover-panel='true']"
+          "[data-popover-panel='true']",
         ) as HTMLElement) || null;
       if (p?.contains(t) || a?.contains(t)) return;
       onClose();
     };
+
     document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onDown, true);
     return () => {
@@ -193,7 +216,10 @@ function AnchoredPopover({
       <div
         data-popover-panel="true"
         className="z-[210] overflow-hidden rounded-md border border-gray-200 bg-white p-0 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
-        style={{ ...style, width: "min(92vw, " + maxWidth + "px)" }}
+        style={{
+          ...style,
+          width: `min(92vw, ${maxWidth}px)`,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -205,8 +231,9 @@ function AnchoredPopover({
 /* =======================================
    Types & constants
 ======================================= */
-const POS: PosGroup[] = ["GK", "DF", "MF", "FW"];
-type PosGroup = "GK" | "DF" | "MF" | "FW";
+
+const POS = ["GK", "DF", "MF", "FW"] as const;
+type PosGroup = (typeof POS)[number];
 
 function toPosGroup(p: Player["pos"]): PosGroup {
   switch (p) {
@@ -237,10 +264,11 @@ const DEFAULT_COLS = {
   pos: true,
   age: true,
   progress: true,
-  rating: true, // nowa kolumna
+  rating: true,
   obs: true,
   actions: true,
 };
+
 type ColKey = keyof typeof DEFAULT_COLS;
 
 const COL_LABELS: Record<ColKey, string> = {
@@ -264,12 +292,16 @@ type SortDir = "asc" | "desc";
 type PlayerWithOwner = Player & {
   user_id?: string | null;
   profile_id?: string | null;
+  global_id?: number | null;
 };
+
 type ObservationWithOwner = Observation & {
   user_id?: string | null;
   userId?: string | null;
   profile_id?: string | null;
   profileId?: string | null;
+  players?: any;
+  payload?: any;
 };
 
 type PlayerRow = Player & {
@@ -293,15 +325,15 @@ function buildTargetNames(p: PlayerWithOwner) {
   const firstLast = normalizeName(
     [((p as any).firstName ?? ""), ((p as any).lastName ?? "")]
       .filter(Boolean)
-      .join(" ")
+      .join(" "),
   );
   const lastFirst = normalizeName(
     [((p as any).lastName ?? ""), ((p as any).firstName ?? "")]
       .filter(Boolean)
-      .join(" ")
+      .join(" "),
   );
   return new Set(
-    [mainName, firstLast, lastFirst].filter((v) => v.length > 0)
+    [mainName, firstLast, lastFirst].filter((v) => v.length > 0),
   );
 }
 
@@ -315,17 +347,16 @@ function extractJsonPlayerName(item: any) {
         item?.last_name ?? item?.lastName,
       ]
         .filter(Boolean)
-        .join(" ")
+        .join(" "),
   );
 }
 
 /** Zwraca obiekt zawodnika w observation.players odpowiadający danemu Player */
 function findPlayerEntryInObservation(
   o: ObservationWithOwner,
-  p: PlayerWithOwner
+  p: PlayerWithOwner,
 ): any | null {
   const targetNames = buildTargetNames(p);
-
   const playersJson: any = (o as any).players;
   if (!Array.isArray(playersJson)) return null;
 
@@ -334,13 +365,12 @@ function findPlayerEntryInObservation(
 
     // najpierw spróbuj po ID
     const jsonId =
-      item.player_id ?? item.playerId ?? item.id ?? item.player_id_fk ?? null;
-
-    if (
-      jsonId !== null &&
-      p.id != null &&
-      Number(jsonId) === Number(p.id)
-    ) {
+      item.player_id ??
+      item.playerId ??
+      item.id ??
+      item.player_id_fk ??
+      null;
+    if (jsonId !== null && p.id != null && Number(jsonId) === Number(p.id)) {
       return item;
     }
 
@@ -350,14 +380,14 @@ function findPlayerEntryInObservation(
       return item;
     }
   }
-
   return null;
 }
 
 /* ========= helper: czy observation zawiera playera ========= */
+
 function observationIncludesPlayer(
   o: ObservationWithOwner,
-  p: PlayerWithOwner
+  p: PlayerWithOwner,
 ) {
   const targetNames = buildTargetNames(p);
 
@@ -371,63 +401,112 @@ function observationIncludesPlayer(
   return !!entry;
 }
 
-function toNumberOrNull(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const n = parseFloat(value.replace(",", "."));
-    return Number.isFinite(n) ? n : null;
+/* ========= rating helpers ========= */
+
+/** Konwertuje wartość do liczby 0–5; wszystko poza zakresem odrzucamy */
+function toRating(value: unknown): number | null {
+  if (value == null) return null;
+  let n: number | null = null;
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    n = value;
+  } else if (typeof value === "string") {
+    const parsed = parseFloat(value.replace(",", "."));
+    if (Number.isFinite(parsed)) n = parsed;
   }
-  return null;
+
+  if (n == null) return null;
+
+  // Akceptujemy tylko skalę 0–5 (jak StarRating)
+  if (n < 0 || n > 5) return null;
+  return n;
 }
 
 /**
- * Próbuje wyciągnąć ocenę ogólną z obiektu (obserwacja / entry z players[]).
- * Dostosuj klucze poniżej do swojego modelu, jeśli trzeba.
+ * Fallback z PlayerEditorPage:
+ * bierzemy wartości z player.meta.ratings (Record<string, number>)
+ * i liczymy z nich średnią 0–5.
  */
-function extractObservationRating(o: any): number | null {
-  if (!o || typeof o !== "object") return null;
+function collectRatingsFromPlayerMeta(p: PlayerWithOwner): number[] {
+  const meta = (p as any)?.meta;
+  if (!meta || typeof meta !== "object") return [];
+  const ratings = (meta as any).ratings;
+  if (!ratings || typeof ratings !== "object") return [];
+  const values: number[] = [];
+  for (const val of Object.values(ratings as Record<string, unknown>)) {
+    const n = toRating(val);
+    if (n != null) values.push(n);
+  }
+  return values;
+}
 
-  // 1) Najczęstsze bezpośrednie pola
-  const directKeys = [
-    "overall_rating",
-    "overallRating",
-    "overall",
-    "rating",
-    "grade",
-    "overall_grade",
-    "overallScore",
-    "overall_score",
-    "summary_rating",
-    "summaryRating",
+/**
+ * NOWE: próba wyciągnięcia „Oceny z obserwacji” dla konkretnego zawodnika
+ * z pojedynczej obserwacji.
+ *
+ * Szukamy:
+ *  - NAJPIERW w players[].ratings (dokładnie tak jak w PlayerObservationsTable),
+ *  - potem w per-player polach (overall, rating, ocena, itp.),
+ *  - na końcu w polach na samej obserwacji.
+ */
+function extractOverallRatingForPlayer(
+  o: ObservationWithOwner,
+  p: PlayerWithOwner,
+): number | null {
+  // 1) próbujemy z players[] (per zawodnik)
+  const entry = findPlayerEntryInObservation(o, p);
+
+  if (entry) {
+    // 1A) mapa aspektów jak w PlayerObservationsTable -> średnia z aspektów
+    const ratingsMap =
+      entry.ratings ??
+      entry.aspects ??
+      (typeof entry === "object" ? (entry as any).ratings : null);
+
+    if (ratingsMap && typeof ratingsMap === "object") {
+      const vals = Object.values(ratingsMap).reduce<number[]>(
+        (acc, v) => {
+          const n = toRating(v);
+          if (n != null) acc.push(n);
+          return acc;
+        },
+        [],
+      );
+      if (vals.length) {
+        const sum = vals.reduce((a, b) => a + b, 0);
+        return sum / vals.length;
+      }
+    }
+
+    // 1B) fallback – per-player pola liczebne
+    const candidatesFromEntry = [
+      (entry as any).overallRating,
+      (entry as any).overall_rating,
+      (entry as any).overall, // <- ważne: Editor zapisuje tutaj
+      (entry as any).rating,
+      (entry as any).ocena,
+      (entry as any).score,
+    ];
+
+    for (const val of candidatesFromEntry) {
+      const n = toRating(val);
+      if (n != null) return n;
+    }
+  }
+
+  // 2) fallback – pola na samej obserwacji
+  const candidatesFromObs = [
+    (o as any).overallRating,
+    (o as any).overall_rating,
+    (o as any).overall,
+    (o as any).rating,
+    (o as any).ocena,
+    (o as any).score,
   ];
 
-  for (const key of directKeys) {
-    const n = toNumberOrNull((o as any)[key]);
+  for (const val of candidatesFromObs) {
+    const n = toRating(val);
     if (n != null) return n;
-  }
-
-  // 2) metrics: {...}
-  if (o.metrics && typeof o.metrics === "object") {
-    const m = o.metrics as any;
-    const n =
-      toNumberOrNull(m.overall) ??
-      toNumberOrNull(m.overall_rating) ??
-      toNumberOrNull(m.final) ??
-      toNumberOrNull(m.final_score);
-    if (n != null) return n;
-  }
-
-  // 3) ratings: [{ value / score / rating }, ...] → średnia
-  if (Array.isArray(o.ratings)) {
-    const nums = o.ratings
-      .map((it: any) =>
-        toNumberOrNull(it.value ?? it.score ?? it.rating)
-      )
-      .filter((v): v is number => v != null);
-
-    if (nums.length > 0) {
-      return nums.reduce((a, b) => a + b, 0) / nums.length;
-    }
   }
 
   return null;
@@ -436,6 +515,7 @@ function extractObservationRating(o: any): number | null {
 /* =======================================
    Main feature
 ======================================= */
+
 export default function MyPlayersFeature({
   players,
   observations,
@@ -482,25 +562,20 @@ export default function MyPlayersFeature({
   // Filtrowanie po właścicielu — user_id/profile_id
   const ownedPlayers = useMemo(() => {
     const base = players as PlayerWithOwner[];
-
     // jeśli żaden rekord nie ma user_id/profile_id → nie filtrujemy
     const hasOwnerMeta = base.some((p) => p.user_id || p.profile_id);
-
     if (!authUserId || !hasOwnerMeta) {
       return base;
     }
-
     return base.filter(
-      (p) => p.user_id === authUserId || p.profile_id === authUserId
+      (p) => p.user_id === authUserId || p.profile_id === authUserId,
     );
   }, [players, authUserId]);
 
   const ownedObservations = useMemo(() => {
     const base = observations as ObservationWithOwner[];
-
-    // Czy jakikolwiek rekord ma meta właściciela?
     const hasOwnerMeta = base.some(
-      (o) => o.user_id || o.userId || o.profile_id || o.profileId
+      (o) => o.user_id || o.userId || o.profile_id || o.profileId,
     );
 
     // Brak użytkownika z auth
@@ -509,8 +584,7 @@ export default function MyPlayersFeature({
       return hasOwnerMeta ? [] : base;
     }
 
-    // Brak meta właściciela → zakładamy, że lista jest już
-    // przefiltrowana po stronie serwera (tylko "moje" obserwacje)
+    // Brak meta właściciela → zakładamy, że lista jest już przefiltrowana po stronie serwera
     if (!hasOwnerMeta) {
       return base;
     }
@@ -523,10 +597,153 @@ export default function MyPlayersFeature({
     });
   }, [observations, authUserId]);
 
+  // ===== RATING STATS z observation_ratings (per użytkownik) =====
+  const [ratingStatsMap, setRatingStatsMap] = useState<
+    Map<number, { avg: number | null; ratingsCount: number; obsCount: number }>
+  >(new Map());
+  const [ratingStatsLoading, setRatingStatsLoading] = useState(false);
+
+  useEffect(() => {
+    const pls = ownedPlayers as PlayerWithOwner[];
+    const playerIds = pls
+      .map((p) => p.id)
+      .filter((id): id is number => typeof id === "number");
+
+    const globalIds = pls
+      .map((p) => p.global_id)
+      .filter((id): id is number => typeof id === "number");
+
+    if (!authUserId || (!playerIds.length && !globalIds.length)) {
+      setRatingStatsMap(new Map());
+      return;
+    }
+
+    // mapowanie global_id -> wszystkie lokalne players.id,
+    // gdyby kilka lokalnych zawodników dzieliło jednego global_player
+    const globalToLocalIds = new Map<number, number[]>();
+    for (const p of pls) {
+      const gid = p.global_id;
+      if (gid == null) continue;
+      if (typeof p.id !== "number") continue;
+      const arr = globalToLocalIds.get(gid) ?? [];
+      arr.push(p.id);
+      globalToLocalIds.set(gid, arr);
+    }
+
+    let active = true;
+    (async () => {
+      try {
+        setRatingStatsLoading(true);
+
+        // Budujemy .or() ręcznie, żeby obsłużyć player_id OR global_id
+        const filters: string[] = [];
+        if (playerIds.length) {
+          filters.push(`player_id.in.(${playerIds.join(",")})`);
+        }
+        if (globalIds.length) {
+          filters.push(`global_id.in.(${globalIds.join(",")})`);
+        }
+
+        let query = supabase
+          .from("observation_ratings")
+          .select(
+            "player_id, global_id, rating, observation_id, observations!inner(id, user_id, status, bucket)",
+          )
+          .eq("observations.user_id", authUserId)
+          // opcjonalnie: tylko finalne obserwacje w aktywnym koszyku
+          .eq("observations.status", "final")
+          .eq("observations.bucket", "active");
+
+        if (filters.length) {
+          query = query.or(filters.join(","));
+        }
+
+        const { data, error } = await query;
+
+        if (!active) return;
+        if (error) {
+          console.error(
+            "[MyPlayersFeature] load observation_ratings error:",
+            error,
+          );
+          setRatingStatsMap(new Map());
+          return;
+        }
+
+        type Row = {
+          player_id: number | null;
+          global_id: number | null;
+          rating: number | string | null;
+          observation_id: number | null;
+        };
+
+        const buckets = new Map<
+          number,
+          { sum: number; count: number; obsIds: Set<number> }
+        >();
+
+        (data as Row[]).forEach((row) => {
+          // Ustal docelowe local player_id:
+          let pid: number | null = null;
+
+          if (typeof row.player_id === "number") {
+            pid = row.player_id;
+          } else if (typeof row.global_id === "number") {
+            const locals = globalToLocalIds.get(row.global_id);
+            if (locals && locals.length > 0) {
+              // jeżeli jest kilka lokalnych, weź pierwszego (lub można by rozbić po wszystkich)
+              pid = locals[0];
+            }
+          }
+
+          if (pid == null) return;
+
+          const ratingNum = toRating(row.rating);
+          if (ratingNum == null) return;
+
+          const obsId =
+            typeof row.observation_id === "number" ? row.observation_id : null;
+
+          let bucket = buckets.get(pid);
+          if (!bucket) {
+            bucket = { sum: 0, count: 0, obsIds: new Set<number>() };
+            buckets.set(pid, bucket);
+          }
+          bucket.sum += ratingNum;
+          bucket.count += 1;
+          if (obsId != null) bucket.obsIds.add(obsId);
+        });
+
+        const map = new Map<
+          number,
+          { avg: number | null; ratingsCount: number; obsCount: number }
+        >();
+
+        buckets.forEach((b, pid) => {
+          map.set(pid, {
+            avg: b.count > 0 ? b.sum / b.count : null,
+            ratingsCount: b.count,
+            obsCount: b.obsIds.size,
+          });
+        });
+
+        setRatingStatsMap(map);
+      } catch (e) {
+        console.error("[MyPlayersFeature] load observation_ratings failed:", e);
+        setRatingStatsMap(new Map());
+      } finally {
+        if (active) setRatingStatsLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [ownedPlayers, authUserId]);
+
   const [content, setContent] = useState<"table" | "quick">("table");
   const [quickFor, setQuickFor] = useState<Player | null>(null);
   const [quickTab, setQuickTab] = useState<"new" | "existing">("new");
-
   const [scope, setScope] = useState<Scope>("active");
   const [q, setQ] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -555,7 +772,7 @@ export default function MyPlayersFeature({
 
   // anchors for desktop popovers
   const filterBtnRef = useRef<HTMLButtonElement | null>(null);
-  const moreBtnRef = useRef<HTMLButtonElement | null>(null);
+  const moreBtnRef = useRef<HTMLButtonElement | null>(null as any);
 
   // Chips “more” popover
   const chipsMoreBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -571,6 +788,7 @@ export default function MyPlayersFeature({
   const [qaTime, setQaTime] = useState("");
   const [qaMode, setQaMode] = useState<"live" | "tv">("live");
   const [qaStatus, setQaStatus] = useState<Observation["status"]>("draft");
+
   // Existing picker
   const [obsQuery, setObsQuery] = useState("");
   const [obsSelectedId, setObsSelectedId] = useState<number | null>(null);
@@ -604,40 +822,55 @@ export default function MyPlayersFeature({
     router.replace(`/players?${sp.toString()}`, { scroll: false });
   }
 
-  // Base with obs count + known flag + progress + avg rating – TYLKO dla ownedPlayers/ownedObservations
+  // Base with obs count + known flag + progress + avg rating
+  // Rating – PRIORYTETY:
+  // 1) średnia z obserwacji (tylko te, które faktycznie zawierają zawodnika),
+  //    liczymy tak samo jak w PlayerObservationsTable (z players[].ratings)
+  // 2) observation_ratings z bazy (ratingStatsMap)
+  // 3) meta.ratings na obiekcie zawodnika
   const withObsCount = useMemo<PlayerRow[]>(() => {
     const pls = ownedPlayers as PlayerWithOwner[];
     const obs = ownedObservations as ObservationWithOwner[];
 
     return pls.map((p) => {
-      let obsCount = 0;
-      const ratings: number[] = [];
+      // wszystkie obserwacje, które faktycznie zawierają zawodnika
+      const relatedObs = obs.filter((o) =>
+        observationIncludesPlayer(o, p),
+      );
+      const obsCount = relatedObs.length;
 
-      for (const o of obs) {
-        if (!observationIncludesPlayer(o, p)) continue;
-        obsCount++;
-
-        const entry = findPlayerEntryInObservation(o, p);
-
-        // Najpierw rating z entry (players[]), potem fallback do całej obserwacji
-        let rating: number | null = null;
-
-        if (entry) {
-          rating = extractObservationRating(entry);
-        }
-        if (rating == null) {
-          rating = extractObservationRating(o);
-        }
-
-        if (rating != null && !Number.isNaN(rating)) {
-          ratings.push(rating);
-        }
+      // 1) średnia z obserwacji (to co widzisz w "Obserwacje zawodnika")
+      const obsRatings: number[] = [];
+      for (const o of relatedObs) {
+        const r = extractOverallRatingForPlayer(o, p);
+        if (r != null) obsRatings.push(r);
       }
-
-      const avgRating =
-        ratings.length > 0
-          ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+      const fromObs =
+        obsRatings.length > 0
+          ? obsRatings.reduce((a, b) => a + b, 0) / obsRatings.length
           : null;
+
+      // 2) observation_ratings (DB, per użytkownik)
+      const stats = p.id != null ? ratingStatsMap.get(p.id as number) : null;
+      const fromDb = stats?.avg ?? null;
+
+      // 3) meta.ratings
+      const metaRatings = collectRatingsFromPlayerMeta(p);
+      const fromMeta =
+        metaRatings.length > 0
+          ? metaRatings.reduce((a, b) => a + b, 0) / metaRatings.length
+          : null;
+
+      let avgRating: number | null = null;
+      if (fromObs != null) {
+        avgRating = fromObs;
+      } else if (fromDb != null) {
+        avgRating = fromDb;
+      } else if (fromMeta != null) {
+        avgRating = fromMeta;
+      } else {
+        avgRating = null;
+      }
 
       return {
         ...p,
@@ -647,7 +880,7 @@ export default function MyPlayersFeature({
         _avgRating: avgRating,
       };
     });
-  }, [ownedPlayers, ownedObservations]);
+  }, [ownedPlayers, ownedObservations, ratingStatsMap]);
 
   // Apply all filters except known tab
   const baseFilteredNoKnown = useMemo(() => {
@@ -657,11 +890,13 @@ export default function MyPlayersFeature({
         !q
           ? true
           : r.name.toLowerCase().includes(q.toLowerCase()) ||
-            (r.club || "").toLowerCase().includes(q.toLowerCase())
+            (r.club || "").toLowerCase().includes(q.toLowerCase()),
       )
       .filter((r) => pos[toPosGroup(r.pos)])
       .filter((r) =>
-        club ? (r.club || "").toLowerCase().includes(club.toLowerCase()) : true
+        club
+          ? (r.club || "").toLowerCase().includes(club.toLowerCase())
+          : true,
       )
       .filter((r) => (ageMin === "" ? true : r.age >= Number(ageMin)))
       .filter((r) => (ageMax === "" ? true : r.age <= Number(ageMax)));
@@ -684,6 +919,7 @@ export default function MyPlayersFeature({
       const dir = sortDir === "asc" ? 1 : -1;
       let av: any;
       let bv: any;
+
       switch (sortKey) {
         case "name":
         case "club":
@@ -704,10 +940,8 @@ export default function MyPlayersFeature({
           bv = b._progress || 0;
           return (av - bv) * dir;
         case "rating": {
-          const aVal =
-            typeof a._avgRating === "number" ? a._avgRating : null;
-          const bVal =
-            typeof b._avgRating === "number" ? b._avgRating : null;
+          const aVal = typeof a._avgRating === "number" ? a._avgRating : null;
+          const bVal = typeof b._avgRating === "number" ? b._avgRating : null;
           // Brak oceny zawsze na końcu niezależnie od kierunku sortowania
           if (aVal == null && bVal == null) return 0;
           if (aVal == null) return 1;
@@ -718,6 +952,7 @@ export default function MyPlayersFeature({
           return 0;
       }
     });
+
     return base;
   }, [baseFilteredNoKnown, knownScope, sortKey, sortDir]);
 
@@ -725,7 +960,7 @@ export default function MyPlayersFeature({
   const total = filtered.length;
   const visible = useMemo(
     () => filtered.slice(0, page * PAGE_SIZE),
-    [filtered, page]
+    [filtered, page],
   );
 
   // clamp page gdy zmienia się lista
@@ -749,7 +984,7 @@ export default function MyPlayersFeature({
         setPage((p) => {
           const maxPage = Math.max(
             1,
-            Math.ceil(Math.max(total, 1) / PAGE_SIZE)
+            Math.ceil(Math.max(total, 1) / PAGE_SIZE),
           );
           if (p >= maxPage) return p;
           return p + 1;
@@ -759,17 +994,18 @@ export default function MyPlayersFeature({
         root: null,
         rootMargin: "0px 0px 200px 0px",
         threshold: 0.1,
-      }
+      },
     );
-
     observer.observe(el);
+
     return () => observer.disconnect();
   }, [hasMore, total]);
 
   // ====== actions ======
+
   function trash(id: number) {
     const next: Player[] = players.map((p) =>
-      p.id === id ? ({ ...p, status: "trash" } as Player) : p
+      p.id === id ? ({ ...p, status: "trash" } as Player) : p,
     );
     onChangePlayers(next);
     setSelected((s) => {
@@ -778,9 +1014,10 @@ export default function MyPlayersFeature({
       return copy;
     });
   }
+
   function restore(id: number) {
     const next: Player[] = players.map((p) =>
-      p.id === id ? ({ ...p, status: "active" } as Player) : p
+      p.id === id ? ({ ...p, status: "active" } as Player) : p,
     );
     onChangePlayers(next);
     setSelected((s) => {
@@ -789,16 +1026,18 @@ export default function MyPlayersFeature({
       return copy;
     });
   }
+
   function bulkTrash() {
     const next: Player[] = players.map((p) =>
-      selected.has(p.id) ? ({ ...p, status: "trash" } as Player) : p
+      selected.has(p.id) ? ({ ...p, status: "trash" } as Player) : p,
     );
     onChangePlayers(next);
     setSelected(new Set());
   }
+
   function bulkRestore() {
     const next: Player[] = players.map((p) =>
-      selected.has(p.id) ? ({ ...p, status: "active" } as Player) : p
+      selected.has(p.id) ? ({ ...p, status: "active" } as Player) : p,
     );
     onChangePlayers(next);
     setSelected(new Set());
@@ -817,26 +1056,28 @@ export default function MyPlayersFeature({
       "obs",
       "progress",
     ];
-    const rows = filtered.map((p) => [
+    const rows = filtered.map((p: any) => [
       p.id,
       p.name,
       p.club,
       p.pos,
       p.age,
       p.status,
-      (p as any)._avgRating ?? "",
-      (p as any)._obs,
-      (p as any)._progress,
+      p._avgRating ?? "",
+      p._obs,
+      p._progress,
     ]);
     const csv = [
       headers.join(","),
       ...rows.map((r) =>
         r
           .map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`)
-          .join(",")
+          .join(","),
       ),
     ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -844,6 +1085,14 @@ export default function MyPlayersFeature({
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  function escapeHtml(s: string) {
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
   function exportExcel() {
     const headers = [
       "ID",
@@ -856,31 +1105,34 @@ export default function MyPlayersFeature({
       "Obserwacje",
       "Profil %",
     ];
-    const rows = filtered.map((p) => [
+    const rows = filtered.map((p: any) => [
       p.id,
       p.name,
       p.club,
       p.pos,
       p.age,
       p.status,
-      (p as any)._avgRating ?? "",
-      (p as any)._obs,
-      (p as any)._progress,
+      p._avgRating ?? "",
+      p._obs,
+      p._progress,
     ]);
+
     const tableHtml =
-      `<table><thead><tr>${headers
-        .map((h) => `<th>${escapeHtml(h)}</th>`)
-        .join("")}</tr></thead><tbody>` +
+      `<table><thead><tr>` +
+      headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("") +
+      `</tr></thead><tbody>` +
       rows
         .map(
           (r) =>
             `<tr>${r
               .map((c) => `<td>${escapeHtml(String(c ?? ""))}</td>`)
-              .join("")}</tr>`
+              .join("")}</tr>`,
         )
         .join("") +
       `</tbody></table>`;
+
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${tableHtml}</body></html>`;
+
     const blob = new Blob([html], {
       type: "application/vnd.ms-excel",
     });
@@ -890,12 +1142,6 @@ export default function MyPlayersFeature({
     a.download = "players.xls";
     a.click();
     URL.revokeObjectURL(url);
-  }
-  function escapeHtml(s: string) {
-    return s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
   }
 
   // Quick area controls
@@ -911,6 +1157,7 @@ export default function MyPlayersFeature({
     setObsSelectedId(null);
     setContent("quick");
   }
+
   function closeQuick() {
     setContent("table");
     setQuickFor(null);
@@ -932,11 +1179,12 @@ export default function MyPlayersFeature({
       onQuickAddObservation(obs);
     } else {
       console.warn(
-        "[MyPlayersFeature] onQuickAddObservation not provided – quick obs not persisted"
+        "[MyPlayersFeature] onQuickAddObservation not provided – quick obs not persisted",
       );
     }
     closeQuick();
   }
+
   function duplicateExistingToPlayer() {
     if (!quickFor || obsSelectedId == null) return;
     const base = ownedObservations.find((o) => o.id === obsSelectedId);
@@ -950,27 +1198,32 @@ export default function MyPlayersFeature({
       onQuickAddObservation(copy);
     } else {
       console.warn(
-        "[MyPlayersFeature] onQuickAddObservation not provided – duplicate obs not persisted"
+        "[MyPlayersFeature] onQuickAddObservation not provided – duplicate obs not persisted",
       );
     }
     closeQuick();
   }
+
   function reassignExistingToPlayer() {
     if (!quickFor || obsSelectedId == null) return;
     const base = ownedObservations.find((o) => o.id === obsSelectedId);
     if (!base) return;
-    const updated: Observation = { ...base, player: quickFor.name };
+    const updated: Observation = {
+      ...base,
+      player: quickFor.name,
+    };
     if (onQuickAddObservation) {
       onQuickAddObservation(updated);
     } else {
       console.warn(
-        "[MyPlayersFeature] onQuickAddObservation not provided – reassign obs not persisted"
+        "[MyPlayersFeature] onQuickAddObservation not provided – reassign obs not persisted",
       );
     }
     closeQuick();
   }
 
   /* ===== active chips (hide "Poz.: Wszystkie" by default) ===== */
+
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
 
@@ -986,10 +1239,9 @@ export default function MyPlayersFeature({
     }
 
     const visiblePositions = (Object.keys(pos) as PosGroup[]).filter(
-      (k) => pos[k]
+      (k) => pos[k],
     );
     const allSelected = visiblePositions.length === POS.length;
-
     if (!allSelected) {
       const posLabel = `Poz.: ${visiblePositions.join(", ")}`;
       chips.push({
@@ -1052,7 +1304,9 @@ export default function MyPlayersFeature({
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       const typing =
-        tag === "input" || tag === "textarea" || (e as any).isComposing;
+        tag === "input" ||
+        tag === "textarea" ||
+        (e as any).isComposing;
       if (typing) return;
 
       if (e.key === "/") {
@@ -1085,6 +1339,7 @@ export default function MyPlayersFeature({
         return;
       }
     }
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [router, isMobile]);
@@ -1101,7 +1356,9 @@ export default function MyPlayersFeature({
   /* ====== scope-aware selection state (used by pill) ====== */
   const anyActiveSelected = useMemo(() => {
     return ownedPlayers.some(
-      (p) => selected.has(p.id) && (p.status ?? "active") === "active"
+      (p) =>
+        selected.has(p.id) &&
+        (p.status ?? "active") === "active",
     );
   }, [ownedPlayers, selected]);
 
@@ -1109,9 +1366,9 @@ export default function MyPlayersFeature({
   const trashCount = useMemo(
     () =>
       (ownedPlayers as PlayerWithOwner[]).filter(
-        (p) => (p.status ?? "active") === "trash"
+        (p) => (p.status ?? "active") === "trash",
       ).length,
-    [ownedPlayers]
+    [ownedPlayers],
   );
 
   /* ===== NEW: empty trash (only players belonging to this user) ===== */
@@ -1122,7 +1379,7 @@ export default function MyPlayersFeature({
       .filter(
         (p) =>
           (p.status ?? "active") === "trash" &&
-          (p.user_id === authUserId || p.profile_id === authUserId)
+          (p.user_id === authUserId || p.profile_id === authUserId),
       )
       .map((p) => p.id as number);
 
@@ -1144,19 +1401,25 @@ export default function MyPlayersFeature({
   useEffect(() => {
     const el = tableWrapRef.current;
     if (!el) return;
+
     const check = () => {
       const should =
-        isMobile && el.scrollWidth > el.clientWidth && el.scrollLeft < 8;
+        isMobile &&
+        el.scrollWidth > el.clientWidth &&
+        el.scrollLeft < 8;
       setShowScrollHint(should);
     };
     check();
+
     const onScroll = () => {
       if (el.scrollLeft > 12) setShowScrollHint(false);
     };
+
     el.addEventListener("scroll", onScroll, {
       passive: true,
     } as any);
     window.addEventListener("resize", check);
+
     return () => {
       el.removeEventListener("scroll", onScroll as any);
       window.removeEventListener("resize", check);
@@ -1187,7 +1450,7 @@ export default function MyPlayersFeature({
   // === Widok ładowania auth / brak usera ===
   if (authLoading) {
     return (
-      <div className="w-full rounded-md border border-gray-200 bg-white p-4 text-sm text-dark shadow-sm dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200">
+      <div className="w-full rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-900 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200">
         Ładowanie Twoich zawodników…
       </div>
     );
@@ -1196,8 +1459,8 @@ export default function MyPlayersFeature({
   if (!authUserId) {
     return (
       <div className="w-full rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
-        Nie udało się powiązać listy zawodników z zalogowanym kontem. Spróbuj
-        odświeżyć stronę lub zalogować się ponownie.
+        Nie udało się powiązać listy zawodników z zalogowanym
+        kontem. Spróbuj odświeżyć stronę lub zalogować się ponownie.
       </div>
     );
   }
@@ -1205,7 +1468,6 @@ export default function MyPlayersFeature({
   return (
     <TooltipProvider delayDuration={150}>
       <div className="w-full">
-        {/* TOOLBAR */}
         <Toolbar
           title={
             <div className="flex w-full min-h-9 items-start gap-3">
@@ -1219,7 +1481,9 @@ export default function MyPlayersFeature({
                 <Tabs
                   className="items-center"
                   value={knownScope}
-                  onValueChange={(v) => changeKnownScope(v as KnownScope)}
+                  onValueChange={(v) =>
+                    changeKnownScope(v as KnownScope)
+                  }
                 >
                   <TabsList>
                     <TabsTrigger
@@ -1260,28 +1524,38 @@ export default function MyPlayersFeature({
               <div className="hidden h-9 flex-1 items-start justify-center md:flex">
                 <div className="flex h-9 items-center gap-1">
                   {inlineChips.map((c) => (
-                    <Chip key={c.key} label={c.label} onClear={c.clear} />
+                    <Chip
+                      key={c.key}
+                      label={c.label}
+                      onClear={c.clear}
+                    />
                   ))}
-
                   {overflowChips.length > 0 && (
                     <>
                       <button
                         ref={chipsMoreBtnRef}
                         type="button"
                         className="inline-flex h-9 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
-                        onClick={() => setChipsOpen((v) => !v)}
+                        onClick={() =>
+                          setChipsOpen((v) => !v)
+                        }
                         onMouseEnter={() => {
                           if (chipsHoverTimer.current)
-                            window.clearTimeout(chipsHoverTimer.current);
+                            window.clearTimeout(
+                              chipsHoverTimer.current,
+                            );
                           setChipsOpen(true);
                         }}
                         onMouseLeave={() => {
                           if (chipsHoverTimer.current)
-                            window.clearTimeout(chipsHoverTimer.current);
-                          chipsHoverTimer.current = window.setTimeout(
-                            () => setChipsOpen(false),
-                            160
-                          ) as unknown as number;
+                            window.clearTimeout(
+                              chipsHoverTimer.current,
+                            );
+                          chipsHoverTimer.current =
+                            window.setTimeout(
+                              () => setChipsOpen(false),
+                              160,
+                            ) as unknown as number;
                         }}
                         aria-expanded={chipsOpen}
                         title="Pokaż więcej filtrów"
@@ -1300,16 +1574,21 @@ export default function MyPlayersFeature({
                           className="w-full p-2"
                           onMouseEnter={() => {
                             if (chipsHoverTimer.current)
-                              window.clearTimeout(chipsHoverTimer.current);
+                              window.clearTimeout(
+                                chipsHoverTimer.current,
+                              );
                             setChipsOpen(true);
                           }}
                           onMouseLeave={() => {
                             if (chipsHoverTimer.current)
-                              window.clearTimeout(chipsHoverTimer.current);
-                            chipsHoverTimer.current = window.setTimeout(
-                              () => setChipsOpen(false),
-                              140
-                            ) as unknown as number;
+                              window.clearTimeout(
+                                chipsHoverTimer.current,
+                              );
+                            chipsHoverTimer.current =
+                              window.setTimeout(
+                                () => setChipsOpen(false),
+                                140,
+                              ) as unknown as number;
                           }}
                         >
                           <div className="mb-1 px-1 text-[11px] font-semibold text-gray-700 dark:text-neutral-200">
@@ -1335,9 +1614,8 @@ export default function MyPlayersFeature({
           right={
             <div className="flex min-h-9 w-full flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between">
               <div />
-
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
-                {/* Dodaj zawodnika – mobile: 100% width, desktop: auto */}
+                {/* Dodaj zawodnika */}
                 <Button
                   type="button"
                   title="Skrót: N"
@@ -1364,7 +1642,7 @@ export default function MyPlayersFeature({
                         setQ(e.target.value);
                         setPage(1);
                       }}
-                      placeholder="Szukaj po nazwisku/klubie… (/) "
+                      placeholder="Szukaj po nazwisku/klubie… (/)"
                       className={`${controlH} w-full pl-8 pr-3 text-sm`}
                       aria-label="Szukaj w bazie zawodników"
                     />
@@ -1375,7 +1653,6 @@ export default function MyPlayersFeature({
                     <span className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 dark:bg-neutral-950 dark:text-neutral-300">
                       Filtry
                     </span>
-
                     <Button
                       ref={filterBtnRef}
                       type="button"
@@ -1393,7 +1670,8 @@ export default function MyPlayersFeature({
                       <ListFilter className="h-4 w-4" />
                       {filtersCount ? (
                         <span className="hidden sm:inline">
-                          {` (${filtersCount})`}
+                          {" "}
+                          ({filtersCount})
                         </span>
                       ) : null}
                     </Button>
@@ -1401,7 +1679,7 @@ export default function MyPlayersFeature({
 
                   {/* Więcej (3 kropki) */}
                   <Button
-                    ref={moreBtnRef}
+                    ref={moreBtnRef as any}
                     type="button"
                     aria-label="Więcej"
                     aria-pressed={moreOpen}
@@ -1431,7 +1709,9 @@ export default function MyPlayersFeature({
           <Tabs
             className="w-full items-center"
             value={knownScope}
-            onValueChange={(v) => changeKnownScope(v as KnownScope)}
+            onValueChange={(v) =>
+              changeKnownScope(v as KnownScope)
+            }
           >
             <TabsList className="flex w-full">
               <TabsTrigger
@@ -1466,25 +1746,27 @@ export default function MyPlayersFeature({
             <TabsContent value="known" />
             <TabsContent value="unknown" />
 
-          {/* Mobile: compact chips under tabs */}
-          {activeChips.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center gap-1">
-              {activeChips.map((c) => (
-                <span
-                  key={c.key}
-                  className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
-                >
-                  <span className="max-w-[120px] truncate">{c.label}</span>
-                  <button
-                    className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
-                    onClick={c.clear}
+            {/* Mobile: compact chips under tabs */}
+            {activeChips.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-1">
+                {activeChips.map((c) => (
+                  <span
+                    key={c.key}
+                    className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
+                    <span className="max-w-[120px] truncate">
+                      {c.label}
+                    </span>
+                    <button
+                      className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
+                      onClick={c.clear}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </Tabs>
         </div>
 
@@ -1501,7 +1783,7 @@ export default function MyPlayersFeature({
             >
               <div className="w-full p-3 text-sm">
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="text-xs font-semibold text-dark dark:text-neutral-300">
+                  <div className="text-xs font-semibold text-gray-900 dark:text-neutral-300">
                     Filtry
                   </div>
                   <Tooltip>
@@ -1526,7 +1808,9 @@ export default function MyPlayersFeature({
                         aria-label="Wyczyść wszystko"
                       >
                         <Eraser className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Wyczyść</span>
+                        <span className="hidden sm:inline">
+                          Wyczyść
+                        </span>
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>Wyczyść filtry</TooltipContent>
@@ -1534,18 +1818,18 @@ export default function MyPlayersFeature({
                 </div>
 
                 <div className="mb-2 grid grid-cols-4 gap-2">
-                  {POS.map((p) => (
+                  {POS.map((pKey) => (
                     <label
-                      key={p}
+                      key={pKey}
                       className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
-                      <span>{p}</span>
+                      <span>{pKey}</span>
                       <Checkbox
-                        checked={pos[p]}
+                        checked={pos[pKey]}
                         onCheckedChange={(v) => {
                           setPos((prev) => ({
                             ...prev,
-                            [p]: Boolean(v),
+                            [pKey]: Boolean(v),
                           }));
                           setPage(1);
                         }}
@@ -1555,7 +1839,7 @@ export default function MyPlayersFeature({
                 </div>
 
                 <div className="mb-2">
-                  <Label className="text-xs text-dark dark:text-neutral-300">
+                  <Label className="text-xs text-gray-900 dark:text-neutral-300">
                     Klub
                   </Label>
                   <Input
@@ -1570,7 +1854,7 @@ export default function MyPlayersFeature({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-dark dark:text-neutral-300">
+                    <Label className="text-xs text-gray-900 dark:text-neutral-300">
                       Wiek min
                     </Label>
                     <Input
@@ -1584,7 +1868,9 @@ export default function MyPlayersFeature({
                             ? ""
                             : Math.max(
                                 0,
-                                Number.isNaN(Number(v)) ? 0 : Number(v)
+                                Number.isNaN(Number(v))
+                                  ? 0
+                                  : Number(v),
                               );
                         setAgeMin(n as any);
                         setPage(1);
@@ -1593,7 +1879,7 @@ export default function MyPlayersFeature({
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-dark dark:text-neutral-300">
+                    <Label className="text-xs text-gray-900 dark:text-neutral-300">
                       Wiek max
                     </Label>
                     <Input
@@ -1607,8 +1893,10 @@ export default function MyPlayersFeature({
                             ? ""
                             : Math.max(
                                 0,
-                                Number.isNaN(Number(v)) ? 0 : Number(v)
-                              );
+                                Number.isNaN(Number(v))
+                                  ? 0
+                                  : Number(v),
+                            );
                         setAgeMax(n as any);
                         setPage(1);
                       }}
@@ -1619,12 +1907,16 @@ export default function MyPlayersFeature({
 
                 {activeChips.length > 0 && (
                   <div className="mt-3 border-t border-gray-200 pt-2 dark:border-neutral-800">
-                    <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">
+                    <div className="mb-1 text-[11px] font-semibold text-gray-900 dark:text-neutral-300">
                       Aktywne
                     </div>
                     <div className="flex flex-wrap items-center gap-1">
                       {activeChips.map((c) => (
-                        <Chip key={c.key} label={c.label} onClear={c.clear} />
+                        <Chip
+                          key={c.key}
+                          label={c.label}
+                          onClear={c.clear}
+                        />
                       ))}
                     </div>
                   </div>
@@ -1645,12 +1937,12 @@ export default function MyPlayersFeature({
             <AnchoredPopover
               open={colsOpen}
               onClose={() => setColsOpen(false)}
-              anchorRef={moreBtnRef}
+              anchorRef={moreBtnRef as any}
               align="end"
               maxWidth={320}
             >
               <div className="w-full p-3">
-                <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">
+                <div className="mb-2 text-xs font-medium text-gray-900 dark:text-neutral-400">
                   Widoczność kolumn
                 </div>
                 {Object.keys(DEFAULT_COLS).map((k) => {
@@ -1682,7 +1974,7 @@ export default function MyPlayersFeature({
             <AnchoredPopover
               open={moreOpen}
               onClose={() => setMoreOpen(false)}
-              anchorRef={moreBtnRef}
+              anchorRef={moreBtnRef as any}
               align="end"
               maxWidth={260}
             >
@@ -1706,7 +1998,9 @@ export default function MyPlayersFeature({
                 >
                   <Columns3 className="h-4 w-4" /> Kolumny
                 </button>
+
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => {
@@ -1746,6 +2040,7 @@ export default function MyPlayersFeature({
                 )}
 
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
+
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => {
@@ -1779,18 +2074,18 @@ export default function MyPlayersFeature({
               title="Filtry"
             >
               <div className="mb-3 grid grid-cols-2 gap-2">
-                {POS.map((p) => (
+                {POS.map((pKey) => (
                   <label
-                    key={p}
+                    key={pKey}
                     className="flex items-center justify-between rounded-md px-2 py-2 ring-1 ring-gray-200 dark:ring-neutral-700"
                   >
-                    <span>{p}</span>
+                    <span>{pKey}</span>
                     <Checkbox
-                      checked={pos[p]}
+                      checked={pos[pKey]}
                       onCheckedChange={(v) => {
                         setPos((prev) => ({
                           ...prev,
-                          [p]: Boolean(v),
+                          [pKey]: Boolean(v),
                         }));
                         setPage(1);
                       }}
@@ -1798,7 +2093,6 @@ export default function MyPlayersFeature({
                   </label>
                 ))}
               </div>
-
               <div className="mb-3">
                 <Label className="text-xs">Klub</Label>
                 <Input
@@ -1810,7 +2104,6 @@ export default function MyPlayersFeature({
                   className="mt-1 border-gray-300 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Wiek min</Label>
@@ -1823,7 +2116,12 @@ export default function MyPlayersFeature({
                       const n =
                         v === ""
                           ? ""
-                          : Math.max(0, Number.isNaN(Number(v)) ? 0 : Number(v));
+                          : Math.max(
+                              0,
+                              Number.isNaN(Number(v))
+                                ? 0
+                                : Number(v),
+                            );
                       setAgeMin(n as any);
                       setPage(1);
                     }}
@@ -1841,7 +2139,12 @@ export default function MyPlayersFeature({
                       const n =
                         v === ""
                           ? ""
-                          : Math.max(0, Number.isNaN(Number(v)) ? 0 : Number(v));
+                          : Math.max(
+                              0,
+                              Number.isNaN(Number(v))
+                                ? 0
+                                : Number(v),
+                            );
                       setAgeMax(n as any);
                       setPage(1);
                     }}
@@ -1852,7 +2155,7 @@ export default function MyPlayersFeature({
 
               {activeChips.length > 0 && (
                 <div className="mt-3 border-t border-gray-200 pt-2 dark:border-neutral-800">
-                  <div className="mb-1 text-[11px] font-semibold text-dark dark:text-neutral-300">
+                  <div className="mb-1 text-[11px] font-semibold text-gray-900 dark:text-neutral-300">
                     Aktywne
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
@@ -1907,14 +2210,13 @@ export default function MyPlayersFeature({
               </div>
             </MobileSheet>
 
-            {/* Więcej – with trash count + Opróżnij kosz */}
+            {/* Więcej */}
             <MobileSheet
               open={moreSheetOpen}
               onClose={() => setMoreSheetOpen(false)}
               title="Więcej"
             >
-              {/* Small header with trash count */}
-              <div className="mb-1 flex items-center justify-between px-1 gap-2">
+              <div className="mb-1 flex items-center justify-between gap-2 px-1">
                 <div className="text-xs font-medium text-stone-500 dark:text-neutral-400">
                   Stan kosza
                 </div>
@@ -1933,7 +2235,6 @@ export default function MyPlayersFeature({
                 >
                   <Columns3 className="h-4 w-4" /> Kolumny
                 </button>
-
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   onClick={() => {
@@ -2040,17 +2341,13 @@ export default function MyPlayersFeature({
                 >
                   <X className="h-4 w-4" />
                 </button>
-
                 <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded-md bg-gray-900 px-2 text-xs font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
                   {selected.size}
                 </span>
-
                 <span className="hidden text-sm text-gray-800 dark:text-neutral-100 sm:inline">
                   zaznaczone
                 </span>
-
                 <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-neutral-800" />
-
                 {anyActiveSelected && scope === "active" ? (
                   <Button
                     className="h-8 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
@@ -2088,9 +2385,10 @@ export default function MyPlayersFeature({
                   setSelected={setSelected}
                   scope={scope}
                   onOpen={(id) => {
-                    const p = (players as any[]).find((pl) => pl.id === id);
+                    const p = (players as any[]).find(
+                      (pl) => pl.id === id,
+                    );
                     let label: string | undefined;
-
                     if (p) {
                       const fn = (p.firstName ?? p.imie ?? "")
                         .toString()
@@ -2098,14 +2396,12 @@ export default function MyPlayersFeature({
                       const ln = (p.lastName ?? p.nazwisko ?? "")
                         .toString()
                         .trim();
-
                       if (fn || ln) {
                         label = `${fn} ${ln}`.trim();
                       } else {
                         label = p.name;
                       }
                     }
-
                     const qs = label
                       ? `?playerName=${encodeURIComponent(label)}`
                       : "";
@@ -2181,6 +2477,7 @@ export default function MyPlayersFeature({
 /* =======================================
    Table
 ======================================= */
+
 function PlayersTable({
   rows,
   observations, // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -2219,12 +2516,15 @@ function PlayersTable({
   wrapRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const allChecked =
-    pageSliceCount > 0 && rows.every((r) => selected.has(r.id as number));
+    pageSliceCount > 0 &&
+    rows.every((r) => selected.has(r.id as number));
   const someChecked =
-    !allChecked && rows.some((r) => selected.has(r.id as number));
+    !allChecked &&
+    rows.some((r) => selected.has(r.id as number));
 
   // per-row confirmation for trash
-  const [confirmTrashId, setConfirmTrashId] = useState<number | null>(null);
+  const [confirmTrashId, setConfirmTrashId] =
+    useState<number | null>(null);
 
   useEffect(() => {
     // reset confirmation on page/scope change
@@ -2243,10 +2543,15 @@ function PlayersTable({
       <button
         className={
           "flex items-center gap-1 font-medium " +
-          (active ? "text-gray-900 dark:text-neutral-100" : "")
+          (active
+            ? "text-gray-900 dark:text-neutral-100"
+            : "")
         }
         onClick={() =>
-          onSortChange(k, active && sortDir === "asc" ? "desc" : "asc")
+          onSortChange(
+            k,
+            active && sortDir === "asc" ? "desc" : "asc",
+          )
         }
       >
         {children}
@@ -2264,7 +2569,8 @@ function PlayersTable({
   const getInitials = (name: string) => {
     const parts = name.trim().split(/\s+/);
     const first = parts[0]?.[0] ?? "";
-       const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
+    const last =
+      parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
     return (first + last).toUpperCase();
   };
 
@@ -2274,7 +2580,7 @@ function PlayersTable({
   };
 
   const KnownBadge = ({ known }: { known: boolean }) => {
-    if (known) return null; // znany → no badge
+    if (known) return null;
     return (
       <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
         nieznany
@@ -2294,15 +2600,17 @@ function PlayersTable({
       className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-950"
     >
       <table className="w-full table-auto text-sm">
-        <thead className="sticky top-0 z-10 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+        <thead className="sticky top-0 z-10 bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-300">
           <tr>
             {visibleCols.photo && (
               <th
                 className={`${cellPad} w-px whitespace-nowrap text-left font-medium`}
-              ></th>
+              />
             )}
             {visibleCols.select && (
-              <th className={`${cellPad} w-10 text-left font-medium`}>
+              <th
+                className={`${cellPad} w-10 text-left font-medium`}
+              >
                 <Checkbox
                   checked={
                     rows.length === 0
@@ -2314,16 +2622,18 @@ function PlayersTable({
                       : false
                   }
                   onCheckedChange={(v) => {
-                    if (v)
+                    if (v) {
                       setSelected(
                         new Set([
                           ...selected,
                           ...rows.map((f) => f.id as number),
-                        ])
+                        ]),
                       );
-                    else {
+                    } else {
                       const set = new Set(selected);
-                      rows.forEach((r) => set.delete(r.id as number));
+                      rows.forEach((r) =>
+                        set.delete(r.id as number),
+                      );
                       setSelected(set);
                     }
                   }}
@@ -2353,12 +2663,16 @@ function PlayersTable({
             )}
             {visibleCols.progress && (
               <th className={`${cellPad} text-left`}>
-                <SortHeader k="progress">Wypełnienie profilu</SortHeader>
+                <SortHeader k="progress">
+                  Wypełnienie profilu
+                </SortHeader>
               </th>
             )}
             {visibleCols.rating && (
               <th className={`${cellPad} text-left`}>
-                <SortHeader k="rating">Ocena z obserwacji</SortHeader>
+                <SortHeader k="rating">
+                  Ocena z obserwacji
+                </SortHeader>
               </th>
             )}
             {visibleCols.obs && (
@@ -2367,15 +2681,19 @@ function PlayersTable({
               </th>
             )}
             {visibleCols.actions && (
-              <th className={`${cellPad} text-right font-medium`}>Akcje</th>
+              <th
+                className={`${cellPad} text-right font-medium`}
+              >
+                Akcje
+              </th>
             )}
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => {
             const jersey = getJerseyNo(r.name);
-            const isConfirmingTrash = confirmTrashId === (r.id as number);
-
+            const isConfirmingTrash =
+              confirmTrashId === (r.id as number);
             const avg = r._avgRating;
             const avgLabel =
               typeof avg === "number" ? avg.toFixed(1) : null;
@@ -2387,7 +2705,9 @@ function PlayersTable({
                 onClick={() => onOpen(r.id as number)}
               >
                 {visibleCols.photo && (
-                  <td className={`${cellPad} w-px whitespace-nowrap`}>
+                  <td
+                    className={`${cellPad} w-px whitespace-nowrap`}
+                  >
                     <div className="relative">
                       {r._known ? (
                         r.photo ? (
@@ -2403,12 +2723,12 @@ function PlayersTable({
                           </div>
                         )
                       ) : jersey ? (
-                        // NIEZNANY + jest numer koszulki → pokazujemy sam numer
+                        // NIEZNANY + jest numer koszulki
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
                           {jersey}
                         </div>
                       ) : (
-                        // NIEZNANY + brak numeru → sama koszulka
+                        // NIEZNANY + brak numeru → koszulka
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
                           <PlayerOnlyTshirt
                             className="h-6 w-6"
@@ -2443,22 +2763,30 @@ function PlayersTable({
                     className={`${cellPad} max-w-[260px] text-gray-900 dark:text-neutral-100`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="truncate" title={r.name}>
+                      <span
+                        className="truncate"
+                        title={r.name}
+                      >
                         {r.name}
                       </span>
                       <KnownBadge known={r._known} />
                     </div>
                   </td>
                 )}
+
                 {visibleCols.club && (
                   <td
                     className={`${cellPad} max-w-[220px] text-gray-700 dark:text-neutral-200`}
                   >
-                    <span className="truncate" title={r.club}>
+                    <span
+                      className="truncate"
+                      title={r.club}
+                    >
                       {r.club}
                     </span>
                   </td>
                 )}
+
                 {visibleCols.pos && (
                   <td className={cellPad}>
                     <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
@@ -2466,6 +2794,7 @@ function PlayersTable({
                     </span>
                   </td>
                 )}
+
                 {visibleCols.age && (
                   <td
                     className={`${cellPad} text-gray-700 dark:text-neutral-200`}
@@ -2480,7 +2809,7 @@ function PlayersTable({
                       <div className="relative h-2 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-800">
                         <div
                           className={`h-full ${progressBarColor(
-                            r._progress
+                            r._progress,
                           )} transition-[width] duration-300`}
                           style={{
                             width: `${r._progress}%`,
@@ -2501,7 +2830,7 @@ function PlayersTable({
                         {avgLabel}
                       </span>
                     ) : (
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-[11px] text-gray-400">
                         —
                       </span>
                     )}
@@ -2515,8 +2844,11 @@ function PlayersTable({
                     </span>
                   </td>
                 )}
+
                 {visibleCols.actions && (
-                  <td className={`${cellPad} text-right`}>
+                  <td
+                    className={`${cellPad} text-right`}
+                  >
                     <div className="flex justify-end gap-1.5">
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -2528,7 +2860,11 @@ function PlayersTable({
                               e.stopPropagation();
                               onOpen(r.id as number);
                             }}
-                            aria-label={r._known ? "Edytuj" : "Uzupełnij dane"}
+                            aria-label={
+                              r._known
+                                ? "Edytuj"
+                                : "Uzupełnij dane"
+                            }
                           >
                             {r._known ? (
                               <Pencil className="h-4 w-4" />
@@ -2538,7 +2874,9 @@ function PlayersTable({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {r._known ? "Edytuj" : "Uzupełnij dane"}
+                          {r._known
+                            ? "Edytuj"
+                            : "Uzupełnij dane"}
                         </TooltipContent>
                       </Tooltip>
 
@@ -2577,14 +2915,18 @@ function PlayersTable({
                                 className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setConfirmTrashId(r.id as number);
+                                  setConfirmTrashId(
+                                    r.id as number,
+                                  );
                                 }}
                                 aria-label="Przenieś do kosza"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Przenieś do kosza</TooltipContent>
+                            <TooltipContent>
+                              Przenieś do kosza
+                            </TooltipContent>
                           </Tooltip>
                         )
                       ) : (
@@ -2603,7 +2945,9 @@ function PlayersTable({
                               <Undo2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Przywróć</TooltipContent>
+                          <TooltipContent>
+                            Przywróć
+                          </TooltipContent>
                         </Tooltip>
                       )}
                     </div>
@@ -2612,13 +2956,15 @@ function PlayersTable({
               </tr>
             );
           })}
+
           {rows.length === 0 && (
             <tr>
               <td
                 colSpan={
-                  Object.values(visibleCols).filter(Boolean).length || 1
+                  Object.values(visibleCols).filter(Boolean)
+                    .length || 1
                 }
-                className={`${cellPad} text-center text-sm text-dark dark:text-neutral-400`}
+                className={`${cellPad} text-center text-sm text-gray-900 dark:text-neutral-400`}
               >
                 Brak wyników dla bieżących filtrów.
               </td>
@@ -2633,6 +2979,7 @@ function PlayersTable({
 /* =======================================
    Quick Observation
 ======================================= */
+
 function QuickObservation({
   player,
   onBack,
@@ -2687,6 +3034,7 @@ function QuickObservation({
       return { a: parts[0].trim(), b: parts[1].trim() };
     return { a: m.trim(), b: "" };
   };
+
   const composeMatch = (a: string, b: string) =>
     a.trim() && b.trim()
       ? `${a.trim()} vs ${b.trim()}`
@@ -2715,20 +3063,29 @@ function QuickObservation({
   }
 
   type SaveState = "idle" | "saving" | "saved";
-  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveState, setSaveState] =
+    useState<SaveState>("idle");
   const tRef = useRef<number | null>(null);
 
   // prosty wizualny "autosave" bez localStorage / Supabase
   useEffect(() => {
     setSaveState("saving");
     window.clearTimeout(tRef.current || undefined);
-    // @ts-ignore
     tRef.current = window.setTimeout(() => {
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 1000);
-    }, 600);
-    return () => window.clearTimeout(tRef.current || undefined);
-  }, [qaMatch, qaDate, qaTime, qaMode, qaStatus, teamA, teamB]);
+    }, 600) as unknown as number;
+    return () =>
+      window.clearTimeout(tRef.current || undefined);
+  }, [
+    qaMatch,
+    qaDate,
+    qaTime,
+    qaMode,
+    qaStatus,
+    teamA,
+    teamB,
+  ]);
 
   function handleSave() {
     onSaveNew();
@@ -2741,15 +3098,15 @@ function QuickObservation({
     const q = obsQuery.trim().toLowerCase();
     const arr = [...observations].sort((a, b) =>
       ((b.date || "") + (b.time || "")).localeCompare(
-        (a.date || "") + (a.time || "")
-      )
+        (a.date || "") + (a.time || ""),
+      ),
     );
     if (!q) return arr;
     return arr.filter(
       (o) =>
         (o.match || "").toLowerCase().includes(q) ||
         (o.player || "").toLowerCase().includes(q) ||
-        (o.date || "").includes(q)
+        (o.date || "").includes(q),
     );
   }, [observations, obsQuery]);
 
@@ -2758,7 +3115,7 @@ function QuickObservation({
       {/* Header */}
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-neutral-800">
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wide text-dark dark:text-neutral-400">
+          <div className="text-xs uppercase tracking-wide text-gray-700 dark:text-neutral-400">
             Szybka obserwacja
           </div>
           <div className="truncate text-sm font-semibold text-gray-900 dark:text-neutral-100">
@@ -2794,7 +3151,9 @@ function QuickObservation({
       <div className="px-4 pt-3">
         <Tabs
           value={quickTab}
-          onValueChange={(v) => setQuickTab(v as "new" | "existing")}
+          onValueChange={(v) =>
+            setQuickTab(v as "new" | "existing")
+          }
         >
           <TabsList className="mb-2 inline-flex h-9 items-center rounded-md bg-gray-200 p-1 shadow-sm dark:bg-neutral-900">
             <TabsTrigger
@@ -2814,13 +3173,17 @@ function QuickObservation({
           </TabsList>
 
           {/* NEW */}
-          <TabsContent value="new" className="mt-2 space-y-4">
+          <TabsContent
+            value="new"
+            className="mt-2 space-y-4"
+          >
             <div className="rounded-md border border-gray-200 p-4 dark:border-neutral-800">
               <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
                 Mecz
               </div>
-              <div className="mb-3 text-xs text-dark dark:text-neutral-400">
-                Wpisz drużyny — pole „Mecz” składa się automatycznie.
+              <div className="mb-3 text-xs text-gray-700 dark:text-neutral-400">
+                Wpisz drużyny — pole „Mecz” składa się
+                automatycznie.
               </div>
 
               <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
@@ -2829,27 +3192,36 @@ function QuickObservation({
                   <Input
                     value={teamA}
                     onChange={(e) =>
-                      updateMatchFromTeams(e.target.value, teamB)
+                      updateMatchFromTeams(
+                        e.target.value,
+                        teamB,
+                      )
                     }
                     placeholder="np. Lech U19"
                     className="mt-1"
                   />
                 </div>
-                <div className="hidden select-none items-end justify-center pb-2 text-sm text-dark sm:flex">
+
+                <div className="hidden select-none items-end justify-center pb-2 text-sm text-gray-700 sm:flex">
                   vs
                 </div>
+
                 <div>
                   <Label>Drużyna B</Label>
                   <Input
                     value={teamB}
                     onChange={(e) =>
-                      updateMatchFromTeams(teamA, e.target.value)
+                      updateMatchFromTeams(
+                        teamA,
+                        e.target.value,
+                      )
                     }
                     placeholder="np. Wisła U19"
                     className="mt-1"
                   />
                 </div>
-                <div className="text-center text-sm text-dark sm:hidden">
+
+                <div className="text-center text-sm text-gray-700 sm:hidden">
                   vs
                 </div>
               </div>
@@ -2860,7 +3232,9 @@ function QuickObservation({
                   <Input
                     type="date"
                     value={qaDate}
-                    onChange={(e) => setQaDate(e.target.value)}
+                    onChange={(e) =>
+                      setQaDate(e.target.value)
+                    }
                     className="mt-1"
                   />
                 </div>
@@ -2869,13 +3243,15 @@ function QuickObservation({
                   <Input
                     type="time"
                     value={qaTime}
-                    onChange={(e) => setQaTime(e.target.value)}
+                    onChange={(e) =>
+                      setQaTime(e.target.value)
+                    }
                     className="mt-1"
                   />
                 </div>
               </div>
 
-              <div className="mt-3 text-xs text-dark dark:text-neutral-300">
+              <div className="mt-3 text-xs text-gray-800 dark:text-neutral-300">
                 Mecz:{" "}
                 <span className="font-medium">
                   {qaMatch || "—"}
@@ -2889,7 +3265,7 @@ function QuickObservation({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-md border border-gray-200 p-4 dark:border-neutral-800">
                 <Label>Tryb</Label>
-                <div className="mt-2 inline-flex overflow-hidden rounded-md border">
+                <div className="mt-2 inline-flex overflow-hidden rounded-md border border-gray-200 dark:border-neutral-700">
                   {(["live", "tv"] as const).map((m) => (
                     <button
                       key={m}
@@ -2902,20 +3278,23 @@ function QuickObservation({
                     >
                       {m === "live" ? (
                         <span className="inline-flex items-center gap-1">
-                          <Radio className="h-3.5 w-3.5" /> Live
+                          <Radio className="h-3.5 w-3.5" />
+                          Live
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1">
-                          <Tv className="h-3.5 w-3.5" /> TV
+                          <Tv className="h-3.5 w-3.5" />
+                          TV
                         </span>
                       )}
                     </button>
                   ))}
                 </div>
               </div>
+
               <div className="rounded-md border border-gray-200 p-4 dark:border-neutral-800">
                 <Label>Status</Label>
-                <div className="mt-2 inline-flex overflow-hidden rounded-md border">
+                <div className="mt-2 inline-flex overflow-hidden rounded-md border border-gray-200 dark:border-neutral-700">
                   {(["draft", "final"] as const).map((s) => (
                     <button
                       key={s}
@@ -2935,8 +3314,9 @@ function QuickObservation({
 
             <div className="sticky bottom-0 -mx-4 mt-1 border-t border-gray-200 bg-white/90 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
               <div className="flex items-center justify-end gap-2">
-                <div className="mr-auto hidden text-[11px] text-dark dark:text-neutral-400 sm:block">
-                  Skróty: <span className="font-medium">Enter</span> — Zapisz,{" "}
+                <div className="mr-auto hidden text-[11px] text-gray-600 dark:text-neutral-400 sm:block">
+                  Skróty:{" "}
+                  <span className="font-medium">Enter</span> — Zapisz,{" "}
                   <span className="font-medium">Esc</span> — Wróć
                 </div>
                 <Button
@@ -2967,9 +3347,12 @@ function QuickObservation({
           </TabsContent>
 
           {/* EXISTING */}
-          <TabsContent value="existing" className="mt-2 space-y-3">
+          <TabsContent
+            value="existing"
+            className="mt-2 space-y-3"
+          >
             <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-dark" />
+              <Search className="h-4 w-4 text-gray-800 dark:text-neutral-100" />
               <Input
                 value={obsQuery}
                 onChange={(e) => setObsQuery(e.target.value)}
@@ -2979,8 +3362,8 @@ function QuickObservation({
             </div>
 
             <div className="max-h-90 overflow-auto rounded-md border border-gray-200 dark:border-neutral-700">
-              <table className="table-auto w-fit text-sm">
-                <thead className="sticky top-0 bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+              <table className="table-auto w-full text-sm">
+                <thead className="sticky top-0 bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-300">
                   <tr>
                     <th className="w-px whitespace-nowrap p-2 text-left font-medium">
                       #
@@ -3011,14 +3394,18 @@ function QuickObservation({
                           ? "bg-blue-50/60 dark:bg-blue-900/20"
                           : ""
                       }`}
-                      onClick={() => setObsSelectedId(o.id as number)}
+                      onClick={() =>
+                        setObsSelectedId(o.id as number)
+                      }
                     >
                       <td className="w-px whitespace-nowrap p-2">
                         <input
                           type="radio"
                           name="obsPick"
                           checked={obsSelectedId === o.id}
-                          onChange={() => setObsSelectedId(o.id as number)}
+                          onChange={() =>
+                            setObsSelectedId(o.id as number)
+                          }
                         />
                       </td>
                       <td className="w-px whitespace-nowrap p-2">
@@ -3035,13 +3422,14 @@ function QuickObservation({
                       <td className="w-px whitespace-nowrap p-2">
                         <span
                           className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
-                            // @ts-ignore
                             (o as any).mode === "tv"
                               ? "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200"
                               : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
                           }`}
                         >
-                          {(o as any).mode === "tv" ? "TV" : "Live"}
+                          {(o as any).mode === "tv"
+                            ? "TV"
+                            : "Live"}
                         </span>
                       </td>
                       <td className="w-px whitespace-nowrap p-2">
@@ -3052,16 +3440,19 @@ function QuickObservation({
                               : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
                           }`}
                         >
-                          {o.status === "final" ? "Finalna" : "Szkic"}
+                          {o.status === "final"
+                            ? "Finalna"
+                            : "Szkic"}
                         </span>
                       </td>
                     </tr>
                   ))}
+
                   {existingFiltered.length === 0 && (
                     <tr>
                       <td
                         colSpan={6}
-                        className="p-6 text-center text-sm text-dark dark:text-neutral-400"
+                        className="p-6 text-center text-sm text-gray-800 dark:text-neutral-400"
                       >
                         Brak obserwacji dla podanych kryteriów.
                       </td>
