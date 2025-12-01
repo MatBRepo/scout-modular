@@ -278,8 +278,9 @@ function toEditorXO(row: XO): EditorXO {
 
   const editorObj: any = {
     id: row.id,
+    match: row.match ?? "",             // ⬅️ KLUCZOWE
     reportDate: row.date || "",
-    competition: row.competition ?? "", // <- Liga / turniej do edytora
+    competition: row.competition ?? "",
     teamA: teamA || "",
     teamB: teamB || "",
     conditions: row.mode ?? "live",
@@ -297,6 +298,7 @@ function toEditorXO(row: XO): EditorXO {
 
   return editorObj as EditorXO;
 }
+
 
 function fromEditorXO(e: EditorXO, prev?: XO): XO {
   const anyE: any = e;

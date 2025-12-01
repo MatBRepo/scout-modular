@@ -784,141 +784,116 @@ export function ObservationEditor({
   const autoSaveLastKeyRef = useRef<string | null>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
 
-   async function saveObservation(opts?: {
-    closeAfter?: boolean;
-    externalSave?: boolean;
-    force?: boolean;
-  }) {
-    const { closeAfter = false, externalSave = false, force = false } =
-      opts ?? {};
+async function saveObservation(opts?: {
+  closeAfter?: boolean;
+  externalSave?: boolean;
+  force?: boolean;
+}) {
+  const { closeAfter = false, externalSave = false, force = false } =
+    opts ?? {};
 
-    // ⬇️ jeśli NIE wymuszamy, to trzymaj się canSaveObservation
-    if (!force && !canSaveObservation) {
-      return;
-    }
+  if (!force && !canSaveObservation) {
+    return;
+  }
 
-    const supabase = getSupabase();
-    setSaveState("saving");
-    setDuplicateError(null);
+  const supabase = getSupabase();
+  setSaveState("saving");
+  setDuplicateError(null);
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      console.error("[ObservationEditor] Brak użytkownika przy zapisie", {
-        userError,
-      });
-      setSaveState("idle");
-      return;
-    }
+  if (userError || !user) {
+    console.error("[ObservationEditor] Brak użytkownika przy zapisie", {
+      userError,
+    });
+    setSaveState("idle");
+    return;
+  }
 
-    let id =
-      (o.id as number | undefined) ??
-      ((o.__listMeta as any)?.id as number | undefined) ??
-      initialIdRef;
+  let id =
+    (o.id as number | undefined) ??
+    ((o.__listMeta as any)?.id as number | undefined) ??
+    initialIdRef;
 
-    if (!id || id === 0) {
-      id = Date.now();
-    }
+  if (!id || id === 0) {
+    id = Date.now();
+  }
 
-    const baseMeta =
-      o.__listMeta ??
-      ({
-        id,
-        status: "draft",
-        bucket: "active",
-        time: (o as any).time ?? "",
-        player: (o as any).player ?? "",
-      } as XO["__listMeta"]);
-
-    const primaryPlayerName =
-      (baseMeta?.player && baseMeta.player.trim().length > 0
-        ? baseMeta.player
-        : (o.players && o.players[0]
-            ? (o.players[0].name ||
-                (o.players[0].shirtNo
-                  ? `#${o.players[0].shirtNo}`
-                  : "")) ?? ""
-            : "")) || "";
-
-    const meta: XO["__listMeta"] = {
-      ...baseMeta,
+  const baseMeta =
+    o.__listMeta ??
+    ({
       id,
-      player: primaryPlayerName,
-      status: autoStatus,
-    };
+      status: "draft",
+      bucket: "active",
+      time: (o as any).time ?? "",
+      player: (o as any).player ?? "",
+    } as XO["__listMeta"]);
 
-    const payload: XO = {
-      ...o,
-      id,
-      reportDate: matchDate || undefined,
-      __listMeta: {
-        ...meta,
-        time: matchTime || "",
-      },
-    };
+  const primaryPlayerName =
+    (baseMeta?.player && baseMeta.player.trim().length > 0
+      ? baseMeta.player
+      : (o.players && o.players[0]
+          ? (o.players[0].name ||
+              (o.players[0].shirtNo
+                ? `#${o.players[0].shirtNo}`
+                : "")) ?? ""
+          : "")) || "";
 
-    const rowDate = payload.reportDate ?? (payload as any).date ?? null;
-    const rowTime = payload.__listMeta?.time || null;
-    const rowTeamA = payload.teamA ?? null;
-    const rowTeamB = payload.teamB ?? null;
-    const rowCompetition = payload.competition ?? null;
+  const meta: XO["__listMeta"] = {
+    ...baseMeta,
+    id,
+    player: primaryPlayerName,
+    status: autoStatus,
+  };
 
-    try {
-      const baseQuery = supabase
-        .from("observations")
-        .select("id", { count: "exact" })
-        .eq("user_id", user.id)
-        .eq("date", rowDate)
-        .eq("time", rowTime)
-        .eq("team_a", rowTeamA)
-        .eq("team_b", rowTeamB)
-        .eq("competition", rowCompetition);
+  const matchDate = o.reportDate ?? "";
+  const matchTime = o.__listMeta?.time ?? "";
 
-      const { count, error: dupError } = isNewObservation
-        ? await baseQuery
-        : await baseQuery.neq("id", id);
+  // ⬇️ NOWE: zawsze składaj match z Drużyna A / Drużyna B
+  const trimmedTeamA = (teamA || "").trim();
+  const trimmedTeamB = (teamB || "").trim();
+  const composedMatch =
+    trimmedTeamA && trimmedTeamB
+      ? `${trimmedTeamA} vs ${trimmedTeamB}`
+      : o.match ?? (trimmedTeamA || trimmedTeamB || "");
 
-      if (dupError) {
-        console.error(
-          "[ObservationEditor] Błąd przy sprawdzaniu duplikatu:",
-          dupError
-        );
-      } else if ((count ?? 0) > 0) {
-        setDuplicateError(
-          isNewObservation
-            ? "Masz już obserwację dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Edytuj istniejącą, zamiast dodawać kolejną."
-            : "Istnieje już inna obserwacja dla tego meczu (ta sama data, godzina, drużyny i rozgrywki). Zmień dane meczu lub wróć do tamtej obserwacji."
-        );
-        setSaveState("idle");
-        return;
-      }
-    } catch (err) {
-      console.error(
-        "[ObservationEditor] Wyjątek przy sprawdzaniu duplikatu:",
-        err
-      );
-    }
+  const payload: XO = {
+    ...o,
+    id,
+    match: composedMatch, // ⬅️ zawsze ustawiamy match
+    reportDate: matchDate || undefined,
+    __listMeta: {
+      ...meta,
+      time: matchTime || "",
+    },
+  };
 
-    const row: any = {
-      id,
-      user_id: user.id,
-      player: primaryPlayerName || null,
-      match: payload.match ?? null,
-      team_a: rowTeamA,
-      team_b: rowTeamB,
-      competition: rowCompetition,
-      date: rowDate,
-      time: rowTime,
-      status: meta.status,
-      bucket: meta.bucket,
-      mode: (payload.conditions ?? "live") as string,
-      note: payload.note ?? null,
-      players: (payload.players ?? []) as any,
-      payload,
-    };
+  const rowDate = payload.reportDate ?? (payload as any).date ?? null;
+  const rowTime = payload.__listMeta?.time || null;
+  const rowTeamA = payload.teamA ?? (trimmedTeamA || null);
+  const rowTeamB = payload.teamB ?? (trimmedTeamB || null);
+  const rowCompetition = payload.competition ?? null;
+
+  const row: any = {
+    id,
+    user_id: user.id,
+    player: primaryPlayerName || null,
+    match: composedMatch || null, // ⬅️ zamiast payload.match ?? null
+    team_a: rowTeamA,
+    team_b: rowTeamB,
+    competition: rowCompetition,
+    date: rowDate,
+    time: rowTime,
+    status: meta.status,
+    bucket: meta.bucket,
+    mode: (payload.conditions ?? "live") as string,
+    note: payload.note ?? null,
+    players: (payload.players ?? []) as any,
+    payload,
+  };
 
     const { data, error } = await supabase
       .from("observations")
