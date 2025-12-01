@@ -407,10 +407,11 @@ type ObsRec = {
   date?: string | any;
   time?: string | any;
   status?: "draft" | "final";
-  mode?: "live" | "tv";
+  mode?: "live" | "tv" | "mix"; // ⬅︎ DODANE "mix"
   opponentLevel?: string | any;
   players?: any[];
 };
+
 
 type PlayerRatings = Record<string, number>;
 
@@ -1217,54 +1218,82 @@ export default function PlayerEditorPage() {
   }
 
   // Ładowanie obserwacji z globalnego dziennika
-  useEffect(() => {
-    let cancelled = false;
+ // Ładowanie obserwacji z globalnego dziennika – tylko dla tego zawodnika
+useEffect(() => {
+  if (!playerId) return;
+  let cancelled = false;
 
-    (async () => {
-      try {
-        const supabase = getSupabase();
+  (async () => {
+    try {
+      const supabase = getSupabase();
 
-        const { data, error } = await supabase
-          .from("observations")
-          .select(
-            "id, match, date, time, status, mode, opponentLevel, players"
-          )
-          .order("date", { ascending: false })
-          .order("time", { ascending: false });
+      const { data, error } = await supabase
+        .from("observations")
+        .select(
+          // ⬇︎ kolumny z Twojej tabeli
+          "id, match, date, time, status, mode, competition, team_a, team_b, players"
+        )
+        .order("date", { ascending: false })
+        .order("time", { ascending: false });
 
-        if (error) {
-          console.error(
-            "[PlayerEditorPage] Supabase load observations error:",
-            error
-          );
-          return;
-        }
+      if (error) {
+        console.error(
+          "[PlayerEditorPage] Supabase load observations error:",
+          error
+        );
+        return;
+      }
 
-        if (!cancelled && data) {
-          const mapped: ObsRec[] = data.map((row: any) => ({
-            id: row.id, // numeric from Supabase
-            match: safeText(row.match),
+      if (!cancelled && data) {
+        const mapped: ObsRec[] = data.map((row: any) => {
+          const matchLabel =
+            safeText(row.match) ||
+            (row.team_a && row.team_b
+              ? `${safeText(row.team_a)} vs ${safeText(row.team_b)}`
+              : "");
+
+          const levelLabel = safeText(row.competition);
+
+          return {
+            id: row.id,
+            match: matchLabel,
             date: safeText(row.date),
             time: safeText(row.time),
             status: (row.status as "draft" | "final") ?? "draft",
-            mode: (row.mode as "live" | "tv") ?? "live",
-            opponentLevel: safeText(row.opponentLevel),
+            mode: (row.mode as "live" | "tv" | "mix") ?? "live",
+            opponentLevel: levelLabel, // ⬅︎ frontendowy label
             players: row.players ?? [],
-          }));
-          setObservations(mapped);
-        }
-      } catch (err) {
-        console.error(
-          "[PlayerEditorPage] Supabase load observations exception:",
-          err
-        );
-      }
-    })();
+          };
+        });
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+        // FILTR: tylko obserwacje, gdzie JSON players zawiera tego zawodnika
+        const filtered = mapped.filter((o) => {
+          if (!Array.isArray(o.players)) return false;
+          return o.players.some((p: any) => {
+            const pid = Number(
+              p.id ?? p.playerId ?? p.player_id ?? p.player_id_fk
+            );
+            return !!playerId && !Number.isNaN(pid) && pid === playerId;
+          });
+        });
+
+        // jeśli coś znaleźliśmy – nadpisujemy meta; jak nie, zostawiamy dane z meta
+        if (filtered.length > 0) {
+          setObservations(filtered);
+        }
+      }
+    } catch (err) {
+      console.error(
+        "[PlayerEditorPage] Supabase load observations exception:",
+        err
+      );
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [playerId]);
 
   function addObservation() {
     const next: ObsRec = {

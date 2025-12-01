@@ -31,7 +31,7 @@ import {
   Tv,
   Radio,
   Eraser,
-  XCircle, // NEW
+  XCircle,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -236,7 +236,7 @@ const DEFAULT_COLS = {
   club: true,
   pos: true,
   age: true,
-  progress: true, // nowa kolumna
+  progress: true,
   obs: true,
   actions: true,
 };
@@ -276,6 +276,79 @@ type PlayerRow = Player & {
 
 // ile wierszy „dociąga” jedno doładowanie
 const PAGE_SIZE = 50;
+
+/* ========= helper: does observation contain player? ========= */
+function observationIncludesPlayer(
+  o: ObservationWithOwner,
+  p: PlayerWithOwner
+) {
+  const normalize = (s?: string | null) =>
+    (s ?? "").toString().trim().toLowerCase();
+
+  const mainName = normalize(p.name);
+  const firstLast = normalize(
+    [((p as any).firstName ?? ""), ((p as any).lastName ?? "")]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const lastFirst = normalize(
+    [((p as any).lastName ?? ""), ((p as any).firstName ?? "")]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  const targetNames = new Set(
+    [mainName, firstLast, lastFirst].filter((v) => v.length > 0)
+  );
+
+  // 1) legacy / quick link: simple text in observations.player
+  if (targetNames.size > 0 && targetNames.has(normalize(o.player))) {
+    return true;
+  }
+
+  // 2) players JSON (multi-player observation)
+  const playersJson: any = (o as any).players;
+  if (Array.isArray(playersJson)) {
+    for (const item of playersJson) {
+      if (!item) continue;
+
+      // try by numeric id first
+      const jsonId =
+        item.player_id ??
+        item.playerId ??
+        item.id ??
+        item.player_id_fk ??
+        null;
+
+      if (
+        jsonId !== null &&
+        p.id != null &&
+        Number(jsonId) === Number(p.id)
+      ) {
+        return true;
+      }
+
+      // fallback: compare names from JSON
+      const jsonName = normalize(
+        item.name ??
+          item.player_name ??
+          item.full_name ??
+          [
+            item.first_name ?? item.firstName,
+            item.last_name ?? item.lastName,
+          ]
+            .filter(Boolean)
+            .join(" ")
+      );
+
+      if (jsonName && targetNames.has(jsonName)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 /* =======================================
    Main feature
@@ -324,21 +397,36 @@ export default function MyPlayersFeature({
   }, []);
 
   // Filtrowanie po właścicielu — user_id/profile_id
-  const ownedPlayers = useMemo(() => {
-    const base = players as PlayerWithOwner[];
-    if (!authUserId) return base;
-    return base.filter(
-      (p) => p.user_id === authUserId || p.profile_id === authUserId
-    );
-  }, [players, authUserId]);
+const ownedPlayers = useMemo(() => {
+  const base = players as PlayerWithOwner[];
 
-  const ownedObservations = useMemo(() => {
-    const base = observations as ObservationWithOwner[];
-    if (!authUserId) return base;
-    return base.filter(
-      (o) => o.user_id === authUserId || o.profile_id === authUserId
-    );
-  }, [observations, authUserId]);
+  // jeśli żaden rekord nie ma user_id/profile_id → nie filtrujemy
+  const hasOwnerMeta = base.some((p) => p.user_id || p.profile_id);
+
+  if (!authUserId || !hasOwnerMeta) {
+    return base;
+  }
+
+  return base.filter(
+    (p) => p.user_id === authUserId || p.profile_id === authUserId
+  );
+}, [players, authUserId]);
+
+const ownedObservations = useMemo(() => {
+  const base = observations as ObservationWithOwner[];
+
+  // jeśli żaden rekord nie ma user_id/profile_id → nie filtrujemy
+  const hasOwnerMeta = base.some((o) => o.user_id || o.profile_id);
+
+  if (!authUserId || !hasOwnerMeta) {
+    return base;
+  }
+
+  return base.filter(
+    (o) => o.user_id === authUserId || o.profile_id === authUserId
+  );
+}, [observations, authUserId]);
+
 
   const [content, setContent] = useState<"table" | "quick">("table");
   const [quickFor, setQuickFor] = useState<Player | null>(null);
@@ -422,16 +510,17 @@ export default function MyPlayersFeature({
   }
 
   // Base with obs count + known flag + progress – TYLKO dla ownedPlayers/ownedObservations
-  const withObsCount = useMemo<PlayerRow[]>(
-    () =>
-      (ownedPlayers as PlayerWithOwner[]).map((p) => ({
-        ...p,
-        _obs: ownedObservations.filter((o) => o.player === p.name).length,
-        _known: Boolean((p as any).firstName || (p as any).lastName),
-        _progress: computePlayerProfileProgress(p),
-      })),
-    [ownedPlayers, ownedObservations]
-  );
+  const withObsCount = useMemo<PlayerRow[]>(() => {
+    const pls = ownedPlayers as PlayerWithOwner[];
+    const obs = ownedObservations as ObservationWithOwner[];
+
+    return pls.map((p) => ({
+      ...p,
+      _obs: obs.filter((o) => observationIncludesPlayer(o, p)).length,
+      _known: Boolean((p as any).firstName || (p as any).lastName),
+      _progress: computePlayerProfileProgress(p),
+    }));
+  }, [ownedPlayers, ownedObservations]);
 
   // Apply all filters except known tab
   const baseFilteredNoKnown = useMemo(() => {
@@ -1101,100 +1190,98 @@ export default function MyPlayersFeature({
               </div>
             </div>
           }
-right={
-  <div className="flex min-h-9 w-full flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between">
+          right={
+            <div className="flex min-h-9 w-full flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between">
+              <div />
 
-    <div />
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+                {/* Dodaj zawodnika – mobile: 100% width, desktop: auto */}
+                <Button
+                  type="button"
+                  title="Skrót: N"
+                  aria-label="Dodaj zawodnika"
+                  onClick={() => router.push("/players/new")}
+                  className={`${controlH} w-full sm:w-auto primary inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
+                >
+                  <AddPlayerIcon className="h-4 w-4" />
+                  <span>Dodaj zawodnika</span>
+                </Button>
 
-    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
-      {/* Dodaj zawodnika – mobile: 100% width, desktop: auto */}
-      <Button
-        type="button"
-        title="Skrót: N"
-        aria-label="Dodaj zawodnika"
-        onClick={() => router.push("/players/new")}
-        className={`${controlH} w-full sm:w-auto primary inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
-      >
-        <AddPlayerIcon className="h-4 w-4" />
-        <span>Dodaj zawodnika</span>
-      </Button>
+                {/* Wiersz: search + filtry + 3 kropki */}
+                <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:justify-start sm:gap-3">
+                  {/* Search */}
+                  <div className="relative h-9 min-w-[160px] flex-1 sm:w-64 sm:flex-none">
+                    <Search
+                      className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      ref={searchRef}
+                      value={q}
+                      onChange={(e) => {
+                        setQ(e.target.value);
+                        setPage(1);
+                      }}
+                      placeholder="Szukaj po nazwisku/klubie… (/) "
+                      className={`${controlH} w-full pl-8 pr-3 text-sm`}
+                      aria-label="Szukaj w bazie zawodników"
+                    />
+                  </div>
 
-      {/* Wiersz: search + filtry + 3 kropki */}
-      <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:justify-start sm:gap-3">
-        {/* Search */}
-        <div className="relative h-9 min-w-[160px] flex-1 sm:w-64 sm:flex-none">
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-            aria-hidden="true"
-          />
-          <Input
-            ref={searchRef}
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Szukaj po nazwisku/klubie… (/) "
-            className={`${controlH} w-full pl-8 pr-3 text-sm`}
-            aria-label="Szukaj w bazie zawodników"
-          />
-        </div>
+                  {/* Filtry */}
+                  <div className="relative inline-flex">
+                    <span className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 dark:bg-neutral-950 dark:text-neutral-300">
+                      Filtry
+                    </span>
 
-        {/* Filtry */}
-        <div className="relative inline-flex">
-          <span className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 dark:bg-neutral-950 dark:text-neutral-300">
-            Filtry
-          </span>
+                    <Button
+                      ref={filterBtnRef}
+                      type="button"
+                      variant="outline"
+                      className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+                      aria-pressed={filtersOpen}
+                      onClick={() => {
+                        setFiltersOpen((v) => !v);
+                        setColsOpen(false);
+                        setMoreOpen(false);
+                        setMoreSheetOpen(false);
+                      }}
+                      title="Filtry"
+                    >
+                      <ListFilter className="h-4 w-4" />
+                      {filtersCount ? (
+                        <span className="hidden sm:inline">
+                          {` (${filtersCount})`}
+                        </span>
+                      ) : null}
+                    </Button>
+                  </div>
 
-          <Button
-            ref={filterBtnRef}
-            type="button"
-            variant="outline"
-            className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
-            aria-pressed={filtersOpen}
-            onClick={() => {
-              setFiltersOpen((v) => !v);
-              setColsOpen(false);
-              setMoreOpen(false);
-              setMoreSheetOpen(false);
-            }}
-            title="Filtry"
-          >
-            <ListFilter className="h-4 w-4" />
-            {filtersCount ? (
-              <span className="hidden sm:inline">
-                {` (${filtersCount})`}
-              </span>
-            ) : null}
-          </Button>
-        </div>
-
-        {/* Więcej (3 kropki) */}
-        <Button
-          ref={moreBtnRef}
-          type="button"
-          aria-label="Więcej"
-          aria-pressed={moreOpen}
-          onClick={() => {
-            if (isMobile) {
-              setMoreSheetOpen(true);
-              setFiltersOpen(false);
-              setColsSheetOpen(false);
-            } else {
-              setMoreOpen((o) => !o);
-              setFiltersOpen(false);
-            }
-          }}
-          variant="outline"
-          className={`${controlH} h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
-        >
-          <EllipsisVertical className="h-5 w-5" />
-        </Button>
-      </div>
-    </div>
-  </div>
-}
-
+                  {/* Więcej (3 kropki) */}
+                  <Button
+                    ref={moreBtnRef}
+                    type="button"
+                    aria-label="Więcej"
+                    aria-pressed={moreOpen}
+                    onClick={() => {
+                      if (isMobile) {
+                        setMoreSheetOpen(true);
+                        setFiltersOpen(false);
+                        setColsSheetOpen(false);
+                      } else {
+                        setMoreOpen((o) => !o);
+                        setFiltersOpen(false);
+                      }
+                    }}
+                    variant="outline"
+                    className={`${controlH} h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+                  >
+                    <EllipsisVertical className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          }
         />
 
         {/* Tabs for mobile */}
