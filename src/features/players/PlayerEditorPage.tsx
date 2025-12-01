@@ -52,6 +52,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
+  Copy, ClipboardPaste 
 } from "lucide-react";
 
 import {
@@ -407,10 +408,12 @@ type ObsRec = {
   date?: string | any;
   time?: string | any;
   status?: "draft" | "final";
-  mode?: "live" | "tv" | "mix"; // ⬅︎ DODANE "mix"
+  mode?: "live" | "tv" | "mix";
+  competition?: string | any;     // ⬅️ NOWE
   opponentLevel?: string | any;
   players?: any[];
 };
+
 
 
 type PlayerRatings = Record<string, number>;
@@ -734,29 +737,111 @@ function ExtContent({ view, ext, setExt }: ExtContentProps) {
               />
             </div>
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              <div>
-                <Label className="text-sm">Link do Transfermarkt</Label>
-                <Input
-                  value={ext.transfermarkt}
-                  onChange={(e) =>
-                    setExt((s) => ({
-                      ...s,
-                      transfermarkt: e.target.value,
-                    }))
-                  }
-                  placeholder="https://www.transfermarkt…"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Link do Wyscout</Label>
-                <Input
-                  value={ext.wyscout}
-                  onChange={(e) =>
-                    setExt((s) => ({ ...s, wyscout: e.target.value }))
-                  }
-                  placeholder="https://platform.wyscout…"
-                />
-              </div>
+          <div>
+  <Label className="text-sm">Link do Transfermarkt</Label>
+  <div className="relative mt-1">
+    <Input
+      value={ext.transfermarkt}
+      onChange={(e) =>
+        setExt((s) => ({
+          ...s,
+          transfermarkt: e.target.value,
+        }))
+      }
+      placeholder="https://www.transfermarkt…"
+      className="pr-24" // space for the two icon buttons
+    />
+
+    {/* Paste */}
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className="absolute border-none  right-10 top-1/2 -translate-y-1/2 h-8 w-8"
+      onClick={async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (!text) return;
+          setExt((s) => ({ ...s, transfermarkt: text }));
+        } catch (err) {
+          console.error("Clipboard paste failed", err);
+        }
+      }}
+    >
+      <ClipboardPaste className="h-3 w-3" />
+    </Button>
+
+    {/* Copy */}
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className="absolute border-none  right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(ext.transfermarkt || "");
+        } catch (err) {
+          console.error("Clipboard copy failed", err);
+        }
+      }}
+    >
+      <Copy className="h-3 w-3" />
+    </Button>
+  </div>
+</div>
+
+<div>
+  <Label className="text-sm">Link do Łączy Nas Piłka</Label>
+  <div className="relative mt-1">
+    <Input
+      value={ext.wyscout}
+      onChange={(e) =>
+        setExt((s) => ({
+          ...s,
+          wyscout: e.target.value,
+        }))
+      }
+      placeholder="https://www.laczynaspilka.pl/…"
+      className="pr-24"
+    />
+
+    {/* Paste */}
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className="absolute border-none  right-10 top-1/2 -translate-y-1/2 h-8 w-8"
+      onClick={async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (!text) return;
+          setExt((s) => ({ ...s, wyscout: text }));
+        } catch (err) {
+          console.error("Clipboard paste failed", err);
+        }
+      }}
+    >
+      <ClipboardPaste className="h-3 w-3" />
+    </Button>
+
+    {/* Copy */}
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className="absolute border-none right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(ext.wyscout || "");
+        } catch (err) {
+          console.error("Clipboard copy failed", err);
+        }
+      }}
+    >
+      <Copy className="h-3 w-3" />
+    </Button>
+  </div>
+</div>
             </div>
           </div>
         </div>
@@ -1217,8 +1302,7 @@ export default function PlayerEditorPage() {
     setQaMatch(composed);
   }
 
-  // Ładowanie obserwacji z globalnego dziennika
- // Ładowanie obserwacji z globalnego dziennika – tylko dla tego zawodnika
+// Ładowanie obserwacji z globalnego dziennika – tylko dla tego zawodnika
 useEffect(() => {
   if (!playerId) return;
   let cancelled = false;
@@ -1230,8 +1314,8 @@ useEffect(() => {
       const { data, error } = await supabase
         .from("observations")
         .select(
-          // ⬇︎ kolumny z Twojej tabeli
-          "id, match, date, time, status, mode, competition, team_a, team_b, players"
+          // ⬇︎ bierzemy też payload, bo tam zwykle siedzą teamA/teamB/competition/reportDate
+          "id, player, match, date, time, status, mode, competition, team_a, team_b, players, payload"
         )
         .order("date", { ascending: false })
         .order("time", { ascending: false });
@@ -1245,41 +1329,98 @@ useEffect(() => {
       }
 
       if (!cancelled && data) {
-        const mapped: ObsRec[] = data.map((row: any) => {
-          const matchLabel =
-            safeText(row.match) ||
-            (row.team_a && row.team_b
-              ? `${safeText(row.team_a)} vs ${safeText(row.team_b)}`
-              : "");
+        // kandydaci nazwy gracza (jak w playerDisplayName)
+        const fullName = `${firstName || ""} ${lastName || ""}`
+          .trim()
+          .toLowerCase();
 
-          const levelLabel = safeText(row.competition);
+        const anonName = (() => {
+          const num = jerseyNumber.trim();
+          const clubLabel = club.trim();
+          if (num) {
+            return `#${num} – ${clubLabel || "Bez klubu"}`.toLowerCase();
+          }
+          return clubLabel.toLowerCase();
+        })();
 
-          return {
-            id: row.id,
-            match: matchLabel,
-            date: safeText(row.date),
-            time: safeText(row.time),
-            status: (row.status as "draft" | "final") ?? "draft",
-            mode: (row.mode as "live" | "tv" | "mix") ?? "live",
-            opponentLevel: levelLabel, // ⬅︎ frontendowy label
-            players: row.players ?? [],
-          };
+        const nameCandidates = [fullName, anonName]
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        const filteredRows = (data as any[]).filter((row) => {
+          const playersArr = Array.isArray(row.players) ? row.players : null;
+
+          const matchesByPlayers =
+            !!playerId &&
+            !!playersArr &&
+            playersArr.some((p: any) => {
+              const pid = Number(
+                p.id ?? p.playerId ?? p.player_id ?? p.player_id_fk
+              );
+              return !Number.isNaN(pid) && pid === playerId;
+            });
+
+          const rowPlayer =
+            typeof row.player === "string"
+              ? row.player.trim().toLowerCase()
+              : "";
+
+          const matchesByText =
+            rowPlayer &&
+            nameCandidates.some((cand) => cand && rowPlayer === cand);
+
+          return matchesByPlayers || matchesByText;
         });
 
-        // FILTR: tylko obserwacje, gdzie JSON players zawiera tego zawodnika
-        const filtered = mapped.filter((o) => {
-          if (!Array.isArray(o.players)) return false;
-          return o.players.some((p: any) => {
-            const pid = Number(
-              p.id ?? p.playerId ?? p.player_id ?? p.player_id_fk
-            );
-            return !!playerId && !Number.isNaN(pid) && pid === playerId;
+        if (filteredRows.length > 0) {
+          const mapped: ObsRec[] = filteredRows.map((row: any) => {
+            const payload = (row.payload ?? {}) as any;
+
+            const payloadMatch =
+              safeText(payload.match) ||
+              (payload.teamA && payload.teamB
+                ? `${safeText(payload.teamA)} vs ${safeText(payload.teamB)}`
+                : "");
+
+            const matchLabel =
+              safeText(row.match) ||
+              (row.team_a && row.team_b
+                ? `${safeText(row.team_a)} vs ${safeText(row.team_b)}`
+                : "") ||
+              payloadMatch;
+
+            const dateVal =
+              safeText(row.date) ||
+              safeText(payload.reportDate) ||
+              safeText(payload.date);
+
+            const timeVal =
+              safeText(row.time) ||
+              safeText(payload.time) ||
+              safeText(payload.kickoff);
+
+            const competitionLabel =
+              safeText(row.competition) ||
+              safeText(payload.competition) ||
+              safeText(payload.league) ||
+              safeText(payload.competitionName);
+
+            return {
+              id: row.id,
+              match: matchLabel,
+              date: dateVal,
+              time: timeVal,
+              status: (row.status as "draft" | "final") ?? "draft",
+              mode:
+                (row.mode as "live" | "tv" | "mix") ??
+                ("live" as "live" | "tv" | "mix"),
+              competition: competitionLabel,
+              opponentLevel: competitionLabel,
+              players: row.players ?? [],
+            };
           });
-        });
 
-        // jeśli coś znaleźliśmy – nadpisujemy meta; jak nie, zostawiamy dane z meta
-        if (filtered.length > 0) {
-          setObservations(filtered);
+          setObservations(mapped);
         }
       }
     } catch (err) {
@@ -1293,7 +1434,8 @@ useEffect(() => {
   return () => {
     cancelled = true;
   };
-}, [playerId]);
+}, [playerId, firstName, lastName, jerseyNumber, club]);
+
 
   function addObservation() {
     const next: ObsRec = {
@@ -1341,6 +1483,8 @@ useEffect(() => {
       return matchText.includes(q) || dateText.includes(q);
     });
   }, [normalizedObservations, obsQuery]);
+
+  
 
   const [editOpen, setEditOpen] = useState(false);
   const [editingObs, setEditingObs] = useState<ObsRec | null>(null);
@@ -1666,6 +1810,7 @@ useEffect(() => {
     "inline-flex h-6 items-center rounded-md bg-stone-100 px-2.5 text-[11px] tracking-wide text-stone-600 dark:bg-neutral-900 dark:text-neutral-200";
 
   // Helper to avoid infinite loop in observations onChange
+  // Helper to avoid infinite loop in observations onChange
   function mapTableRowsToObservations(rows: any[]): ObsRec[] {
     return (rows || []).map((o: any, index: number) => ({
       id: o.id ?? `tmp-${index}`, // PRESERVE id as-is; only fallback if missing
@@ -1673,11 +1818,13 @@ useEffect(() => {
       date: safeText(o.date),
       time: safeText(o.time),
       status: (o.status as "draft" | "final") ?? "draft",
-      mode: (o.mode as "live" | "tv") ?? "live",
-      opponentLevel: safeText(o.opponentLevel),
+      mode: (o.mode as "live" | "tv" | "mix") ?? "live",
+      competition: safeText(o.competition),
+      opponentLevel: safeText(o.opponentLevel ?? o.competition),
       players: o.players ?? [],
     }));
   }
+
 
   function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
     if (a.length !== b.length) return false;

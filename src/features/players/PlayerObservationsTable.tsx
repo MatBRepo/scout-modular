@@ -18,7 +18,7 @@ import type { XO as EditorXO } from "@/features/observations/ObservationEditor";
 /* -------------------------------- Types -------------------------------- */
 
 type Bucket = "active" | "trash";
-type Mode = "live" | "tv";
+type Mode = "live" | "tv" | "mix";
 type PositionKey = string;
 
 type ObsPlayer = {
@@ -40,6 +40,7 @@ type XO = Observation & {
   voiceUrl?: string | null;
   note?: string;
   players?: ObsPlayer[];
+  competition?: string | null;
 };
 
 /* ----------------------------- Helpers ----------------------------- */
@@ -64,6 +65,12 @@ function splitMatch(match?: string): { teamA?: string; teamB?: string } {
     .map((x) => x.trim());
   if (!a || !b) return { teamA: match };
   return { teamA: a, teamB: b };
+}
+
+function truncate(text: string | undefined, len = 80): string {
+  if (!text) return "";
+  if (text.length <= len) return text;
+  return text.slice(0, len - 1) + "…";
 }
 
 /* --------- adaptery jak w src/features/observations/Observations.tsx --------- */
@@ -163,53 +170,52 @@ export default function PlayerObservationsTable({
       bucket: (o as any).bucket ?? "active",
       mode: (o as any).mode ?? "live",
       players: (o as any).players ?? [],
+      competition: (o as any).competition ?? null,
       ...o,
     }))
   );
 
-  // jeśli parent podmieni observations z zewnątrz, zsynchronizuj
+  // gdy parent podmieni observations – zsynchronizuj
   useEffect(() => {
-    if (!observations || observations.length === 0) return;
     setRows(
       (observations as XO[]).map((o) => ({
         bucket: (o as any).bucket ?? "active",
         mode: (o as any).mode ?? "live",
         players: (o as any).players ?? [],
+        competition: (o as any).competition ?? null,
         ...o,
       }))
     );
   }, [observations]);
 
-  // tylko obserwacje tego zawodnika
-  const playerRows = useMemo(() => {
-    const upper = (playerName ?? "").trim().toLowerCase();
-    if (!upper) return rows;
-
-    return rows.filter((r) => {
-      const metaPlayer = ((r as any).player ?? "").toLowerCase();
-      const listMetaPlayer = ((r as any).__listMeta?.player ?? "").toLowerCase();
-      const inPlayers = (r.players ?? []).some(
-        (p) => (p.name ?? "").toLowerCase() === upper
-      );
-      return metaPlayer === upper || listMetaPlayer === upper || inPlayers;
-    });
-  }, [rows, playerName]);
-
   const [pageMode, setPageMode] = useState<"list" | "editor">("list");
   const [editing, setEditing] = useState<XO | null>(null);
 
-  // MEMO: stabilizujemy initial dla ObservationEditor, żeby uniknąć pętli
   const editorInitial = useMemo<EditorXO | null>(
     () => (editing ? toEditorXO(editing) : null),
     [editing]
   );
 
+  const normalizedPlayerName = (playerName ?? "").trim().toLowerCase();
+
+  // wybierz "głównego" zawodnika w tej obserwacji – najlepiej tego, który pasuje nazwą,
+  // a jeśli się nie uda, bierz pierwszego z listy
+  function getMainPlayer(row: XO): ObsPlayer | null {
+    const list = row.players ?? [];
+    if (!list.length) return null;
+    if (!normalizedPlayerName) return list[0];
+
+    const byName = list.find(
+      (p) => (p.name ?? "").trim().toLowerCase() === normalizedPlayerName
+    );
+    return byName ?? list[0];
+  }
+
   function addNew() {
     const mainName = (playerName ?? "").trim() || "Nieznany zawodnik";
 
     const newRow: XO = {
-      // tymczasowe ID, Observations/Editor sobie z tym poradzą
-      id: 0 as any,
+      id: 0 as any, // tymczasowe ID, Observations/Editor sobie z tym poradzą
       player: mainName,
       match: "",
       date: "",
@@ -217,7 +223,7 @@ export default function PlayerObservationsTable({
       status: "draft",
       bucket: "active",
       mode: "live",
-      competition: null, // <- startowo brak ligi
+      competition: null,
       note: "",
       voiceUrl: null,
       players: [
@@ -301,19 +307,30 @@ export default function PlayerObservationsTable({
           <thead className="bg-stone-100 text-xs font-medium uppercase text-gray-600 dark:bg-neutral-900 dark:text-neutral-300">
             <tr>
               <th className="px-2 py-2 text-left sm:px-3">Mecz</th>
-              <th className="hidden px-2 py-2 text-left sm:table-cell sm:px-3">
-                Data
-              </th>
-              <th className="hidden px-2 py-2 text-left sm:table-cell sm:px-3">
-                Tryb
+              <th className="px-2 py-2 text-left sm:px-3">
+                Występ zawodnika
               </th>
               <th className="px-2 py-2 text-left sm:px-3">Liga</th>
               <th className="px-2 py-2 text-right sm:px-3">Akcje</th>
             </tr>
           </thead>
           <tbody>
-            {playerRows.map((r) => {
-              const mode = r.mode ?? "live";
+            {rows.map((r) => {
+              const mode = (r.mode ?? "live") as Mode;
+              const mainPlayer = getMainPlayer(r);
+
+              const minutesLabel =
+                typeof mainPlayer?.minutes === "number"
+                  ? `${mainPlayer.minutes}′`
+                  : undefined;
+              const posLabel = mainPlayer?.position || undefined;
+              const ratingLabel =
+                typeof mainPlayer?.overall === "number"
+                  ? mainPlayer.overall.toFixed(1)
+                  : undefined;
+
+              const statusLabel =
+                r.status === "final" ? "Raport finalny" : "Szkic";
 
               return (
                 <tr
@@ -342,24 +359,53 @@ export default function PlayerObservationsTable({
                             TV
                           </span>
                         )}
+                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
+                          {statusLabel}
+                        </span>
                       </div>
                     </div>
                   </td>
 
-                  {/* Data – desktop */}
-                  <td className="hidden px-2 py-2 text-sm text-gray-800 dark:text-neutral-100 sm:table-cell sm:px-3">
-                    {fmtDate(r.date)}
-                  </td>
-
-                  {/* Tryb – desktop */}
-                  <td className="hidden px-2 py-2 sm:table-cell sm:px-3">
-                    {mode === "live" ? "Live" : "TV"}
+                  {/* Występ zawodnika */}
+                  <td className="px-2 py-2 sm:px-3">
+                    {mainPlayer ? (
+                      <div className="space-y-1 text-[12px] text-gray-800 dark:text-neutral-100">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {minutesLabel && (
+                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
+                              {minutesLabel}
+                            </span>
+                          )}
+                          {posLabel && (
+                            <span className="inline-flex items-center rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
+                              {posLabel}
+                            </span>
+                          )}
+                          {ratingLabel && (
+                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                              Ocena: {ratingLabel}
+                            </span>
+                          )}
+                        </div>
+                        {mainPlayer.note && (
+                          <p className="text-[11px] text-stone-500 dark:text-neutral-400">
+                            {truncate(mainPlayer.note, 80)}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[12px] text-muted-foreground">
+                        Brak danych o występie
+                      </span>
+                    )}
                   </td>
 
                   {/* Liga */}
                   <td className="px-2 py-2 sm:px-3">
                     <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
-                      {r.competition || "—"}
+                      {(r as any).competition ||
+                        (r as any).opponentLevel ||
+                        "—"}
                     </span>
                   </td>
 
@@ -382,10 +428,10 @@ export default function PlayerObservationsTable({
               );
             })}
 
-            {playerRows.length === 0 && (
+            {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={4}
                   className="px-4 py-6 text-center text-sm text-muted-foreground"
                 >
                   Ten zawodnik nie ma jeszcze żadnych obserwacji.

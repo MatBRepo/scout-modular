@@ -237,6 +237,7 @@ const DEFAULT_COLS = {
   pos: true,
   age: true,
   progress: true,
+  rating: true, // nowa kolumna
   obs: true,
   actions: true,
 };
@@ -250,13 +251,14 @@ const COL_LABELS: Record<ColKey, string> = {
   pos: "Pozycja",
   age: "Wiek",
   progress: "Profil",
+  rating: "Ocena z obserwacji",
   obs: "Obserwacje",
   actions: "Akcje",
 };
 
 type KnownScope = "known" | "unknown" | "all";
 type Scope = "active" | "trash";
-type SortKey = "name" | "club" | "pos" | "age" | "obs" | "progress";
+type SortKey = "name" | "club" | "pos" | "age" | "obs" | "progress" | "rating";
 type SortDir = "asc" | "desc";
 
 type PlayerWithOwner = Player & {
@@ -265,89 +267,170 @@ type PlayerWithOwner = Player & {
 };
 type ObservationWithOwner = Observation & {
   user_id?: string | null;
+  userId?: string | null;
   profile_id?: string | null;
+  profileId?: string | null;
 };
 
 type PlayerRow = Player & {
   _known: boolean;
   _obs: number;
   _progress: number;
+  _avgRating: number | null;
 };
 
 // ile wierszy „dociąga” jedno doładowanie
 const PAGE_SIZE = 50;
 
-/* ========= helper: does observation contain player? ========= */
-function observationIncludesPlayer(
-  o: ObservationWithOwner,
-  p: PlayerWithOwner
-) {
-  const normalize = (s?: string | null) =>
-    (s ?? "").toString().trim().toLowerCase();
+/* ========= helpers dla observation/player ========= */
 
-  const mainName = normalize(p.name);
-  const firstLast = normalize(
+function normalizeName(s?: string | null) {
+  return (s ?? "").toString().trim().toLowerCase();
+}
+
+function buildTargetNames(p: PlayerWithOwner) {
+  const mainName = normalizeName(p.name);
+  const firstLast = normalizeName(
     [((p as any).firstName ?? ""), ((p as any).lastName ?? "")]
       .filter(Boolean)
       .join(" ")
   );
-  const lastFirst = normalize(
+  const lastFirst = normalizeName(
     [((p as any).lastName ?? ""), ((p as any).firstName ?? "")]
       .filter(Boolean)
       .join(" ")
   );
-
-  const targetNames = new Set(
+  return new Set(
     [mainName, firstLast, lastFirst].filter((v) => v.length > 0)
   );
+}
 
-  // 1) legacy / quick link: simple text in observations.player
-  if (targetNames.size > 0 && targetNames.has(normalize(o.player))) {
-    return true;
-  }
+function extractJsonPlayerName(item: any) {
+  return normalizeName(
+    item?.name ??
+      item?.player_name ??
+      item?.full_name ??
+      [
+        item?.first_name ?? item?.firstName,
+        item?.last_name ?? item?.lastName,
+      ]
+        .filter(Boolean)
+        .join(" ")
+  );
+}
 
-  // 2) players JSON (multi-player observation)
+/** Zwraca obiekt zawodnika w observation.players odpowiadający danemu Player */
+function findPlayerEntryInObservation(
+  o: ObservationWithOwner,
+  p: PlayerWithOwner
+): any | null {
+  const targetNames = buildTargetNames(p);
+
   const playersJson: any = (o as any).players;
-  if (Array.isArray(playersJson)) {
-    for (const item of playersJson) {
-      if (!item) continue;
+  if (!Array.isArray(playersJson)) return null;
 
-      // try by numeric id first
-      const jsonId =
-        item.player_id ??
-        item.playerId ??
-        item.id ??
-        item.player_id_fk ??
-        null;
+  for (const item of playersJson) {
+    if (!item) continue;
 
-      if (
-        jsonId !== null &&
-        p.id != null &&
-        Number(jsonId) === Number(p.id)
-      ) {
-        return true;
-      }
+    // najpierw spróbuj po ID
+    const jsonId =
+      item.player_id ?? item.playerId ?? item.id ?? item.player_id_fk ?? null;
 
-      // fallback: compare names from JSON
-      const jsonName = normalize(
-        item.name ??
-          item.player_name ??
-          item.full_name ??
-          [
-            item.first_name ?? item.firstName,
-            item.last_name ?? item.lastName,
-          ]
-            .filter(Boolean)
-            .join(" ")
-      );
+    if (
+      jsonId !== null &&
+      p.id != null &&
+      Number(jsonId) === Number(p.id)
+    ) {
+      return item;
+    }
 
-      if (jsonName && targetNames.has(jsonName)) {
-        return true;
-      }
+    // fallback: po nazwie
+    const jsonName = extractJsonPlayerName(item);
+    if (jsonName && targetNames.has(jsonName)) {
+      return item;
     }
   }
 
-  return false;
+  return null;
+}
+
+/* ========= helper: czy observation zawiera playera ========= */
+function observationIncludesPlayer(
+  o: ObservationWithOwner,
+  p: PlayerWithOwner
+) {
+  const targetNames = buildTargetNames(p);
+
+  // 1) legacy / szybkie powiązanie: obserwacje.player (tekst)
+  if (targetNames.size > 0 && targetNames.has(normalizeName(o.player))) {
+    return true;
+  }
+
+  // 2) players JSON
+  const entry = findPlayerEntryInObservation(o, p);
+  return !!entry;
+}
+
+function toNumberOrNull(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = parseFloat(value.replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Próbuje wyciągnąć ocenę ogólną z obiektu (obserwacja / entry z players[]).
+ * Dostosuj klucze poniżej do swojego modelu, jeśli trzeba.
+ */
+function extractObservationRating(o: any): number | null {
+  if (!o || typeof o !== "object") return null;
+
+  // 1) Najczęstsze bezpośrednie pola
+  const directKeys = [
+    "overall_rating",
+    "overallRating",
+    "overall",
+    "rating",
+    "grade",
+    "overall_grade",
+    "overallScore",
+    "overall_score",
+    "summary_rating",
+    "summaryRating",
+  ];
+
+  for (const key of directKeys) {
+    const n = toNumberOrNull((o as any)[key]);
+    if (n != null) return n;
+  }
+
+  // 2) metrics: {...}
+  if (o.metrics && typeof o.metrics === "object") {
+    const m = o.metrics as any;
+    const n =
+      toNumberOrNull(m.overall) ??
+      toNumberOrNull(m.overall_rating) ??
+      toNumberOrNull(m.final) ??
+      toNumberOrNull(m.final_score);
+    if (n != null) return n;
+  }
+
+  // 3) ratings: [{ value / score / rating }, ...] → średnia
+  if (Array.isArray(o.ratings)) {
+    const nums = o.ratings
+      .map((it: any) =>
+        toNumberOrNull(it.value ?? it.score ?? it.rating)
+      )
+      .filter((v): v is number => v != null);
+
+    if (nums.length > 0) {
+      return nums.reduce((a, b) => a + b, 0) / nums.length;
+    }
+  }
+
+  return null;
 }
 
 /* =======================================
@@ -397,36 +480,48 @@ export default function MyPlayersFeature({
   }, []);
 
   // Filtrowanie po właścicielu — user_id/profile_id
-const ownedPlayers = useMemo(() => {
-  const base = players as PlayerWithOwner[];
+  const ownedPlayers = useMemo(() => {
+    const base = players as PlayerWithOwner[];
 
-  // jeśli żaden rekord nie ma user_id/profile_id → nie filtrujemy
-  const hasOwnerMeta = base.some((p) => p.user_id || p.profile_id);
+    // jeśli żaden rekord nie ma user_id/profile_id → nie filtrujemy
+    const hasOwnerMeta = base.some((p) => p.user_id || p.profile_id);
 
-  if (!authUserId || !hasOwnerMeta) {
-    return base;
-  }
+    if (!authUserId || !hasOwnerMeta) {
+      return base;
+    }
 
-  return base.filter(
-    (p) => p.user_id === authUserId || p.profile_id === authUserId
-  );
-}, [players, authUserId]);
+    return base.filter(
+      (p) => p.user_id === authUserId || p.profile_id === authUserId
+    );
+  }, [players, authUserId]);
 
-const ownedObservations = useMemo(() => {
-  const base = observations as ObservationWithOwner[];
+  const ownedObservations = useMemo(() => {
+    const base = observations as ObservationWithOwner[];
 
-  // jeśli żaden rekord nie ma user_id/profile_id → nie filtrujemy
-  const hasOwnerMeta = base.some((o) => o.user_id || o.profile_id);
+    // Czy jakikolwiek rekord ma meta właściciela?
+    const hasOwnerMeta = base.some(
+      (o) => o.user_id || o.userId || o.profile_id || o.profileId
+    );
 
-  if (!authUserId || !hasOwnerMeta) {
-    return base;
-  }
+    // Brak użytkownika z auth
+    if (!authUserId) {
+      // jeśli nie ma meta — lepiej pokazać wszystko, niż pustkę
+      return hasOwnerMeta ? [] : base;
+    }
 
-  return base.filter(
-    (o) => o.user_id === authUserId || o.profile_id === authUserId
-  );
-}, [observations, authUserId]);
+    // Brak meta właściciela → zakładamy, że lista jest już
+    // przefiltrowana po stronie serwera (tylko "moje" obserwacje)
+    if (!hasOwnerMeta) {
+      return base;
+    }
 
+    // Standardowy tryb: filtrujemy tylko obserwacje tego użytkownika
+    return base.filter((o) => {
+      const uid = o.user_id ?? o.userId ?? null;
+      const pid = o.profile_id ?? o.profileId ?? null;
+      return uid === authUserId || pid === authUserId;
+    });
+  }, [observations, authUserId]);
 
   const [content, setContent] = useState<"table" | "quick">("table");
   const [quickFor, setQuickFor] = useState<Player | null>(null);
@@ -509,17 +604,49 @@ const ownedObservations = useMemo(() => {
     router.replace(`/players?${sp.toString()}`, { scroll: false });
   }
 
-  // Base with obs count + known flag + progress – TYLKO dla ownedPlayers/ownedObservations
+  // Base with obs count + known flag + progress + avg rating – TYLKO dla ownedPlayers/ownedObservations
   const withObsCount = useMemo<PlayerRow[]>(() => {
     const pls = ownedPlayers as PlayerWithOwner[];
     const obs = ownedObservations as ObservationWithOwner[];
 
-    return pls.map((p) => ({
-      ...p,
-      _obs: obs.filter((o) => observationIncludesPlayer(o, p)).length,
-      _known: Boolean((p as any).firstName || (p as any).lastName),
-      _progress: computePlayerProfileProgress(p),
-    }));
+    return pls.map((p) => {
+      let obsCount = 0;
+      const ratings: number[] = [];
+
+      for (const o of obs) {
+        if (!observationIncludesPlayer(o, p)) continue;
+        obsCount++;
+
+        const entry = findPlayerEntryInObservation(o, p);
+
+        // Najpierw rating z entry (players[]), potem fallback do całej obserwacji
+        let rating: number | null = null;
+
+        if (entry) {
+          rating = extractObservationRating(entry);
+        }
+        if (rating == null) {
+          rating = extractObservationRating(o);
+        }
+
+        if (rating != null && !Number.isNaN(rating)) {
+          ratings.push(rating);
+        }
+      }
+
+      const avgRating =
+        ratings.length > 0
+          ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+          : null;
+
+      return {
+        ...p,
+        _obs: obsCount,
+        _known: Boolean((p as any).firstName || (p as any).lastName),
+        _progress: computePlayerProfileProgress(p),
+        _avgRating: avgRating,
+      };
+    });
   }, [ownedPlayers, ownedObservations]);
 
   // Apply all filters except known tab
@@ -576,6 +703,17 @@ const ownedObservations = useMemo(() => {
           av = a._progress || 0;
           bv = b._progress || 0;
           return (av - bv) * dir;
+        case "rating": {
+          const aVal =
+            typeof a._avgRating === "number" ? a._avgRating : null;
+          const bVal =
+            typeof b._avgRating === "number" ? b._avgRating : null;
+          // Brak oceny zawsze na końcu niezależnie od kierunku sortowania
+          if (aVal == null && bVal == null) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+          return (aVal - bVal) * dir;
+        }
         default:
           return 0;
       }
@@ -675,6 +813,7 @@ const ownedObservations = useMemo(() => {
       "pos",
       "age",
       "status",
+      "avg_rating",
       "obs",
       "progress",
     ];
@@ -685,6 +824,7 @@ const ownedObservations = useMemo(() => {
       p.pos,
       p.age,
       p.status,
+      (p as any)._avgRating ?? "",
       (p as any)._obs,
       (p as any)._progress,
     ]);
@@ -692,7 +832,7 @@ const ownedObservations = useMemo(() => {
       headers.join(","),
       ...rows.map((r) =>
         r
-          .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+          .map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`)
           .join(",")
       ),
     ].join("\n");
@@ -712,6 +852,7 @@ const ownedObservations = useMemo(() => {
       "Pozycja",
       "Wiek",
       "Status",
+      "Śr. ocena",
       "Obserwacje",
       "Profil %",
     ];
@@ -722,6 +863,7 @@ const ownedObservations = useMemo(() => {
       p.pos,
       p.age,
       p.status,
+      (p as any)._avgRating ?? "",
       (p as any)._obs,
       (p as any)._progress,
     ]);
@@ -1323,7 +1465,6 @@ const ownedObservations = useMemo(() => {
             <TabsContent value="all" />
             <TabsContent value="known" />
             <TabsContent value="unknown" />
-          </Tabs>
 
           {/* Mobile: compact chips under tabs */}
           {activeChips.length > 0 && (
@@ -1344,6 +1485,7 @@ const ownedObservations = useMemo(() => {
               ))}
             </div>
           )}
+          </Tabs>
         </div>
 
         {/* Desktop: anchored popovers */}
@@ -1358,7 +1500,7 @@ const ownedObservations = useMemo(() => {
               maxWidth={440}
             >
               <div className="w-full p-3 text-sm">
-                <div className="mb-2 flex items_center justify-between">
+                <div className="mb-2 flex items-center justify-between">
                   <div className="text-xs font-semibold text-dark dark:text-neutral-300">
                     Filtry
                   </div>
@@ -1863,7 +2005,7 @@ const ownedObservations = useMemo(() => {
                   return (
                     <label
                       key={key}
-                      className="flex cursor-pointer items-center justify_between px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
                       <span className="text-gray-800 dark:text-neutral-100">
                         {COL_LABELS[key]}
@@ -2122,7 +2264,7 @@ function PlayersTable({
   const getInitials = (name: string) => {
     const parts = name.trim().split(/\s+/);
     const first = parts[0]?.[0] ?? "";
-    const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
+       const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
     return (first + last).toUpperCase();
   };
 
@@ -2205,13 +2347,18 @@ function PlayersTable({
               </th>
             )}
             {visibleCols.age && (
-              <th className={`${cellPad} text_left`}>
+              <th className={`${cellPad} text-left`}>
                 <SortHeader k="age">Wiek</SortHeader>
               </th>
             )}
             {visibleCols.progress && (
               <th className={`${cellPad} text-left`}>
                 <SortHeader k="progress">Wypełnienie profilu</SortHeader>
+              </th>
+            )}
+            {visibleCols.rating && (
+              <th className={`${cellPad} text-left`}>
+                <SortHeader k="rating">Ocena z obserwacji</SortHeader>
               </th>
             )}
             {visibleCols.obs && (
@@ -2228,6 +2375,10 @@ function PlayersTable({
           {rows.map((r) => {
             const jersey = getJerseyNo(r.name);
             const isConfirmingTrash = confirmTrashId === (r.id as number);
+
+            const avg = r._avgRating;
+            const avgLabel =
+              typeof avg === "number" ? avg.toFixed(1) : null;
 
             return (
               <tr
@@ -2340,6 +2491,20 @@ function PlayersTable({
                         {r._progress}%
                       </span>
                     </div>
+                  </td>
+                )}
+
+                {visibleCols.rating && (
+                  <td className={cellPad}>
+                    {avgLabel ? (
+                      <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                        {avgLabel}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">
+                        —
+                      </span>
+                    )}
                   </td>
                 )}
 
