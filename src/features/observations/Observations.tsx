@@ -187,10 +187,17 @@ type ObsPlayer = {
   minutes?: number;
   position?: PositionKey;
   overall?: number;
-  voiceUrl?: string | null;
+
+  // ⬇️ KLUCZOWE: to samo co w ObservationEditor
+  base?: Record<string, number>;
+  gk?: Record<string, number>;
+  def?: Record<string, number>;
+  mid?: Record<string, number>;
+  att?: Record<string, number>;
+
   note?: string;
-  ratings?: { off: number; def: number; tech: number; motor: number };
 };
+
 
 type XO = Observation & {
   bucket?: Bucket;
@@ -265,7 +272,7 @@ function splitMatch(match?: string): { teamA?: string; teamB?: string } {
 function toEditorXO(row: XO): EditorXO {
   const { teamA, teamB } = splitMatch(row.match);
 
-  const players = (row.players ?? []).map((p) => ({
+  const players = (row.players ?? []).map((p: any) => ({
     id: p.id,
     type: p.type,
     name: p.name,
@@ -273,17 +280,25 @@ function toEditorXO(row: XO): EditorXO {
     minutes: p.minutes,
     position: p.position,
     overall: p.overall,
+
+    // ⬅️ zachowujemy wszystkie metryki
+    base: p.base ?? {},
+    gk: p.gk ?? {},
+    def: p.def ?? {},
+    mid: p.mid ?? {},
+    att: p.att ?? {},
+
     note: p.note,
   }));
 
   const editorObj: any = {
     id: row.id,
-    match: row.match ?? "",             // ⬅️ KLUCZOWE
+    match: row.match ?? "",            // ⬅️ żebyś miał też match w edytorze
     reportDate: row.date || "",
     competition: row.competition ?? "",
     teamA: teamA || "",
     teamB: teamB || "",
-    conditions: row.mode ?? "live",
+    conditions: row.mode ?? "live",    // ⬅️ Tryb meczu -> edytor
     contextNote: row.note ?? "",
     note: row.note ?? "",
     players,
@@ -298,6 +313,8 @@ function toEditorXO(row: XO): EditorXO {
 
   return editorObj as EditorXO;
 }
+
+
 
 
 function fromEditorXO(e: EditorXO, prev?: XO): XO {
@@ -317,6 +334,14 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     minutes: p.minutes,
     position: p.position as PositionKey,
     overall: p.overall,
+
+    // ⬅️ przenosimy metryki z edytora
+    base: p.base ?? {},
+    gk: p.gk ?? {},
+    def: p.def ?? {},
+    mid: p.mid ?? {},
+    att: p.att ?? {},
+
     note: p.note,
   }));
 
@@ -330,8 +355,11 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     time: meta.time ?? prev?.time ?? "",
     status: meta.status ?? prev?.status ?? "draft",
     bucket: meta.bucket ?? prev?.bucket ?? "active",
+
+    // ⬅️ Tryb meczu z edytora → lista
     mode: (anyE.conditions ?? prev?.mode ?? "live") as Mode,
-    competition: anyE.competition ?? prev?.competition ?? null, // <- Liga / turniej z edytora
+
+    competition: anyE.competition ?? prev?.competition ?? null,
     note: anyE.note ?? anyE.contextNote ?? prev?.note ?? "",
     voiceUrl: prev?.voiceUrl ?? null,
     players,
@@ -339,6 +367,7 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
 
   return listRow;
 }
+
 
 /* =============================== Feature ================================ */
 
