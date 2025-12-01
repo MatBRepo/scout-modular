@@ -867,12 +867,19 @@ export default function ObservationsFeature({
         label: `Mecz: ${matchFilter.trim()}`,
         clear: () => setMatchFilter(""),
       });
-    if (modeFilter)
-      chips.push({
-        key: "mode",
-        label: `Tryb: ${modeFilter === "live" ? "Live" : "TV"}`,
-        clear: () => setModeFilter(""),
-      });
+if (modeFilter)
+  chips.push({
+    key: "mode",
+    label:
+      "Tryb: " +
+      (modeFilter === "live"
+        ? "Live"
+        : modeFilter === "tv"
+        ? "TV"
+        : "Mix"),
+    clear: () => setModeFilter(""),
+  });
+
     if (lifecycleFilter)
       chips.push({
         key: "status",
@@ -1317,6 +1324,7 @@ export default function ObservationsFeature({
                       <option value="">— dowolny —</option>
                       <option value="live">Live</option>
                       <option value="tv">TV</option>
+                       <option value="mix">Mix</option>
                     </select>
                   </div>
                   <div>
@@ -1409,6 +1417,7 @@ export default function ObservationsFeature({
                     <option value="">— dowolny —</option>
                     <option value="live">Live</option>
                     <option value="tv">TV</option>
+                     <option value="mix">Mix</option>
                   </select>
                 </div>
                 <div>
@@ -1861,15 +1870,20 @@ export default function ObservationsFeature({
                       </td>
                     )}
 
-                    {visibleCols.mode && (
-                      <td
-                        className={`${cellPad} hidden align-center sm:table-cell`}
-                      >
-                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
-                          {mode === "live" ? "Live" : "TV"}
-                        </span>
-                      </td>
-                    )}
+{visibleCols.mode && (
+  <td
+    className={`${cellPad} hidden align-center sm:table-cell`}
+  >
+    <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
+      {mode === "live"
+        ? "Live"
+        : mode === "tv"
+        ? "TV"
+        : "Mix"}
+    </span>
+  </td>
+)}
+
 
                     {visibleCols.status && (
                       <td className={`${cellPad} align-center`}>
