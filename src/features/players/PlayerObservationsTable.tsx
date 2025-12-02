@@ -13,6 +13,7 @@ import {
 
 import { ObservationEditor } from "@/features/observations/ObservationEditor";
 import type { XO as EditorXO } from "@/features/observations/ObservationEditor";
+import { supabase } from "@/shared/supabase-client";
 
 /* -------------------------------- Types -------------------------------- */
 
@@ -31,7 +32,11 @@ type ObsPlayer = {
   overall?: number;
   voiceUrl?: string | null;
   note?: string;
-  ratings?: Record<string, number>; // <-- TU
+  ratings?: Record<string, number>;
+  /** powiązanie z public.players.id (lokalny zawodnik) */
+  playerId?: number | null;
+  /** powiązanie z public.global_players.id (globalny zawodnik) */
+  globalId?: number | null;
 };
 
 type XO = Observation & {
@@ -86,9 +91,10 @@ function toEditorXO(row: XO): EditorXO {
     position: p.position,
     overall: p.overall,
     note: p.note,
-    // ⬇️ PRZENOSIMY wszystkie ratings i ewentualne id gracza
+    // ⬇️ PRZENOSIMY wszystkie ratings i id gracza
     ratings: (p as any).ratings ?? undefined,
     playerId: (p as any).playerId ?? (p as any).player_id ?? undefined,
+    globalId: (p as any).globalId ?? (p as any).global_id ?? undefined,
     voiceUrl: (p as any).voiceUrl ?? null,
   }));
 
@@ -134,6 +140,18 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     note: p.note,
     ratings: p.ratings ?? undefined, // ⬅️ zachowujemy mapę aspektów
     voiceUrl: (p as any).voiceUrl ?? null,
+    playerId:
+      typeof p.playerId === "number"
+        ? p.playerId
+        : typeof p.player_id === "number"
+        ? p.player_id
+        : undefined,
+    globalId:
+      typeof p.globalId === "number"
+        ? p.globalId
+        : typeof p.global_id === "number"
+        ? p.global_id
+        : undefined,
   }));
 
   const meta = anyE.__listMeta || {};
@@ -161,10 +179,16 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
 export default function PlayerObservationsTable({
   playerName = "",
   observations = [],
+  playerId,
+  globalId,
   onChange,
 }: {
   playerName?: string;
   observations?: Observation[];
+  /** ID lokalnego zawodnika (public.players.id) */
+  playerId?: number | null;
+  /** ID globalnego zawodnika (public.global_players.id) */
+  globalId?: number | null;
   /** opcjonalnie – jeśli chcesz dostać next state do parenta */
   onChange?: (next: Observation[]) => void;
 }) {
@@ -178,7 +202,7 @@ export default function PlayerObservationsTable({
       players: (o as any).players ?? [],
       competition: (o as any).competition ?? null,
       ...o,
-    }))
+    })),
   );
 
   // gdy parent podmieni observations – zsynchronizuj
@@ -190,7 +214,7 @@ export default function PlayerObservationsTable({
         players: (o as any).players ?? [],
         competition: (o as any).competition ?? null,
         ...o,
-      }))
+      })),
     );
   }, [observations]);
 
@@ -199,20 +223,30 @@ export default function PlayerObservationsTable({
 
   const editorInitial = useMemo<EditorXO | null>(
     () => (editing ? toEditorXO(editing) : null),
-    [editing]
+    [editing],
   );
 
   const normalizedPlayerName = (playerName ?? "").trim().toLowerCase();
 
-  // wybierz "głównego" zawodnika w tej obserwacji – najlepiej tego, który pasuje nazwą,
-  // a jeśli się nie uda, bierz pierwszego z listy
+  // wybierz "głównego" zawodnika w tej obserwacji – najpierw po playerId,
+  // potem po nazwie, a na końcu pierwszy z listy
   function getMainPlayer(row: XO): ObsPlayer | null {
     const list = row.players ?? [];
     if (!list.length) return null;
+
+    if (typeof playerId === "number") {
+      const byId = list.find(
+        (p) =>
+          typeof (p as any).playerId === "number" &&
+          (p as any).playerId === playerId,
+      );
+      if (byId) return byId;
+    }
+
     if (!normalizedPlayerName) return list[0];
 
     const byName = list.find(
-      (p) => (p.name ?? "").trim().toLowerCase() === normalizedPlayerName
+      (p) => (p.name ?? "").trim().toLowerCase() === normalizedPlayerName,
     );
     return byName ?? list[0];
   }
@@ -235,7 +269,7 @@ export default function PlayerObservationsTable({
         Object.keys(ratingsMap).length > 0
       ) {
         const vals = Object.values(ratingsMap).filter(
-          (v): v is number => typeof v === "number" && !Number.isNaN(v)
+          (v): v is number => typeof v === "number" && !Number.isNaN(v),
         );
         if (vals.length) {
           const avgPerObs =
@@ -260,13 +294,117 @@ export default function PlayerObservationsTable({
     const avg = sum / count;
 
     return { sum, count, avg };
-  }, [rows, normalizedPlayerName]);
+  }, [rows, normalizedPlayerName, playerId]);
+
+  /**
+   * Zapisuje do Supabase "występ zawodnika" dla pojedynczej obserwacji:
+   * - kasuje stare observation_ratings dla (observation_id, player_id/global_id)
+   * - wstawia nowe rekordy na podstawie mainPlayer.ratings + mainPlayer.overall
+   */
+  async function upsertObservationRatingsForPlayer(row: XO) {
+    const obsId = Number(row.id);
+    if (!Number.isFinite(obsId) || obsId <= 0) return;
+
+    const main = getMainPlayer(row);
+    if (!main) return;
+
+    const targetPlayerId =
+      typeof main.playerId === "number"
+        ? main.playerId
+        : typeof playerId === "number"
+        ? playerId
+        : null;
+
+    const targetGlobalId =
+      typeof main.globalId === "number"
+        ? main.globalId
+        : typeof globalId === "number"
+        ? globalId
+        : null;
+
+    // jeśli nie mamy żadnego ID powiązanego z tabelami players/global_players – nie zapisujemy
+    if (targetPlayerId == null && targetGlobalId == null) return;
+
+    const ratingEntries: { aspect_key: string; rating: number }[] = [];
+
+    const ratingsMap = main.ratings;
+    if (ratingsMap && typeof ratingsMap === "object") {
+      for (const [key, val] of Object.entries(ratingsMap)) {
+        const num =
+          typeof val === "number"
+            ? val
+            : Number.parseFloat(String(val).replace(",", "."));
+        if (!Number.isFinite(num) || num < 0 || num > 5) continue;
+        ratingEntries.push({ aspect_key: key, rating: num });
+      }
+    }
+
+    // OVERALL jako osobny aspekt – przydaje się przy dalszej analizie
+    if (
+      typeof main.overall === "number" &&
+      Number.isFinite(main.overall) &&
+      main.overall >= 0 &&
+      main.overall <= 5
+    ) {
+      ratingEntries.push({
+        aspect_key: "OVERALL",
+        rating: main.overall,
+      });
+    }
+
+    try {
+      // skasuj poprzednie rekordy dla tego observation_id + zawodnika
+      let delQuery = supabase
+        .from("observation_ratings")
+        .delete()
+        .eq("observation_id", obsId);
+
+      if (targetPlayerId != null) {
+        delQuery = delQuery.eq("player_id", targetPlayerId);
+      } else if (targetGlobalId != null) {
+        delQuery = delQuery.eq("global_id", targetGlobalId);
+      }
+
+      const { error: delError } = await delQuery;
+      if (delError) {
+        console.error(
+          "[PlayerObservationsTable] delete observation_ratings error:",
+          delError,
+        );
+      }
+
+      if (!ratingEntries.length) return;
+
+      const payload = ratingEntries.map((r) => ({
+        observation_id: obsId,
+        player_id: targetPlayerId,
+        global_id: targetGlobalId,
+        aspect_key: r.aspect_key,
+        rating: r.rating,
+      }));
+
+      const { error: insError } = await supabase
+        .from("observation_ratings")
+        .insert(payload);
+      if (insError) {
+        console.error(
+          "[PlayerObservationsTable] insert observation_ratings error:",
+          insError,
+        );
+      }
+    } catch (e) {
+      console.error(
+        "[PlayerObservationsTable] upsert observation_ratings failed:",
+        e,
+      );
+    }
+  }
 
   function addNew() {
     const mainName = (playerName ?? "").trim() || "Nieznany zawodnik";
 
     const newRow: XO = {
-      id: 0 as any, // tymczasowe ID, Observations/Editor sobie z tym poradzą
+      id: 0 as any, // tymczasowe ID, Observations/Editor/server mogą nadać docelowe
       player: mainName,
       match: "",
       date: "",
@@ -283,6 +421,8 @@ export default function PlayerObservationsTable({
           type: "known",
           name: mainName,
           overall: 3,
+          playerId: typeof playerId === "number" ? playerId : null,
+          globalId: typeof globalId === "number" ? globalId : null,
         },
       ],
     };
@@ -312,6 +452,11 @@ export default function PlayerObservationsTable({
       onChange?.(next as unknown as Observation[]);
       return next;
     });
+
+    // spróbuj zapisać "występ zawodnika" do Supabase (observation_ratings)
+    if (typeof patched.id === "number" && patched.id > 0) {
+      void upsertObservationRatingsForPlayer(patched);
+    }
 
     setPageMode("list");
     setEditing(null);
@@ -394,7 +539,7 @@ export default function PlayerObservationsTable({
                 ) {
                   const vals = Object.values(ratingsMap).filter(
                     (v): v is number =>
-                      typeof v === "number" && !Number.isNaN(v)
+                      typeof v === "number" && !Number.isNaN(v),
                   );
                   if (vals.length) {
                     const avg =

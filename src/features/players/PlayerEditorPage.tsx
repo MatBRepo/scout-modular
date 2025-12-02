@@ -52,7 +52,8 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
-  Copy, ClipboardPaste 
+  Copy,
+  ClipboardPaste,
 } from "lucide-react";
 
 import {
@@ -409,12 +410,10 @@ type ObsRec = {
   time?: string | any;
   status?: "draft" | "final";
   mode?: "live" | "tv" | "mix";
-  competition?: string | any;     // ⬅️ NOWE
+  competition?: string | any; // ⬅️ NOWE
   opponentLevel?: string | any;
   players?: any[];
 };
-
-
 
 type PlayerRatings = Record<string, number>;
 
@@ -737,111 +736,113 @@ function ExtContent({ view, ext, setExt }: ExtContentProps) {
               />
             </div>
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div>
-  <Label className="text-sm">Link do Transfermarkt</Label>
-  <div className="relative mt-1">
-    <Input
-      value={ext.transfermarkt}
-      onChange={(e) =>
-        setExt((s) => ({
-          ...s,
-          transfermarkt: e.target.value,
-        }))
-      }
-      placeholder="https://www.transfermarkt…"
-      className="pr-24" // space for the two icon buttons
-    />
+              {/* Transfermarkt + copy/paste */}
+              <div>
+                <Label className="text-sm">Link do Transfermarkt</Label>
+                <div className="relative mt-1">
+                  <Input
+                    value={ext.transfermarkt}
+                    onChange={(e) =>
+                      setExt((s) => ({
+                        ...s,
+                        transfermarkt: e.target.value,
+                      }))
+                    }
+                    placeholder="https://www.transfermarkt…"
+                    className="pr-24"
+                  />
+                  {/* Paste */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="absolute right-10 top-1/2 h-8 w-8 -translate-y-1/2 border-none"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        if (!text) return;
+                        setExt((s) => ({ ...s, transfermarkt: text }));
+                      } catch (err) {
+                        console.error("Clipboard paste failed", err);
+                      }
+                    }}
+                  >
+                    <ClipboardPaste className="h-3 w-3" />
+                  </Button>
+                  {/* Copy */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 border-none"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          ext.transfermarkt || ""
+                        );
+                      } catch (err) {
+                        console.error("Clipboard copy failed", err);
+                      }
+                    }}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
 
-    {/* Paste */}
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      className="absolute border-none  right-10 top-1/2 -translate-y-1/2 h-8 w-8"
-      onClick={async () => {
-        try {
-          const text = await navigator.clipboard.readText();
-          if (!text) return;
-          setExt((s) => ({ ...s, transfermarkt: text }));
-        } catch (err) {
-          console.error("Clipboard paste failed", err);
-        }
-      }}
-    >
-      <ClipboardPaste className="h-3 w-3" />
-    </Button>
-
-    {/* Copy */}
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      className="absolute border-none  right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(ext.transfermarkt || "");
-        } catch (err) {
-          console.error("Clipboard copy failed", err);
-        }
-      }}
-    >
-      <Copy className="h-3 w-3" />
-    </Button>
-  </div>
-</div>
-
-<div>
-  <Label className="text-sm">Link do Łączy Nas Piłka</Label>
-  <div className="relative mt-1">
-    <Input
-      value={ext.wyscout}
-      onChange={(e) =>
-        setExt((s) => ({
-          ...s,
-          wyscout: e.target.value,
-        }))
-      }
-      placeholder="https://www.laczynaspilka.pl/…"
-      className="pr-24"
-    />
-
-    {/* Paste */}
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      className="absolute border-none  right-10 top-1/2 -translate-y-1/2 h-8 w-8"
-      onClick={async () => {
-        try {
-          const text = await navigator.clipboard.readText();
-          if (!text) return;
-          setExt((s) => ({ ...s, wyscout: text }));
-        } catch (err) {
-          console.error("Clipboard paste failed", err);
-        }
-      }}
-    >
-      <ClipboardPaste className="h-3 w-3" />
-    </Button>
-
-    {/* Copy */}
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      className="absolute border-none right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(ext.wyscout || "");
-        } catch (err) {
-          console.error("Clipboard copy failed", err);
-        }
-      }}
-    >
-      <Copy className="h-3 w-3" />
-    </Button>
-  </div>
-</div>
+              {/* Łączy Nas Piłka + copy/paste */}
+              <div>
+                <Label className="text-sm">Link do Łączy Nas Piłka</Label>
+                <div className="relative mt-1">
+                  <Input
+                    value={ext.wyscout}
+                    onChange={(e) =>
+                      setExt((s) => ({
+                        ...s,
+                        wyscout: e.target.value,
+                      }))
+                    }
+                    placeholder="https://www.laczynaspilka.pl/…"
+                    className="pr-24"
+                  />
+                  {/* Paste */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="absolute right-10 top-1/2 h-8 w-8 -translate-y-1/2 border-none"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        if (!text) return;
+                        setExt((s) => ({ ...s, wyscout: text }));
+                      } catch (err) {
+                        console.error("Clipboard paste failed", err);
+                      }
+                    }}
+                  >
+                    <ClipboardPaste className="h-3 w-3" />
+                  </Button>
+                  {/* Copy */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 border-none"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          ext.wyscout || ""
+                        );
+                      } catch (err) {
+                        console.error("Clipboard copy failed", err);
+                      }
+                    }}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -851,9 +852,7 @@ function ExtContent({ view, ext, setExt }: ExtContentProps) {
       return (
         <div className="space-y-5">
           <div>
-            <Label className="text-sm">
-              Historia urazów (jeśli dostępna)
-            </Label>
+            <Label className="text-sm">Historia urazów (jeśli dostępna)</Label>
             <Textarea
               value={ext.injuryHistory}
               onChange={(e) =>
@@ -1156,8 +1155,7 @@ export default function PlayerEditorPage() {
 
   // AUTOMATYCZNE wyliczanie trybu profilu (known / unknown) na podstawie pól
   useEffect(() => {
-    const hasPersonal =
-      firstName.trim() !== "" && lastName.trim() !== "";
+    const hasPersonal = firstName.trim() !== "" && lastName.trim() !== "";
 
     const hasAnon =
       jerseyNumber.trim() !== "" ||
@@ -1302,140 +1300,137 @@ export default function PlayerEditorPage() {
     setQaMatch(composed);
   }
 
-// Ładowanie obserwacji z globalnego dziennika – tylko dla tego zawodnika
-useEffect(() => {
-  if (!playerId) return;
-  let cancelled = false;
+  // Ładowanie obserwacji z globalnego dziennika – tylko dla tego zawodnika
+  useEffect(() => {
+    if (!playerId) return;
+    let cancelled = false;
 
-  (async () => {
-    try {
-      const supabase = getSupabase();
+    (async () => {
+      try {
+        const supabase = getSupabase();
 
-      const { data, error } = await supabase
-        .from("observations")
-        .select(
-          // ⬇︎ bierzemy też payload, bo tam zwykle siedzą teamA/teamB/competition/reportDate
-          "id, player, match, date, time, status, mode, competition, team_a, team_b, players, payload"
-        )
-        .order("date", { ascending: false })
-        .order("time", { ascending: false });
+        const { data, error } = await supabase
+          .from("observations")
+          .select(
+            "id, player, match, date, time, status, mode, competition, team_a, team_b, players, payload"
+          )
+          .order("date", { ascending: false })
+          .order("time", { ascending: false });
 
-      if (error) {
-        console.error(
-          "[PlayerEditorPage] Supabase load observations error:",
-          error
-        );
-        return;
-      }
+        if (error) {
+          console.error(
+            "[PlayerEditorPage] Supabase load observations error:",
+            error
+          );
+          return;
+        }
 
-      if (!cancelled && data) {
-        // kandydaci nazwy gracza (jak w playerDisplayName)
-        const fullName = `${firstName || ""} ${lastName || ""}`
-          .trim()
-          .toLowerCase();
+        if (!cancelled && data) {
+          const fullName = `${firstName || ""} ${lastName || ""}`
+            .trim()
+            .toLowerCase();
 
-        const anonName = (() => {
-          const num = jerseyNumber.trim();
-          const clubLabel = club.trim();
-          if (num) {
-            return `#${num} – ${clubLabel || "Bez klubu"}`.toLowerCase();
-          }
-          return clubLabel.toLowerCase();
-        })();
+          const anonName = (() => {
+            const num = jerseyNumber.trim();
+            const clubLabel = club.trim();
+            if (num) {
+              return `#${num} – ${clubLabel || "Bez klubu"}`.toLowerCase();
+            }
+            return clubLabel.toLowerCase();
+          })();
 
-        const nameCandidates = [fullName, anonName]
-          .map((s) => s.trim())
-          .filter(Boolean);
+          const nameCandidates = [fullName, anonName]
+            .map((s) => s.trim())
+            .filter(Boolean);
 
-        const filteredRows = (data as any[]).filter((row) => {
-          const playersArr = Array.isArray(row.players) ? row.players : null;
+          const filteredRows = (data as any[]).filter((row) => {
+            const playersArr = Array.isArray(row.players) ? row.players : null;
 
-          const matchesByPlayers =
-            !!playerId &&
-            !!playersArr &&
-            playersArr.some((p: any) => {
-              const pid = Number(
-                p.id ?? p.playerId ?? p.player_id ?? p.player_id_fk
-              );
-              return !Number.isNaN(pid) && pid === playerId;
-            });
+            const matchesByPlayers =
+              !!playerId &&
+              !!playersArr &&
+              playersArr.some((p: any) => {
+                const pid = Number(
+                  p.id ?? p.playerId ?? p.player_id ?? p.player_id_fk
+                );
+                return !Number.isNaN(pid) && pid === playerId;
+              });
 
-          const rowPlayer =
-            typeof row.player === "string"
-              ? row.player.trim().toLowerCase()
-              : "";
+            const rowPlayer =
+              typeof row.player === "string"
+                ? row.player.trim().toLowerCase()
+                : "";
 
-          const matchesByText =
-            rowPlayer &&
-            nameCandidates.some((cand) => cand && rowPlayer === cand);
+            const matchesByText =
+              rowPlayer &&
+              nameCandidates.some((cand) => cand && rowPlayer === cand);
 
-          return matchesByPlayers || matchesByText;
-        });
-
-        if (filteredRows.length > 0) {
-          const mapped: ObsRec[] = filteredRows.map((row: any) => {
-            const payload = (row.payload ?? {}) as any;
-
-            const payloadMatch =
-              safeText(payload.match) ||
-              (payload.teamA && payload.teamB
-                ? `${safeText(payload.teamA)} vs ${safeText(payload.teamB)}`
-                : "");
-
-            const matchLabel =
-              safeText(row.match) ||
-              (row.team_a && row.team_b
-                ? `${safeText(row.team_a)} vs ${safeText(row.team_b)}`
-                : "") ||
-              payloadMatch;
-
-            const dateVal =
-              safeText(row.date) ||
-              safeText(payload.reportDate) ||
-              safeText(payload.date);
-
-            const timeVal =
-              safeText(row.time) ||
-              safeText(payload.time) ||
-              safeText(payload.kickoff);
-
-            const competitionLabel =
-              safeText(row.competition) ||
-              safeText(payload.competition) ||
-              safeText(payload.league) ||
-              safeText(payload.competitionName);
-
-            return {
-              id: row.id,
-              match: matchLabel,
-              date: dateVal,
-              time: timeVal,
-              status: (row.status as "draft" | "final") ?? "draft",
-              mode:
-                (row.mode as "live" | "tv" | "mix") ??
-                ("live" as "live" | "tv" | "mix"),
-              competition: competitionLabel,
-              opponentLevel: competitionLabel,
-              players: row.players ?? [],
-            };
+            return matchesByPlayers || matchesByText;
           });
 
-          setObservations(mapped);
+          if (filteredRows.length > 0) {
+            const mapped: ObsRec[] = filteredRows.map((row: any) => {
+              const payload = (row.payload ?? {}) as any;
+
+              const payloadMatch =
+                safeText(payload.match) ||
+                (payload.teamA && payload.teamB
+                  ? `${safeText(payload.teamA)} vs ${safeText(payload.teamB)}`
+                  : "");
+
+              const matchLabel =
+                safeText(row.match) ||
+                (row.team_a && row.team_b
+                  ? `${safeText(row.team_a)} vs ${safeText(row.team_b)}`
+                  : "") ||
+                payloadMatch;
+
+              const dateVal =
+                safeText(row.date) ||
+                safeText(payload.reportDate) ||
+                safeText(payload.date);
+
+              const timeVal =
+                safeText(row.time) ||
+                safeText(payload.time) ||
+                safeText(payload.kickoff);
+
+              const competitionLabel =
+                safeText(row.competition) ||
+                safeText(payload.competition) ||
+                safeText(payload.league) ||
+                safeText(payload.competitionName);
+
+              return {
+                id: row.id,
+                match: matchLabel,
+                date: dateVal,
+                time: timeVal,
+                status: (row.status as "draft" | "final") ?? "draft",
+                mode:
+                  (row.mode as "live" | "tv" | "mix") ??
+                  ("live" as "live" | "tv" | "mix"),
+                competition: competitionLabel,
+                opponentLevel: competitionLabel,
+                players: row.players ?? [],
+              };
+            });
+
+            setObservations(mapped);
+          }
         }
+      } catch (err) {
+        console.error(
+          "[PlayerEditorPage] Supabase load observations exception:",
+          err
+        );
       }
-    } catch (err) {
-      console.error(
-        "[PlayerEditorPage] Supabase load observations exception:",
-        err
-      );
-    }
-  })();
+    })();
 
-  return () => {
-    cancelled = true;
-  };
-}, [playerId, firstName, lastName, jerseyNumber, club]);
-
+    return () => {
+      cancelled = true;
+    };
+  }, [playerId, firstName, lastName, jerseyNumber, club]);
 
   function addObservation() {
     const next: ObsRec = {
@@ -1483,8 +1478,6 @@ useEffect(() => {
       return matchText.includes(q) || dateText.includes(q);
     });
   }, [normalizedObservations, obsQuery]);
-
-  
 
   const [editOpen, setEditOpen] = useState(false);
   const [editingObs, setEditingObs] = useState<ObsRec | null>(null);
@@ -1810,7 +1803,6 @@ useEffect(() => {
     "inline-flex h-6 items-center rounded-md bg-stone-100 px-2.5 text-[11px] tracking-wide text-stone-600 dark:bg-neutral-900 dark:text-neutral-200";
 
   // Helper to avoid infinite loop in observations onChange
-  // Helper to avoid infinite loop in observations onChange
   function mapTableRowsToObservations(rows: any[]): ObsRec[] {
     return (rows || []).map((o: any, index: number) => ({
       id: o.id ?? `tmp-${index}`, // PRESERVE id as-is; only fallback if missing
@@ -1825,43 +1817,40 @@ useEffect(() => {
     }));
   }
 
+  function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
+    if (a.length !== b.length) return false;
 
-function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
-  if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      const x = a[i];
+      const y = b[i];
 
-  for (let i = 0; i < a.length; i++) {
-    const x = a[i];
-    const y = b[i];
+      const sameMeta =
+        x.id === y.id &&
+        safeText(x.match) === safeText(y.match) &&
+        safeText(x.date) === safeText(y.date) &&
+        safeText(x.time) === safeText(y.time) &&
+        x.status === y.status &&
+        x.mode === y.mode &&
+        safeText(x.opponentLevel) === safeText(y.opponentLevel) &&
+        safeText(x.competition) === safeText(y.competition);
 
-    const sameMeta =
-      x.id === y.id &&
-      safeText(x.match) === safeText(y.match) &&
-      safeText(x.date) === safeText(y.date) &&
-      safeText(x.time) === safeText(y.time) &&
-      x.status === y.status &&
-      x.mode === y.mode &&
-      safeText(x.opponentLevel) === safeText(y.opponentLevel) &&
-      safeText(x.competition) === safeText(y.competition);
+      if (!sameMeta) return false;
 
-    if (!sameMeta) return false;
+      const px = Array.isArray(x.players) ? x.players : [];
+      const py = Array.isArray(y.players) ? y.players : [];
 
-    const px = Array.isArray(x.players) ? x.players : [];
-    const py = Array.isArray(y.players) ? y.players : [];
-
-    if (JSON.stringify(px) !== JSON.stringify(py)) {
-      return false;
+      if (JSON.stringify(px) !== JSON.stringify(py)) {
+        return false;
+      }
     }
+
+    return true;
   }
-
-  return true;
-}
-
-
 
   // Title with badge + icon (only current stage)
   const editorTitle = (
     <div className="w-full">
-      <div className="flex items-center gap-2 w-full">
+      <div className="flex w-full items-center gap-2">
         <h2 className="mt-1 text-xl font-semibold leading-none tracking-tight">
           Edycja zawodnika
         </h2>
@@ -1875,7 +1864,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
           </span>
         )}
         {choice === "unknown" && (
-          <span className="ml-auto inline-flex items-center rounded px-2 py-0.5 text-[12px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+          <span className="ml-auto inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-[12px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
             <UnknownPlayerIcon
               className="mr-1.5 h-4 w-4 text-rose-700"
               strokeWidth={1.4}
@@ -1940,7 +1929,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
 
   if (!playerId) {
     return (
-      <div className="w-full space-y-4 w-full">
+      <div className="w-full space-y-4">
         <Toolbar title={editorTitle} right={null} />
         <p className="text-sm text-red-600">
           Brak poprawnego identyfikatora zawodnika w adresie URL.
@@ -1971,7 +1960,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
         <Card ref={basicRef} className="mt-1">
           <CardHeader
             className={cn(
-              "group flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between rounded-md border-gray-200 p-0 transition-colors hover:bg-stone-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               basicOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1980,7 +1969,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
               aria-expanded={basicOpen}
               aria-controls="basic-panel"
               onClick={() => setBasicOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left px-4 py-4"
+              className="flex w-full items-center justify-between px-4 py-4 text-left"
             >
               <div>
                 <div className={stepPillClass}>Krok 1 · Dane bazowe</div>
@@ -2014,7 +2003,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
               className="w-full"
             >
               <AccordionItem value="basic" className="border-0">
-                <AccordionContent id="basic-panel" className="pt-4 pb-5">
+                <AccordionContent id="basic-panel" className="pb-5 pt-4">
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                       <div>
@@ -2046,7 +2035,6 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
                             }
 
                             const next = String(Math.max(0, val));
-                            // blokada > 4 cyfr, bez podmiany na 9999
                             if (next.length > 4) {
                               return;
                             }
@@ -2125,7 +2113,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between rounded-md border-gray-200 p-0 transition-colors hover:bg-stone-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               extOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2134,7 +2122,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
               aria-expanded={extOpen}
               aria-controls="ext-panel"
               onClick={() => setExtOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left px-4 py-4"
+              className="flex w-full items-center justify-between px-4 py-4 text-left"
             >
               <div>
                 <div className={stepPillClass}>Krok 2 · Profil boiskowy</div>
@@ -2173,7 +2161,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
               className="w-full"
             >
               <AccordionItem value="ext" className="border-0">
-                <AccordionContent id="ext-panel" className="pt-4 pb-5">
+                <AccordionContent id="ext-panel" className="pb-5 pt-4">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
                       Możesz stopniowo uzupełniać te dane, gdy będziesz
@@ -2181,6 +2169,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
                     </p>
                   )}
 
+                  {/* Mobile – select */}
                   <div className="md:hidden">
                     <Label className="mb-1 block text-sm">Sekcja</Label>
                     <select
@@ -2204,6 +2193,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
                     </div>
                   </div>
 
+                  {/* Desktop – tabs */}
                   <div className="hidden md:block">
                     <Tabs
                       value={extView}
@@ -2261,7 +2251,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between rounded-md border-gray-200 p-0 transition-colors hover:bg-stone-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               gradeOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2270,7 +2260,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
               aria-expanded={gradeOpen}
               aria-controls="grade-panel"
               onClick={() => setGradeOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left px-4 py-4"
+              className="flex w-full items-center justify-between px-4 py-4 text-left"
             >
               <div>
                 <div className={stepPillClass}>Krok 3 · Ocena</div>
@@ -2309,7 +2299,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
               className="w-full"
             >
               <AccordionItem value="grade" className="border-0">
-                <AccordionContent id="grade-panel" className="pt-4 pb-5">
+                <AccordionContent id="grade-panel" className="pb-5 pt-4">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
                       Możesz wypełniać oceny nawet dla profilu anonimowego –
@@ -2416,7 +2406,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group bg-[#E3E0F9] flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-[#D4CEFF] p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex items-center justify-between rounded-md border-gray-200 bg-[#E3E0F9] p-0 transition-colors hover:bg-[#D4CEFF] dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               obsOpen && "bg-[#E3E0F9] dark:bg-neutral-900/70"
             )}
           >
@@ -2425,7 +2415,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
               aria-expanded={obsOpen}
               aria-controls="obs-panel"
               onClick={() => setObsOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left px-4 py-4"
+              className="flex w-full items-center justify-between px-4 py-4 text-left"
             >
               <div>
                 <div className={stepPillClass}>Krok 4 · Obserwacje</div>
@@ -2463,7 +2453,7 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
               onValueChange={(v) => setObsOpen(v === "obs")}
             >
               <AccordionItem value="obs" className="border-0">
-                <AccordionContent id="obs-panel" className="pt-4 pb-5">
+                <AccordionContent id="obs-panel" className="pb-5 pt-4">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
                       Możesz tworzyć obserwacje również dla profilu anonimowego
@@ -2472,23 +2462,25 @@ function areObsListsEqual(a: ObsRec[], b: ObsRec[]): boolean {
                   )}
 
                   <div className="mb-6">
-                    <PlayerObservationsTable
-                      playerName={playerDisplayName}
-                      observations={normalizedObservations as any}
-                      onChange={(next) => {
-                        const mapped = mapTableRowsToObservations(
-                          next as any[]
-                        );
-                        setObservations((prev) =>
-                          areObsListsEqual(prev, mapped) ? prev : mapped
-                        );
-                      }}
-                    />
+<PlayerObservationsTable
+  playerName={playerDisplayName}
+  observations={normalizedObservations as any}
+  playerId={playerId ?? undefined} // ⬅️ NOWE – wiążemy obserwacje z tym zawodnikiem
+  onChange={(next) => {
+    const mapped = mapTableRowsToObservations(next as any[]);
+    setObservations((prev) =>
+      areObsListsEqual(prev, mapped) ? prev : mapped
+    );
+  }}
+/>
+
                   </div>
 
                   {false && (
                     <>
-                      <div className="space-y-8">{/* ... stary QA ... */}</div>
+                      <div className="space-y-8">
+                        {/* ... stary QA ... */}
+                      </div>
                       <Dialog open={editOpen} onOpenChange={setEditOpen}>
                         <DialogContent>
                           <DialogHeader>

@@ -186,8 +186,7 @@ function AnchoredPopover({
   useEffect(() => {
     if (!open) return;
 
-    const onKey = (e: KeyboardEvent) =>
-      e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
 
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
@@ -332,9 +331,7 @@ function buildTargetNames(p: PlayerWithOwner) {
       .filter(Boolean)
       .join(" "),
   );
-  return new Set(
-    [mainName, firstLast, lastFirst].filter((v) => v.length > 0),
-  );
+  return new Set([mainName, firstLast, lastFirst].filter((v) => v.length > 0));
 }
 
 function extractJsonPlayerName(item: any) {
@@ -365,11 +362,7 @@ function findPlayerEntryInObservation(
 
     // najpierw spróbuj po ID
     const jsonId =
-      item.player_id ??
-      item.playerId ??
-      item.id ??
-      item.player_id_fk ??
-      null;
+      item.player_id ?? item.playerId ?? item.id ?? item.player_id_fk ?? null;
     if (jsonId !== null && p.id != null && Number(jsonId) === Number(p.id)) {
       return item;
     }
@@ -385,10 +378,7 @@ function findPlayerEntryInObservation(
 
 /* ========= helper: czy observation zawiera playera ========= */
 
-function observationIncludesPlayer(
-  o: ObservationWithOwner,
-  p: PlayerWithOwner,
-) {
+function observationIncludesPlayer(o: ObservationWithOwner, p: PlayerWithOwner) {
   const targetNames = buildTargetNames(p);
 
   // 1) legacy / szybkie powiązanie: obserwacje.player (tekst)
@@ -441,13 +431,9 @@ function collectRatingsFromPlayerMeta(p: PlayerWithOwner): number[] {
 }
 
 /**
- * NOWE: próba wyciągnięcia „Oceny z obserwacji” dla konkretnego zawodnika
- * z pojedynczej obserwacji.
- *
- * Szukamy:
- *  - NAJPIERW w players[].ratings (dokładnie tak jak w PlayerObservationsTable),
- *  - potem w per-player polach (overall, rating, ocena, itp.),
- *  - na końcu w polach na samej obserwacji.
+ * Próba wyciągnięcia „Oceny z obserwacji” dla konkretnego zawodnika
+ * z pojedynczej obserwacji – używane TYLKO jako fallback,
+ * gdy nie mamy danych w observation_ratings.
  */
 function extractOverallRatingForPlayer(
   o: ObservationWithOwner,
@@ -457,7 +443,7 @@ function extractOverallRatingForPlayer(
   const entry = findPlayerEntryInObservation(o, p);
 
   if (entry) {
-    // 1A) mapa aspektów jak w PlayerObservationsTable -> średnia z aspektów
+    // 1A) mapa aspektów -> średnia z aspektów
     const ratingsMap =
       entry.ratings ??
       entry.aspects ??
@@ -482,7 +468,7 @@ function extractOverallRatingForPlayer(
     const candidatesFromEntry = [
       (entry as any).overallRating,
       (entry as any).overall_rating,
-      (entry as any).overall, // <- ważne: Editor zapisuje tutaj
+      (entry as any).overall, // <- Editor często zapisuje tutaj
       (entry as any).rating,
       (entry as any).ocena,
       (entry as any).score,
@@ -618,8 +604,7 @@ export default function MyPlayersFeature({
       return;
     }
 
-    // mapowanie global_id -> wszystkie lokalne players.id,
-    // gdyby kilka lokalnych zawodników dzieliło jednego global_player
+    // mapowanie global_id -> wszystkie lokalne players.id
     const globalToLocalIds = new Map<number, number[]>();
     for (const p of pls) {
       const gid = p.global_id;
@@ -691,7 +676,7 @@ export default function MyPlayersFeature({
           } else if (typeof row.global_id === "number") {
             const locals = globalToLocalIds.get(row.global_id);
             if (locals && locals.length > 0) {
-              // jeżeli jest kilka lokalnych, weź pierwszego (lub można by rozbić po wszystkich)
+              // jeżeli jest kilka lokalnych, weź pierwszego
               pid = locals[0];
             }
           }
@@ -824,52 +809,53 @@ export default function MyPlayersFeature({
 
   // Base with obs count + known flag + progress + avg rating
   // Rating – PRIORYTETY:
-  // 1) średnia z obserwacji (tylko te, które faktycznie zawierają zawodnika),
-  //    liczymy tak samo jak w PlayerObservationsTable (z players[].ratings)
-  // 2) observation_ratings z bazy (ratingStatsMap)
-  // 3) meta.ratings na obiekcie zawodnika
+  // 1) observation_ratings (DB, per użytkownik) – zapisane średnie z występów
+  // 2) fallback: średnia z obserwacji (players[].ratings / overall)
+  // 3) fallback: meta.ratings na obiekcie zawodnika
   const withObsCount = useMemo<PlayerRow[]>(() => {
     const pls = ownedPlayers as PlayerWithOwner[];
     const obs = ownedObservations as ObservationWithOwner[];
 
     return pls.map((p) => {
-      // wszystkie obserwacje, które faktycznie zawierają zawodnika
-      const relatedObs = obs.filter((o) =>
-        observationIncludesPlayer(o, p),
-      );
-      const obsCount = relatedObs.length;
+      const stats =
+        p.id != null ? ratingStatsMap.get(p.id as number) : null;
 
-      // 1) średnia z obserwacji (to co widzisz w "Obserwacje zawodnika")
-      const obsRatings: number[] = [];
-      for (const o of relatedObs) {
-        const r = extractOverallRatingForPlayer(o, p);
-        if (r != null) obsRatings.push(r);
-      }
-      const fromObs =
-        obsRatings.length > 0
-          ? obsRatings.reduce((a, b) => a + b, 0) / obsRatings.length
-          : null;
+      let obsCount = stats?.obsCount ?? 0;
+      let avgRating: number | null = stats?.avg ?? null;
 
-      // 2) observation_ratings (DB, per użytkownik)
-      const stats = p.id != null ? ratingStatsMap.get(p.id as number) : null;
-      const fromDb = stats?.avg ?? null;
+      // jeśli nie mamy danych z observation_ratings → fallback do logiki opartej o same obserwacje
+      if (!stats) {
+        // wszystkie obserwacje, które faktycznie zawierają zawodnika
+        const relatedObs = obs.filter((o) =>
+          observationIncludesPlayer(o, p),
+        );
+        obsCount = relatedObs.length;
 
-      // 3) meta.ratings
-      const metaRatings = collectRatingsFromPlayerMeta(p);
-      const fromMeta =
-        metaRatings.length > 0
-          ? metaRatings.reduce((a, b) => a + b, 0) / metaRatings.length
-          : null;
+        // 2) średnia z obserwacji (to co widzisz w "Obserwacje zawodnika")
+        const obsRatings: number[] = [];
+        for (const o of relatedObs) {
+          const r = extractOverallRatingForPlayer(o, p);
+          if (r != null) obsRatings.push(r);
+        }
+        const fromObs =
+          obsRatings.length > 0
+            ? obsRatings.reduce((a, b) => a + b, 0) / obsRatings.length
+            : null;
 
-      let avgRating: number | null = null;
-      if (fromObs != null) {
-        avgRating = fromObs;
-      } else if (fromDb != null) {
-        avgRating = fromDb;
-      } else if (fromMeta != null) {
-        avgRating = fromMeta;
-      } else {
-        avgRating = null;
+        // 3) meta.ratings (tylko jeśli nie ma nic innego)
+        const metaRatings = collectRatingsFromPlayerMeta(p);
+        const fromMeta =
+          metaRatings.length > 0
+            ? metaRatings.reduce((a, b) => a + b, 0) / metaRatings.length
+            : null;
+
+        if (fromObs != null) {
+          avgRating = fromObs;
+        } else if (fromMeta != null) {
+          avgRating = fromMeta;
+        } else {
+          avgRating = null;
+        }
       }
 
       return {
@@ -1890,12 +1876,12 @@ export default function MyPlayersFeature({
                         const v = e.target.value;
                         const n =
                           v === ""
-                            ? ""
-                            : Math.max(
-                                0,
-                                Number.isNaN(Number(v))
-                                  ? 0
-                                  : Number(v),
+                          ? ""
+                          : Math.max(
+                              0,
+                              Number.isNaN(Number(v))
+                                ? 0
+                                : Number(v),
                             );
                         setAgeMax(n as any);
                         setPage(1);
