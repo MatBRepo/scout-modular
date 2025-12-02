@@ -1454,15 +1454,44 @@ export default function PlayerEditorPage() {
     setQaTeamB("");
   }
 
-  const normalizedObservations = useMemo<ObsRec[]>(() => {
-    return (observations || []).map((o) => ({
+const normalizedObservations = useMemo<ObsRec[]>(() => {
+  return (observations || []).map((o) => {
+    // base normalization
+    const base: ObsRec = {
       ...o,
       match: safeText(o.match),
       date: safeText(o.date),
       time: safeText(o.time),
       opponentLevel: safeText(o.opponentLevel),
-    }));
-  }, [observations]);
+    };
+
+    // sync player name inside observation.players with current playerDisplayName
+    const playersArr = Array.isArray(o.players) ? o.players : [];
+    const syncedPlayers = playersArr.map((p: any) => {
+      const pid = Number(
+        p.id ?? p.playerId ?? p.player_id ?? p.player_id_fk
+      );
+
+      if (!Number.isNaN(pid) && pid === playerId) {
+        const name = playerDisplayName;
+        return {
+          ...p,
+          // common possible fields used by the editor:
+          name,
+          label: name,
+          displayName: name,
+          player: name,
+        };
+      }
+
+      return p;
+    });
+
+    (base as any).players = syncedPlayers;
+    return base;
+  });
+}, [observations, playerId, playerDisplayName]);
+
 
   const existingFiltered = useMemo(() => {
     const q = obsQuery.trim().toLowerCase();
