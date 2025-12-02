@@ -392,9 +392,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         <>
                           Rejestrując się, tworzysz własną przestrzeń roboczą w{" "}
                           <span className="font-medium">entrisoScouting</span> —{" "}
-                          buduj bazę zawodników, dodawaj obserwacje meczowe i
-                          generuj raporty. Jeśli korzystasz z systemu klubowo,
-                          użyj służbowego adresu e-mail.
+                          buduj bazę zawodników, dodawaj obserwacje meczowe.
                         </>
                       )}
                     </motion.p>
