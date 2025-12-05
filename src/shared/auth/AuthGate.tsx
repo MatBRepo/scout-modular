@@ -256,8 +256,8 @@ const handleGoogleAuth = async () => {
       return;
     }
 
-    // Po wywołaniu signInWithOAuth Supabase i tak zrobi redirect,
-    // więc ten kod zwykle się już nie wykona. Ale zostawiamy fallback:
+    // Supabase i tak robi pełny redirect,
+    // ale zostawiamy fallback:
     setBusy(false);
   } catch (err: any) {
     console.error("[AuthGate] Google OAuth error:", err);
