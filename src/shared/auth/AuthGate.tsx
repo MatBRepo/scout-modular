@@ -230,40 +230,42 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     }
   };
 
-  // ===== 3a. Google OAuth (login / utworzenie konta) =====
-  const handleGoogleAuth = async () => {
-    setError(null);
-    setInfo(null);
-    setBusy(true);
+// ===== 3a. Google OAuth (login / utworzenie konta) =====
+const handleGoogleAuth = async () => {
+  setError(null);
+  setInfo(null);
+  setBusy(true);
 
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        // opcjonalnie możesz dodać redirectTo jeśli masz dedykowany callback:
-        // options: {
-        //   redirectTo:
-        //     typeof window !== "undefined"
-        //       ? `${window.location.origin}/auth/callback`
-        //       : undefined,
-        // },
-      });
+  try {
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/callback`
+        : undefined;
 
-      if (error) {
-        console.error("[AuthGate] Google OAuth error:", error);
-        setError(error.message || "Nie udało się połączyć z Google.");
-        setBusy(false);
-        return;
-      }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+      },
+    });
 
-      // Supabase przekieruje użytkownika do Google, więc tutaj zwykle już nie wracasz
-      // ale na wszelki wypadek zwalniamy busy:
+    if (error) {
+      console.error("[AuthGate] Google OAuth error:", error);
+      setError(error.message || "Nie udało się połączyć z Google.");
       setBusy(false);
-    } catch (err: any) {
-      console.error("[AuthGate] Google OAuth error:", err);
-      setError("Nie udało się połączyć z Google. Spróbuj ponownie.");
-      setBusy(false);
+      return;
     }
-  };
+
+    // Po wywołaniu signInWithOAuth Supabase i tak zrobi redirect,
+    // więc ten kod zwykle się już nie wykona. Ale zostawiamy fallback:
+    setBusy(false);
+  } catch (err: any) {
+    console.error("[AuthGate] Google OAuth error:", err);
+    setError("Nie udało się połączyć z Google. Spróbuj ponownie.");
+    setBusy(false);
+  }
+};
+
 
   // ===== 4. Wylogowanie =====
   const logout = async () => {
