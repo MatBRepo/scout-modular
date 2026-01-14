@@ -9,16 +9,16 @@ export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // To wywołanie m.in. sprawi, że supabase-js sparsuje #access_token z URL
-    supabase.auth
-      .getSession()
-      .catch((err) => {
-        console.error("[AuthCallback] getSession error:", err);
-      })
-      .finally(() => {
-        // po ogarnięciu sesji przerzucamy usera do głównej części appki
+    (async () => {
+      try {
+        // wymiana code -> session (PKCE)
+        await supabase.auth.exchangeCodeForSession(window.location.href);
+      } catch (err) {
+        console.error("[AuthCallback] exchangeCodeForSession error:", err);
+      } finally {
         router.replace("/");
-      });
+      }
+    })();
   }, [router]);
 
   return <LoaderOverlay text="Kończenie logowania…" />;
