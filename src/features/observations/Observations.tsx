@@ -46,6 +46,50 @@ import { AddObservationIcon } from "@/components/icons";
 
 /* -------------------------------- helpers -------------------------------- */
 
+function lockBodyScroll() {
+  // zapamiętaj pozycję scrolla
+  const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+
+  // opcjonalnie: kompensacja „znikającego” scrollbara (desktop/tablet)
+  const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
+
+  document.body.dataset.scrollLock = "1";
+  document.body.dataset.scrollY = String(scrollY);
+
+  // kluczowy trik na iOS: position: fixed na body + top:-scrollY
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
+  document.body.style.width = "100%";
+  document.body.style.overflow = "hidden";
+
+  if (scrollbarW > 0) {
+    document.body.style.paddingRight = `${scrollbarW}px`;
+  }
+}
+
+function unlockBodyScroll() {
+  if (document.body.dataset.scrollLock !== "1") return;
+
+  const scrollY = Number(document.body.dataset.scrollY || "0");
+
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  document.body.style.width = "";
+  document.body.style.overflow = "";
+  document.body.style.paddingRight = "";
+
+  delete document.body.dataset.scrollLock;
+  delete document.body.dataset.scrollY;
+
+  // przywróć scroll
+  window.scrollTo(0, scrollY);
+}
+
+
 function useIsMobile(maxPx = 640) {
   const [is, setIs] = useState(false);
   useEffect(() => {
@@ -472,6 +516,31 @@ export default function ObservationsFeature({
 
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+
+
+  useEffect(() => {
+  // lock tylko gdy OTWARTE filtry na mobile
+  if (isMobile && filtersOpen) {
+    lockBodyScroll();
+    return () => unlockBodyScroll();
+  }
+  // jeśli filtry zamknięte, upewnij się że odblokowane
+  if (isMobile && !filtersOpen) {
+    unlockBodyScroll();
+  }
+}, [isMobile, filtersOpen]);
+
+
+useEffect(() => {
+  const anySheetOpen = filtersOpen || moreOpen || colsOpen;
+
+  if (isMobile && anySheetOpen) {
+    lockBodyScroll();
+    return () => unlockBodyScroll();
+  }
+  if (isMobile && !anySheetOpen) unlockBodyScroll();
+}, [isMobile, filtersOpen, moreOpen, colsOpen]);
 
   // MASS SELECTION
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -1266,7 +1335,7 @@ if (modeFilter)
                 aria-hidden
               />
               <div
-                className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-md-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+                className="fixed inset-x-0 bottom-0 z-[210] max-h-[80vh] overflow-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
                 role="dialog"
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}

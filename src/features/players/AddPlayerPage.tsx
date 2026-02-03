@@ -1897,64 +1897,57 @@ useEffect(() => {
                     </p>
                   )}
 
-                  <div className="md:hidden">
-                    <Label className="mb-1 block text-sm">Sekcja</Label>
-                    <select
-                      value={extView}
-                      onChange={(e) =>
-                        setExtView(e.target.value as ExtKey)
-                      }
-                      className="w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
-                    >
-                      <option value="profile">Profil boiskowy</option>
-                      <option value="eligibility">
-                        Status &amp; scouting
-                      </option>
-                      <option value="stats365">Zdrowie i statystyki</option>
-                      <option value="contact">
-                        Kontakt &amp; social
-                      </option>
-                    </select>
-                    <div className="mt-4">
-                      <ExtContent view={extView} />
-                    </div>
-                  </div>
+<Tabs value={extView} onValueChange={(v: any) => setExtView(v)} className="w-full">
+  {/* wrapper robi scroll */}
+  <div
+    className={cn(
+      "relative",
+      // jeśli chcesz pełną szerokość na mobile bez psucia paddingów karty:
+      "-mx-4 px-4 md:mx-0 md:px-0",
+      "overflow-x-auto overflow-y-hidden md:overflow-visible",
+      "[-webkit-overflow-scrolling:touch]",
+      "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    )}
+  >
+    <TabsList
+      className={cn(
+        // klucz: list ma mieć szerokość od contentu, nie 100%
+        "inline-flex min-w-max",
+        "gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-900",
+        "whitespace-nowrap"
+      )}
+    >
+      <TabsTrigger value="profile" className="flex-none">
+        Profil boiskowy
+      </TabsTrigger>
+      <TabsTrigger value="eligibility" className="flex-none">
+        Status &amp; scouting
+      </TabsTrigger>
+      <TabsTrigger value="stats365" className="flex-none">
+        Zdrowie i statystyki
+      </TabsTrigger>
+      <TabsTrigger value="contact" className="flex-none">
+        Kontakt &amp; social
+      </TabsTrigger>
+    </TabsList>
+  </div>
 
-                  <div className="hidden md:block">
-                    <Tabs
-                      value={extView}
-                      onValueChange={(v: any) => setExtView(v)}
-                      className="w-full"
-                    >
-                      <TabsList className="inline-flex w-auto gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-900">
-                        <TabsTrigger value="profile">
-                          Profil boiskowy
-                        </TabsTrigger>
-                        <TabsTrigger value="eligibility">
-                          Status &amp; scouting
-                        </TabsTrigger>
-                        <TabsTrigger value="stats365">
-                          Zdrowie i statystyki
-                        </TabsTrigger>
-                        <TabsTrigger value="contact">
-                          Kontakt &amp; social
-                        </TabsTrigger>
-                      </TabsList>
+  <TabsContent value="profile" className="mt-4">
+    <ExtContent view="profile" />
+  </TabsContent>
+  <TabsContent value="eligibility" className="mt-4">
+    <ExtContent view="eligibility" />
+  </TabsContent>
+  <TabsContent value="stats365" className="mt-4">
+    <ExtContent view="stats365" />
+  </TabsContent>
+  <TabsContent value="contact" className="mt-4">
+    <ExtContent view="contact" />
+  </TabsContent>
+</Tabs>
 
-                      <TabsContent value="profile" className="mt-4">
-                        <ExtContent view="profile" />
-                      </TabsContent>
-                      <TabsContent value="eligibility" className="mt-4">
-                        <ExtContent view="eligibility" />
-                      </TabsContent>
-                      <TabsContent value="stats365" className="mt-4">
-                        <ExtContent view="stats365" />
-                      </TabsContent>
-                      <TabsContent value="contact" className="mt-4">
-                        <ExtContent view="contact" />
-                      </TabsContent>
-                    </Tabs>
-                  </div>
+
+
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Toolbar } from "@/shared/ui/atoms";
 import type { Player, Observation } from "@/shared/types";
+import { useBodyScrollLock } from "@/shared/ui/useBodyScrollLock";
 import {
   PlusCircle,
   Pencil,
@@ -76,6 +77,69 @@ function Portal({ children }: { children: React.ReactNode }) {
   return el ? createPortal(children, el) : null;
 }
 
+
+
+/* ====== body scroll lock (mobile sheets) ====== */
+
+let __bodyLockCount = 0;
+
+function lockBodyScroll() {
+  if (typeof window === "undefined") return;
+
+  __bodyLockCount += 1;
+  if (__bodyLockCount > 1) return; // już zablokowane
+
+  const body = document.body;
+  const html = document.documentElement;
+
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+
+  // zapisz stan
+  body.dataset.scrollLockY = String(scrollY);
+  body.dataset.scrollLockOverflow = body.style.overflow || "";
+  body.dataset.scrollLockPosition = body.style.position || "";
+  body.dataset.scrollLockTop = body.style.top || "";
+  body.dataset.scrollLockWidth = body.style.width || "";
+
+  // blokada (najlepsza na iOS: body fixed + top)
+  body.style.overflow = "hidden";
+  body.style.position = "fixed";
+  body.style.top = `-${scrollY}px`;
+  body.style.width = "100%";
+
+  // opcjonalnie: ogranicz "bounce" na mobile
+  html.style.overscrollBehavior = "contain";
+}
+
+function unlockBodyScroll() {
+  if (typeof window === "undefined") return;
+
+  __bodyLockCount = Math.max(0, __bodyLockCount - 1);
+  if (__bodyLockCount > 0) return; // nadal coś otwarte
+
+  const body = document.body;
+  const html = document.documentElement;
+
+  const y = Number(body.dataset.scrollLockY || "0") || 0;
+
+  body.style.overflow = body.dataset.scrollLockOverflow || "";
+  body.style.position = body.dataset.scrollLockPosition || "";
+  body.style.top = body.dataset.scrollLockTop || "";
+  body.style.width = body.dataset.scrollLockWidth || "";
+
+  delete body.dataset.scrollLockY;
+  delete body.dataset.scrollLockOverflow;
+  delete body.dataset.scrollLockPosition;
+  delete body.dataset.scrollLockTop;
+  delete body.dataset.scrollLockWidth;
+
+  html.style.overscrollBehavior = "";
+
+  window.scrollTo(0, y);
+}
+
+
+
 function MobileSheet({
   open,
   onClose,
@@ -87,7 +151,10 @@ function MobileSheet({
   title: string;
   children: React.ReactNode;
 }) {
+  useBodyScrollLock(open, { mobileOnly: true, mobileMaxPx: 640 });
+
   if (!open) return null;
+
   return (
     <Portal>
       {/* overlay */}
@@ -95,6 +162,7 @@ function MobileSheet({
         className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
+        onTouchMove={(e) => e.preventDefault()}
       />
       {/* panel */}
       <div
@@ -119,6 +187,8 @@ function MobileSheet({
     </Portal>
   );
 }
+
+
 
 /* ================= Anchored popover (desktop) ================= */
 
@@ -2410,11 +2480,12 @@ export default function MyPlayersFeature({
                 />
 
                 {showScrollHint && (
-                  <div className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 sm:hidden">
+                  <div className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 bottom-[-60px] sm:hidden">
                     <div className="inline-flex items-center gap-1 rounded-md bg-gray-900/85 px-2.5 py-1 text-[11px] font-medium text-white ring-1 ring-black/10 backdrop-blur">
                       Przewiń tabelę →
                     </div>
                   </div>
+
                 )}
               </div>
 

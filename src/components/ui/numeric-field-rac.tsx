@@ -23,25 +23,45 @@ export function NumericField({
   placeholder,
   ...props
 }: NumericFieldProps) {
-  // Destructure so we can override minValue / formatOptions safely
-  const { minValue, formatOptions, ...restProps } = props;
+  // Destructure so we can override safely
+  const { minValue, formatOptions, step, onChange, ...restProps } = props;
 
   // No negatives
   const finalMinValue = minValue ?? 0;
 
-  // Force integer-only (no fraction digits) – blocks 122,22 / 122.22 as decimal
+  // Force integer-only formatting
   const mergedFormatOptions: Intl.NumberFormatOptions = {
     ...formatOptions,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   };
+
+  // Integer step (prevents wheel/buttons from producing fractions)
+  const finalStep = step ?? 1;
 
   return (
     <NumberField
       {...restProps}
       minValue={finalMinValue}
+      step={finalStep}
       formatOptions={mergedFormatOptions}
+      onChange={(value: any) => {
+        // react-aria NumberField can pass number | null
+        if (value == null) {
+          onChange?.(value);
+          return;
+        }
+
+        // Hard clamp to integer (no decimals ever)
+        const intValue =
+          typeof value === "number" && Number.isFinite(value)
+            ? Math.trunc(value)
+            : value;
+
+        onChange?.(intValue);
+      }}
     >
-      <div className={cn("*:not-first:mt-2", className)}>
+      <div className={cn("*:not-first:mt-2", className)} data-rz-integer>
         {label && (
           <Label className="mb-1 block text-sm font-medium text-foreground">
             {label}
@@ -59,6 +79,8 @@ export function NumericField({
           <Input
             className="h-8 w-full sm:w-20 bg-background px-3 py-2 text-left text-foreground tabular-nums"
             placeholder={placeholder}
+            inputMode="numeric"
+            pattern="[0-9]*"
             onKeyDown={(e) => {
               // Block minus & decimals (including numpad + locale comma)
               if (
@@ -70,6 +92,11 @@ export function NumericField({
               ) {
                 e.preventDefault();
               }
+            }}
+            onPaste={(e) => {
+              const text = e.clipboardData.getData("text");
+              // allow only digits (no spaces, no separators, no minus)
+              if (!/^\d+$/.test(text)) e.preventDefault();
             }}
           />
 

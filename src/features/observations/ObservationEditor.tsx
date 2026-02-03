@@ -305,7 +305,7 @@ function VoiceNoteButton({
         type="button"
         disabled
         className={cn(
-          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px]",
+          "inline-flex items-center gap-0 rounded-md border px-2 py-1 text-[11px]",
           "border-gray-300 text-gray-400 opacity-60 cursor-not-allowed dark:border-neutral-700 dark:text-neutral-500"
         )}
       >
@@ -320,7 +320,7 @@ function VoiceNoteButton({
       type="button"
       onClick={handleClick}
       className={cn(
-        "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px]",
+        "inline-flex items-center gap-0 rounded-md border px-2 py-1 text-[11px]",
         "border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800",
         isRecording &&
           "border-red-500 text-red-600 bg-red-50 dark:border-red-500 dark:text-red-200 dark:bg-red-950/40"
@@ -1273,17 +1273,19 @@ export function ObservationEditor({
                   szczegóły pod wierszem zawodnika.
                 </p>
               </div>
-              <div className="flex items-center gap-3 pl-4">
-                <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground dark:border-neutral-700">
-                  {o.players?.length ?? 0} zapisanych
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 transition-transform",
-                    playersOpen ? "rotate-180" : "rotate-0"
-                  )}
-                />
-              </div>
+             <div className="flex items-center gap-3 pl-4">
+  <span className="whitespace-nowrap rounded-md border px-2 py-0.5 text-xs text-muted-foreground dark:border-neutral-700">
+    {o.players?.length ?? 0} pozycja
+  </span>
+
+  <ChevronDown
+    className={cn(
+      "h-5 w-5 transition-transform",
+      playersOpen ? "rotate-180" : "rotate-0"
+    )}
+  />
+</div>
+
             </button>
           </CardHeader>
           <CardContent className="px-4 py-0 md:px-4">
@@ -1355,456 +1357,650 @@ export function ObservationEditor({
                       </Button>
                     </div>
 
-                    <div className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-                      <table className="w-full table-auto text-sm">
-                        <thead className="bg-stone-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
-                          <tr className="text-xs sm:text-sm">
-                            <th className="p-2 text-left font-medium sm:p-3">
-                              Zawodnik
-                            </th>
-                            <th className="p-2 text-left font-medium sm:p-3">
-                              Pozycja w meczu
-                            </th>
-                            <th className="p-2 text-left font-medium sm:p-3">
-                              Minuty
-                            </th>
-                            <th className="p-2 text-left font-medium sm:p-3">
-                              Ocena
-                            </th>
-                            <th className="p-2 text-right font-medium sm:p-3">
-                              Akcje
-                            </th>
-                          </tr>
-                        </thead>
+                        {/* ====== LISTA ZAWODNIKÓW: MOBILE (karty) ====== */}
+<div className="sm:hidden space-y-2">
+  {(o.players ?? []).map((p) => {
+    const isOpen = expandedId === p.id;
+    const isConfirmDelete = confirmDeleteId === p.id;
 
-                        <tbody>
-                          {(o.players ?? []).map((p) => {
-                            const isOpen = expandedId === p.id;
-                            const isConfirmDelete = confirmDeleteId === p.id;
+    const pos = p.position;
+    const showGK = pos === "GK";
+    const showDEF = pos === "CB" || pos === "LB" || pos === "RB";
+    const showMID = pos === "CMD" || pos === "CM" || pos === "CAM";
+    const showATT = pos === "LW" || pos === "RW" || pos === "ST";
 
-                            const pos = p.position;
-                            const showGK = pos === "GK";
-                            const showDEF =
-                              pos === "CB" || pos === "LB" || pos === "RB";
-                            const showMID =
-                              pos === "CMD" || pos === "CM" || pos === "CAM";
-                            const showATT =
-                              pos === "LW" || pos === "RW" || pos === "ST";
+    const hasPosition = !!p.position;
 
-                            const hasPosition = !!p.position;
+    const displayName =
+      p.type === "known"
+        ? p.name ?? "—"
+        : p.name ?? (p.shirtNo ? `#${p.shirtNo}` : "—");
 
-                            const displayName =
-                              p.type === "known"
-                                ? p.name ?? "—"
-                                : p.name ?? (p.shirtNo ? `#${p.shirtNo}` : "—");
+    const isUnknownPlayer =
+      p.type === "unknown" || (displayName && displayName.trim().startsWith("#"));
 
-                            const isUnknownPlayer =
-                              p.type === "unknown" ||
-                              (displayName &&
-                                displayName.trim().startsWith("#"));
+    const normalizedName = (p.name || "").replace(/^#/, "").trim();
 
-                            const normalizedName = (p.name || "")
-                              .replace(/^#/, "")
-                              .trim();
+    const inBase =
+      !!normalizedName &&
+      allPlayers.some(
+        (bp) => (bp.name || "").toLowerCase() === normalizedName.toLowerCase()
+      );
 
-                            const inBase =
-                              !!normalizedName &&
-                              allPlayers.some(
-                                (bp) =>
-                                  (bp.name || "").toLowerCase() ===
-                                  normalizedName.toLowerCase()
-                              );
+    return (
+      <div
+        key={p.id}
+        className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+      >
+        {/* header */}
+        <div className="flex items-start justify-between gap-3 p-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1">
+              <div className="truncate text-sm font-semibold text-gray-900 dark:text-neutral-100">
+                {displayName}
+              </div>
 
-                            return (
-                              <Fragment key={p.id}>
-                                <tr className="border-t border-gray-200 align-middle hover:bg-stone-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
-                                  <td className="p-2 sm:p-3">
-                                    <div className="flex items-start gap-2">
-                                      <div className="min-w-0">
-                                        <div className="flex flex-wrap items-center gap-1">
-                                          <div className="truncate text-sm font-medium text-gray-900 dark:text-neutral-100">
-                                            {displayName}
-                                          </div>
+              {isUnknownPlayer && (
+                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                  nieznany
+                </span>
+              )}
+            </div>
 
-                                          {isUnknownPlayer && (
-                                            <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                              nieznany
-                                            </span>
-                                          )}
-                                        </div>
+            {p.shirtNo && (
+              <div className="mt-0.5 text-[11px] text-stone-700 dark:text-stone-200">
+                Nr: {p.shirtNo}
+              </div>
+            )}
+          </div>
 
-                                        {p.shirtNo && (
-                                          <div className="mt-0.5 text-[11px] text-stone-700 dark:text-stone-200">
-                                            Nr: {p.shirtNo}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </td>
+          {/* actions (top-right) */}
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-md border-gray-300 px-2 text-xs dark:border-neutral-700"
+              onClick={() => {
+                setExpandedId((cur) => (cur === p.id ? null : p.id));
+                setConfirmDeleteId(null);
+              }}
+              title={isOpen ? "Ukryj oceny" : "Pokaż oceny"}
+            >
+              {isOpen ? (
+                <>
+                  <ChevronUp className="mr-1 h-4 w-4" />
+                  Ukryj
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="mr-1 h-4 w-4" />
+                  Oceny
+                </>
+              )}
+            </Button>
 
-                                  <td className="p-2 sm:p-3">
-                                    <label
-                                      className="sr-only"
-                                      htmlFor={`pos-${p.id}`}
-                                    >
-                                      Pozycja
-                                    </label>
-                                    <div className="w-full max-w-[11rem]">
-                                      <Select
-                                        value={p.position ?? "__none"}
-                                        onValueChange={(value) =>
-                                          updatePlayer(p.id, {
-                                            position:
-                                              value === "__none"
-                                                ? undefined
-                                                : (value as PositionKey),
-                                          })
-                                        }
-                                      >
-                                        <SelectTrigger
-                                          id={`pos-${p.id}`}
-                                          className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
-                                          title={
-                                            p.position
-                                              ? `${p.position} — ${POS_INFO[p.position]}`
-                                              : "Wybierz pozycję"
-                                          }
-                                        >
-                                          <SelectValue placeholder="— wybierz pozycję —" />
-                                        </SelectTrigger>
+            {!isConfirmDelete ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 rounded-md border-gray-300 p-0 text-red-600 dark:border-neutral-700"
+                onClick={() => setConfirmDeleteId(p.id)}
+                title="Usuń zawodnika"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div className="inline-flex items-center gap-1">
+                <Button
+                  size="sm"
+                  className="h-8 rounded-md bg-red-600 px-2 text-xs text-white hover:bg-red-700"
+                  onClick={() => {
+                    removePlayer(p.id);
+                    setConfirmDeleteId(null);
+                  }}
+                >
+                  Tak
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded-md border-gray-300 px-2 text-xs dark:border-neutral-700"
+                  onClick={() => setConfirmDeleteId(null)}
+                >
+                  Nie
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
 
-                                        <SelectContent className="w-[16rem] max-w-xs bg-white dark:bg-neutral-950">
-                                          <SelectItem value="__none">
-                                            — bez pozycji —
-                                          </SelectItem>
-                                          {POSITIONS.map((posKey) => (
-                                            <SelectItem
-                                              key={posKey}
-                                              value={posKey}
-                                            >
-                                              {posKey}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </td>
+        {/* fields */}
+        <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+          <div className="col-span-2">
+            <Label className="text-[11px] text-stone-600 dark:text-neutral-400">
+              Pozycja w meczu
+            </Label>
+            <div className="mt-1">
+              <Select
+                value={p.position ?? "__none"}
+                onValueChange={(value) =>
+                  updatePlayer(p.id, {
+                    position:
+                      value === "__none" ? undefined : (value as PositionKey),
+                  })
+                }
+              >
+                <SelectTrigger
+                  id={`pos-${p.id}`}
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                  title={
+                    p.position
+                      ? `${p.position} — ${POS_INFO[p.position]}`
+                      : "Wybierz pozycję"
+                  }
+                >
+                  <SelectValue placeholder="— wybierz pozycję —" />
+                </SelectTrigger>
 
-                                  <td className="p-2 sm:p-3">
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      max={120}
-                                      value={p.minutes ?? ""}
-                                      onChange={(e) =>
-                                        updatePlayer(p.id, {
-                                          minutes:
-                                            e.target.value === ""
-                                              ? undefined
-                                              : Number(e.target.value),
-                                        })
-                                      }
-                                      placeholder="min"
-                                      className="h-8 w-16 rounded-md sm:w-20"
-                                    />
-                                  </td>
+                <SelectContent className="w-[16rem] max-w-xs bg-white dark:bg-neutral-950">
+                  <SelectItem value="__none">— bez pozycji —</SelectItem>
+                  {POSITIONS.map((posKey) => (
+                    <SelectItem key={posKey} value={posKey}>
+                      {posKey}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-                                  <td className="p-2 sm:p-3">
-                                    <StarRating
-                                      value={p.overall ?? 0}
-                                      onChange={(v) =>
-                                        updatePlayer(p.id, { overall: v })
-                                      }
-                                      /* @ts-ignore */
-                                      max={5}
-                                    />
-                                  </td>
+          <div>
+            <Label className="text-[11px] text-stone-600 dark:text-neutral-400">
+              Minuty
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              max={120}
+              value={p.minutes ?? ""}
+              onChange={(e) =>
+                updatePlayer(p.id, {
+                  minutes: e.target.value === "" ? undefined : Number(e.target.value),
+                })
+              }
+              placeholder="0–120"
+              className="mt-1 h-9 w-full rounded-md"
+            />
+          </div>
 
-                                  <td className="p-2 text-right sm:p-3">
-                                    <div className="inline-flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
-                                      <div className="inline-flex items-center gap-1 sm:gap-2">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-8 rounded-md border-gray-300 dark:border-neutral-700"
-                                          onClick={() => {
-                                            setExpandedId((cur) =>
-                                              cur === p.id ? null : p.id
-                                            );
-                                            setConfirmDeleteId(null);
-                                          }}
-                                          title={
-                                            isOpen
-                                              ? "Ukryj oceny"
-                                              : "Pokaż oceny"
-                                          }
-                                        >
-                                          {isOpen ? (
-                                            <>
-                                              <ChevronUp className="mr-1 h-4 w-4" />
-                                              <span className="hidden sm:inline">
-                                                Ukryj oceny
-                                              </span>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <ChevronDown className="mr-1 h-4 w-4" />
-                                              <span className="hidden sm:inline">
-                                                Oceny
-                                              </span>
-                                            </>
-                                          )}
-                                        </Button>
+          <div>
+            <Label className="text-[11px] text-stone-600 dark:text-neutral-400">
+              Ocena
+            </Label>
+            <div className="mt-1">
+              <StarRating
+                value={p.overall ?? 0}
+                onChange={(v) => updatePlayer(p.id, { overall: v })}
+                /* @ts-ignore */
+                max={5}
+              />
+            </div>
+          </div>
 
-                                        {!isConfirmDelete ? (
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 w-8 rounded-md border-gray-300 p-0 text-red-600 dark:border-neutral-700"
-                                            onClick={() =>
-                                              setConfirmDeleteId(p.id)
-                                            }
-                                            title="Usuń zawodnika"
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        ) : (
-                                          <div className="inline-flex items-center gap-1">
-                                            <Button
-                                              size="sm"
-                                              className="h-8 rounded-md bg-red-600 px-2 text-xs text-white hover:bg-red-700"
-                                              onClick={() => {
-                                                removePlayer(p.id);
-                                                setConfirmDeleteId(null);
-                                              }}
-                                            >
-                                              Tak
-                                            </Button>
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              className="h-8 rounded-md border-gray-300 px-2 text-xs dark:border-neutral-700"
-                                              onClick={() =>
-                                                setConfirmDeleteId(null)
-                                              }
-                                            >
-                                              Nie
-                                            </Button>
-                                          </div>
-                                        )}
-                                      </div>
+          {!inBase && normalizedName && (
+            <div className="col-span-2 pt-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 w-full rounded-md border-black bg-black text-white hover:bg-zinc-900 hover:text-white dark:border-black dark:bg-black dark:hover:bg-zinc-900"
+                onClick={() => {
+                  setPromotePlayer(p);
+                  setNewPlayerClub("");
+                  setNewPlayerPosition(p.position ?? "");
+                }}
+              >
+                <AddPlayerIcon className="mr-2 h-6 w-6" strokeColorAll="#ffffff" />
+                Dodaj do mojej bazy
+              </Button>
+            </div>
+          )}
+        </div>
 
-                                      {!inBase && normalizedName && (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-8 w-fit rounded-md border-black bg-black text-white hover:bg-zinc-900 hover:text-white dark:border-black dark:bg-black dark:hover:bg-zinc-900"
-                                          onClick={() => {
-                                            setPromotePlayer(p);
-                                            setNewPlayerClub("");
-                                            setNewPlayerPosition(
-                                              p.position ?? ""
-                                            );
-                                          }}
-                                        >
-                                          <AddPlayerIcon
-                                            className="h-7 w-7"
-                                            strokeColorAll="#ffffff"
-                                          />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
+        {/* expanded */}
+        {isOpen && (
+          <div className="border-t border-gray-200 bg-[#E8FBF5] p-3 dark:border-neutral-800">
+            <div className="relative">
+              {!hasPosition && (
+                <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
+                  <p className="mb-3 text-xs text-stone-700 dark:text-neutral-200">
+                    Aby wprowadzić oceny, najpierw uzupełnij <b>Pozycja w meczu</b>.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openPositionSelect(p.id)}
+                    className="inline-flex h-9 items-center justify-center rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800"
+                  >
+                    Pozycja w meczu
+                  </button>
+                </div>
+              )}
 
-                                {isOpen && (
-                                  <tr>
-                                    <td
-                                      colSpan={5}
-                                      className="bg-[#E8FBF5] p-3 text-sm"
-                                    >
-                                      <div className="relative">
-                                        {!hasPosition && (
-                                          <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
-                                            <p className="mb-3 text-xs text-stone-700 dark:text-neutral-200 sm:text-sm">
-                                              Aby wprowadzić oceny, najpierw
-                                              uzupełnij{" "}
-                                              <b>Pozycja w meczu</b>.
-                                            </p>
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                openPositionSelect(p.id)
-                                              }
-                                              className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-9 rounded-md px-3 btn-soft-hover bg-gray-900 text-white hover:bg-gray-800"
-                                            >
-                                              Pozycja w meczu
-                                            </button>
-                                          </div>
-                                        )}
+              <div className={cn("space-y-4", !hasPosition && "pointer-events-none blur-[1.5px]")}>
+                <Group title="Kategorie bazowe">
+                  {metrics.BASE.filter((m) => m.enabled).map((m) => (
+                    <MetricItem
+                      key={m.id}
+                      label={m.label}
+                      value={p.base?.[m.key]}
+                      onChange={(v) => updateMetric("base", m.id, m.key, v, p)}
+                    />
+                  ))}
+                </Group>
 
-                                        <div
-                                          className={cn(
-                                            "space-y-4",
-                                            !hasPosition &&
-                                              "pointer-events-none blur-[1.5px]"
-                                          )}
-                                        >
-                                          <Group title="Kategorie bazowe">
-                                            {metrics.BASE.filter(
-                                              (m) => m.enabled
-                                            ).map((m) => (
-                                              <MetricItem
-                                                key={m.id}
-                                                label={m.label}
-                                                value={p.base?.[m.key]}
-                                                onChange={(v) =>
-                                                  updateMetric(
-                                                    "base",
-                                                    m.id,
-                                                    m.key,
-                                                    v,
-                                                    p
-                                                  )
-                                                }
-                                              />
-                                            ))}
-                                          </Group>
+                {showGK && (
+                  <Group title="Bramkarz (GK)">
+                    {metrics.GK.filter((m) => m.enabled).map((m) => (
+                      <MetricItem
+                        key={m.id}
+                        label={m.label}
+                        value={p.gk?.[m.key]}
+                        onChange={(v) => updateMetric("gk", m.id, m.key, v, p)}
+                      />
+                    ))}
+                  </Group>
+                )}
 
-                                          {showGK && (
-                                            <Group title="Bramkarz (GK)">
-                                              {metrics.GK.filter(
-                                                (m) => m.enabled
-                                              ).map((m) => (
-                                                <MetricItem
-                                                  key={m.id}
-                                                  label={m.label}
-                                                  value={p.gk?.[m.key]}
-                                                  onChange={(v) =>
-                                                    updateMetric(
-                                                      "gk",
-                                                      m.id,
-                                                      m.key,
-                                                      v,
-                                                      p
-                                                    )
-                                                  }
-                                                />
-                                              ))}
-                                            </Group>
-                                          )}
+                {showDEF && (
+                  <Group title="Obrońca (CB/FB/WB)">
+                    {metrics.DEF.filter((m) => m.enabled).map((m) => (
+                      <MetricItem
+                        key={m.id}
+                        label={m.label}
+                        value={p.def?.[m.key]}
+                        onChange={(v) => updateMetric("def", m.id, m.key, v, p)}
+                      />
+                    ))}
+                  </Group>
+                )}
 
-                                          {showDEF && (
-                                            <Group title="Obrońca (CB/FB/WB)">
-                                              {metrics.DEF.filter(
-                                                (m) => m.enabled
-                                              ).map((m) => (
-                                                <MetricItem
-                                                  key={m.id}
-                                                  label={m.label}
-                                                  value={p.def?.[m.key]}
-                                                  onChange={(v) =>
-                                                    updateMetric(
-                                                      "def",
-                                                      m.id,
-                                                      m.key,
-                                                      v,
-                                                      p
-                                                    )
-                                                  }
-                                                />
-                                              ))}
-                                            </Group>
-                                          )}
+                {showMID && (
+                  <Group title="Pomocnik (6/8/10)">
+                    {metrics.MID.filter((m) => m.enabled).map((m) => (
+                      <MetricItem
+                        key={m.id}
+                        label={m.label}
+                        value={p.mid?.[m.key]}
+                        onChange={(v) => updateMetric("mid", m.id, m.key, v, p)}
+                      />
+                    ))}
+                  </Group>
+                )}
 
-                                          {showMID && (
-                                            <Group title="Pomocnik (6/8/10)">
-                                              {metrics.MID.filter(
-                                                (m) => m.enabled
-                                              ).map((m) => (
-                                                <MetricItem
-                                                  key={m.id}
-                                                  label={m.label}
-                                                  value={p.mid?.[m.key]}
-                                                  onChange={(v) =>
-                                                    updateMetric(
-                                                      "mid",
-                                                      m.id,
-                                                      m.key,
-                                                      v,
-                                                      p
-                                                    )
-                                                  }
-                                                />
-                                              ))}
-                                            </Group>
-                                          )}
+                {showATT && (
+                  <Group title="Napastnik (9/7/11)">
+                    {metrics.ATT.filter((m) => m.enabled).map((m) => (
+                      <MetricItem
+                        key={m.id}
+                        label={m.label}
+                        value={p.att?.[m.key]}
+                        onChange={(v) => updateMetric("att", m.id, m.key, v, p)}
+                      />
+                    ))}
+                  </Group>
+                )}
 
-                                          {showATT && (
-                                            <Group title="Napastnik (9/7/11)">
-                                              {metrics.ATT.filter(
-                                                (m) => m.enabled
-                                              ).map((m) => (
-                                                <MetricItem
-                                                  key={m.id}
-                                                  label={m.label}
-                                                  value={p.att?.[m.key]}
-                                                  onChange={(v) =>
-                                                    updateMetric(
-                                                      "att",
-                                                      m.id,
-                                                      m.key,
-                                                      v,
-                                                      p
-                                                    )
-                                                  }
-                                                />
-                                              ))}
-                                            </Group>
-                                          )}
+                <div className="mt-2 rounded-md bg-none p-0 shadow-sm dark:bg-neutral-950/80">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
+                    Notatka do zawodnika
+                  </div>
+                  <Textarea
+                    value={p.note ?? ""}
+                    onChange={(e) => updatePlayer(p.id, { note: e.target.value })}
+                    placeholder="Notatka o zawodniku…"
+                    className="min-h-[80px] rounded-md bg-white/90 text-sm dark:bg-neutral-950"
+                  />
+                  <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
+                    Wewnętrzna notatka – widoczna tylko w tej obserwacji.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  })}
 
-                                          <div className="mt-2 rounded-md bg-none p-0 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/80">
-                                            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
-                                              Notatka do zawodnika
-                                            </div>
-                                            <Textarea
-                                              value={p.note ?? ""}
-                                              onChange={(e) =>
-                                                updatePlayer(p.id, {
-                                                  note: e.target.value,
-                                                })
-                                              }
-                                              placeholder="Notatka o zawodniku…"
-                                              className="min-h-[80px] rounded-md bg-white/90 text-sm dark:bg-neutral-950"
-                                            />
-                                            <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
-                                              Wewnętrzna notatka – widoczna
-                                              tylko w tej obserwacji.
-                                            </p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )}
-                              </Fragment>
-                            );
-                          })}
-                          {(o.players ?? []).length === 0 && (
-                            <tr>
-                              <td
-                                colSpan={5}
-                                className="p-6 text-center text-sm text-dark dark:text-neutral-400"
-                              >
-                                {isRequired("players")
-                                  ? "Musisz dodać przynajmniej jednego zawodnika, aby zapisać obserwację (pole ustawione jako wymagane)."
-                                  : "Brak zawodników — wpisz numer lub nazwisko i kliknij Enter lub przycisk dodawania."}
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
+  {(o.players ?? []).length === 0 && (
+    <div className="rounded-md border border-gray-200 bg-white p-4 text-center text-sm text-dark shadow-sm dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+      {isRequired("players")
+        ? "Musisz dodać przynajmniej jednego zawodnika, aby zapisać obserwację (pole ustawione jako wymagane)."
+        : "Brak zawodników — wpisz numer lub nazwisko i kliknij Enter lub przycisk dodawania."}
+    </div>
+  )}
+</div>
+
+{/* ====== LISTA ZAWODNIKÓW: DESKTOP (tabela) ====== */}
+<div className="hidden sm:block w-full rounded-md border border-gray-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+  <table className="w-full table-auto text-sm">
+    <thead className="bg-stone-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+      <tr className="text-xs sm:text-sm">
+        <th className="p-3 text-left font-medium">Zawodnik</th>
+        <th className="p-3 text-left font-medium">Pozycja w meczu</th>
+        <th className="p-3 text-left font-medium">Minuty</th>
+        <th className="p-3 text-left font-medium">Ocena</th>
+        <th className="p-3 text-right font-medium">Akcje</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {(o.players ?? []).map((p) => {
+        const isOpen = expandedId === p.id;
+        const isConfirmDelete = confirmDeleteId === p.id;
+
+        const pos = p.position;
+        const showGK = pos === "GK";
+        const showDEF = pos === "CB" || pos === "LB" || pos === "RB";
+        const showMID = pos === "CMD" || pos === "CM" || pos === "CAM";
+        const showATT = pos === "LW" || pos === "RW" || pos === "ST";
+
+        const hasPosition = !!p.position;
+
+        const displayName =
+          p.type === "known"
+            ? p.name ?? "—"
+            : p.name ?? (p.shirtNo ? `#${p.shirtNo}` : "—");
+
+        const isUnknownPlayer =
+          p.type === "unknown" || (displayName && displayName.trim().startsWith("#"));
+
+        const normalizedName = (p.name || "").replace(/^#/, "").trim();
+
+        const inBase =
+          !!normalizedName &&
+          allPlayers.some(
+            (bp) => (bp.name || "").toLowerCase() === normalizedName.toLowerCase()
+          );
+
+        return (
+          <Fragment key={p.id}>
+            <tr className="border-t border-gray-200 align-middle hover:bg-stone-50/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+              <td className="p-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <div className="truncate text-sm font-medium text-gray-900 dark:text-neutral-100">
+                      {displayName}
                     </div>
+
+                    {isUnknownPlayer && (
+                      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                        nieznany
+                      </span>
+                    )}
+                  </div>
+
+                  {p.shirtNo && (
+                    <div className="mt-0.5 text-[11px] text-stone-700 dark:text-stone-200">
+                      Nr: {p.shirtNo}
+                    </div>
+                  )}
+                </div>
+              </td>
+
+              <td className="p-3">
+                <div className="w-full max-w-[11rem]">
+                  <Select
+                    value={p.position ?? "__none"}
+                    onValueChange={(value) =>
+                      updatePlayer(p.id, {
+                        position: value === "__none" ? undefined : (value as PositionKey),
+                      })
+                    }
+                  >
+                    <SelectTrigger
+                      id={`pos-${p.id}`}
+                      className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs sm:text-sm dark:border-neutral-700 dark:bg-neutral-950"
+                      title={
+                        p.position
+                          ? `${p.position} — ${POS_INFO[p.position]}`
+                          : "Wybierz pozycję"
+                      }
+                    >
+                      <SelectValue placeholder="— wybierz pozycję —" />
+                    </SelectTrigger>
+
+                    <SelectContent className="w-[16rem] max-w-xs bg-white dark:bg-neutral-950">
+                      <SelectItem value="__none">— bez pozycji —</SelectItem>
+                      {POSITIONS.map((posKey) => (
+                        <SelectItem key={posKey} value={posKey}>
+                          {posKey}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </td>
+
+              <td className="p-3">
+                <Input
+                  type="number"
+                  min={0}
+                  max={120}
+                  value={p.minutes ?? ""}
+                  onChange={(e) =>
+                    updatePlayer(p.id, {
+                      minutes: e.target.value === "" ? undefined : Number(e.target.value),
+                    })
+                  }
+                  placeholder="min"
+                  className="h-8 w-16 rounded-md sm:w-20"
+                />
+              </td>
+
+              <td className="p-3">
+                <StarRating
+                  value={p.overall ?? 0}
+                  onChange={(v) => updatePlayer(p.id, { overall: v })}
+                  /* @ts-ignore */
+                  max={5}
+                />
+              </td>
+
+              <td className="p-3 text-right">
+                <div className="inline-flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 rounded-md border-gray-300 dark:border-neutral-700"
+                    onClick={() => {
+                      setExpandedId((cur) => (cur === p.id ? null : p.id));
+                      setConfirmDeleteId(null);
+                    }}
+                  >
+                    {isOpen ? (
+                      <>
+                        <ChevronUp className="mr-1 h-4 w-4" />
+                        <span className="hidden sm:inline">Ukryj oceny</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="mr-1 h-4 w-4" />
+                        <span className="hidden sm:inline">Oceny</span>
+                      </>
+                    )}
+                  </Button>
+
+                  {!isConfirmDelete ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 rounded-md border-gray-300 p-0 text-red-600 dark:border-neutral-700"
+                      onClick={() => setConfirmDeleteId(p.id)}
+                      title="Usuń zawodnika"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <div className="inline-flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        className="h-8 rounded-md bg-red-600 px-2 text-xs text-white hover:bg-red-700"
+                        onClick={() => {
+                          removePlayer(p.id);
+                          setConfirmDeleteId(null);
+                        }}
+                      >
+                        Tak
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-md border-gray-300 px-2 text-xs dark:border-neutral-700"
+                        onClick={() => setConfirmDeleteId(null)}
+                      >
+                        Nie
+                      </Button>
+                    </div>
+                  )}
+
+                  {!inBase && normalizedName && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-fit rounded-md border-black bg-black text-white hover:bg-zinc-900 hover:text-white dark:border-black dark:bg-black dark:hover:bg-zinc-900"
+                      onClick={() => {
+                        setPromotePlayer(p);
+                        setNewPlayerClub("");
+                        setNewPlayerPosition(p.position ?? "");
+                      }}
+                    >
+                      <AddPlayerIcon className="h-7 w-7" strokeColorAll="#ffffff" />
+                    </Button>
+                  )}
+                </div>
+              </td>
+            </tr>
+
+            {isOpen && (
+              <tr>
+                <td colSpan={5} className="bg-[#E8FBF5] p-3 text-sm">
+                  <div className="relative">
+                    {!hasPosition && (
+                      <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
+                        <p className="mb-3 text-xs text-stone-700 dark:text-neutral-200 sm:text-sm">
+                          Aby wprowadzić oceny, najpierw uzupełnij <b>Pozycja w meczu</b>.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => openPositionSelect(p.id)}
+                          className="inline-flex h-9 items-center justify-center rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800"
+                        >
+                          Pozycja w meczu
+                        </button>
+                      </div>
+                    )}
+
+                    <div className={cn("space-y-4", !hasPosition && "pointer-events-none blur-[1.5px]")}>
+                      <Group title="Kategorie bazowe">
+                        {metrics.BASE.filter((m) => m.enabled).map((m) => (
+                          <MetricItem
+                            key={m.id}
+                            label={m.label}
+                            value={p.base?.[m.key]}
+                            onChange={(v) => updateMetric("base", m.id, m.key, v, p)}
+                          />
+                        ))}
+                      </Group>
+
+                      {showGK && (
+                        <Group title="Bramkarz (GK)">
+                          {metrics.GK.filter((m) => m.enabled).map((m) => (
+                            <MetricItem
+                              key={m.id}
+                              label={m.label}
+                              value={p.gk?.[m.key]}
+                              onChange={(v) => updateMetric("gk", m.id, m.key, v, p)}
+                            />
+                          ))}
+                        </Group>
+                      )}
+
+                      {showDEF && (
+                        <Group title="Obrońca (CB/FB/WB)">
+                          {metrics.DEF.filter((m) => m.enabled).map((m) => (
+                            <MetricItem
+                              key={m.id}
+                              label={m.label}
+                              value={p.def?.[m.key]}
+                              onChange={(v) => updateMetric("def", m.id, m.key, v, p)}
+                            />
+                          ))}
+                        </Group>
+                      )}
+
+                      {showMID && (
+                        <Group title="Pomocnik (6/8/10)">
+                          {metrics.MID.filter((m) => m.enabled).map((m) => (
+                            <MetricItem
+                              key={m.id}
+                              label={m.label}
+                              value={p.mid?.[m.key]}
+                              onChange={(v) => updateMetric("mid", m.id, m.key, v, p)}
+                            />
+                          ))}
+                        </Group>
+                      )}
+
+                      {showATT && (
+                        <Group title="Napastnik (9/7/11)">
+                          {metrics.ATT.filter((m) => m.enabled).map((m) => (
+                            <MetricItem
+                              key={m.id}
+                              label={m.label}
+                              value={p.att?.[m.key]}
+                              onChange={(v) => updateMetric("att", m.id, m.key, v, p)}
+                            />
+                          ))}
+                        </Group>
+                      )}
+
+                      <div className="mt-2 rounded-md bg-none p-0 shadow-sm dark:bg-neutral-950/80">
+                        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
+                          Notatka do zawodnika
+                        </div>
+                        <Textarea
+                          value={p.note ?? ""}
+                          onChange={(e) => updatePlayer(p.id, { note: e.target.value })}
+                          placeholder="Notatka o zawodniku…"
+                          className="min-h-[80px] rounded-md bg-white/90 text-sm dark:bg-neutral-950"
+                        />
+                        <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
+                          Wewnętrzna notatka – widoczna tylko w tej obserwacji.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </Fragment>
+        );
+      })}
+
+      {(o.players ?? []).length === 0 && (
+        <tr>
+          <td colSpan={5} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
+            {isRequired("players")
+              ? "Musisz dodać przynajmniej jednego zawodnika, aby zapisać obserwację (pole ustawione jako wymagane)."
+              : "Brak zawodników — wpisz numer lub nazwisko i kliknij Enter lub przycisk dodawania."}
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
+
+
                   </div>
                 </AccordionContent>
               </AccordionItem>

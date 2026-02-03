@@ -21,13 +21,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import {
-  useEffect,
-  useRef,
-  useState,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, useMemo, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { createPortal } from "react-dom";
 
@@ -63,10 +57,8 @@ function calcRank(
 
   if (score >= thresholds.platinum)
     return { rank: "platinum" as Rank, score };
-  if (score >= thresholds.gold)
-    return { rank: "gold" as Rank, score };
-  if (score >= thresholds.silver)
-    return { rank: "silver" as Rank, score };
+  if (score >= thresholds.gold) return { rank: "gold" as Rank, score };
+  if (score >= thresholds.silver) return { rank: "silver" as Rank, score };
   return { rank: "bronze" as Rank, score };
 }
 
@@ -152,9 +144,9 @@ export default function AppSidebar({
   const [displayName, setDisplayName] = useState<string | null>(null);
 
   // dynamic rank thresholds (managed in Supabase)
-  const [rankThresholds, setRankThresholds] = useState<
-    Record<Rank, number>
-  >(DEFAULT_RANK_THRESHOLDS);
+  const [rankThresholds, setRankThresholds] = useState<Record<Rank, number>>(
+    DEFAULT_RANK_THRESHOLDS
+  );
 
   // stats
   const [playersCount, setPlayersCount] = useState(0);
@@ -170,11 +162,7 @@ export default function AppSidebar({
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   const { rank, score } = calcRank(playersCount, obsCount, rankThresholds);
-  const { next, pct, remaining } = nextRankInfo(
-    rank,
-    score,
-    rankThresholds
-  );
+  const { next, pct, remaining } = nextRankInfo(rank, score, rankThresholds);
 
   const handleNavClick = (href: string) => {
     setPendingHref(href);
@@ -268,9 +256,7 @@ export default function AppSidebar({
 
       for (const row of data as { rank: string; min_score: number }[]) {
         const r = row.rank as Rank;
-        if (r in nextMap) {
-          nextMap[r] = row.min_score;
-        }
+        if (r in nextMap) nextMap[r] = row.min_score;
       }
       setRankThresholds(nextMap);
     })();
@@ -280,11 +266,7 @@ export default function AppSidebar({
     };
   }, []);
 
-  /* ===== Load counts (players & observations) from Supabase =====
-   * Only "fully filled":
-   *  - players: status = 'active'
-   *  - observations: status = 'final' AND bucket = 'active'
-   */
+  /* ===== Load counts (players & observations) from Supabase ===== */
   const readCounts = async () => {
     if (!userId) return;
 
@@ -319,7 +301,7 @@ export default function AppSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-    /* ===== Detect rank upgrade & trigger popup ONCE per rank & user ===== */
+  /* ===== Detect rank upgrade & trigger popup ONCE per rank & user ===== */
   useEffect(() => {
     if (!mounted || !hasRankData || !userId) return;
     if (typeof window === "undefined") return;
@@ -332,7 +314,6 @@ export default function AppSidebar({
 
     const last = isRank(stored) ? stored : null;
 
-    // first time for this user – just store current rank, no popup
     if (!last) {
       window.localStorage.setItem(key, rank);
       return;
@@ -341,15 +322,10 @@ export default function AppSidebar({
     const prevIdx = RANK_ORDER.indexOf(last);
     const currIdx = RANK_ORDER.indexOf(rank);
 
-    // only if we REALLY moved to a strictly higher rank
-    if (currIdx > prevIdx) {
-      setRankPopup({ from: last, to: rank });
-    }
+    if (currIdx > prevIdx) setRankPopup({ from: last, to: rank });
 
-    // always persist latest rank so the same rank never triggers again
     window.localStorage.setItem(key, rank);
   }, [rank, mounted, hasRankData, userId]);
-
 
   /* ===== Shortcuts ===== */
   useEffect(() => {
@@ -409,11 +385,7 @@ export default function AppSidebar({
     "/admin/manage/required-fields"
   );
 
-  const playersBadge = playersCount > 0 ? String(playersCount) : undefined;
-  const obsBadge = obsCount > 0 ? String(obsCount) : undefined;
-
   /* ===== Mobile/desktop accordion state for "Zarządzanie" ===== */
-  // Rolled (collapsed) by default
   const [manageOpen, setManageOpen] = useState(false);
 
   /* ===== Logout via Supabase ===== */
@@ -421,7 +393,7 @@ export default function AppSidebar({
     try {
       await supabase.auth.signOut();
     } finally {
-      router.push("/"); // AuthGate wywali usera z panelu
+      router.push("/");
     }
   }
 
@@ -431,10 +403,7 @@ export default function AppSidebar({
 
   /* ===== Nav ===== */
   const InnerNav = () => (
-    <nav
-      className="space-y-1 text-sm"
-      onClick={() => onClose?.()}
-    >
+    <nav className="space-y-1 text-sm" onClick={() => onClose?.()}>
       {(role === "scout" || role === "scout-agent" || role === "admin") && (
         <div className="mt-1">
           <div className="pb-1 text-[11px] font-semibold tracking-wide text-gray-800 dark:text-neutral-400">
@@ -446,10 +415,9 @@ export default function AppSidebar({
             icon={<MyPlayersIconDefault />}
             label="Moi zawodnicy"
             active={isPlayersSection}
-            badge={playersBadge}
-            badgeTitle="Aktywni zawodnicy (pełne profile)"
             pending={pendingHref === "/players"}
             onClickHref={handleNavClick}
+            onClose={onClose}
           />
         </div>
       )}
@@ -462,10 +430,9 @@ export default function AppSidebar({
           pathname === "/observations" ||
           pathname?.startsWith("/observations/")
         }
-        badge={obsBadge}
-        badgeTitle="Zakończone obserwacje (final, active)"
         pending={pendingHref === "/observations"}
         onClickHref={handleNavClick}
+        onClose={onClose}
       />
     </nav>
   );
@@ -532,6 +499,7 @@ export default function AppSidebar({
                     active={isGlobalSection}
                     pending={pendingHref === "/players/global"}
                     onClickHref={handleNavClick}
+                    onClose={onClose}
                   />
                   <div className="mt-0.5 space-y-0.5 pl-9">
                     <SubNavItem
@@ -540,6 +508,7 @@ export default function AppSidebar({
                       active={globalBaseActive}
                       pending={pendingHref === "/players/global"}
                       onClickHref={handleNavClick}
+                      onClose={onClose}
                     />
                     <SubNavItem
                       href="/players/global/search"
@@ -547,243 +516,127 @@ export default function AppSidebar({
                       active={globalSearchActive}
                       pending={pendingHref === "/players/global/search"}
                       onClickHref={handleNavClick}
+                      onClose={onClose}
                     />
                     {/* 3rd level under Wyszukaj */}
                     <div className="space-y-0.5 pl-6">
                       <SubNavItem
                         href="/players/global/search#tm"
                         label="Transfermarkt"
-                        pending={
-                          pendingHref === "/players/global/search#tm"
-                        }
+                        pending={pendingHref === "/players/global/search#tm"}
                         onClickHref={handleNavClick}
+                        onClose={onClose}
                       />
                       <SubNavItem
                         href="/players/global/search#lnp"
                         label="LNP"
-                        pending={
-                          pendingHref === "/players/global/search#lnp"
-                        }
+                        pending={pendingHref === "/players/global/search#lnp"}
                         onClickHref={handleNavClick}
+                        onClose={onClose}
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Zarządzanie + submenu: Metryki & Oceny & Ranki */}
-                {variant === "desktop" ? (
-                  <div>
-                    {/* Accordion header (button) on desktop */}
-                    <button
-                      type="button"
-                      onClick={() => setManageOpen((v) => !v)}
-                      aria-expanded={manageOpen}
-                      className={`group flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
-                        isManageSection
-                          ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-                          : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
-                      }`}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="shrink-0">
-                          <Settings className="h-4 w-4" />
-                        </span>
-                        <span className="truncate">
-                          Zarządzanie
-                        </span>
+                {/* Zarządzanie + submenu */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setManageOpen((v) => !v)}
+                    aria-expanded={manageOpen}
+                    className={`group flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
+                      isManageSection
+                        ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+                        : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                    }`}
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0">
+                        <Settings className="h-4 w-4" />
                       </span>
-                      <motion.span
-                        aria-hidden
-                        initial={false}
-                        animate={{ rotate: manageOpen ? 180 : 0 }}
+                      <span className="truncate">Zarządzanie</span>
+                    </span>
+                    <motion.span
+                      aria-hidden
+                      initial={false}
+                      animate={{ rotate: manageOpen ? 180 : 0 }}
+                      transition={{
+                        duration: prefersReduced ? 0 : 0.18,
+                        ease: [0.2, 0.7, 0.2, 1],
+                      }}
+                      className="ml-2 inline-flex h-4 w-4 shrink-0 items-center justify-center text-[11px] opacity-70"
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </motion.span>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {manageOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
                         transition={{
                           duration: prefersReduced ? 0 : 0.18,
-                          ease: [0.2, 0.7, 0.2, 1],
+                          ease: "easeOut",
                         }}
-                        className="ml-2 inline-flex h-4 w-4 shrink-0 items-center justify-center text-[11px] opacity-70"
+                        className="overflow-hidden"
                       >
-                        <ChevronDown className="h-3 w-3" />
-                      </motion.span>
-                    </button>
-
-                    {/* Accordion content (submenu) on desktop */}
-                    <AnimatePresence initial={false}>
-                      {manageOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{
-                            duration: prefersReduced ? 0 : 0.18,
-                            ease: "easeOut",
-                          }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-0.5 space-y-0.5 pl-9">
-                            <SubNavItem
-                              href="/admin/manage"
-                              label="Użytkownicy"
-                              active={manageBaseActive}
-                              pending={
-                                pendingHref === "/admin/manage"
-                              }
-                              onClickHref={handleNavClick}
-                            />
-                            <SubNavItem
-                              href="/admin/manage/metrics"
-                              label="Metryki obserwacji"
-                              active={manageMetricsActive}
-                              pending={
-                                pendingHref ===
-                                "/admin/manage/metrics"
-                              }
-                              onClickHref={handleNavClick}
-                            />
-                            <SubNavItem
-                              href="/admin/manage/ratings"
-                              label="Oceny zawodnika"
-                              active={manageRatingsActive}
-                              pending={
-                                pendingHref ===
-                                "/admin/manage/ratings"
-                              }
-                              onClickHref={handleNavClick}
-                            />
-                            <SubNavItem
-                              href="/admin/manage/ranks"
-                              label="Rangi użytkowników"
-                              active={manageRanksActive}
-                              pending={pendingHref === "/admin/manage/ranks"}
-                              onClickHref={handleNavClick}
-                            />
-                            <SubNavItem
-                              href="/admin/manage/required-fields"
-                              label="Wymagane pola"
-                              active={manageRequiredActive}
-                              pending={
-                                pendingHref ===
-                                "/admin/manage/required-fields"
-                              }
-                              onClickHref={handleNavClick}
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                ) : (
-                  <div>
-                    {/* Accordion header (button) on mobile */}
-                    <button
-                      type="button"
-                      onClick={() => setManageOpen((v) => !v)}
-                      aria-expanded={manageOpen}
-                      className={`group flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
-                        isManageSection
-                          ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-                          : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
-                      }`}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="shrink-0">
-                          <Settings className="h-4 w-4" />
-                        </span>
-                        <span className="truncate">
-                          Zarządzanie
-                        </span>
-                      </span>
-                      <motion.span
-                        aria-hidden
-                        initial={false}
-                        animate={{ rotate: manageOpen ? 180 : 0 }}
-                        transition={{
-                          duration: prefersReduced ? 0 : 0.18,
-                          ease: [0.2, 0.7, 0.2, 1],
-                        }}
-                        className="ml-2 inline-flex h-4 w-4 shrink-0 items-center justify-center text-[11px] opacity-70"
-                      >
-                        <ChevronDown className="h-3 w-3" />
-                      </motion.span>
-                    </button>
-
-                    {/* Accordion content (submenu) on mobile */}
-                    <AnimatePresence initial={false}>
-                      {manageOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{
-                            duration: prefersReduced ? 0 : 0.18,
-                            ease: "easeOut",
-                          }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-0.5 space-y-0.5 pl-9">
-                            <SubNavItem
-                              href="/admin/manage"
-                              label="Użytkownicy"
-                              active={manageBaseActive}
-                              pending={
-                                pendingHref === "/admin/manage"
-                              }
-                              onClickHref={handleNavClick}
-                            />
-                            <SubNavItem
-                              href="/admin/manage/metrics"
-                              label="Metryki obserwacji"
-                              active={manageMetricsActive}
-                              pending={
-                                pendingHref ===
-                                "/admin/manage/metrics"
-                              }
-                              onClickHref={handleNavClick}
-                            />
-                            <SubNavItem
-                              href="/admin/manage/ratings"
-                              label="Oceny zawodnika"
-                              active={manageRatingsActive}
-                              pending={
-                                pendingHref ===
-                                "/admin/manage/ratings"
-                              }
-                              onClickHref={handleNavClick}
-                            />
-                            <SubNavItem
-                              href="/admin/manage/ranks"
-                              label="Rangi użytkowników"
-                              active={manageRanksActive}
-                              pending={
-                                pendingHref === "/admin/manage/ranks"
-                              }
-                              onClickHref={handleNavClick}
-                            />
-                            <SubNavItem
-                              href="/admin/manage/required-fields"
-                              label="Wymagane pola"
-                              active={manageRequiredActive}
-                              pending={
-                                pendingHref ===
-                                "/admin/manage/required-fields"
-                              }
-                              onClickHref={handleNavClick}
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
+                        <div className="mt-0.5 space-y-0.5 pl-9">
+                          <SubNavItem
+                            href="/admin/manage"
+                            label="Użytkownicy"
+                            active={manageBaseActive}
+                            pending={pendingHref === "/admin/manage"}
+                            onClickHref={handleNavClick}
+                            onClose={onClose}
+                          />
+                          <SubNavItem
+                            href="/admin/manage/metrics"
+                            label="Metryki obserwacji"
+                            active={manageMetricsActive}
+                            pending={pendingHref === "/admin/manage/metrics"}
+                            onClickHref={handleNavClick}
+                            onClose={onClose}
+                          />
+                          <SubNavItem
+                            href="/admin/manage/ratings"
+                            label="Oceny zawodnika"
+                            active={manageRatingsActive}
+                            pending={pendingHref === "/admin/manage/ratings"}
+                            onClickHref={handleNavClick}
+                            onClose={onClose}
+                          />
+                          <SubNavItem
+                            href="/admin/manage/ranks"
+                            label="Rangi użytkowników"
+                            active={manageRanksActive}
+                            pending={pendingHref === "/admin/manage/ranks"}
+                            onClickHref={handleNavClick}
+                            onClose={onClose}
+                          />
+                          <SubNavItem
+                            href="/admin/manage/required-fields"
+                            label="Wymagane pola"
+                            active={manageRequiredActive}
+                            pending={pendingHref === "/admin/manage/required-fields"}
+                            onClickHref={handleNavClick}
+                            onClose={onClose}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 <NavItem
                   href="/scouts"
                   icon={<Users className="h-4 w-4" />}
                   label="Lista scoutów"
-                  active={
-                    pathname === "/scouts" || pathname?.startsWith("/scouts/")
-                  }
+                  active={pathname === "/scouts" || pathname?.startsWith("/scouts/")}
                   pending={pendingHref === "/scouts"}
                   onClickHref={handleNavClick}
+                  onClose={onClose}
                 />
 
                 <NavItem
@@ -793,6 +646,7 @@ export default function AppSidebar({
                   active={pathname === "/duplicates"}
                   pending={pendingHref === "/duplicates"}
                   onClickHref={handleNavClick}
+                  onClose={onClose}
                 />
               </div>
             </div>
@@ -809,25 +663,19 @@ export default function AppSidebar({
             aria-haspopup="menu"
             aria-expanded={accountOpen}
           >
-            {/* Avatar + Name | Role */}
             <span className="flex min-w-0 items-center gap-2 text-[11px] opacity-80">
               <span className="flex h-5 w-5 items-center justify-center rounded bg-indigo-500 text-[10px] font-semibold text-white">
                 {initials}
               </span>
               <span className="flex min-w-0 items-center gap-1">
-                <span className="truncate">
-                  {displayName || "Użytkownik"}
-                </span>
+                <span className="truncate">{displayName || "Użytkownik"}</span>
                 <span aria-hidden className="opacity-40">
                   |
                 </span>
-                <span className="truncate">
-                  {labelForRole(role)}
-                </span>
+                <span className="truncate">{labelForRole(role)}</span>
               </span>
             </span>
 
-            {/* + / − zamiast chevrona */}
             <motion.span
               aria-hidden
               initial={false}
@@ -842,11 +690,9 @@ export default function AppSidebar({
             </motion.span>
           </button>
 
-          {/* FULLSCREEN BLUR + MENU (only this button + menu above blur) */}
           <AnimatePresence initial={false}>
             {accountOpen && (
               <>
-                {/* Blur layer over whole page incl. nav */}
                 <motion.div
                   className="fixed inset-0 z-50 bg-white/30 backdrop-blur-sm"
                   initial={{ opacity: 0 }}
@@ -860,24 +706,23 @@ export default function AppSidebar({
                   aria-hidden
                 />
 
-                {/* Account menu card – width 286, above the button, shifted right by half sidebar width */}
-<motion.div
-  role="menu"
-  initial={{ opacity: 0, y: 8 }}
-  animate={{ opacity: 1, y: 0 }}
-  exit={{ opacity: 0, y: 8 }}
-  transition={{
-    duration: prefersReduced ? 0 : 0.14,
-    ease: "easeOut",
-  }}
-  className="
-    absolute bottom-[calc(100%+8px)] 
-    left-auto right-0 sm:left-32 sm:right-auto z-[60]
-    w-[286px] max-w-[286px]
-    overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl
-    dark:border-neutral-800 dark:bg-neutral-950
-  "
->
+                <motion.div
+                  role="menu"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{
+                    duration: prefersReduced ? 0 : 0.14,
+                    ease: "easeOut",
+                  }}
+                  className="
+                    absolute bottom-[calc(100%+8px)]
+                    left-auto right-0 sm:left-32 sm:right-auto z-[60]
+                    w-[286px] max-w-[286px]
+                    overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl
+                    dark:border-neutral-800 dark:bg-neutral-950
+                  "
+                >
                   {/* Rank card */}
                   <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
                     <div className="mb-1 flex flex-wrap items-center justify-between">
@@ -941,7 +786,6 @@ export default function AppSidebar({
                     </div>
                   </div>
 
-                  {/* EXTENDED: stats + theme toggle row (no left trophy) */}
                   <div className="mt-2 space-y-1 px-1">
                     <div className="flex items-center justify-between gap-2">
                       <div
@@ -1022,18 +866,17 @@ export default function AppSidebar({
   );
 
   const rankUpgradeOverlay = (
-    <RankUpgradeOverlay
-      popup={rankPopup}
-      onClose={() => setRankPopup(null)}
-    />
+    <RankUpgradeOverlay popup={rankPopup} onClose={() => setRankPopup(null)} />
   );
 
   /* ====== PANEL STYLES ====== */
+  // ✅ Use 100dvh to avoid "bottom cut" on mobile browsers
   const asideDesktop =
     "h-screen w-64 overflow-visible border-r border-stone-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-stone-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
 
+  // ✅ 80% width + 100dvh + safe-area padding
   const asideMobile =
-    "h-screen w-full max-w-[380px] overflow-hidden border-r border-stone-200 bg-white p-3 shadow-xl ring-1 ring-stone-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
+    "h-[100dvh] w-[80vw] max-w-[80vw] overflow-hidden border-r border-stone-200 bg-white p-3 shadow-xl ring-1 ring-stone-100 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
 
   if (variant === "mobile") {
     return (
@@ -1045,7 +888,8 @@ export default function AppSidebar({
           {open && (
             <motion.div
               key="sb-backdrop"
-              className="fixed inset-0 z-50 bg-black/70 lg:hidden"
+              // ✅ blur(20px) + a bit lighter overlay (you can tweak opacity)
+              className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[20px] lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1115,9 +959,7 @@ function RankUpgradeOverlay({
   if (!popup) return null;
   if (typeof document === "undefined") return null;
 
-  const root =
-    document.getElementById(GLOBAL_MODAL_ROOT_ID) ?? document.body;
-
+  const root = document.getElementById(GLOBAL_MODAL_ROOT_ID) ?? document.body;
   const { from, to } = popup;
 
   return createPortal(
@@ -1141,19 +983,11 @@ function RankUpgradeOverlay({
                 <Trophy className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold">
-                  Gratulacje! Awans rangi
-                </div>
+                <div className="text-sm font-semibold">Gratulacje! Awans rangi</div>
                 <div className="text-xs text-gray-600 dark:text-neutral-400">
                   Twoje konto zostało podniesione z{" "}
-                  <span className="font-semibold">
-                    {rankLabel(from)}
-                  </span>{" "}
-                  do{" "}
-                  <span className="font-semibold">
-                    {rankLabel(to)}
-                  </span>
-                  .
+                  <span className="font-semibold">{rankLabel(from)}</span> do{" "}
+                  <span className="font-semibold">{rankLabel(to)}</span>.
                 </div>
               </div>
             </div>
@@ -1169,16 +1003,11 @@ function RankUpgradeOverlay({
           <div className="mt-2 rounded-md bg-stone-50 p-3 text-xs text-gray-700 dark:bg-neutral-900 dark:text-neutral-300">
             <p>
               Ranking rośnie, gdy dodajesz{" "}
-              <span className="font-semibold">aktywnych zawodników</span>{" "}
-              i kończysz{" "}
+              <span className="font-semibold">aktywnych zawodników</span> i kończysz{" "}
               <span className="font-semibold">obserwacje</span>.
             </p>
             <p className="mt-1">
-              Aktualny poziom:{" "}
-              <span className="font-semibold">
-                {rankLabel(to)}
-              </span>
-              .
+              Aktualny poziom: <span className="font-semibold">{rankLabel(to)}</span>.
             </p>
           </div>
 
@@ -1207,6 +1036,7 @@ function NavItem({
   badgeTitle,
   pending,
   onClickHref,
+  onClose,
 }: {
   href: string;
   icon: ReactNode;
@@ -1216,6 +1046,7 @@ function NavItem({
   badgeTitle?: string;
   pending?: boolean;
   onClickHref?: (href: string) => void;
+  onClose?: () => void;
 }) {
   return (
     <Link
@@ -1227,7 +1058,10 @@ function NavItem({
           : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
       title={badge && badgeTitle ? `${badgeTitle}: ${badge}` : undefined}
-      onClick={() => onClickHref?.(href)}
+      onClick={() => {
+        onClickHref?.(href);
+        onClose?.();
+      }}
     >
       <span
         aria-hidden
@@ -1249,9 +1083,7 @@ function NavItem({
             <span className="truncate">{badge}</span>
           </span>
         )}
-        {pending && (
-          <Loader2 className="h-3 w-3 animate-spin opacity-70" />
-        )}
+        {pending && <Loader2 className="h-3 w-3 animate-spin opacity-70" />}
       </span>
     </Link>
   );
@@ -1263,12 +1095,14 @@ function SubNavItem({
   active,
   pending,
   onClickHref,
+  onClose,
 }: {
   href: string;
   label: string;
   active?: boolean;
   pending?: boolean;
   onClickHref?: (href: string) => void;
+  onClose?: () => void;
 }) {
   return (
     <Link
@@ -1279,7 +1113,10 @@ function SubNavItem({
           ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
           : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
       }`}
-      onClick={() => onClickHref?.(href)}
+      onClick={() => {
+        onClickHref?.(href);
+        onClose?.();
+      }}
     >
       <span
         aria-hidden
@@ -1288,9 +1125,7 @@ function SubNavItem({
         }`}
       />
       <span className="truncate">{label}</span>
-      {pending && (
-        <Loader2 className="ml-auto h-3 w-3 animate-spin opacity-70" />
-      )}
+      {pending && <Loader2 className="ml-auto h-3 w-3 animate-spin opacity-70" />}
     </Link>
   );
 }

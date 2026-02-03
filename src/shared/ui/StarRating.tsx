@@ -18,7 +18,7 @@ export default function StarRating({
   value,
   onChange,
   max = 5,
-  size = 22,
+  size = 16,
   readOnly,
   className = "",
   label = "Ocena w gwiazdkach",
@@ -27,7 +27,7 @@ export default function StarRating({
   const v = Math.max(0, Math.min(max, value || 0));
 
   return (
-    <div className={`inline-flex items-center gap-1 ${className}`} role="radiogroup" aria-label={label}>
+    <div className={`inline-flex items-center gap-0 ${className}`} role="radiogroup" aria-label={label}>
       {Array.from({ length: max }, (_, i) => i + 1).map((n) => {
         const filled = n <= v;
         return (

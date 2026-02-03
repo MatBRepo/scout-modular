@@ -6,25 +6,24 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
     <input
       className={cn(
         // base
-        "flex h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 text-sm outline-none",
+        "flex h-9 w-full min-w-0 rounded-md bg-transparent px-3 py-1 outline-none",
         "transition-[color,box-shadow,border-color]",
-        // ==== DEFAULT BORDER & SHADOW ====
-        // border in stone-400
+
+        // ✅ prevent iOS zoom: >=16px on mobile, keep sm on desktop
+        "text-[16px] sm:text-sm",
+
+        // border + shadow
         "border border-stone-400",
-        // subtle 1px shadow in stone-100 (#f5f5f4)
         "shadow-[0_0_0_1px_#f5f5f4]",
-        // ================================
+
         "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm",
         "placeholder:text-muted-foreground/70 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
 
-        // focus (optional – can tweak if you want)
         "focus-visible:border-stone-500",
         "focus-visible:ring-[3px] focus-visible:ring-stone-200/70",
 
-        // invalid state
         "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
 
-        // special types
         type === "search" &&
           "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none",
         type === "file" &&
