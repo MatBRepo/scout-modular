@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { supabase } from "@/shared/supabase-client";
 import LoaderOverlay from "@/shared/ui/LoaderOverlay";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ const strengthLabel = (n: number) =>
 const easeOutCustom = [0.2, 0.7, 0.2, 1] as const;
 
 export default function AuthGate({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+
   const [user, setUser] = useState<any | null | undefined>(undefined);
   const [initialLoading, setInitialLoading] = useState(true);
 
@@ -230,42 +233,41 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     }
   };
 
-// ===== 3a. Google OAuth (login / utworzenie konta) =====
-const handleGoogleAuth = async () => {
-  setError(null);
-  setInfo(null);
-  setBusy(true);
+  // ===== 3a. Google OAuth (login / utworzenie konta) =====
+  const handleGoogleAuth = async () => {
+    setError(null);
+    setInfo(null);
+    setBusy(true);
 
-  try {
-    const redirectTo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/auth/callback`
-        : undefined;
+    try {
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback`
+          : undefined;
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-      },
-    });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+        },
+      });
 
-    if (error) {
-      console.error("[AuthGate] Google OAuth error:", error);
-      setError(error.message || "Nie udało się połączyć z Google.");
+      if (error) {
+        console.error("[AuthGate] Google OAuth error:", error);
+        setError(error.message || "Nie udało się połączyć z Google.");
+        setBusy(false);
+        return;
+      }
+
+      // Supabase i tak robi pełny redirect,
+      // ale zostawiamy fallback:
       setBusy(false);
-      return;
+    } catch (err: any) {
+      console.error("[AuthGate] Google OAuth error:", err);
+      setError("Nie udało się połączyć z Google. Spróbuj ponownie.");
+      setBusy(false);
     }
-
-    // Supabase i tak robi pełny redirect,
-    // ale zostawiamy fallback:
-    setBusy(false);
-  } catch (err: any) {
-    console.error("[AuthGate] Google OAuth error:", err);
-    setError("Nie udało się połączyć z Google. Spróbuj ponownie.");
-    setBusy(false);
-  }
-};
-
+  };
 
   // ===== 4. Wylogowanie =====
   const logout = async () => {
@@ -280,6 +282,15 @@ const handleGoogleAuth = async () => {
   // ===== 5. Ładowanie początkowe =====
   if (initialLoading) {
     return <LoaderOverlay text="Ładowanie konta…" />;
+  }
+
+  // ✅ IMPORTANT: nie blokuj ścieżek, które finalizują OAuth
+  // (inaczej AuthGate pokaże login i callback nie wykona exchangeCodeForSession)
+  if (
+    pathname?.startsWith("/auth/callback") ||
+    pathname?.startsWith("/auth/finish")
+  ) {
+    return <>{children}</>;
   }
 
   // ===== 6. Widok logowania / rejestracji =====
@@ -677,9 +688,7 @@ const handleGoogleAuth = async () => {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center gap-2 text-[11px] text-stone-500 dark:text-stone-400">
                     <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
-                    <span className="uppercase tracking-[0.18em]">
-                      lub
-                    </span>
+                    <span className="uppercase tracking-[0.18em]">lub</span>
                     <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
                   </div>
                   <Button

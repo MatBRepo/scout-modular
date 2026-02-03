@@ -1,30 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "@/shared/supabase-client";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const sp = useSearchParams();
+  const params = useSearchParams();
+  const [msg, setMsg] = useState("Finalizuję logowanie…");
 
   useEffect(() => {
     const run = async () => {
-      const code = sp.get("code");
-      const error = sp.get("error");
-      const errorDesc = sp.get("error_description");
+      const code = params.get("code");
+      const error = params.get("error");
+      const errorDesc = params.get("error_description");
 
       if (error) {
-        router.replace(`/login?e=${encodeURIComponent(error)}&d=${encodeURIComponent(errorDesc ?? "")}`);
+        setMsg("Błąd logowania: " + (errorDesc || error));
+        // możesz przekierować na login z parametrem
+        router.replace(`/login?e=${encodeURIComponent(error)}`);
         return;
       }
 
       if (!code) {
+        // jeśli nie ma code – to znaczy, że redirect nie poszedł jak trzeba
         router.replace("/login?e=missing_code");
         return;
       }
@@ -37,15 +36,17 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      router.replace("/auth/finish");
+      // po sukcesie
+      router.replace("/auth/finish"); // albo "/"
     };
 
     run();
-  }, [router, sp]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div style={{ padding: 24 }}>
-      <p>Logowanie…</p>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-sm opacity-80">{msg}</div>
     </div>
   );
 }
