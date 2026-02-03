@@ -1,4 +1,4 @@
-// src/shared/supabaseClient.ts
+// src/shared/supabase-client.ts
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
@@ -19,5 +19,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: "pkce", // ✅ kluczowe dla Google OAuth code flow
   },
 });
