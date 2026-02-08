@@ -1,100 +1,141 @@
 // src/app/api/tm/search/route.ts
-import { NextResponse } from "next/server"
+import * as cheerio from "cheerio";
+import { NextResponse } from "next/server";
 
-const TM_API_BASE =
-  process.env.TRANSFERMARKT_API_URL?.replace(/\/+$/, "") || "http://localhost:8000"
-const TM_TIMEOUT_MS = Number(process.env.TM_API_TIMEOUT_MS || 12000)
+export const runtime = "nodejs";
 
-function withTimeout<T>(p: Promise<T>, ms = TM_TIMEOUT_MS) {
-  return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error("Transfermarkt API timeout")), ms)
-    p.then((v) => { clearTimeout(t); resolve(v) })
-      .catch((e) => { clearTimeout(t); reject(e) })
-  })
-}
+const BASE = "https://www.transfermarkt.com";
 
-async function tmFetch(url: string) {
-  const res = await withTimeout(fetch(url, {
-    method: "GET",
-    headers: { accept: "application/json" },
+async function fetchHtml(url: string) {
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123 Safari/537.36",
+    },
     cache: "no-store",
-  }))
-  if (!res.ok) {
-    let msg = res.statusText
-    try { msg = (await res.json())?.detail || msg } catch {}
-    throw new Error(`TM API ${res.status}: ${msg}`)
-  }
-  return res.json()
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
 }
 
-type SearchItem = {
-  tm_id: string | number | null
-  name: string | null
-  first_name: string | null
-  last_name: string | null
-  date_of_birth: string | null
-  current_club_name: string | null
-  position_main: string | null
-  height_cm: number | null
-  dominant_foot: string | null
-  nationality: string | null
-  profile_url: string | null
-  image_url: string | null
+function parseEuroToInt(s?: string | null) {
+  if (!s) return null;
+  const raw = s.replace(/[€\s]/g, "").toLowerCase();
+  if (!raw || raw === "-") return null;
+  let mult = 1, num = raw;
+  if (raw.endsWith("m")) {
+    mult = 1_000_000;
+    num = raw.slice(0, -1);
+  } else if (raw.endsWith("k")) {
+    mult = 1_000;
+    num = raw.slice(0, -1);
+  }
+  const f = parseFloat(num.replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(f) ? Math.round(f * mult) : null;
 }
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const surname = (searchParams.get("q") || "").trim()
-  const page = Number(searchParams.get("page") || "1")
-  const firstName = (searchParams.get("first") || "").trim().toLowerCase()
-
-  if (!surname || surname.length < 2) {
-    return NextResponse.json({ error: "Query too short" }, { status: 400 })
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get("q") || "";
+  if (q.length < 2) {
+    return NextResponse.json({ items: [] });
   }
 
-  const url = `${TM_API_BASE}/players/search/${encodeURIComponent(surname)}?page_number=${Number.isFinite(page) && page > 0 ? page : 1}`
+  const url = `${BASE}/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(q)}`;
 
   try {
-    const raw = await tmFetch(url)
+    const html = await fetchHtml(url);
+    const $ = cheerio.load(html);
 
-    const arr: any[] = Array.isArray(raw) ? raw : (raw?.items || [])
-    const items: SearchItem[] = arr
-      .map((r: any): SearchItem => ({
-        tm_id: r?.id ?? r?.tm_id ?? r?.transfermarkt_player_id ?? null,
-        // ⬇️ wrap the `||` part to avoid mixing with `??` without parens
-        name:
-          r?.name ??
-          r?.full_name ??
-          r?.player_name ??
-          (([r?.first_name, r?.last_name].filter(Boolean).join(" ")) || null),
-        first_name: r?.first_name ?? null,
-        last_name: r?.last_name ?? null,
-        date_of_birth: r?.date_of_birth ?? r?.dob ?? null,
-        current_club_name: r?.current_club_name ?? r?.club ?? null,
-        position_main: r?.main_position ?? r?.position ?? null,
-        height_cm:
-          r?.height_cm ??
-          (r?.height != null
-            ? Number(String(r.height).replace(/\D/g, "")) || null
-            : null),
-        dominant_foot: r?.foot ?? r?.dominant_foot ?? null,
-        nationality: r?.nationality ?? r?.citizenship ?? null,
-        profile_url: r?.profile_url ?? r?.url ?? null,
-        image_url: r?.image_url ?? r?.photo ?? null,
-      }))
-      .filter((x: SearchItem) => !!x.tm_id && !!x.name)
+    // Find the table that contains "Search results for players"
+    // Usually it's the first table with class .items, or looked up by header
+    let $table = $("table.items").first();
 
-    const filtered: SearchItem[] = firstName
-      ? items.filter((it: SearchItem) =>
-          ((it.first_name ?? it.name ?? "").toLowerCase()).startsWith(firstName)
-        )
-      : items
+    // Ensure we are looking at players table if there are multiple
+    // TM search structure varies, but usually first table.items is players if matches found.
+    // Sometimes there is a header "Search results for players" before it.
+    const header = $(".table-header").filter((_, el) => $(el).text().includes("players")).first();
+    if (header.length) {
+      $table = header.next(".responsive-table").find("table.items");
+      if (!$table.length) $table = header.next("table.items");
+    }
 
-    return NextResponse.json({ items: filtered })
+    const items: any[] = [];
+
+    $table.find("> tbody > tr").each((_, tr) => {
+      const $tr = $(tr);
+      if ($tr.find("td").length < 3) return; // skip headers/empty
+
+      // Columns in search results are unpredictable, but usually:
+      // 0: Avatar (img-vat) -> .row-badge
+      // 1: Name + Club + Position (.hauptlink)
+      // 2: Age
+      // 3: Nationality
+      // 4: Market Value
+
+      /* Avatar */
+      const $avatarCell = $tr.find("td.zentriert").eq(0);
+      const avatar = $avatarCell.find("img").attr("src") || $avatarCell.find("img").attr("data-src") || null;
+
+      /* Name & ID */
+      const $nameCell = $tr.find("td.hauptlink").first();
+      const $nameLink = $nameCell.find("a").first();
+      const name = $nameLink.text().trim();
+      const href = $nameLink.attr("href") || "";
+      const m = href.match(/\/spieler\/(\d+)/);
+      const tm_id = m ? m[1] : null;
+
+      if (!tm_id || !name) return;
+
+      /* Club */
+      const $clubImg = $tr.find("td.zentriert").eq(1).find("img"); // sometimes club icon is here
+      const clubName = $clubImg.attr("title") || $tr.find("img.tiny_wappen").attr("title") || null;
+
+      /* Age */
+      const ageText = $tr.find("td.zentriert").eq(2).text().trim();
+      const age = parseInt(ageText, 10) || null;
+
+      /* Nationality */
+      const natImgs = $tr.find("td.zentriert").eq(3).find("img.flaggenrahmen");
+      const nationality = natImgs.length ? natImgs.attr("title") : null;
+
+      /* Market Value */
+      const mvText = $tr.find("td.rechts.hauptlink").text().trim();
+      const mv = parseEuroToInt(mvText);
+
+      // Try to get position (often regular text in name cell or below name)
+      // TM search layout is tricky. Sometimes position is in small text.
+
+      items.push({
+        tm_id,
+        name,
+        current_club_name: clubName,
+        age,
+        nationality,
+        market_value_eur: mv,
+        image_url: avatar,
+        profile_url: href,
+        // fields required by frontend but hard to get from search list:
+        position_main: null,
+        height_cm: null,
+        dominant_foot: null,
+        first_name: null,
+        last_name: null,
+        date_of_birth: null
+      });
+    });
+
+    // Provide default empty fields for compatibility
+    const mapped = items.map(it => ({
+      ...it,
+      first_name: it.name.split(" ")[0],
+      last_name: it.name.split(" ").slice(1).join(" "),
+      date_of_birth: null,
+    }));
+
+    return NextResponse.json({ items: mapped });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || "TM search failed", base: TM_API_BASE },
-      { status: e?.message?.includes("timeout") ? 504 : 502 }
-    )
+    console.error("TM Search Error", e);
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
