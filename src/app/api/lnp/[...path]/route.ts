@@ -43,10 +43,11 @@ async function proxy(req: NextRequest, pathParts: string[]) {
       headers: outHeaders,
     });
   } catch (e: any) {
-    console.error("[LNP PROXY ERROR]", e);
+    console.error(`[LNP PROXY ERROR] Failed to connect to ${target.toString()}`, e);
     return NextResponse.json(
       {
         error: "LNP Service Unreachable",
+        target: target.toString(),
         detail: e.message,
         hint: `Check if LNP service is running at ${BASE}`,
       },
