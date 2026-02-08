@@ -420,7 +420,7 @@ export default function PlayerObservationsTable({
           id: crypto.randomUUID(),
           type: "known",
           name: mainName,
-          overall: 3,
+          overall: 0,
           playerId: typeof playerId === "number" ? playerId : null,
           globalId: typeof globalId === "number" ? globalId : null,
         },
