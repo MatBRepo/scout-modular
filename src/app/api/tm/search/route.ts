@@ -135,7 +135,14 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ items: mapped });
   } catch (e: any) {
-    console.error("TM Search Error", e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error("[TM SEARCH ERROR]", e);
+    return NextResponse.json(
+      {
+        error: "TM Search Failed",
+        message: e.message,
+        hint: "Transfermarkt might be blocking requests (403) or layout changed.",
+      },
+      { status: 500 }
+    );
   }
 }

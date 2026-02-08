@@ -28,19 +28,31 @@ async function proxy(req: NextRequest, pathParts: string[]) {
     cache: "no-store",
   };
 
-  const res = await fetch(target, init);
+  try {
+    const res = await fetch(target, init);
 
-  // Skopiuj status + content-type
-  const outHeaders = new Headers();
-  const ct = res.headers.get("content-type");
-  if (ct) outHeaders.set("content-type", ct);
+    // Skopiuj status + content-type
+    const outHeaders = new Headers();
+    const ct = res.headers.get("content-type");
+    if (ct) outHeaders.set("content-type", ct);
 
-  const buf = await res.arrayBuffer();
+    const buf = await res.arrayBuffer();
 
-  return new NextResponse(buf, {
-    status: res.status,
-    headers: outHeaders,
-  });
+    return new NextResponse(buf, {
+      status: res.status,
+      headers: outHeaders,
+    });
+  } catch (e: any) {
+    console.error("[LNP PROXY ERROR]", e);
+    return NextResponse.json(
+      {
+        error: "LNP Service Unreachable",
+        detail: e.message,
+        hint: `Check if LNP service is running at ${BASE}`,
+      },
+      { status: 502 }
+    );
+  }
 }
 
 export async function GET(

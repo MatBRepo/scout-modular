@@ -32,8 +32,7 @@ async function fetchHtml(pathOrUrl: string, referer?: string) {
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
     throw new Error(
-      `HTTP ${res.status} for ${url}${
-        txt ? ` — ${txt.slice(0, 160)}…` : ""
+      `HTTP ${res.status} for ${url}${txt ? ` — ${txt.slice(0, 160)}…` : ""
       }`
     );
   }
@@ -398,10 +397,16 @@ export async function GET(req: Request) {
       ),
       { headers: { "Content-Type": "application/json" } }
     );
+
   } catch (e: any) {
     console.error("[TM PLAYER DETAILS] Fatal error:", e);
-    return new Response(JSON.stringify({ error: e?.message || "Failed" }), {
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({
+        error: "TM Scraper Error",
+        message: e?.message || "Unknown error",
+        stack: process.env.NODE_ENV === "development" ? e.stack : undefined,
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }

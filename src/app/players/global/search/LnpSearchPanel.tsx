@@ -339,7 +339,7 @@ export default function LnpSearchPanel() {
                   </Label>
                   <div className="relative">
                     <select
-                      className="w-full h-9 rounded-lg border border-stone-200 bg-white/50 px-3 py-1.5 text-xs focus:ring-2 focus:ring-stone-500 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900/50"
+                      className="w-full h-9 rounded border border-stone-200 bg-white/50 px-3 py-1.5 text-xs focus:ring-2 focus:ring-stone-500 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900/50"
                       value={step.val}
                       onChange={(e) => step.set(e.target.value)}
                       disabled={step.loading || (i > 0 && !seasons.length)}
@@ -367,7 +367,7 @@ export default function LnpSearchPanel() {
       </aside>
 
       <main className="space-y-4 lg:col-span-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-stone-200/60 bg-white/40 p-4 backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/40">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded border border-stone-200/60 bg-white/40 p-4 backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/40">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-stone-900 flex items-center justify-center text-white dark:bg-white dark:text-black">
               <Users className="h-5 w-5" />
@@ -387,17 +387,17 @@ export default function LnpSearchPanel() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-white/50">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded border bg-white/50">
               <Checkbox id="only-new-lnp" checked={onlyNew} onCheckedChange={v => setOnlyNew(!!v)} />
               <Label htmlFor="only-new-lnp" className="text-[10px] font-bold cursor-pointer">TYLKO NOWI</Label>
             </div>
-            <Button size="sm" className="h-9 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 text-xs" onClick={() => saveToSupabase(filtered)} disabled={saving || !filtered.length}>
+            <Button size="sm" className="h-9 rounded bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 text-xs" onClick={() => saveToSupabase(filtered)} disabled={saving || !filtered.length}>
               {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Database className="h-4 w-4" />}
             </Button>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-stone-200/60 bg-white/70 shadow-xl backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70">
+        <div className="overflow-hidden rounded border border-stone-200/60 bg-white/70 shadow-xl backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70">
           <table className="w-full text-sm">
             <thead className="bg-stone-100/80 backdrop-blur-md dark:bg-neutral-900/80 border-b">
               <tr className="text-left text-[10px] font-bold uppercase text-stone-400">
@@ -459,3 +459,4 @@ export default function LnpSearchPanel() {
     </div>
   );
 }
+

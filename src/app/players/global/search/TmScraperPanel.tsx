@@ -403,7 +403,7 @@ export default function TmScraperPanel() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase text-stone-400">Liga</Label>
                 <select
-                  className="w-full rounded-lg border border-stone-200 bg-white/50 px-3 py-1.5 text-xs dark:border-neutral-800 dark:bg-neutral-900/50"
+                  className="w-full rounded border border-stone-200 bg-white/50 px-3 py-1.5 text-xs dark:border-neutral-800 dark:bg-neutral-900/50"
                   value={competitionFilter}
                   onChange={(e) => setCompetitionFilter(e.target.value)}
                 >
@@ -431,7 +431,7 @@ export default function TmScraperPanel() {
       </aside>
 
       <main className="space-y-4 lg:col-span-9">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-stone-200/60 bg-white/40 p-4 backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/40">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded border border-stone-200/60 bg-white/40 p-4 backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/40">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-stone-900 flex items-center justify-center text-white dark:bg-white dark:text-black">
               <Users className="h-5 w-5" />
@@ -442,17 +442,17 @@ export default function TmScraperPanel() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={selectAllVisible} className="h-9 rounded-xl text-xs">
+            <Button variant="outline" size="sm" onClick={selectAllVisible} className="h-9 rounded text-xs">
               <CopyCheck className="mr-2 h-4 w-4" /> Zaznacz widocznych
             </Button>
-            <Button size="sm" onClick={saveSelectedOrVisible} disabled={saving} className="h-9 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 text-xs">
+            <Button size="sm" onClick={saveSelectedOrVisible} disabled={saving} className="h-9 rounded bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 text-xs">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
               Importuj ({selectedIds.length || "widocznych"})
             </Button>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-stone-200/60 bg-white/70 shadow-xl backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70">
+        <div className="overflow-hidden rounded border border-stone-200/60 bg-white/70 shadow-xl backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70">
           <table className="w-full text-sm">
             <thead className="bg-stone-100/80 backdrop-blur-md dark:bg-neutral-900/80 border-b">
               <tr className="text-left text-[10px] font-bold uppercase text-stone-400">
@@ -507,7 +507,7 @@ export default function TmScraperPanel() {
                             ) : playerDetails ? (
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                 <div className="space-y-4">
-                                  <div className="aspect-square rounded-2xl overflow-hidden border-4 border-white shadow-xl">
+                                  <div className="aspect-square rounded overflow-hidden border-4 border-white shadow-xl">
                                     <img src={playerDetails.profile?.portrait_url || ""} className="w-full h-full object-cover" alt="" />
                                   </div>
                                   <Button className="w-full h-8 text-xs bg-stone-900" asChild>
@@ -522,7 +522,7 @@ export default function TmScraperPanel() {
                                       { label: "Noga", val: playerDetails.profile?.foot || "—", icon: TrendingUp },
                                       { label: "Wycena", val: playerDetails.profile?.market_value_eur ? `€${(playerDetails.profile.market_value_eur / 1000000).toFixed(1)}M` : "—", icon: Target },
                                     ].map((stat, i) => (
-                                      <div key={i} className="rounded-xl border bg-white/50 p-3">
+                                      <div key={i} className="rounded border bg-white/50 p-3">
                                         <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-stone-400">
                                           <stat.icon className="h-3 w-3" /> {stat.label}
                                         </div>
@@ -531,7 +531,7 @@ export default function TmScraperPanel() {
                                     ))}
                                   </div>
                                   {playerDetails.tables?.["Summary"] && (
-                                    <div className="rounded-xl border bg-white overflow-hidden text-[11px]">
+                                    <div className="rounded border bg-white overflow-hidden text-[11px]">
                                       <table className="w-full">
                                         <thead className="bg-stone-50 border-b">
                                           <tr>{playerDetails.tables["Summary"].headers.map((h, i) => <th key={i} className="p-2 text-left">{h}</th>)}</tr>
@@ -570,3 +570,4 @@ export default function TmScraperPanel() {
     </div>
   );
 }
+
