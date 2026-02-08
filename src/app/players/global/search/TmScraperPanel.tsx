@@ -280,6 +280,8 @@ export default function TmScraperPanel() {
     return data;
   }, [rows, search, competitionFilter, posFilter]);
 
+  const totalPages = totalRows ? Math.ceil(totalRows / TM_PAGE_SIZE) : null;
+
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
