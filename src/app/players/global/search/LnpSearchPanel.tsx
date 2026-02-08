@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   RefreshCw,
@@ -303,13 +302,13 @@ export default function LnpSearchPanel() {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <aside className="space-y-6 lg:col-span-4">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <Card className="overflow-hidden border-stone-200/60 bg-white/70 shadow-xl backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70">
+        <div>
+          <Card className="rounded overflow-hidden border-stone-200/60 bg-white/70 shadow-xl backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70">
             <div className="bg-stone-900 px-4 py-3 dark:bg-white flex justify-between items-center">
               <h3 className="text-xs font-bold uppercase tracking-widest text-white dark:text-black flex items-center gap-2">
                 <Layers className="h-4 w-4" /> Kaskada LNP
               </h3>
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-white dark:text-black hover:bg-white/20" onClick={() => setRefreshNonce(n => n + 1)}>
+              <Button variant="ghost" size="icon" className="h-6 w-6 rounded text-white dark:text-black hover:bg-white/20" onClick={() => setRefreshNonce(n => n + 1)}>
                 <RefreshCw className="h-3 w-3" />
               </Button>
             </div>
@@ -319,7 +318,7 @@ export default function LnpSearchPanel() {
                   <Button
                     key={s}
                     variant={sex === s ? "default" : "outline"}
-                    className={`h-9 text-xs ${sex === s ? "bg-stone-900 text-white dark:bg-white dark:text-black" : "bg-white/50"}`}
+                    className={`h-9 text-xs rounded ${sex === s ? "bg-stone-900 text-white dark:bg-white dark:text-black" : "bg-white/50"}`}
                     onClick={() => setSex(s as Sex)}
                   >
                     {s === "Male" ? "Mężczyźni" : "Kobiety"}
@@ -353,14 +352,14 @@ export default function LnpSearchPanel() {
               ))}
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <Card className="border-stone-200/60 bg-white/70 shadow-lg backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70 p-4">
+        <Card className="rounded border-stone-200/60 bg-white/70 shadow-lg backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70 p-4">
           <div className="flex justify-between items-center mb-4">
             <div className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Statystyki importu</div>
-            <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold">{db.length}</div>
+            <div className="h-8 w-8 rounded bg-stone-100 flex items-center justify-center text-[10px] font-bold">{db.length}</div>
           </div>
-          <Button className="w-full h-9 bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 text-xs" onClick={() => saveToSupabase(db)} disabled={saving || !db.length}>
+          <Button className="w-full h-9 rounded bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 text-xs" onClick={() => saveToSupabase(db)} disabled={saving || !db.length}>
             <Database className="mr-2 h-3.5 w-3.5" /> Zapisz lokalną bazę
           </Button>
         </Card>
@@ -369,7 +368,7 @@ export default function LnpSearchPanel() {
       <main className="space-y-4 lg:col-span-8">
         <div className="flex flex-wrap items-center justify-between gap-4 rounded border border-stone-200/60 bg-white/40 p-4 backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/40">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-stone-900 flex items-center justify-center text-white dark:bg-white dark:text-black">
+            <div className="h-10 w-10 rounded bg-stone-900 flex items-center justify-center text-white dark:bg-white dark:text-black">
               <Users className="h-5 w-5" />
             </div>
             <div>
@@ -381,7 +380,7 @@ export default function LnpSearchPanel() {
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <Input
               placeholder="Filtruj listę..."
-              className="h-9 border-stone-200 bg-white/50 pl-9 text-xs"
+              className="h-9 rounded border-stone-200 bg-white/50 pl-9 text-xs"
               value={q}
               onChange={e => setQ(e.target.value)}
             />
@@ -409,35 +408,32 @@ export default function LnpSearchPanel() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-neutral-900">
-              <AnimatePresence>
-                {filtered.map((p, idx) => {
-                  const inDb = db.some(x => dedupeKey(x) === dedupeKey(p));
-                  return (
-                    <motion.tr
-                      key={p.id}
-                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(idx * 0.015, 0.3) }}
-                      className={`group hover:bg-stone-50/50 dark:hover:bg-neutral-900/50 transition-colors ${inDb ? "bg-emerald-50/20" : ""}`}
-                    >
-                      <td className="p-4"><Checkbox checked={inDb} disabled /></td>
-                      <td className="p-4 font-bold">{p.name}</td>
-                      <td className="p-4 text-xs font-medium text-stone-600 dark:text-stone-400">{p.club || "—"}</td>
-                      <td className="p-4">
-                        <span className="rounded bg-stone-100 px-2 py-0.5 text-[10px] font-bold uppercase">{p.pos || "—"}</span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-stone-400 hover:text-stone-900" onClick={() => addLocal(p)} disabled={inDb}>
-                            {inDb ? <CopyCheck className="h-4 w-4 text-emerald-600" /> : <Users className="h-4 w-4" />}
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-stone-400 hover:text-emerald-600" onClick={() => saveToSupabase([p])}>
-                            <Database className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  );
-                })}
-              </AnimatePresence>
+              {filtered.map((p, idx) => {
+                const inDb = db.some(x => dedupeKey(x) === dedupeKey(p));
+                return (
+                  <tr
+                    key={p.id}
+                    className={`group hover:bg-stone-50/50 dark:hover:bg-neutral-900/50 transition-colors ${inDb ? "bg-emerald-50/20" : ""}`}
+                  >
+                    <td className="p-4"><Checkbox checked={inDb} disabled /></td>
+                    <td className="p-4 font-bold">{p.name}</td>
+                    <td className="p-4 text-xs font-medium text-stone-600 dark:text-stone-400">{p.club || "—"}</td>
+                    <td className="p-4">
+                      <span className="rounded bg-stone-100 px-2 py-0.5 text-[10px] font-bold uppercase">{p.pos || "—"}</span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded text-stone-400 hover:text-stone-900" onClick={() => addLocal(p)} disabled={inDb}>
+                          {inDb ? <CopyCheck className="h-4 w-4 text-emerald-600" /> : <Users className="h-4 w-4" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded text-stone-400 hover:text-emerald-600" onClick={() => saveToSupabase([p])}>
+                          <Database className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && !loading.players && (
                 <tr>
                   <td colSpan={5} className="p-12 text-center text-xs text-stone-400 italic">

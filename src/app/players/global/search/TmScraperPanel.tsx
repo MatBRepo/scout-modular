@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   RefreshCw,
@@ -367,8 +366,8 @@ export default function TmScraperPanel() {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <aside className="space-y-6 lg:col-span-3">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <Card className="overflow-hidden border-stone-200/60 bg-white/70 shadow-xl backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70">
+        <div>
+          <Card className="rounded overflow-hidden border-stone-200/60 bg-white/70 shadow-xl backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70">
             <div className="bg-stone-900 px-4 py-3 dark:bg-white">
               <h3 className="text-xs font-bold uppercase tracking-widest text-white dark:text-black">Filtrowanie</h3>
             </div>
@@ -379,7 +378,7 @@ export default function TmScraperPanel() {
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
                   <Input
                     placeholder="Nazwisko, klub, liga..."
-                    className="h-9 border-stone-200 bg-white/50 pl-9 text-xs dark:border-neutral-800 dark:bg-neutral-900/50"
+                    className="h-9 rounded border-stone-200 bg-white/50 pl-9 text-xs dark:border-neutral-800 dark:bg-neutral-900/50"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
@@ -392,7 +391,7 @@ export default function TmScraperPanel() {
                     <Button
                       key={pos}
                       variant={posFilter === pos ? "default" : "outline"}
-                      className={`h-8 text-[10px] ${posFilter === pos ? "bg-stone-900 text-white dark:bg-white dark:text-black" : "bg-white/50"}`}
+                      className={`h-8 text-[10px] rounded ${posFilter === pos ? "bg-stone-900 text-white dark:bg-white dark:text-black" : "bg-white/50"}`}
                       onClick={() => setPosFilter(pos)}
                     >
                       {pos === "all" ? "Wszystkie" : pos}
@@ -413,14 +412,14 @@ export default function TmScraperPanel() {
                   ))}
                 </select>
               </div>
-              <Button variant="outline" className="w-full h-9 text-xs" onClick={() => loadPlayers({ page: 1 })}>
+              <Button variant="outline" className="w-full h-9 rounded text-xs" onClick={() => loadPlayers({ page: 1 })}>
                 <RefreshCw className={`mr-2 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Odśwież
               </Button>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <Card className="border-stone-200/60 bg-white/70 shadow-lg backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70 p-4">
+        <Card className="rounded border-stone-200/60 bg-white/70 shadow-lg backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/70 p-4">
           <div className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-2">Statystyki</div>
           <div className="space-y-2 text-xs">
             <div className="flex justify-between"><span>Ligi</span><span className="font-bold">{stats.competitions}</span></div>
@@ -433,7 +432,7 @@ export default function TmScraperPanel() {
       <main className="space-y-4 lg:col-span-9">
         <div className="flex flex-wrap items-center justify-between gap-4 rounded border border-stone-200/60 bg-white/40 p-4 backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/40">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-stone-900 flex items-center justify-center text-white dark:bg-white dark:text-black">
+            <div className="h-10 w-10 rounded bg-stone-900 flex items-center justify-center text-white dark:bg-white dark:text-black">
               <Users className="h-5 w-5" />
             </div>
             <div>
@@ -465,104 +464,99 @@ export default function TmScraperPanel() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-neutral-900">
-              <AnimatePresence>
-                {filtered.map((p, idx) => (
-                  <React.Fragment key={p.tm_player_id}>
-                    <motion.tr
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(idx * 0.02, 0.4) }}
-                      className={`group hover:bg-stone-50/50 dark:hover:bg-neutral-900/50 ${isSelected(p.tm_player_id) ? "bg-stone-100/50" : ""}`}
-                    >
-                      <td className="p-4"><Checkbox checked={isSelected(p.tm_player_id)} onCheckedChange={() => toggleSelect(p.tm_player_id)} /></td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-stone-100 flex items-center justify-center overflow-hidden border">
-                            <img src={p.player_path ? `https://tmssl.akamaized.net/images/portrait/small/${p.tm_player_id}.jpg` : "/placeholder-user.png"} alt="" onError={e => e.currentTarget.src = "/placeholder-user.png"} />
-                          </div>
-                          <div className="font-bold">{p.player_name}</div>
+              {filtered.map((p, idx) => (
+                <React.Fragment key={p.tm_player_id}>
+                  <tr
+                    className={`group hover:bg-stone-50/50 dark:hover:bg-neutral-900/50 ${isSelected(p.tm_player_id) ? "bg-stone-100/50" : ""}`}
+                  >
+                    <td className="p-4"><Checkbox checked={isSelected(p.tm_player_id)} onCheckedChange={() => toggleSelect(p.tm_player_id)} /></td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded bg-stone-100 flex items-center justify-center overflow-hidden border">
+                          <img src={p.player_path ? `https://tmssl.akamaized.net/images/portrait/small/${p.tm_player_id}.jpg` : "/placeholder-user.png"} alt="" onError={e => e.currentTarget.src = "/placeholder-user.png"} />
                         </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-medium">{p.club_name}</div>
-                        <div className="text-[10px] text-stone-400">{p.competition_name}</div>
-                      </td>
-                      <td className="p-4">{p.age || "—"}</td>
-                      <td className="p-4">
-                        <span className="rounded bg-stone-100 px-2 py-0.5 text-[10px] font-bold">{p.position || "UNK"}</span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => loadPlayerDetails(p)}><Info className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => saveSinglePlayer(p)}><Database className="h-4 w-4" /></Button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                    {selectedPlayer?.tm_player_id === p.tm_player_id && (
-                      <tr className="bg-stone-50/30">
-                        <td colSpan={6} className="p-0">
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="overflow-hidden p-6 border-t border-b">
-                            {detailsLoading ? (
-                              <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-stone-400" /></div>
-                            ) : playerDetails ? (
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div className="space-y-4">
-                                  <div className="aspect-square rounded overflow-hidden border-4 border-white shadow-xl">
-                                    <img src={playerDetails.profile?.portrait_url || ""} className="w-full h-full object-cover" alt="" />
-                                  </div>
-                                  <Button className="w-full h-8 text-xs bg-stone-900" asChild>
-                                    <a href={openTmUrl(p.player_path) || "#"} target="_blank">Profil TM <ExternalLink className="ml-2 h-3 w-3" /></a>
-                                  </Button>
+                        <div className="font-bold">{p.player_name}</div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-medium">{p.club_name}</div>
+                      <div className="text-[10px] text-stone-400">{p.competition_name}</div>
+                    </td>
+                    <td className="p-4">{p.age || "—"}</td>
+                    <td className="p-4">
+                      <span className="rounded bg-stone-100 px-2 py-0.5 text-[10px] font-bold">{p.position || "UNK"}</span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded" onClick={() => loadPlayerDetails(p)}><Info className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded" onClick={() => saveSinglePlayer(p)}><Database className="h-4 w-4" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                  {selectedPlayer?.tm_player_id === p.tm_player_id && (
+                    <tr className="bg-stone-50/30">
+                      <td colSpan={6} className="p-0">
+                        <div className="overflow-hidden p-6 border-t border-b">
+                          {detailsLoading ? (
+                            <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-stone-400" /></div>
+                          ) : playerDetails ? (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                              <div className="space-y-4">
+                                <div className="aspect-square rounded overflow-hidden border-4 border-white shadow-xl">
+                                  <img src={playerDetails.profile?.portrait_url || ""} className="w-full h-full object-cover" alt="" />
                                 </div>
-                                <div className="md:col-span-3 space-y-4">
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {[
-                                      { label: "Wiek", val: p.age, icon: Calendar },
-                                      { label: "Wzrost", val: playerDetails.profile?.height_cm ? `${playerDetails.profile.height_cm} cm` : "—", icon: Activity },
-                                      { label: "Noga", val: playerDetails.profile?.foot || "—", icon: TrendingUp },
-                                      { label: "Wycena", val: playerDetails.profile?.market_value_eur ? `€${(playerDetails.profile.market_value_eur / 1000000).toFixed(1)}M` : "—", icon: Target },
-                                    ].map((stat, i) => (
-                                      <div key={i} className="rounded border bg-white/50 p-3">
-                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-stone-400">
-                                          <stat.icon className="h-3 w-3" /> {stat.label}
-                                        </div>
-                                        <div className="mt-1 text-sm font-bold">{stat.val}</div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  {playerDetails.tables?.["Summary"] && (
-                                    <div className="rounded border bg-white overflow-hidden text-[11px]">
-                                      <table className="w-full">
-                                        <thead className="bg-stone-50 border-b">
-                                          <tr>{playerDetails.tables["Summary"].headers.map((h, i) => <th key={i} className="p-2 text-left">{h}</th>)}</tr>
-                                        </thead>
-                                        <tbody>
-                                          {playerDetails.tables["Summary"].rows.map((row, i) => (
-                                            <tr key={i} className="border-b last:border-0">
-                                              {row.map((cell, j) => <td key={j} className="p-2">{cell}</td>)}
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  )}
-                                </div>
+                                <Button className="w-full h-8 text-xs bg-stone-900 rounded" asChild>
+                                  <a href={openTmUrl(p.player_path) || "#"} target="_blank">Profil TM <ExternalLink className="ml-2 h-3 w-3" /></a>
+                                </Button>
                               </div>
-                            ) : <div className="p-4 text-center text-rose-500">{detailsError || "No details found"}</div>}
-                          </motion.div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </AnimatePresence>
+                              <div className="md:col-span-3 space-y-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                  {[
+                                    { label: "Wiek", val: p.age, icon: Calendar },
+                                    { label: "Wzrost", val: playerDetails.profile?.height_cm ? `${playerDetails.profile.height_cm} cm` : "—", icon: Activity },
+                                    { label: "Noga", val: playerDetails.profile?.foot || "—", icon: TrendingUp },
+                                    { label: "Wycena", val: playerDetails.profile?.market_value_eur ? `€${(playerDetails.profile.market_value_eur / 1000000).toFixed(1)}M` : "—", icon: Target },
+                                  ].map((stat, i) => (
+                                    <div key={i} className="rounded border bg-white/50 p-3">
+                                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-stone-400">
+                                        <stat.icon className="h-3 w-3" /> {stat.label}
+                                      </div>
+                                      <div className="mt-1 text-sm font-bold">{stat.val}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                                {playerDetails.tables?.["Summary"] && (
+                                  <div className="rounded border bg-white overflow-hidden text-[11px]">
+                                    <table className="w-full">
+                                      <thead className="bg-stone-50 border-b">
+                                        <tr>{playerDetails.tables["Summary"].headers.map((h, i) => <th key={i} className="p-2 text-left">{h}</th>)}</tr>
+                                      </thead>
+                                      <tbody>
+                                        {playerDetails.tables["Summary"].rows.map((row, i) => (
+                                          <tr key={i} className="border-b last:border-0">
+                                            {row.map((cell, j) => <td key={j} className="p-2">{cell}</td>)}
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : <div className="p-4 text-center text-rose-500 rounded">{detailsError || "No details found"}</div>}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
             </tbody>
           </table>
           <div className="p-4 border-t bg-stone-50/50 flex justify-between items-center text-xs">
             <div className="text-stone-400">Strona <b>{page}</b> z {totalPages || 1}</div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => loadPlayers({ page: page - 1 })}><ChevronLeft className="h-4 w-4" /></Button>
-              <Button variant="outline" size="sm" disabled={!totalPages || page >= totalPages || loading} onClick={() => loadPlayers({ page: page + 1 })}><ChevronRight className="h-4 w-4" /></Button>
+              <Button variant="outline" size="sm" className="rounded" disabled={page <= 1 || loading} onClick={() => loadPlayers({ page: page - 1 })}><ChevronLeft className="h-4 w-4" /></Button>
+              <Button variant="outline" size="sm" className="rounded" disabled={!totalPages || page >= totalPages || loading} onClick={() => loadPlayers({ page: page + 1 })}><ChevronRight className="h-4 w-4" /></Button>
             </div>
           </div>
         </div>
