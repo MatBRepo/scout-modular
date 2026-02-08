@@ -17,7 +17,8 @@ import {
   Layers,
   MapPin,
   Trophy,
-  History
+  History,
+  Calendar
 } from "lucide-react";
 import { toast } from "sonner";
 
