@@ -213,18 +213,46 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Create profile with active: false
       try {
         await supabase.from("profiles").upsert({
           id: data.user.id,
           full_name: name.trim(),
           role: DEFAULT_ROLE,
+          active: false, // Account starts as inactive
         });
       } catch (e) {
         console.warn("[AuthGate] Nie udało się zapisać profilu:", e);
       }
 
-      setUser(data.user);
-      setInfo("Konto zostało utworzone i zalogowane.");
+      // Send activation email via API
+      try {
+        const activationRes = await fetch("/api/auth/send-activation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim(),
+            name: name.trim(),
+            userId: data.user.id,
+          }),
+        });
+
+        if (!activationRes.ok) {
+          console.warn("Nie udało się wysłać emaila aktywacyjnego");
+        }
+      } catch (err) {
+        console.error("Błąd wysyłania emaila aktywacyjnego:", err);
+      }
+
+      // DO NOT auto-login - show message instead
+      setInfo(
+        "Konto zostało utworzone! Sprawdź swoją skrzynkę email - wysłaliśmy link aktywacyjny. Po aktywacji będziesz mógł się zalogować."
+      );
+      setMode("login");
+      // Clear form
+      setName("");
+      setEmail("");
+      setPwd("");
     } catch (err: any) {
       console.error("[AuthGate] Register error:", err);
       setError("Nie udało się utworzyć konta. Spróbuj ponownie.");
@@ -364,22 +392,20 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       <button
                         type="button"
                         onClick={() => switchMode("login")}
-                        className={`rounded-md px-4 py-1.5 text-[11px] transition-all ${
-                          mode === "login"
+                        className={`rounded-md px-4 py-1.5 text-[11px] transition-all ${mode === "login"
                             ? "bg-stone-900 text-stone-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
                             : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
-                        }`}
+                          }`}
                       >
                         Logowanie
                       </button>
                       <button
                         type="button"
                         onClick={() => switchMode("register")}
-                        className={`rounded-md px-4 py-1.5 text-[11px] transition-all ${
-                          mode === "register"
+                        className={`rounded-md px-4 py-1.5 text-[11px] transition-all ${mode === "register"
                             ? "bg-stone-900 text-stone-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
                             : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
-                        }`}
+                          }`}
                       >
                         Rejestracja
                       </button>
@@ -461,7 +487,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                               onKeyUp={(e) =>
                                 setCapsOn(
                                   (e as any).getModifierState &&
-                                    (e as any).getModifierState("CapsLock")
+                                  (e as any).getModifierState("CapsLock")
                                 )
                               }
                               autoComplete="current-password"
@@ -582,7 +608,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                               onKeyUp={(e) =>
                                 setCapsOn(
                                   (e as any).getModifierState &&
-                                    (e as any).getModifierState("CapsLock")
+                                  (e as any).getModifierState("CapsLock")
                                 )
                               }
                               autoComplete="new-password"
@@ -626,18 +652,17 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                                   passScore <= 1
                                     ? "bg-rose-500"
                                     : passScore === 2
-                                    ? "bg-amber-500"
-                                    : passScore === 3
-                                    ? "bg-emerald-500"
-                                    : "bg-green-500";
+                                      ? "bg-amber-500"
+                                      : passScore === 3
+                                        ? "bg-emerald-500"
+                                        : "bg-green-500";
                                 return (
                                   <div
                                     key={i}
-                                    className={`h-1.5 flex-1 rounded-md transition-colors ${
-                                      isActive
+                                    className={`h-1.5 flex-1 rounded-md transition-colors ${isActive
                                         ? activeColor
                                         : "bg-stone-200 dark:bg-stone-800"
-                                    }`}
+                                      }`}
                                   />
                                 );
                               })}
@@ -706,8 +731,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       {busy
                         ? "Łączenie z Google…"
                         : mode === "login"
-                        ? "Zaloguj się przez Google"
-                        : "Utwórz konto / zaloguj przez Google"}
+                          ? "Zaloguj się przez Google"
+                          : "Utwórz konto / zaloguj przez Google"}
                     </span>
                   </Button>
                   <p className="text-center text-[10px] text-stone-500 dark:text-stone-400">
@@ -732,8 +757,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                   ? "Logowanie…"
                   : "Tworzenie konta…"
                 : mode === "login"
-                ? "Zaloguj się"
-                : "Utwórz konto"}
+                  ? "Zaloguj się"
+                  : "Utwórz konto"}
             </Button>
           </div>
         </div>
