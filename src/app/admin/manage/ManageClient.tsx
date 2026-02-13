@@ -470,20 +470,40 @@ export default function ManagePage() {
     if (!current) return;
     const nextActive = !current.active;
 
+    // Optimistic update
     setAccounts((prev) =>
       prev.map((a) => (a.id === id ? { ...a, active: nextActive } : a))
     );
+
     try {
-      const supabase = getSupabase();
-      const { error } = await supabase
-        .from("profiles")
-        .update({ active: nextActive })
-        .eq("id", id);
-      if (error) throw error;
+      if (nextActive) {
+        // Activation: Use API to also confirm email in Auth
+        const res = await fetch("/api/admin/activate-account", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: id }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Błąd aktywacji przez API");
+        }
+      } else {
+        // Deactivation: Direct DB update is fine
+        const supabase = getSupabase();
+        const { error } = await supabase
+          .from("profiles")
+          .update({ active: false })
+          .eq("id", id);
+        if (error) throw error;
+      }
     } catch (e: any) {
       console.error("Error toggling active:", e);
+      // Revert optimistic update
+      setAccounts((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, active: !nextActive } : a))
+      );
       setErrorAccounts(
-        "Nie udało się zmienić statusu. Odśwież listę, aby zobaczyć aktualny stan."
+        e.message || "Nie udało się zmienić statusu. Spróbuj ponownie."
       );
     }
   }
