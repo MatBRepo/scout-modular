@@ -603,7 +603,8 @@ export default function ManagePage() {
       });
 
       if (!res.ok) {
-        throw new Error("Nie udało się wysłać emaila");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Nie udało się wysłać emaila (błąd serwera)");
       }
 
       const data = await res.json();
@@ -613,11 +614,14 @@ export default function ManagePage() {
       } else if (data.link) {
         // Fallback - copy link to clipboard
         copy(data.link);
-        alert("Link aktywacyjny skopiowano do schowka (email nie został wysłany - sprawdź konfigurację PHP_MAILER_URL)");
+        alert(
+          "Link aktywacyjny skopiowano do schowka.\n(Email nie został wysłany - prawdopodobnie brak PHP_MAILER_URL lub błąd połączenia).\nBłąd maila: " +
+          (data.mailError || "brak")
+        );
       }
     } catch (e: any) {
       console.error("Error resending activation:", e);
-      alert("Błąd: " + (e.message || "Nie udało się wysłać emaila aktywacyjnego"));
+      alert("Błąd: " + (e.message || "Wystąpił nieznany błąd"));
     }
   }
 
