@@ -161,9 +161,9 @@ function mapInviteRow(row: InviteRow): Invite {
       : "scout";
   const channel: InviteChannel =
     row.channel === "whatsapp" ||
-    row.channel === "messenger" ||
-    row.channel === "link" ||
-    row.channel === "system-share"
+      row.channel === "messenger" ||
+      row.channel === "link" ||
+      row.channel === "system-share"
       ? (row.channel as InviteChannel)
       : "email";
 
@@ -430,7 +430,7 @@ export default function ManagePage() {
         setDetailStats(null);
         setDetailStatsError(
           e?.message ||
-            "Nie udało się pobrać statystyk użytkownika z Supabase."
+          "Nie udało się pobrać statystyk użytkownika z Supabase."
         );
       } finally {
         if (!cancelled) setLoadingDetailStats(false);
@@ -543,7 +543,7 @@ export default function ManagePage() {
       console.error("Error adding user:", e);
       setErrorAccounts(
         e?.message ||
-          "Nie udało się dodać użytkownika. Sprawdź konfigurację tabeli profiles."
+        "Nie udało się dodać użytkownika. Sprawdź konfigurację tabeli profiles."
       );
     } finally {
       setSavingUser(false);
@@ -570,6 +570,34 @@ export default function ManagePage() {
       );
     } finally {
       setDeleteConfirm(null);
+    }
+  }
+
+  /* Ponowne wysłanie emaila aktywacyjnego */
+  async function onResendActivation(userId: string, email: string, name: string) {
+    try {
+      const res = await fetch("/api/auth/send-activation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, userId }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Nie udało się wysłać emaila");
+      }
+
+      const data = await res.json();
+
+      if (data.mailSent) {
+        alert("Email aktywacyjny został wysłany!");
+      } else if (data.link) {
+        // Fallback - copy link to clipboard
+        copy(data.link);
+        alert("Link aktywacyjny skopiowano do schowka (email nie został wysłany - sprawdź konfigurację PHP_MAILER_URL)");
+      }
+    } catch (e: any) {
+      console.error("Error resending activation:", e);
+      alert("Błąd: " + (e.message || "Nie udało się wysłać emaila aktywacyjnego"));
     }
   }
 
@@ -648,7 +676,7 @@ export default function ManagePage() {
           text: buildInviteText(invite),
           url: invite.url,
         })
-        .catch(() => {});
+        .catch(() => { });
       return;
     }
     if (invite.channel === "email") {
@@ -1159,11 +1187,10 @@ export default function ManagePage() {
                     filtered.map((a) => (
                       <tr
                         key={a.id}
-                        className={`border-t border-gray-200 align-middle dark:border-neutral-700 ${
-                          detail?.id === a.id
-                            ? "bg-stone-50/80 dark:bg-neutral-900/60"
-                            : ""
-                        }`}
+                        className={`border-t border-gray-200 align-middle dark:border-neutral-700 ${detail?.id === a.id
+                          ? "bg-stone-50/80 dark:bg-neutral-900/60"
+                          : ""
+                          }`}
                       >
                         <td className="p-3">
                           <button
@@ -1250,6 +1277,17 @@ export default function ManagePage() {
                                 </>
                               )}
                             </Button>
+                            {!a.active && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400"
+                                onClick={() => onResendActivation(a.id, a.email, a.name)}
+                                title="Wyślij ponownie email aktywacyjny"
+                              >
+                                <Mail className="mr-1 h-4 w-4" /> Email
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -1807,9 +1845,8 @@ function InterfaceSection({
         <div className="flex items-center gap-2">
           {badge}
           <ChevronDown
-            className={`h-4 w-4 text-dark/70 transition-transform dark:text-neutral-300 ${
-              open ? "rotate-180" : ""
-            }`}
+            className={`h-4 w-4 text-dark/70 transition-transform dark:text-neutral-300 ${open ? "rotate-180" : ""
+              }`}
           />
         </div>
       </button>
