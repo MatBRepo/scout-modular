@@ -24,7 +24,19 @@ import {
   Users,
   Filter,
   MapPin,
+  UserPlus,
+  Loader2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 import {
   Accordion,
   AccordionContent,
@@ -176,8 +188,8 @@ function computeKpi(s: Scout) {
     typeof s.avgObsPerPlayer === "number"
       ? s.avgObsPerPlayer
       : s.playersCount > 0
-      ? s.observationsCount / s.playersCount
-      : 0;
+        ? s.observationsCount / s.playersCount
+        : 0;
 
   const vol01 = clamp01(volRaw / 10);
 
@@ -227,8 +239,8 @@ function PositionPill({ pos, delta }: { pos: number; delta: number }) {
     delta > 0
       ? "text-emerald-600"
       : delta < 0
-      ? "text-rose-600"
-      : "text-gray-400";
+        ? "text-rose-600"
+        : "text-gray-400";
   const deltaTxt =
     delta === 0 ? "→" : delta > 0 ? `↑${delta}` : `↓${Math.abs(delta)}`;
   return (
@@ -445,6 +457,56 @@ export default function ScoutsAdminPage() {
     }
   }, []);
 
+  /* --- Invite Scout logic --- */
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteName.trim() || !inviteEmail.trim()) {
+      toast.error("Proszę podać imię i e-mail.");
+      return;
+    }
+
+    setInviting(true);
+    try {
+      const res = await fetch("/api/admin/invite-scout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: inviteName.trim(),
+          email: inviteEmail.trim(),
+          role: "scout",
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Błąd podczas wysyłania zaproszenia.");
+
+      toast.success(data.mailSent
+        ? "Zaproszenie wysłane pomyślnie!"
+        : "Zaproszenie utworzone (e-mail nie wysłany - brak konfiguracji).");
+
+      if (!data.mailSent && data.link) {
+        // Fallback: kopiowanie linku jeśli e-mail nie poszedł
+        navigator.clipboard.writeText(data.link);
+        toast.info("Link skopiowano do schowka.");
+      }
+
+      setInviteOpen(false);
+      setInviteName("");
+      setInviteEmail("");
+      fetchScouts(); // odśwież listę
+    } catch (err: any) {
+      console.error("Invite error:", err);
+      toast.error(err.message || "Nie udało się zaprosić scouta.");
+    } finally {
+      setInviting(false);
+    }
+  };
+
   useEffect(() => {
     fetchScouts();
   }, [fetchScouts]);
@@ -521,9 +583,9 @@ export default function ScoutsAdminPage() {
       const matchesGlobal = !qq
         ? true
         : [r.name, r.email, r.phone, r.region, r.role]
-            .filter(Boolean)
-            .map((x) => String(x).toLowerCase())
-            .some((x) => x.includes(qq));
+          .filter(Boolean)
+          .map((x) => String(x).toLowerCase())
+          .some((x) => x.includes(qq));
 
       const matchesName = !nameFilter
         ? true
@@ -610,6 +672,66 @@ export default function ScoutsAdminPage() {
         subtitle="Zobacz aktywność i jakość pracy scoutów oraz szybko podejrzyj listę ich zawodników i obserwacji."
         right={
           <div className="flex flex-wrap items-center gap-2">
+            {/* INVITE SCOUT BUTTON + MODAL */}
+            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  className="flex items-center gap-1 bg-gray-900 text-xs text-white hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Zaproś scouta
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleInvite}>
+                  <DialogHeader>
+                    <DialogTitle>Zaproś nowego scouta</DialogTitle>
+                    <DialogDescription>
+                      Wpisz dane scouta, aby wygenerować link i wysłać e-mail z zaproszeniem.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="name">Imię i nazwisko</Label>
+                      <Input
+                        id="name"
+                        value={inviteName}
+                        onChange={(e) => setInviteName(e.target.value)}
+                        placeholder="np. Jan Kowalski"
+                        required
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">E-mail</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="np. jan@example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={inviting}>
+                      {inviting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Wysyłanie…
+                        </>
+                      ) : (
+                        "Wyślij zaproszenie"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            <span className="h-4 w-px bg-gray-200 dark:bg-neutral-800 mx-1 hidden sm:block" />
+
             {/* search cluster desktop (global) */}
             <div className="hidden items-center gap-2 sm:flex">
               <div className="relative">
@@ -1023,9 +1145,8 @@ export default function ScoutsAdminPage() {
                           return (
                             <th
                               key={c.key}
-                              className={`px-3 py-2 text-[11px] font-medium uppercase tracking-wide ${
-                                c.right ? "text-right" : "text-left"
-                              }`}
+                              className={`px-3 py-2 text-[11px] font-medium uppercase tracking-wide ${c.right ? "text-right" : "text-left"
+                                }`}
                             >
                               {c.key === "actions" ? (
                                 c.label
@@ -1156,7 +1277,7 @@ export default function ScoutsAdminPage() {
                                   }}
                                 >
                                   <ExternalLink className="mr-1 h-4 w-4" />
-                                 Szczegóły
+                                  Szczegóły
                                 </Button>
                               </div>
                             </td>
@@ -1356,7 +1477,7 @@ function InlineScoutDetails({ scout }: { scout: Scout }) {
         if (!mounted) return;
         setError(
           e?.message ||
-            "Nie udało się pobrać listy zawodników i obserwacji z Supabase."
+          "Nie udało się pobrać listy zawodników i obserwacji z Supabase."
         );
         setPlayers([]);
         setObservations([]);

@@ -31,6 +31,7 @@ import {
 
 import { AddPlayerIcon, AddObservationIcon } from "@/components/icons";
 import { getSupabase } from "@/lib/supabaseClient";
+import { Toaster } from "@/components/ui/sonner";
 
 /* ===== Easing & Variants ===== */
 const easeOutCustom = cubicBezier(0.2, 0.7, 0.2, 1);
@@ -370,9 +371,8 @@ function AppShell({
                   }
                 >
                   <ChevronDown
-                    className={`h-3.5 w-3.5 transition-transform ${
-                      breadcrumbsExpanded ? "rotate-180" : ""
-                    }`}
+                    className={`h-3.5 w-3.5 transition-transform ${breadcrumbsExpanded ? "rotate-180" : ""
+                      }`}
                     aria-hidden="true"
                   />
                 </button>
@@ -686,8 +686,8 @@ export default function ClientRoot({
 
     // reaguj na zmiany auth (login / logout)
     const {
-          data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) return;
       supabase.rpc("touch_profile_last_active");
     });
@@ -720,9 +720,8 @@ export default function ClientRoot({
       enableSystem={false}
     >
       <div
-        className={`fixed inset-x-0 top-0 z-[60] h-0.5 bg-indigo-500 transition-opacity ${
-          routeLoading ? "opacity-100" : "opacity-0"
-        }`}
+        className={`fixed inset-x-0 top-0 z-[60] h-0.5 bg-indigo-500 transition-opacity ${routeLoading ? "opacity-100" : "opacity-0"
+          }`}
         aria-hidden
       />
 
@@ -747,6 +746,7 @@ export default function ClientRoot({
           headerActions={headerActions}
         >
           {children}
+          <Toaster />
         </AppShell>
       </HeaderActionsContext.Provider>
     </ThemeProvider>
