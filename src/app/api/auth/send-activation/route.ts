@@ -43,7 +43,7 @@ export async function POST(req: Request) {
         // Force correction of redirect_to parameter if it's wrong or pointing to supabase
         try {
             const urlObj = new URL(activationLink);
-            const frontendUrl = "https://scouting-s4s-dev.entriso.com/login";
+            const frontendUrl = "https://scouting-s4s-dev.entriso.com/auth/callback";
             urlObj.searchParams.set("redirect_to", frontendUrl);
             activationLink = urlObj.toString();
         } catch (e) {
