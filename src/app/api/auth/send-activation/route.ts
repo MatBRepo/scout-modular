@@ -26,6 +26,7 @@ export async function POST(req: Request) {
                 data: {
                     full_name: name,
                 },
+                redirectTo: `${req.headers.get("origin") || "https://scouting-s4s-dev.entriso.com"}/login`,
             },
         });
 
@@ -37,7 +38,17 @@ export async function POST(req: Request) {
             );
         }
 
-        const activationLink = linkData.properties.action_link;
+        let activationLink = linkData.properties.action_link;
+
+        // Force correction of redirect_to parameter if it's wrong or pointing to supabase
+        try {
+            const urlObj = new URL(activationLink);
+            const frontendUrl = "https://scouting-s4s-dev.entriso.com/login";
+            urlObj.searchParams.set("redirect_to", frontendUrl);
+            activationLink = urlObj.toString();
+        } catch (e) {
+            console.warn("Could not parse activationLink for correction:", e);
+        }
 
         // Send activation email via PHP mailer
         const phpMailerUrl = process.env.PHP_MAILER_URL;
