@@ -1585,24 +1585,28 @@ export default function ObservationsFeature({
                     </button>
                   )}
 
-                  <button
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      exportCSV();
-                    }}
-                  >
-                    <FileDown className="h-4 w-4" /> Eksport CSV
-                  </button>
-                  <button
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      exportExcel();
-                    }}
-                  >
-                    <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                  </button>
+                  {!isMobile && (
+                    <>
+                      <button
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                        onClick={() => {
+                          setMoreOpen(false);
+                          exportCSV();
+                        }}
+                      >
+                        <FileDown className="h-4 w-4" /> Eksport CSV
+                      </button>
+                      <button
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                        onClick={() => {
+                          setMoreOpen(false);
+                          exportExcel();
+                        }}
+                      >
+                        <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </Portal>

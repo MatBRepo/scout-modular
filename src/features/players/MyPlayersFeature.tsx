@@ -41,6 +41,7 @@ import {
   XCircle,
   Eye,
   EyeOff,
+  MoveHorizontal,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -2280,24 +2281,28 @@ export default function MyPlayersFeature({
                   </button>
                 )}
 
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
-                  onClick={() => {
-                    setMoreSheetOpen(false);
-                    exportCSV();
-                  }}
-                >
-                  <FileDown className="h-4 w-4" /> Eksport CSV
-                </button>
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
-                  onClick={() => {
-                    setMoreSheetOpen(false);
-                    exportExcel();
-                  }}
-                >
-                  <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                </button>
+                {!isMobile && (
+                  <>
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      onClick={() => {
+                        setMoreSheetOpen(false);
+                        exportCSV();
+                      }}
+                    >
+                      <FileDown className="h-4 w-4" /> Eksport CSV
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      onClick={() => {
+                        setMoreSheetOpen(false);
+                        exportExcel();
+                      }}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                    </button>
+                  </>
+                )}
               </div>
             </MobileSheet>
 
@@ -2437,13 +2442,14 @@ export default function MyPlayersFeature({
                   wrapRef={tableWrapRef}
                 />
 
+                {/* Mobile scroll hint: Moved under table as per user request */}
                 {showScrollHint && (
-                  <div className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 bottom-[-60px] sm:hidden">
-                    <div className="inline-flex items-center gap-1 rounded-md bg-gray-900/85 px-2.5 py-1 text-[11px] font-medium text-white ring-1 ring-black/10 backdrop-blur">
-                      Przewiń tabelę →
+                  <div className="mt-4 flex flex-col items-center gap-2 sm:hidden px-4">
+                    <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-3 py-1.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-800 dark:text-neutral-300 dark:ring-neutral-700">
+                      <MoveHorizontal className="h-4 w-4" />
+                      <span>Przewiń tabelę w bok, aby zobaczyć więcej</span>
                     </div>
                   </div>
-
                 )}
               </div>
 
