@@ -97,6 +97,7 @@ import { RadioChipGroup } from "@/components/ui/RadioChipGroup";
 
 // NEW: RAC fields
 import { NumericField } from "@/components/ui/numeric-field-rac";
+import { CircularProgress } from "@/shared/ui/CircularProgress";
 
 // header actions (global)
 import { useHeaderActions } from "@/app/ClientRoot";
@@ -1602,16 +1603,8 @@ export default function AddPlayerPage() {
 
         {/* PROGRESS BAR (global postęp profilu) */}
         <div className="flex flex-col items-end gap-0.5">
-          <span className="hidden text-[10px] font-medium uppercase tracking-wide text-muted-foreground md:inline">
-            Postęp profilu
-          </span>
           <div className="flex items-center gap-2">
-            <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-neutral-800">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-all duration-300"
-                style={{ width: `${completionPercent}%` }}
-              />
-            </div>
+            <CircularProgress progress={completionPercent} size={36} strokeWidth={2} />
             <span className="text-[11px] tabular-nums text-stone-700 dark:text-neutral-200">
               {completionPercent}%
             </span>
@@ -1753,7 +1746,7 @@ export default function AddPlayerPage() {
                         <Label className="text-sm">Rok urodzenia</Label>
                         <NumericField
                           value={
-                            birthYear === "" ? undefined : Number(birthYear)
+                            birthYear === "" ? undefined : Number(birthYear.replace(/\D/g, ""))
                           }
                           onChange={(val) => {
                             if (val == null) {
@@ -1779,7 +1772,7 @@ export default function AddPlayerPage() {
                           value={
                             jerseyNumber === ""
                               ? undefined
-                              : Number(jerseyNumber)
+                              : Number(jerseyNumber.replace(/\D/g, ""))
                           }
                           onChange={(val) =>
                             setJerseyNumber(

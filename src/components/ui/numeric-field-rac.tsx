@@ -29,8 +29,9 @@ export function NumericField({
   // No negatives
   const finalMinValue = minValue ?? 0;
 
-  // Force integer-only formatting
+  // Force integer-only formatting & disable group separators (like 1.000)
   const mergedFormatOptions: Intl.NumberFormatOptions = {
+    useGrouping: false,
     ...formatOptions,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,

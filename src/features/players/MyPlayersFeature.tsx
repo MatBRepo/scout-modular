@@ -56,6 +56,7 @@ import { supabase } from "@/shared/supabase-client";
 import { computePlayerProfileProgress } from "@/shared/playerProfileProgress";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CircularProgress } from "@/shared/ui/CircularProgress";
 
 /* ====== helpers: mobile detection + portal ====== */
 
@@ -2860,16 +2861,7 @@ function PlayersTable({
                     {visibleCols.progress && (
                       <td className={getCellClass('progress')}>
                         <div className="flex items-center gap-2">
-                          <div className="relative h-2 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-800">
-                            <div
-                              className={`h-full ${progressBarColor(
-                                r._progress,
-                              )} transition-[width] duration-300`}
-                              style={{
-                                width: `${r._progress}%`,
-                              }}
-                            />
-                          </div>
+                          <CircularProgress progress={r._progress} size={28} strokeWidth={2} />
                           <span className="tabular-nums text-[11px] font-medium text-gray-700 dark:text-neutral-300">
                             {r._progress}%
                           </span>

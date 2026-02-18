@@ -31,6 +31,7 @@ import { getSupabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useHeaderActions } from "@/app/ClientRoot";
+import { CircularProgress } from "@/shared/ui/CircularProgress";
 
 /* ======================= Types ======================= */
 
@@ -554,21 +555,11 @@ export default function SettingsPage() {
     const node = (
       <div className="flex items-center gap-3">
         <SavePill state={saveState} size="compact" />
-        <div className="flex flex-col items-end gap-0.5">
-          <span className="hidden text-[10px] font-medium uppercase tracking-wide text-muted-foreground md:inline">
-            Kompletność profilu
+        <div className="flex items-center gap-2">
+          <CircularProgress progress={profileCompletion} size={36} strokeWidth={2} />
+          <span className="text-[11px] tabular-nums text-stone-700 dark:text-neutral-200">
+            {profileCompletion}%
           </span>
-          <div className="flex items-center gap-2">
-            <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-neutral-800">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-all duration-300"
-                style={{ width: `${profileCompletion}%` }}
-              />
-            </div>
-            <span className="text-[11px] tabular-nums text-stone-700 dark:text-neutral-200">
-              {profileCompletion}%
-            </span>
-          </div>
         </div>
       </div>
     );
