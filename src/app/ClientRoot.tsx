@@ -284,7 +284,7 @@ function AppShell({
           role="banner"
         >
           {/* osobny container, żeby header też respektował przestrzeń sidebaru */}
-          <div className="pointer-events-none relative flex h-full items-center mx-auto w-full lg:pl-64 max-lg:pl-0 px-4">
+          <div className="pointer-events-none relative flex h-full items-center mx-auto w-full lg:pl-64 max-lg:pl-0 px-3 md:px-6">
             {isAuthed && (
               <button
                 className="pointer-events-auto lg:hidden absolute left-3 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60"
@@ -298,7 +298,7 @@ function AppShell({
             {/* BREADCRUMB W HEADERZE */}
             <nav
               aria-label="Breadcrumb"
-              className="pointer-events-auto flex h-full items-center min-w-0 pr-2 max-lg:pl-10 lg:pl-4"
+              className="pointer-events-auto flex h-full items-center min-w-0 pr-2 max-lg:pl-10"
             >
               {/* DESKTOP: pełna ścieżka */}
               <ol className="hidden items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:flex">

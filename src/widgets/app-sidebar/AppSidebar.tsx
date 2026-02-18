@@ -545,8 +545,8 @@ export default function AppSidebar({
                     onClick={() => setManageOpen((v) => !v)}
                     aria-expanded={manageOpen}
                     className={`group flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-sm transition ${isManageSection
-                        ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-                        : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                      ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+                      : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
                       }`}
                   >
                     <span className="flex min-w-0 items-center gap-2">
@@ -873,9 +873,9 @@ export default function AppSidebar({
   const asideDesktop =
     "h-screen w-64 overflow-visible border-r border-stone-200 bg-white p-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-stone-100 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0 dark:shadow-[0_10px_30px_rgba(0,0,0,0.55)]";
 
-  // ✅ 80% width + 100dvh + safe-area padding
+  // ✅ 90% width + 100dvh + safe-area padding
   const asideMobile =
-    "h-[100dvh] w-[80vw] max-w-[80vw] overflow-hidden border-r border-stone-200 bg-white p-3 shadow-xl ring-1 ring-stone-100 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
+    "h-[100dvh] w-[90vw] max-w-[90vw] overflow-hidden border-r border-stone-200 bg-white p-3 shadow-xl ring-1 ring-stone-100 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-950 dark:ring-0";
 
   if (variant === "mobile") {
     return (
@@ -1052,8 +1052,8 @@ function NavItem({
       href={href}
       aria-current={active ? "page" : undefined}
       className={`group relative flex min-w-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${active
-          ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-          : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+        ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+        : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
         }`}
       title={badge && badgeTitle ? `${badgeTitle}: ${badge}` : undefined}
       onClick={() => {
@@ -1064,8 +1064,8 @@ function NavItem({
       <span
         aria-hidden
         className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-md transition-all ${active
-            ? "w-1 bg-indigo-500"
-            : "w-0 bg-transparent group-hover:w-1 group-hover:bg-stone-300 dark:group-hover:bg-neutral-700"
+          ? "w-1 bg-indigo-500"
+          : "w-0 bg-transparent group-hover:w-1 group-hover:bg-stone-300 dark:group-hover:bg-neutral-700"
           }`}
       />
       <span className="shrink-0">{icon}</span>
@@ -1106,8 +1106,8 @@ function SubNavItem({
       href={href}
       aria-current={active ? "page" : undefined}
       className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition focus:ring-indigo-500 ${active
-          ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
-          : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
+        ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
+        : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
         }`}
       onClick={() => {
         onClickHref?.(href);
