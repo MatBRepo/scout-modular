@@ -53,6 +53,8 @@ import {
 import { AddPlayerIcon, PlayerOnlyTshirt } from "@/components/icons";
 import { supabase } from "@/shared/supabase-client";
 import { computePlayerProfileProgress } from "@/shared/playerProfileProgress";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /* ====== helpers: mobile detection + portal ====== */
 
@@ -2071,6 +2073,7 @@ export default function MyPlayersFeature({
 
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
 
+                {/* 
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                   onClick={() => {
@@ -2089,6 +2092,7 @@ export default function MyPlayersFeature({
                 >
                   <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
                 </button>
+                */}
               </div>
             </AnchoredPopover>
           </>
@@ -2502,6 +2506,7 @@ export default function MyPlayersFeature({
                   cellPad={cellPad}
                   rowH={rowH}
                   pageSliceCount={visible.length}
+                  loading={authLoading}
                   wrapRef={tableWrapRef}
                 />
 
@@ -2578,6 +2583,7 @@ function PlayersTable({
   cellPad,
   rowH,
   pageSliceCount,
+  loading,
   wrapRef,
 }: {
   rows: PlayerRow[];
@@ -2596,12 +2602,15 @@ function PlayersTable({
   cellPad: string;
   rowH: string;
   pageSliceCount: number;
+  loading?: boolean;
   wrapRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const allChecked =
+    !loading &&
     pageSliceCount > 0 &&
     rows.every((r) => selected.has(r.id as number));
   const someChecked =
+    !loading &&
     !allChecked &&
     rows.some((r) => selected.has(r.id as number));
 
@@ -2631,7 +2640,7 @@ function PlayersTable({
             : "")
         }
         onClick={() =>
-          onSortChange(
+          !loading && onSortChange(
             k,
             active && sortDir === "asc" ? "desc" : "asc",
           )
@@ -2677,6 +2686,17 @@ function PlayersTable({
     return "bg-emerald-500";
   };
 
+  // Helper to determine first column for padding
+  const isFirstVisible = (key: ColKey) => {
+    const active = Object.keys(visibleCols).filter(k => visibleCols[k as ColKey]);
+    return active[0] === key;
+  };
+
+  const getCellClass = (key: ColKey, base = "") => {
+    const isFirst = isFirstVisible(key);
+    return cn(cellPad, base, isFirst && "pl-5");
+  };
+
   return (
     <div
       ref={wrapRef as any}
@@ -2687,16 +2707,17 @@ function PlayersTable({
           <tr>
             {visibleCols.photo && (
               <th
-                className={`${cellPad} w-px whitespace-nowrap text-left font-medium`}
+                className={`${getCellClass('photo')} w-px whitespace-nowrap text-left font-medium`}
               />
             )}
             {visibleCols.select && (
               <th
-                className={`${cellPad} w-10 text-left font-medium`}
+                className={`${getCellClass('select')} w-10 text-left font-medium`}
               >
                 <Checkbox
+                  disabled={loading}
                   checked={
-                    rows.length === 0
+                    loading || rows.length === 0
                       ? false
                       : allChecked
                         ? true
@@ -2725,47 +2746,47 @@ function PlayersTable({
               </th>
             )}
             {visibleCols.name && (
-              <th className={`${cellPad} text-left`}>
+              <th className={`${getCellClass('name')} text-left`}>
                 <SortHeader k="name">Nazwa</SortHeader>
               </th>
             )}
             {visibleCols.club && (
-              <th className={`${cellPad} text-left`}>
+              <th className={`${getCellClass('club')} text-left`}>
                 <SortHeader k="club">Klub</SortHeader>
               </th>
             )}
             {visibleCols.pos && (
-              <th className={`${cellPad} text-left`}>
+              <th className={`${getCellClass('pos')} text-left`}>
                 <SortHeader k="pos">Pozycja</SortHeader>
               </th>
             )}
             {visibleCols.age && (
-              <th className={`${cellPad} text-left`}>
+              <th className={`${getCellClass('age')} text-left`}>
                 <SortHeader k="age">Wiek</SortHeader>
               </th>
             )}
             {visibleCols.progress && (
-              <th className={`${cellPad} text-left`}>
+              <th className={`${getCellClass('progress')} text-left`}>
                 <SortHeader k="progress">
                   Wypełnienie profilu
                 </SortHeader>
               </th>
             )}
             {visibleCols.rating && (
-              <th className={`${cellPad} text-left`}>
+              <th className={`${getCellClass('rating')} text-left`}>
                 <SortHeader k="rating">
                   Ocena z obserwacji
                 </SortHeader>
               </th>
             )}
             {visibleCols.obs && (
-              <th className={`${cellPad} text-left`}>
+              <th className={`${getCellClass('obs')} text-left`}>
                 <SortHeader k="obs">Obserwacje</SortHeader>
               </th>
             )}
             {visibleCols.actions && (
               <th
-                className={`${cellPad} text-right font-medium`}
+                className={`${getCellClass('actions')} text-right font-medium pr-4`}
               >
                 Akcje
               </th>
@@ -2773,285 +2794,304 @@ function PlayersTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => {
-            const jersey = getJerseyNo(r.name);
-            const isConfirmingTrash =
-              confirmTrashId === (r.id as number);
-            const avg = r._avgRating;
-            const avgLabel =
-              typeof avg === "number" ? avg.toFixed(1) : null;
+          {loading ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <tr key={i} className={`border-t border-gray-100 dark:border-neutral-900 ${rowH}`}>
+                {visibleCols.photo && <td className={getCellClass('photo')}><Skeleton className="h-8 w-8" /></td>}
+                {visibleCols.select && <td className={getCellClass('select')}><Skeleton className="h-4 w-4" /></td>}
+                {visibleCols.name && <td className={getCellClass('name')}><Skeleton className="h-4 w-32" /></td>}
+                {visibleCols.club && <td className={getCellClass('club')}><Skeleton className="h-4 w-24" /></td>}
+                {visibleCols.pos && <td className={getCellClass('pos')}><Skeleton className="h-4 w-12" /></td>}
+                {visibleCols.age && <td className={getCellClass('age')}><Skeleton className="h-4 w-8" /></td>}
+                {visibleCols.progress && <td className={getCellClass('progress')}><Skeleton className="h-4 w-20" /></td>}
+                {visibleCols.rating && <td className={getCellClass('rating')}><Skeleton className="h-4 w-10" /></td>}
+                {visibleCols.obs && <td className={getCellClass('obs')}><Skeleton className="h-4 w-8" /></td>}
+                {visibleCols.actions && <td className={`${getCellClass('actions')} text-right pr-4`}><Skeleton className="ml-auto h-8 w-8" /></td>}
+              </tr>
+            ))
+          ) : (
+            <>
+              {rows.map((r) => {
+                const jersey = getJerseyNo(r.name);
+                const isConfirmingTrash =
+                  confirmTrashId === (r.id as number);
+                const avg = r._avgRating;
+                const avgLabel =
+                  typeof avg === "number" ? avg.toFixed(1) : null;
 
-            return (
-              <tr
-                key={r.id}
-                className={`group cursor-pointer border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
-                onClick={() => onOpen(r.id as number)}
-              >
-                {visibleCols.photo && (
-                  <td
-                    className={`${cellPad} w-px whitespace-nowrap`}
+                return (
+                  <tr
+                    key={r.id}
+                    className={`group cursor-pointer border-t border-gray-200 transition-colors duration-150 hover:bg-stone-100/80 dark:border-neutral-800 dark:hover:bg-neutral-900/70 ${rowH}`}
+                    onClick={() => onOpen(r.id as number)}
                   >
-                    <div className="relative">
-                      {r._known ? (
-                        r.photo ? (
-                          <img
-                            src={r.photo}
-                            alt={r.name}
-                            className="h-9 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
-                            {getInitials(r.name)}
-                          </div>
-                        )
-                      ) : jersey ? (
-                        // NIEZNANY + jest numer koszulki
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
-                          {jersey}
-                        </div>
-                      ) : (
-                        // NIEZNANY + brak numeru → koszulka
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
-                          <PlayerOnlyTshirt
-                            className="h-6 w-6"
-                            strokeWidthAll={14}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                )}
-
-                {visibleCols.select && (
-                  <td
-                    className={cellPad}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Checkbox
-                      checked={selected.has(r.id as number)}
-                      onCheckedChange={(v) => {
-                        const copy = new Set(selected);
-                        if (v) copy.add(r.id as number);
-                        else copy.delete(r.id as number);
-                        setSelected(copy);
-                      }}
-                      aria-label={`Zaznacz ${r.name}`}
-                    />
-                  </td>
-                )}
-
-                {visibleCols.name && (
-                  <td
-                    className={`${cellPad} max-w-[260px] text-gray-900 dark:text-neutral-100`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="truncate"
-                        title={r.name}
+                    {visibleCols.photo && (
+                      <td
+                        className={`${getCellClass('photo')} w-px whitespace-nowrap`}
                       >
-                        {r.name}
-                      </span>
-                      <KnownBadge known={r._known} />
-                    </div>
-                  </td>
-                )}
-
-                {visibleCols.club && (
-                  <td
-                    className={`${cellPad} max-w-[220px] text-gray-700 dark:text-neutral-200`}
-                  >
-                    <span
-                      className="truncate"
-                      title={r.club}
-                    >
-                      {r.club}
-                    </span>
-                  </td>
-                )}
-
-                {visibleCols.pos && (
-                  <td className={cellPad}>
-                    <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
-                      {r.pos}
-                    </span>
-                  </td>
-                )}
-
-                {visibleCols.age && (
-                  <td
-                    className={`${cellPad} text-gray-700 dark:text-neutral-200`}
-                  >
-                    {r.age}
-                  </td>
-                )}
-
-                {visibleCols.progress && (
-                  <td className={cellPad}>
-                    <div className="flex items-center gap-2">
-                      <div className="relative h-2 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-800">
-                        <div
-                          className={`h-full ${progressBarColor(
-                            r._progress,
-                          )} transition-[width] duration-300`}
-                          style={{
-                            width: `${r._progress}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="tabular-nums text-[11px] font-medium text-gray-700 dark:text-neutral-300">
-                        {r._progress}%
-                      </span>
-                    </div>
-                  </td>
-                )}
-
-                {visibleCols.rating && (
-                  <td className={cellPad}>
-                    {avgLabel ? (
-                      <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                        {avgLabel}
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-gray-400">
-                        —
-                      </span>
-                    )}
-                  </td>
-                )}
-
-                {visibleCols.obs && (
-                  <td className={cellPad}>
-                    <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">
-                      {r._obs}
-                    </span>
-                  </td>
-                )}
-
-                {visibleCols.actions && (
-                  <td
-                    className={`${cellPad} text-right`}
-                  >
-                    <div className="flex justify-end gap-1.5">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpen(r.id as number);
-                            }}
-                            aria-label={
-                              r._known
-                                ? "Edytuj"
-                                : "Uzupełnij dane"
-                            }
-                          >
-                            {r._known ? (
-                              <Pencil className="h-4 w-4" />
+                        <div className="relative">
+                          {r._known ? (
+                            r.photo ? (
+                              <img
+                                src={r.photo}
+                                alt={r.name}
+                                className="h-9 rounded-md object-cover ring-1 ring-black/5 transition group-hover:shadow-sm"
+                                loading="lazy"
+                              />
                             ) : (
-                              <FileEdit className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {r._known
-                            ? "Edytuj"
-                            : "Uzupełnij dane"}
-                        </TooltipContent>
-                      </Tooltip>
+                              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs font-semibold text-gray-700 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-200">
+                                {getInitials(r.name)}
+                              </div>
+                            )
+                          ) : jersey ? (
+                            // NIEZNANY + jest numer koszulki
+                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
+                              {jersey}
+                            </div>
+                          ) : (
+                            // NIEZNANY + brak numeru → koszulka
+                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
+                              <PlayerOnlyTshirt
+                                className="h-6 w-6"
+                                strokeWidthAll={14}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    )}
 
-                      {scope === "active" ? (
-                        isConfirmingTrash ? (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onTrash(r.id as number);
-                                setConfirmTrashId(null);
+                    {visibleCols.select && (
+                      <td
+                        className={getCellClass('select')}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          checked={selected.has(r.id as number)}
+                          onCheckedChange={(v) => {
+                            const copy = new Set(selected);
+                            if (v) copy.add(r.id as number);
+                            else copy.delete(r.id as number);
+                            setSelected(copy);
+                          }}
+                          aria-label={`Zaznacz ${r.name}`}
+                        />
+                      </td>
+                    )}
+
+                    {visibleCols.name && (
+                      <td
+                        className={`${getCellClass('name')} max-w-[260px] text-gray-900 dark:text-neutral-100`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="truncate"
+                            title={r.name}
+                          >
+                            {r.name}
+                          </span>
+                          <KnownBadge known={r._known} />
+                        </div>
+                      </td>
+                    )}
+
+                    {visibleCols.club && (
+                      <td
+                        className={`${getCellClass('club')} max-w-[220px] text-gray-700 dark:text-neutral-200`}
+                      >
+                        <span
+                          className="truncate"
+                          title={r.club}
+                        >
+                          {r.club}
+                        </span>
+                      </td>
+                    )}
+
+                    {visibleCols.pos && (
+                      <td className={getCellClass('pos')}>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800 dark:bg-neutral-800 dark:text-neutral-200">
+                          {r.pos}
+                        </span>
+                      </td>
+                    )}
+
+                    {visibleCols.age && (
+                      <td
+                        className={`${getCellClass('age')} text-gray-700 dark:text-neutral-200`}
+                      >
+                        {r.age}
+                      </td>
+                    )}
+
+                    {visibleCols.progress && (
+                      <td className={getCellClass('progress')}>
+                        <div className="flex items-center gap-2">
+                          <div className="relative h-2 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-800">
+                            <div
+                              className={`h-full ${progressBarColor(
+                                r._progress,
+                              )} transition-[width] duration-300`}
+                              style={{
+                                width: `${r._progress}%`,
                               }}
-                            >
-                              Tak
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setConfirmTrashId(null);
-                              }}
-                            >
-                              Nie
-                            </Button>
+                            />
                           </div>
+                          <span className="tabular-nums text-[11px] font-medium text-gray-700 dark:text-neutral-300">
+                            {r._progress}%
+                          </span>
+                        </div>
+                      </td>
+                    )}
+
+                    {visibleCols.rating && (
+                      <td className={getCellClass('rating')}>
+                        {avgLabel ? (
+                          <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                            {avgLabel}
+                          </span>
                         ) : (
+                          <span className="text-[11px] text-gray-400">
+                            —
+                          </span>
+                        )}
+                      </td>
+                    )}
+
+                    {visibleCols.obs && (
+                      <td className={getCellClass('obs')}>
+                        <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">
+                          {r._obs}
+                        </span>
+                      </td>
+                    )}
+
+                    {visibleCols.actions && (
+                      <td
+                        className={`${getCellClass('actions')} text-right pr-4`}
+                      >
+                        <div className="flex justify-end gap-1.5">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setConfirmTrashId(
-                                    r.id as number,
-                                  );
+                                  onOpen(r.id as number);
                                 }}
-                                aria-label="Przenieś do kosza"
+                                aria-label={
+                                  r._known
+                                    ? "Edytuj"
+                                    : "Uzupełnij dane"
+                                }
                               >
-                                <Trash2 className="h-4 w-4" />
+                                {r._known ? (
+                                  <Pencil className="h-4 w-4" />
+                                ) : (
+                                  <FileEdit className="h-4 w-4" />
+                                )}
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              Przenieś do kosza
+                              {r._known
+                                ? "Edytuj"
+                                : "Uzupełnij dane"}
                             </TooltipContent>
                           </Tooltip>
-                        )
-                      ) : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onRestore(r.id as number);
-                              }}
-                              aria-label="Przywróć"
-                            >
-                              <Undo2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Przywróć
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                    </div>
-                  </td>
-                )}
-              </tr>
-            );
-          })}
 
-          {rows.length === 0 && (
-            <tr>
-              <td
-                colSpan={
-                  Object.values(visibleCols).filter(Boolean)
-                    .length || 1
-                }
-                className={`${cellPad} text-center text-sm text-gray-900 dark:text-neutral-400`}
-              >
-                Brak wyników dla bieżących filtrów.
-              </td>
-            </tr>
+                          {scope === "active" ? (
+                            isConfirmingTrash ? (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onTrash(r.id as number);
+                                    setConfirmTrashId(null);
+                                  }}
+                                >
+                                  Tak
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmTrashId(null);
+                                  }}
+                                >
+                                  Nie
+                                </Button>
+                              </div>
+                            ) : (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setConfirmTrashId(
+                                        r.id as number,
+                                      );
+                                    }}
+                                    aria-label="Przenieś do kosza"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Przenieś do kosza
+                                </TooltipContent>
+                              </Tooltip>
+                            )
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRestore(r.id as number);
+                                  }}
+                                  aria-label="Przywróć"
+                                >
+                                  <Undo2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Przywróć
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+
+              {rows.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={
+                      Object.values(visibleCols).filter(Boolean)
+                        .length || 1
+                    }
+                    className={`${cellPad} text-center text-sm text-gray-900 dark:text-neutral-400`}
+                  >
+                    Brak wyników dla bieżących filtrów.
+                  </td>
+                </tr>
+              )}
+            </>
           )}
         </tbody>
       </table>

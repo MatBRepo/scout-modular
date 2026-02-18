@@ -1137,14 +1137,16 @@ export default function ScoutsAdminPage() {
                           { key: "lastActive", label: "Ostatnio aktywny" },
                           { key: "rank", label: "Ranga" },
                           { key: "actions", label: "Akcje", right: true },
-                        ].map((c) => {
+                        ].map((c, i) => {
                           const active =
                             sortKey === (c.key as any) && c.key !== "actions";
                           return (
                             <th
                               key={c.key}
-                              className={`px-3 py-2 text-[11px] font-medium uppercase tracking-wide ${c.right ? "text-right" : "text-left"
-                                }`}
+                              className={cn(
+                                "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-dark/70 dark:text-neutral-400",
+                                i === 0 && "pl-5"
+                              )}
                             >
                               {c.key === "actions" ? (
                                 c.label
@@ -1180,7 +1182,7 @@ export default function ScoutsAdminPage() {
                           <tr className="align-top transition-colors hover:bg-stone-50/80 dark:hover:bg-neutral-900/70">
 
                             {/* Scout */}
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3 pl-5">
                               <div className="flex flex-col gap-1.5">
                                 <div>
                                   <div className="font-medium text-gray-900 dark:text-neutral-100">

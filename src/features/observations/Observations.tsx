@@ -43,6 +43,8 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { AddObservationIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /* -------------------------------- helpers -------------------------------- */
 
@@ -418,9 +420,11 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
 export default function ObservationsFeature({
   data,
   onChange,
+  loading,
 }: {
   data: Observation[];
   onChange: (next: Observation[]) => void;
+  loading?: boolean;
 }) {
   const isMobile = useIsMobile();
 
@@ -1494,8 +1498,8 @@ export default function ObservationsFeature({
                   {/* Zaznacz kilka (mobile) */}
                   <button
                     className={`flex w-full items-center gap-2 px-3 py-3 text-left text-sm transition-colors ${isMultiSelect
-                        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
-                        : "hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                      : "hover:bg-stone-100 dark:hover:bg-neutral-800"
                       }`}
                     onClick={() => {
                       setIsMultiSelect(!isMultiSelect);
@@ -1602,8 +1606,8 @@ export default function ObservationsFeature({
               {/* Zaznacz kilka (desktop) */}
               <button
                 className={`mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors ${isMultiSelect
-                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
-                    : "hover:bg-stone-100 dark:hover:bg-neutral-900"
+                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                  : "hover:bg-stone-100 dark:hover:bg-neutral-900"
                   }`}
                 onClick={() => {
                   setIsMultiSelect(!isMultiSelect);
@@ -1670,6 +1674,7 @@ export default function ObservationsFeature({
 
               <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
 
+              {/* 
               <button
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
@@ -1688,6 +1693,7 @@ export default function ObservationsFeature({
               >
                 <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
               </button>
+              */}
             </AnchoredPopover>
           ))}
 
@@ -1792,11 +1798,12 @@ export default function ObservationsFeature({
             <thead className="sticky top-0 z-10 bg-stone-100 text-gray-600 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
                 {visibleCols.select && isMultiSelect && (
-                  <th className={`${cellPad} w-10 text-left font-medium`}>
+                  <th className={`${cn(cellPad, "pl-5")} w-10 text-left font-medium`}>
                     <Checkbox
+                      disabled={loading}
                       aria-label="Zaznacz wszystkie"
                       checked={
-                        filtered.length === 0
+                        loading || filtered.length === 0
                           ? false
                           : allChecked
                             ? true
@@ -1814,7 +1821,7 @@ export default function ObservationsFeature({
                   </th>
                 )}
                 {visibleCols.match && (
-                  <th className={`${cellPad} text-left`}>
+                  <th className={`${cn(cellPad, !isMultiSelect && "pl-5")} text-left`}>
                     <SortHeader k="match">Mecz</SortHeader>
                   </th>
                 )}
@@ -1844,197 +1851,212 @@ export default function ObservationsFeature({
                   </th>
                 )}
                 {visibleCols.actions && (
-                  <th className={`${cellPad} text-right font-medium`}>Akcje</th>
+                  <th className={`${cellPad} text-right font-medium pr-4`}>Akcje</th>
                 )}
               </tr>
             </thead>
             <tbody>
-              {visibleRows.map((r, idx) => {
-                const mode = r.mode ?? "live";
-                const pCount = r.players?.length ?? 0;
+              {loading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className={`border-t border-gray-100 dark:border-neutral-900 ${rowH}`}>
+                    {visibleCols.select && isMultiSelect && <td className={cn(cellPad, "pl-5")}><Skeleton className="h-4 w-4" /></td>}
+                    {visibleCols.match && <td className={cn(cellPad, !isMultiSelect && "pl-5")}><Skeleton className="h-4 w-48" /></td>}
+                    {visibleCols.date && <td className={`${cellPad} hidden sm:table-cell`}><Skeleton className="h-4 w-24" /></td>}
+                    {visibleCols.time && <td className={`${cellPad} hidden sm:table-cell`}><Skeleton className="h-4 w-12" /></td>}
+                    {visibleCols.mode && <td className={`${cellPad} hidden sm:table-cell`}><Skeleton className="h-4 w-16" /></td>}
+                    {visibleCols.status && <td className={cellPad}><Skeleton className="h-4 w-32" /></td>}
+                    {visibleCols.players && <td className={`${cellPad} hidden sm:table-cell`}><Skeleton className="h-4 w-8" /></td>}
+                    {visibleCols.actions && <td className={`${cellPad} text-right pr-4`}><Skeleton className="ml-auto h-8 w-8" /></td>}
+                  </tr>
+                ))
+              ) : (
+                visibleRows.map((r, idx) => {
+                  const mode = r.mode ?? "live";
+                  const pCount = r.players?.length ?? 0;
 
-                return (
-                  <tr
-                    key={r.id}
-                    className={`group border-t transition-colors duration-150 ${rowH} cursor-pointer
+                  return (
+                    <tr
+                      key={r.id}
+                      className={`group border-t transition-colors duration-150 ${rowH} cursor-pointer
                                 ${idx % 2 === 1
-                        ? "bg-stone-100/40 dark:bg-neutral-900/30"
-                        : "bg-transparent"
-                      }
+                          ? "bg-stone-100/40 dark:bg-neutral-900/30"
+                          : "bg-transparent"
+                        }
                                 border-gray-200 hover:bg-stone-100/70 dark:border-neutral-800 dark:hover:bg-neutral-900/60`}
-                    onClick={() => {
-                      setEditing(r);
-                      setPageMode("editor");
-                    }}
-                  >
-                    {visibleCols.select && isMultiSelect && (
-                      <td className={`${cellPad}`}>
-                        <Checkbox
-                          aria-label={`Zaznacz obserwację #${r.id}`}
-                          checked={selected.has(r.id as number)}
-                          onCheckedChange={(v) => {
-                            const copy = new Set(selected);
-                            if (Boolean(v)) copy.add(r.id as number);
-                            else copy.delete(r.id as number);
-                            setSelected(copy);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </td>
-                    )}
+                      onClick={() => {
+                        setEditing(r);
+                        setPageMode("editor");
+                      }}
+                    >
+                      {visibleCols.select && isMultiSelect && (
+                        <td className={cn(cellPad, "pl-5")}>
+                          <Checkbox
+                            aria-label={`Zaznacz obserwację #${r.id}`}
+                            checked={selected.has(r.id as number)}
+                            onCheckedChange={(v) => {
+                              const copy = new Set(selected);
+                              if (Boolean(v)) copy.add(r.id as number);
+                              else copy.delete(r.id as number);
+                              setSelected(copy);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </td>
+                      )}
 
-                    {visibleCols.match && (
-                      <td className={`${cellPad} align-center`}>
-                        <div className="min-w-0">
-                          <div className="truncate font-medium text-gray-900 dark:text-neutral-100">
-                            {r.match || "—"}
+                      {visibleCols.match && (
+                        <td className={cn(cellPad, !isMultiSelect && "pl-5", "align-center")}>
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-gray-900 dark:text-neutral-100">
+                              {r.match || "—"}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                    )}
+                        </td>
+                      )}
 
-                    {visibleCols.date && (
-                      <td
-                        className={`${cellPad} hidden align-center sm:table-cell`}
-                      >
-                        {fmtDate(r.date)}
-                      </td>
-                    )}
-                    {visibleCols.time && (
-                      <td
-                        className={`${cellPad} hidden align-center sm:table-cell`}
-                      >
-                        {r.time || "—"}
-                      </td>
-                    )}
+                      {visibleCols.date && (
+                        <td
+                          className={`${cellPad} hidden align-center sm:table-cell`}
+                        >
+                          {fmtDate(r.date)}
+                        </td>
+                      )}
+                      {visibleCols.time && (
+                        <td
+                          className={`${cellPad} hidden align-center sm:table-cell`}
+                        >
+                          {r.time || "—"}
+                        </td>
+                      )}
 
-                    {visibleCols.mode && (
-                      <td
-                        className={`${cellPad} hidden align-center sm:table-cell`}
-                      >
-                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
-                          {mode === "live"
-                            ? "Live"
-                            : mode === "tv"
-                              ? "TV"
-                              : "Mix"}
-                        </span>
-                      </td>
-                    )}
+                      {visibleCols.mode && (
+                        <td
+                          className={`${cellPad} hidden align-center sm:table-cell`}
+                        >
+                          <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
+                            {mode === "live"
+                              ? "Live"
+                              : mode === "tv"
+                                ? "TV"
+                                : "Mix"}
+                          </span>
+                        </td>
+                      )}
 
 
-                    {visibleCols.status && (
-                      <td className={`${cellPad} align-center`}>
-                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
-                          {r.competition || "—"}
-                        </span>
-                      </td>
-                    )}
+                      {visibleCols.status && (
+                        <td className={`${cellPad} align-center`}>
+                          <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
+                            {r.competition || "—"}
+                          </span>
+                        </td>
+                      )}
 
-                    {visibleCols.players && (
-                      <td
-                        className={`${cellPad} hidden align-center sm:table-cell`}
-                      >
-                        <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">
-                          {pCount}
-                        </span>
-                      </td>
-                    )}
+                      {visibleCols.players && (
+                        <td
+                          className={`${cellPad} hidden align-center sm:table-cell`}
+                        >
+                          <span className="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-200">
+                            {pCount}
+                          </span>
+                        </td>
+                      )}
 
-                    {visibleCols.actions && (
-                      <td className={`${cellPad} text-right align-center`}>
-                        <div className="inline-flex items-center gap-2">
-                          {/* Edycja */}
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditing(r);
-                                  setPageMode("editor");
-                                }}
-                                aria-label="Edytuj"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">Edytuj</TooltipContent>
-                          </Tooltip>
-
-                          {/* Kosz / Przywróć z potwierdzeniem Tak / Nie dla Kosza */}
-                          {(r.bucket ?? "active") === "active" ? (
-                            confirmTrashId === r.id ? (
-                              <div
-                                className="inline-flex items-center gap-1 text-sm"
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                      {visibleCols.actions && (
+                        <td className={`${cellPad} text-right align-center pr-4`}>
+                          <div className="inline-flex items-center gap-2">
+                            {/* Edycja */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
                                 <Button
-                                  size="sm"
-                                  className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
-                                  onClick={() => moveToTrash(r.id as number)}
-                                >
-                                  Tak
-                                </Button>
-                                <Button
-                                  size="sm"
+                                  size="icon"
                                   variant="outline"
-                                  className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
-                                  onClick={() => setConfirmTrashId(null)}
+                                  className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditing(r);
+                                    setPageMode("editor");
+                                  }}
+                                  aria-label="Edytuj"
                                 >
-                                  Nie
+                                  <Pencil className="h-4 w-4" />
                                 </Button>
-                              </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Edytuj</TooltipContent>
+                            </Tooltip>
+
+                            {/* Kosz / Przywróć z potwierdzeniem Tak / Nie dla Kosza */}
+                            {(r.bucket ?? "active") === "active" ? (
+                              confirmTrashId === r.id ? (
+                                <div
+                                  className="inline-flex items-center gap-1 text-sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Button
+                                    size="sm"
+                                    className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                                    onClick={() => moveToTrash(r.id as number)}
+                                  >
+                                    Tak
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
+                                    onClick={() => setConfirmTrashId(null)}
+                                  >
+                                    Nie
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="outline"
+                                      className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConfirmTrashId(r.id as number);
+                                      }}
+                                      aria-label="Przenieś do kosza"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    Przenieś do kosza
+                                  </TooltipContent>
+                                </Tooltip>
+                              )
                             ) : (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
                                     size="icon"
                                     variant="outline"
-                                    className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                    className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setConfirmTrashId(r.id as number);
+                                      restoreFromTrash(r.id as number);
                                     }}
-                                    aria-label="Przenieś do kosza"
+                                    aria-label="Przywróć z kosza"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Undo2 className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="top">
-                                  Przenieś do kosza
+                                  Przywróć z kosza
                                 </TooltipContent>
                               </Tooltip>
-                            )
-                          ) : (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    restoreFromTrash(r.id as number);
-                                  }}
-                                  aria-label="Przywróć z kosza"
-                                >
-                                  <Undo2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top">
-                                Przywróć z kosza
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
               {filtered.length === 0 && (
                 <tr>
                   <td

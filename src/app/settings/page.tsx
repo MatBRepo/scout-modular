@@ -147,7 +147,7 @@ function CountrySearchCombobox({
           aria-expanded={open}
           className={cn(
             "flex w-full items-center justify-between rounded-md border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm transition",
-            "hover:bg:white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+            "hover:bg:white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-0",
             "dark:border-neutral-700 dark:bg-neutral-950"
           )}
         >
@@ -180,7 +180,7 @@ function CountrySearchCombobox({
             className={cn(
               "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-stone-200 bg-background px-3 text-sm",
               "shadow-none outline-none",
-              "focus-visible:ring-1 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+              "focus-visible:ring-1 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-0",
               "dark:border-neutral-700 dark:bg-neutral-950"
             )}
           />
@@ -482,11 +482,11 @@ export default function SettingsPage() {
             setProfile((prev) =>
               prev
                 ? {
-                    ...prev,
-                    full_name: updates.full_name ?? prev.full_name,
-                    phone: updates.phone ?? prev.phone,
-                    country: updates.country ?? prev.country,
-                  }
+                  ...prev,
+                  full_name: updates.full_name ?? prev.full_name,
+                  phone: updates.phone ?? prev.phone,
+                  country: updates.country ?? prev.country,
+                }
                 : prev
             );
           }
@@ -540,7 +540,7 @@ export default function SettingsPage() {
       console.error("[SettingsPage] change password error:", e);
       setPasswordError(
         e?.message ||
-          "Nie udało się zmienić hasła. Spróbuj ponownie lub użyj resetu hasła e-mailem."
+        "Nie udało się zmienić hasła. Spróbuj ponownie lub użyj resetu hasła e-mailem."
       );
       toast.error("Błąd podczas zmiany hasła.");
     } finally {

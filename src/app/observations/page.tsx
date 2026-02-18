@@ -97,14 +97,13 @@ export default function ObservationsPage() {
     }
   };
 
-  if (loading) {
-    // możesz wrzucić spinner / skeleton
-    return null;
-  }
-
   return (
     <Suspense fallback={null}>
-      <ObservationsFeature data={observations} onChange={handleChange} />
+      <ObservationsFeature
+        data={observations}
+        onChange={handleChange}
+        loading={loading}
+      />
     </Suspense>
   );
 }

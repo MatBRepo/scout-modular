@@ -22,67 +22,67 @@ export const POS_DATA: Array<{
   name: string;
   desc: string;
 }> = [
-  {
-    value: "GK",
-    code: "GK",
-    name: "Bramkarz",
-    desc: "Odbicia, gra na linii, wyjścia i gra nogami.",
-  },
-  {
-    value: "CB",
-    code: "CB",
-    name: "Środkowy obrońca",
-    desc: "Gra w powietrzu, ustawienie, wyprowadzenie.",
-  },
-  {
-    value: "LB",
-    code: "LB",
-    name: "Lewy obrońca",
-    desc: "Obrona strony, dośrodkowania, wsparcie ataku.",
-  },
-  {
-    value: "RB",
-    code: "RB",
-    name: "Prawy obrońca",
-    desc: "Obrona strony, dośrodkowania, wsparcie ataku.",
-  },
-  {
-    value: "CDM",
-    code: "CDM",
-    name: "Śr. pomocnik defensywny",
-    desc: "Odbiór, asekuracja, pierwsze podanie.",
-  },
-  {
-    value: "CM",
-    code: "CM",
-    name: "Środkowy pomocnik",
-    desc: "Równowaga defensywa/kreacja.",
-  },
-  {
-    value: "CAM",
-    code: "CAM",
-    name: "Ofensywny pomocnik",
-    desc: "Ostatnie podanie, kreacja, strzał.",
-  },
-  {
-    value: "LW",
-    code: "LW",
-    name: "Lewy pomocnik/skrzydłowy",
-    desc: "1v1, dośrodkowania, zejścia do strzału.",
-  },
-  {
-    value: "RW",
-    code: "RW",
-    name: "Prawy pomocnik/skrzydłowy",
-    desc: "1v1, dośrodkowania, zejścia do strzału.",
-  },
-  {
-    value: "ST",
-    code: "ST",
-    name: "Napastnik",
-    desc: "Wykończenie, gra tyłem, ruch w polu karnym.",
-  },
-];
+    {
+      value: "GK",
+      code: "GK",
+      name: "Bramkarz",
+      desc: "Odbicia, gra na linii, wyjścia i gra nogami.",
+    },
+    {
+      value: "CB",
+      code: "CB",
+      name: "Środkowy obrońca",
+      desc: "Gra w powietrzu, ustawienie, wyprowadzenie.",
+    },
+    {
+      value: "LB",
+      code: "LB",
+      name: "Lewy obrońca",
+      desc: "Obrona strony, dośrodkowania, wsparcie ataku.",
+    },
+    {
+      value: "RB",
+      code: "RB",
+      name: "Prawy obrońca",
+      desc: "Obrona strony, dośrodkowania, wsparcie ataku.",
+    },
+    {
+      value: "CDM",
+      code: "CDM",
+      name: "Śr. pomocnik defensywny",
+      desc: "Odbiór, asekuracja, pierwsze podanie.",
+    },
+    {
+      value: "CM",
+      code: "CM",
+      name: "Środkowy pomocnik",
+      desc: "Równowaga defensywa/kreacja.",
+    },
+    {
+      value: "CAM",
+      code: "CAM",
+      name: "Ofensywny pomocnik",
+      desc: "Ostatnie podanie, kreacja, strzał.",
+    },
+    {
+      value: "LW",
+      code: "LW",
+      name: "Lewy pomocnik/skrzydłowy",
+      desc: "1v1, dośrodkowania, zejścia do strzału.",
+    },
+    {
+      value: "RW",
+      code: "RW",
+      name: "Prawy pomocnik/skrzydłowy",
+      desc: "1v1, dośrodkowania, zejścia do strzału.",
+    },
+    {
+      value: "ST",
+      code: "ST",
+      name: "Napastnik",
+      desc: "Wykończenie, gra tyłem, ruch w polu karnym.",
+    },
+  ];
 
 const POS_LAYOUT: Record<DetailedPos, { top: string; left: string }> = {
   GK: { top: "50%", left: "10%" },
@@ -135,112 +135,112 @@ export function MainPositionPitch({ value, onChange }: MainPositionPitchProps) {
       {/* >>> ZAMIANA tej części za <div ...> w dokumencie <<< */}
       <div className="mx-auto w-full max-w-[700px] rounded border-none bg-transparent">
         <div className="relative w-full overflow-hidden rounded-[20px] bg-[#76C35D] aspect-[4/3] sm:aspect-[590/350]">
-<svg
-  viewBox="0 0 590 350" className="pointer-events-none absolute inset-0 h-full w-full p-2 sm:p-0"
-  preserveAspectRatio="xMidYMid meet"
-  shape-rendering="geometricPrecision"
->
-  <rect x="18.5139" y="16.2588" width="274.939" height="317.482" fill="none" stroke="white" stroke-width="1.5" />
-  <rect x="18.5139" y="79.2017" width="104.178" height="192.55" fill="none" stroke="white" stroke-width="1.5" />
-  <rect x="18.5139" y="112.58" width="47.2579" height="124.839" fill="none" stroke="white" stroke-width="1.5" />
-  <rect x="8.66235" y="112.58" width="10.0408" height="124.839" fill="none" stroke="white" stroke-width="1.5" />
+          <svg
+            viewBox="0 0 590 350" className="pointer-events-none absolute inset-0 h-full w-full p-2 sm:p-0"
+            preserveAspectRatio="xMidYMid meet"
+            shape-rendering="geometricPrecision"
+          >
+            <rect x="18.5139" y="16.2588" width="274.939" height="317.482" fill="none" stroke="white" stroke-width="1.5" />
+            <rect x="18.5139" y="79.2017" width="104.178" height="192.55" fill="none" stroke="white" stroke-width="1.5" />
+            <rect x="18.5139" y="112.58" width="47.2579" height="124.839" fill="none" stroke="white" stroke-width="1.5" />
+            <rect x="8.66235" y="112.58" width="10.0408" height="124.839" fill="none" stroke="white" stroke-width="1.5" />
 
-  <path
-    d="M556.256 15.2588 C556.256 21.5792 562.048 26.7031 569.192 26.7031 C569.629 26.7031 570.06 26.6819 570.486 26.6445"
-    fill="none"
-    stroke="white"
-    stroke-opacity="1"
-    stroke-width="1.5"
-    stroke-linecap="round"
-    transform="translate(0, 2)"
-  />
-  <path
-    d="M570.486 322.344 C563.232 322.344 557.35 327.39 557.35 333.614 C557.35 333.995 557.374 334.37 557.417 334.741"
-    fill="none"
-    stroke="white"
-    stroke-opacity="1"
-    stroke-width="1.5"
-    stroke-linecap="round"
-    transform="translate(0, -2)"
-  />
+            <path
+              d="M556.256 15.2588 C556.256 21.5792 562.048 26.7031 569.192 26.7031 C569.629 26.7031 570.06 26.6819 570.486 26.6445"
+              fill="none"
+              stroke="white"
+              stroke-opacity="1"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              transform="translate(0, 2)"
+            />
+            <path
+              d="M570.486 322.344 C563.232 322.344 557.35 327.39 557.35 333.614 C557.35 333.995 557.374 334.37 557.417 334.741"
+              fill="none"
+              stroke="white"
+              stroke-opacity="1"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              transform="translate(0, -2)"
+            />
 
-  <path
-    d="M30.65 15.2588 C30.65 21.5792 24.858 26.7031 17.714 26.7031 C17.277 26.7031 16.846 26.6819 16.42 26.6445"
-    fill="none"
-    stroke="white"
-    stroke-opacity="1"
-    stroke-width="1.5"
-    stroke-linecap="round"
-    transform="translate(2, 2)"
-  />
-  <path
-    d="M16.42 322.344 C23.674 322.344 29.556 327.39 29.556 333.614 C29.556 333.995 29.532 334.37 29.489 334.741"
-    fill="none"
-    stroke="white"
-    stroke-opacity="1"
-    stroke-width="1.5"
-    stroke-linecap="round"
-    transform="translate(2, -2)"
-  />
+            <path
+              d="M30.65 15.2588 C30.65 21.5792 24.858 26.7031 17.714 26.7031 C17.277 26.7031 16.846 26.6819 16.42 26.6445"
+              fill="none"
+              stroke="white"
+              stroke-opacity="1"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              transform="translate(2, 2)"
+            />
+            <path
+              d="M16.42 322.344 C23.674 322.344 29.556 327.39 29.556 333.614 C29.556 333.995 29.532 334.37 29.489 334.741"
+              fill="none"
+              stroke="white"
+              stroke-opacity="1"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              transform="translate(2, -2)"
+            />
 
-  <rect
-    x="-1"
-    y="1"
-    width="278.223"
-    height="317.482"
-    transform="matrix(-1 0 0 1 570.486 15.2588)"
-    fill="none"
-    stroke="white"
-    stroke-width="1.5"
-  />
-  <rect
-    x="-1"
-    y="1"
-    width="104.178"
-    height="192.55"
-    transform="matrix(-1 0 0 1 570.486 78.2017)"
-    fill="none"
-    stroke="white"
-    stroke-width="1.5"
-  />
-  <rect
-    x="-1"
-    y="1"
-    width="47.2579"
-    height="124.839"
-    transform="matrix(-1 0 0 1 570.486 111.58)"
-    fill="none"
-    stroke="white"
-    stroke-width="1.5"
-  />
-  <rect
-    x="-1"
-    y="1"
-    width="10.0408"
-    height="124.839"
-    transform="matrix(-1 0 0 1 580.338 111.58)"
-    fill="none"
-    stroke="white"
-    stroke-width="1.5"
-  />
+            <rect
+              x="-1"
+              y="1"
+              width="278.223"
+              height="317.482"
+              transform="matrix(-1 0 0 1 570.486 15.2588)"
+              fill="none"
+              stroke="white"
+              stroke-width="1.5"
+            />
+            <rect
+              x="-1"
+              y="1"
+              width="104.178"
+              height="192.55"
+              transform="matrix(-1 0 0 1 570.486 78.2017)"
+              fill="none"
+              stroke="white"
+              stroke-width="1.5"
+            />
+            <rect
+              x="-1"
+              y="1"
+              width="47.2579"
+              height="124.839"
+              transform="matrix(-1 0 0 1 570.486 111.58)"
+              fill="none"
+              stroke="white"
+              stroke-width="1.5"
+            />
+            <rect
+              x="-1"
+              y="1"
+              width="10.0408"
+              height="124.839"
+              transform="matrix(-1 0 0 1 580.338 111.58)"
+              fill="none"
+              stroke="white"
+              stroke-width="1.5"
+            />
 
-  <path
-    d="M558.256 15.2588C558.256 21.5792 564.048 26.7031 571.192 26.7031C571.629 26.7031 572.06 26.6819 572.486 26.6445V15.2588H558.256Z"
-    fill="white"
-    fill-opacity="0"
-  />
-  <path
-    d="M572.486 322.344C565.232 322.344 559.35 327.39 559.35 333.614C559.35 333.995 559.374 334.37 559.417 334.741L572.486 334.741L572.486 322.344Z"
-    fill="white"
-    fill-opacity="0"
-  />
+            <path
+              d="M558.256 15.2588C558.256 21.5792 564.048 26.7031 571.192 26.7031C571.629 26.7031 572.06 26.6819 572.486 26.6445V15.2588H558.256Z"
+              fill="white"
+              fill-opacity="0"
+            />
+            <path
+              d="M572.486 322.344C565.232 322.344 559.35 327.39 559.35 333.614C559.35 333.995 559.374 334.37 559.417 334.741L572.486 334.741L572.486 322.344Z"
+              fill="white"
+              fill-opacity="0"
+            />
 
-  <path d="M123 106.618C139.904 124.296 151 148.852 151 176C151 203.148 139.903 227.703 122 245.381" fill="none" stroke="white" stroke-width="1.5" />
-  <path d="M467 106.618C450.096 124.296 439 148.852 439 176C439 203.148 450.097 227.703 468 245.381" fill="none" stroke="white" stroke-width="1.5" />
+            <path d="M123 106.618C139.904 124.296 151 148.852 151 176C151 203.148 139.903 227.703 122 245.381" fill="none" stroke="white" stroke-width="1.5" />
+            <path d="M467 106.618C450.096 124.296 439 148.852 439 176C439 203.148 450.097 227.703 468 245.381" fill="none" stroke="white" stroke-width="1.5" />
 
-  <circle cx="496" cy="174" r="1" fill="white" />
-  <circle cx="94" cy="174" r="1" fill="white" />
-</svg>
+            <circle cx="496" cy="174" r="1" fill="white" />
+            <circle cx="94" cy="174" r="1" fill="white" />
+          </svg>
 
           {POS_DATA.map((pos) => {
             const layout = POS_LAYOUT[pos.value];
@@ -256,7 +256,7 @@ export function MainPositionPitch({ value, onChange }: MainPositionPitchProps) {
                   "absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-[10px] font-semibold shadow-sm transition-transform duration-150",
                   "h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9",
                   isSelected
-                    ? "border-2 border-red-500 bg-white text-black shadow-[0_0_0_2px_rgba(248,113,113,0.7)]"
+                    ? "border-2 border-black bg-white text-black shadow-[0_0_0_2px_rgba(0,0,0,0.3)]"
                     : "border-white/80 bg-black text-white hover:scale-[1.05] hover:bg-black/90"
                 )}
                 style={{ top: layout.top, left: layout.left }}

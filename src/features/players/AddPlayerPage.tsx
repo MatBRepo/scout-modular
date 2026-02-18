@@ -332,7 +332,7 @@ function CountrySearchCombobox({
           aria-expanded={open}
           className={cn(
             "flex w-full items-center justify-between rounded-md border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm transition",
-            "hover:bg:white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+            "hover:bg:white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-0",
             "dark:border-neutral-700 dark:bg-neutral-950"
           )}
         >
@@ -365,7 +365,7 @@ function CountrySearchCombobox({
             className={cn(
               "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-stone-200 bg-background px-3 text-sm",
               "shadow-none outline-none",
-              "focus-visible: focus-visible:ring-emerald-500 focus-visible:ring-offset-0",
+              "focus-visible:ring-1 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-0",
               "dark:border-neutral-700 dark:bg-neutral-950"
             )}
           />
@@ -530,42 +530,42 @@ export default function AddPlayerPage() {
     return ratingConfig.filter((r) => r.enabled !== false);
   }, [ratingConfig]);
 
-// AUTOMATYCZNE wyliczanie trybu profilu (known / unknown)
-// Zawodnik znany = jest imię lub nazwisko
-// Zawodnik nieznany = brak imienia i nazwiska, ale są inne dane (np. numer, klub itd.)
-useEffect(() => {
-  const hasName =
-    firstName.trim() !== "" && lastName.trim() !== "";
+  // AUTOMATYCZNE wyliczanie trybu profilu (known / unknown)
+  // Zawodnik znany = jest imię lub nazwisko
+  // Zawodnik nieznany = brak imienia i nazwiska, ale są inne dane (np. numer, klub itd.)
+  useEffect(() => {
+    const hasName =
+      firstName.trim() !== "" && lastName.trim() !== "";
 
-  const hasAnyOtherData =
-    jerseyNumber.trim() !== "" ||
-    birthYear.trim() !== "" ||
-    club.trim() !== "" ||
-    clubCountry.trim() !== "" ||
-    uNote.trim() !== "";
+    const hasAnyOtherData =
+      jerseyNumber.trim() !== "" ||
+      birthYear.trim() !== "" ||
+      club.trim() !== "" ||
+      clubCountry.trim() !== "" ||
+      uNote.trim() !== "";
 
-  let next: Choice = null;
+    let next: Choice = null;
 
-  if (hasName) {
-    // jak tylko pojawi się imię lub nazwisko – traktujemy jako "znany"
-    next = "known";
-  } else if (hasAnyOtherData) {
-    // brak imienia/nazwiska, ale jest numer/rok/klub/notatka -> "nieznany"
-    next = "unknown";
-  } else {
-    next = null;
-  }
+    if (hasName) {
+      // jak tylko pojawi się imię lub nazwisko – traktujemy jako "znany"
+      next = "known";
+    } else if (hasAnyOtherData) {
+      // brak imienia/nazwiska, ale jest numer/rok/klub/notatka -> "nieznany"
+      next = "unknown";
+    } else {
+      next = null;
+    }
 
-  setChoice((prev) => (prev === next ? prev : next));
-}, [
-  firstName,
-  lastName,
-  birthYear,
-  club,
-  clubCountry,
-  jerseyNumber,
-  uNote,
-]);
+    setChoice((prev) => (prev === next ? prev : next));
+  }, [
+    firstName,
+    lastName,
+    birthYear,
+    club,
+    clubCountry,
+    jerseyNumber,
+    uNote,
+  ]);
 
 
   // Nazwa wyświetlana w tabeli obserwacji zawodnika
@@ -607,8 +607,8 @@ useEffect(() => {
     choice === "unknown"
       ? cntBasicUnknown
       : choice === "known"
-      ? cntBasicKnown
-      : 0;
+        ? cntBasicKnown
+        : 0;
   const basicMax =
     choice === "unknown" ? 4 : choice === "known" ? 5 : 0;
 
@@ -909,7 +909,7 @@ useEffect(() => {
                               key={opt.value}
                               className={cn(
                                 "relative flex w-full items-start gap-2 rounded-md border border-input p-3 text-xs shadow-xs outline-none",
-                                "has-[data-state=checked]:border-primary/60 has-[data-state=checked]:bg-primary/5"
+                                "has-[data-state=checked]:border-[#000000] has-[data-state=checked]:bg-primary/5"
                               )}
                             >
                               <Checkbox
@@ -973,8 +973,8 @@ useEffect(() => {
                     ext.english === true
                       ? "yes"
                       : ext.english === false
-                      ? "no"
-                      : ""
+                        ? "no"
+                        : ""
                   }
                   options={[
                     { value: "yes", label: "Tak" },
@@ -997,8 +997,8 @@ useEffect(() => {
                     ext.euPassport === true
                       ? "yes"
                       : ext.euPassport === false
-                      ? "no"
-                      : ""
+                        ? "no"
+                        : ""
                   }
                   options={[
                     { value: "yes", label: "Tak" },
@@ -1348,174 +1348,174 @@ useEffect(() => {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Autozapis do Supabase – dla nowego rekordu: INSERT, potem UPDATE jak w edytorze
-useEffect(() => {
-  let cancelled = false;
+  useEffect(() => {
+    let cancelled = false;
 
-  // Czy jest jakikolwiek sensowny input?
-  const hasAnyData =
-    firstName.trim() !== "" ||
-    lastName.trim() !== "" ||
-    birthYear.trim() !== "" ||
-    jerseyNumber.trim() !== "" ||
-    club.trim() !== "" ||
-    clubCountry.trim() !== "";
+    // Czy jest jakikolwiek sensowny input?
+    const hasAnyData =
+      firstName.trim() !== "" ||
+      lastName.trim() !== "" ||
+      birthYear.trim() !== "" ||
+      jerseyNumber.trim() !== "" ||
+      club.trim() !== "" ||
+      clubCountry.trim() !== "";
 
-  if (!hasAnyData) {
-    setSaveState("idle");
-    return;
-  }
+    if (!hasAnyData) {
+      setSaveState("idle");
+      return;
+    }
 
-  // choice może ci pomóc, ale nie blokuj od razu
-  const isKnown = choice === "known";
+    // choice może ci pomóc, ale nie blokuj od razu
+    const isKnown = choice === "known";
 
-  setSaveError(null);
-  setSaveState("saving");
+    setSaveError(null);
+    setSaveState("saving");
 
-  if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
 
-  saveTimer.current = setTimeout(() => {
-    (async () => {
-      try {
-        const supabase = getSupabase();
-        const currentYear = new Date().getFullYear();
+    saveTimer.current = setTimeout(() => {
+      (async () => {
+        try {
+          const supabase = getSupabase();
+          const currentYear = new Date().getFullYear();
 
-        const isKnownX = isKnown; // albo choice === "known"
-        let name: string;
-        let clubFinal: string;
-        let posBucket: BucketPos;
-        let clubCountryFinal: string | null;
-        let age = 0;
+          const isKnownX = isKnown; // albo choice === "known"
+          let name: string;
+          let clubFinal: string;
+          let posBucket: BucketPos;
+          let clubCountryFinal: string | null;
+          let age = 0;
 
-        if (isKnownX) {
-          const fn = firstName.trim();
-          const ln = lastName.trim();
-          name = `${fn} ${ln}`.trim() || "Bez imienia";
-          clubFinal = club.trim();
-          clubCountryFinal = clubCountry.trim() || null;
-          posBucket = toBucket(posDet);
+          if (isKnownX) {
+            const fn = firstName.trim();
+            const ln = lastName.trim();
+            name = `${fn} ${ln}`.trim() || "Bez imienia";
+            clubFinal = club.trim();
+            clubCountryFinal = clubCountry.trim() || null;
+            posBucket = toBucket(posDet);
 
-          if (birthYear.trim()) {
-            const by = parseInt(birthYear.trim(), 10);
-            if (!Number.isNaN(by)) {
-              age = Math.max(0, currentYear - by);
+            if (birthYear.trim()) {
+              const by = parseInt(birthYear.trim(), 10);
+              if (!Number.isNaN(by)) {
+                age = Math.max(0, currentYear - by);
+              }
             }
+          } else {
+            const num = jerseyNumber.trim();
+            const c = club.trim();
+            const cc = clubCountry.trim();
+
+            name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
+            clubFinal = c;
+            clubCountryFinal = cc || null;
+            posBucket = toBucket(uPosDet || posDet);
           }
-        } else {
-          const num = jerseyNumber.trim();
-          const c = club.trim();
-          const cc = clubCountry.trim();
 
-          name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
-          clubFinal = c;
-          clubCountryFinal = cc || null;
-          posBucket = toBucket(uPosDet || posDet);
-        }
+          const nationalityVal =
+            ext.birthCountry.trim() || clubCountryFinal || null;
 
-        const nationalityVal =
-          ext.birthCountry.trim() || clubCountryFinal || null;
+          const meta = {
+            mode: isKnownX ? "known" : "unknown",
+            extended: ext,
+            ratings,
+            notes,
+            unknownNote: uNote || null,
+            basic: {
+              firstName: firstName.trim() || null,
+              lastName: lastName.trim() || null,
+              birthYear: birthYear.trim() || null,
+              club: club.trim() || null,
+              clubCountry: clubCountry.trim() || null,
+              jerseyNumber: jerseyNumber.trim() || null,
+              posDet,
+              uPosDet,
+            },
+            observationsMeta: {
+              selectedId: obsSelectedId,
+              list: normalizedObservations,
+            },
+          };
 
-        const meta = {
-          mode: isKnownX ? "known" : "unknown",
-          extended: ext,
-          ratings,
-          notes,
-          unknownNote: uNote || null,
-          basic: {
-            firstName: firstName.trim() || null,
-            lastName: lastName.trim() || null,
-            birthYear: birthYear.trim() || null,
-            club: club.trim() || null,
-            clubCountry: clubCountry.trim() || null,
-            jerseyNumber: jerseyNumber.trim() || null,
-            posDet,
-            uPosDet,
-          },
-          observationsMeta: {
-            selectedId: obsSelectedId,
-            list: normalizedObservations,
-          },
-        };
+          const basePayload: any = {
+            name,
+            pos: posBucket,
+            club: clubFinal,
+            age,
+            status: "active",
+            firstName: isKnownX ? firstName.trim() || null : null,
+            lastName: isKnownX ? lastName.trim() || null : null,
+            birthDate: isKnownX ? birthYear.trim() || null : null,
+            nationality: nationalityVal,
+            photo: null,
+            meta,
+            // tu ew. tenant_id, created_by itd. jeśli RLS tego wymaga
+          };
 
-        const basePayload: any = {
-          name,
-          pos: posBucket,
-          club: clubFinal,
-          age,
-          status: "active",
-          firstName: isKnownX ? firstName.trim() || null : null,
-          lastName: isKnownX ? lastName.trim() || null : null,
-          birthDate: isKnownX ? birthYear.trim() || null : null,
-          nationality: nationalityVal,
-          photo: null,
-          meta,
-          // tu ew. tenant_id, created_by itd. jeśli RLS tego wymaga
-        };
+          let error;
+          if (!playerId) {
+            const { data, error: insertError } = await supabase
+              .from("players")
+              .insert(basePayload)
+              .select("id")
+              .single();
 
-        let error;
-        if (!playerId) {
-          const { data, error: insertError } = await supabase
-            .from("players")
-            .insert(basePayload)
-            .select("id")
-            .single();
+            error = insertError;
+            if (!insertError && data && !cancelled) {
+              setPlayerId(data.id);
+            }
+          } else {
+            const { error: updateError } = await supabase
+              .from("players")
+              .update(basePayload)
+              .eq("id", playerId);
 
-          error = insertError;
-          if (!insertError && data && !cancelled) {
-            setPlayerId(data.id);
+            error = updateError;
           }
-        } else {
-          const { error: updateError } = await supabase
-            .from("players")
-            .update(basePayload)
-            .eq("id", playerId);
 
-          error = updateError;
-        }
+          if (error) {
+            console.error("[AddPlayerPage] Supabase save error:", error);
+            if (!cancelled) {
+              setSaveState("idle");
+              setSaveError("Nie udało się zapisać zawodnika w Supabase.");
+            }
+            return;
+          }
 
-        if (error) {
-          console.error("[AddPlayerPage] Supabase save error:", error);
+          if (!cancelled) {
+            setSaveState("saved");
+          }
+        } catch (err) {
+          console.error("[AddPlayerPage] Supabase save exception:", err);
           if (!cancelled) {
             setSaveState("idle");
-            setSaveError("Nie udało się zapisać zawodnika w Supabase.");
+            setSaveError("Wystąpił błąd podczas zapisu zawodnika do Supabase.");
           }
-          return;
         }
+      })();
+    }, 700);
 
-        if (!cancelled) {
-          setSaveState("saved");
-        }
-      } catch (err) {
-        console.error("[AddPlayerPage] Supabase save exception:", err);
-        if (!cancelled) {
-          setSaveState("idle");
-          setSaveError("Wystąpił błąd podczas zapisu zawodnika do Supabase.");
-        }
-      }
-    })();
-  }, 700);
-
-  return () => {
-    cancelled = true;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-  };
-}, [
-  choice,
-  firstName,
-  lastName,
-  birthYear,
-  club,
-  clubCountry,
-  jerseyNumber,
-  posDet,
-  uPosDet,
-  ext,
-  ratings,
-  notes,
-  normalizedObservations,
-  obsSelectedId,
-  playerId,
-  uNote,
-]);
+    return () => {
+      cancelled = true;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [
+    choice,
+    firstName,
+    lastName,
+    birthYear,
+    club,
+    clubCountry,
+    jerseyNumber,
+    posDet,
+    uPosDet,
+    ext,
+    ratings,
+    notes,
+    normalizedObservations,
+    obsSelectedId,
+    playerId,
+    uNote,
+  ]);
 
   // PROGRESS: global completion percent – jak w PlayerEditorPage
   const completionPercent = useMemo(() => {
@@ -1749,9 +1749,9 @@ useEffect(() => {
                           placeholder="np. Kowalski"
                         />
                       </div>
-                     <div>
-  <Label className="text-sm">Rok urodzenia</Label>
-                      <NumericField
+                      <div>
+                        <Label className="text-sm">Rok urodzenia</Label>
+                        <NumericField
                           value={
                             birthYear === "" ? undefined : Number(birthYear)
                           }
@@ -1771,7 +1771,7 @@ useEffect(() => {
                           }}
                           placeholder="0"
                         />
-</div>
+                      </div>
 
                       <div>
                         <NumericField
@@ -1850,7 +1850,7 @@ useEffect(() => {
               aria-expanded={extOpen}
               aria-controls="ext-panel"
               onClick={() => setExtOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-left px-4 py-4" 
+              className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
                 <div className={stepPillClass}>Krok 2 · Profil boiskowy</div>
@@ -1897,54 +1897,54 @@ useEffect(() => {
                     </p>
                   )}
 
-<Tabs value={extView} onValueChange={(v: any) => setExtView(v)} className="w-full">
-  {/* wrapper robi scroll */}
-  <div
-    className={cn(
-      "relative",
-      // jeśli chcesz pełną szerokość na mobile bez psucia paddingów karty:
-      "-mx-4 px-4 md:mx-0 md:px-0",
-      "overflow-x-auto overflow-y-hidden md:overflow-visible",
-      "[-webkit-overflow-scrolling:touch]",
-      "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    )}
-  >
-    <TabsList
-      className={cn(
-        // klucz: list ma mieć szerokość od contentu, nie 100%
-        "inline-flex min-w-max",
-        "gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-900",
-        "whitespace-nowrap"
-      )}
-    >
-      <TabsTrigger value="profile" className="flex-none">
-        Profil boiskowy
-      </TabsTrigger>
-      <TabsTrigger value="eligibility" className="flex-none">
-        Status &amp; scouting
-      </TabsTrigger>
-      <TabsTrigger value="stats365" className="flex-none">
-        Zdrowie i statystyki
-      </TabsTrigger>
-      <TabsTrigger value="contact" className="flex-none">
-        Kontakt &amp; social
-      </TabsTrigger>
-    </TabsList>
-  </div>
+                  <Tabs value={extView} onValueChange={(v: any) => setExtView(v)} className="w-full">
+                    {/* wrapper robi scroll */}
+                    <div
+                      className={cn(
+                        "relative",
+                        // jeśli chcesz pełną szerokość na mobile bez psucia paddingów karty:
+                        "-mx-4 px-4 md:mx-0 md:px-0",
+                        "overflow-x-auto overflow-y-hidden md:overflow-visible",
+                        "[-webkit-overflow-scrolling:touch]",
+                        "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      )}
+                    >
+                      <TabsList
+                        className={cn(
+                          // klucz: list ma mieć szerokość od contentu, nie 100%
+                          "inline-flex min-w-max",
+                          "gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-900",
+                          "whitespace-nowrap"
+                        )}
+                      >
+                        <TabsTrigger value="profile" className="flex-none">
+                          Profil boiskowy
+                        </TabsTrigger>
+                        <TabsTrigger value="eligibility" className="flex-none">
+                          Status &amp; scouting
+                        </TabsTrigger>
+                        <TabsTrigger value="stats365" className="flex-none">
+                          Zdrowie i statystyki
+                        </TabsTrigger>
+                        <TabsTrigger value="contact" className="flex-none">
+                          Kontakt &amp; social
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
 
-  <TabsContent value="profile" className="mt-4">
-    <ExtContent view="profile" />
-  </TabsContent>
-  <TabsContent value="eligibility" className="mt-4">
-    <ExtContent view="eligibility" />
-  </TabsContent>
-  <TabsContent value="stats365" className="mt-4">
-    <ExtContent view="stats365" />
-  </TabsContent>
-  <TabsContent value="contact" className="mt-4">
-    <ExtContent view="contact" />
-  </TabsContent>
-</Tabs>
+                    <TabsContent value="profile" className="mt-4">
+                      <ExtContent view="profile" />
+                    </TabsContent>
+                    <TabsContent value="eligibility" className="mt-4">
+                      <ExtContent view="eligibility" />
+                    </TabsContent>
+                    <TabsContent value="stats365" className="mt-4">
+                      <ExtContent view="stats365" />
+                    </TabsContent>
+                    <TabsContent value="contact" className="mt-4">
+                      <ExtContent view="contact" />
+                    </TabsContent>
+                  </Tabs>
 
 
 
@@ -2108,7 +2108,7 @@ useEffect(() => {
 
         {/* KROK 4 – Obserwacje */}
         <Card className="mt-1">
-         <CardHeader
+          <CardHeader
             className={cn(
               "group bg-[#E3E0F9] flex rounded-md items-center justify-between  border-gray-200  transition-colors hover:bg-[#D4CEFF] p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
               obsOpen && "bg-[#E3E0F9] dark:bg-neutral-900/70"

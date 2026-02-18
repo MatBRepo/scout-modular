@@ -311,7 +311,7 @@ export default function DuplicatesPage() {
       console.error("Error loading duplicates data:", e);
       setError(
         e?.message ||
-          "Nie udało się pobrać danych duplikatów z Supabase (players_admin_view / global_players)."
+        "Nie udało się pobrać danych duplikatów z Supabase (players_admin_view / global_players)."
       );
       setRows([]);
       setGlobals([]);
@@ -1312,7 +1312,7 @@ export default function DuplicatesPage() {
                       <table className="w-full text-sm">
                         <thead className="bg-stone-50 text-xs font-medium uppercase tracking-wide text-stone-600 dark:bg-neutral-900 dark:text-neutral-300">
                           <tr>
-                            <th className="px-3 py-2 text-left">Keeper</th>
+                            <th className="px-3 py-2 text-left pl-5">Keeper</th>
                             <th className="px-3 py-2 text-left">Duplikat?</th>
                             <th className="px-3 py-2 text-left">Scout</th>
                             <th className="px-3 py-2 text-left">

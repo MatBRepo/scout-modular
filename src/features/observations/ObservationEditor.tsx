@@ -1430,7 +1430,10 @@ export function ObservationEditor({
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 rounded-md border-gray-300 px-2 text-xs dark:border-neutral-700"
+                                  className={cn(
+                                    "h-8 rounded-md border-gray-300 px-2 text-xs dark:border-neutral-700",
+                                    !p.overall && "animate-border-pulse"
+                                  )}
                                   onClick={() => {
                                     setExpandedId((cur) => (cur === p.id ? null : p.id));
                                     setConfirmDeleteId(null);
@@ -1822,7 +1825,10 @@ export function ObservationEditor({
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        className="h-8 rounded-md border-gray-300 dark:border-neutral-700"
+                                        className={cn(
+                                          "h-8 rounded-md border-gray-300 dark:border-neutral-700",
+                                          !p.overall && "animate-border-pulse"
+                                        )}
                                         onClick={() => {
                                           setExpandedId((cur) => (cur === p.id ? null : p.id));
                                           setConfirmDeleteId(null);
