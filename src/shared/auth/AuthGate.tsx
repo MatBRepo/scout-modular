@@ -358,26 +358,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               className="relative mx-auto flex items-center justify-center"
               style={{ perspective: "1200px" }}
             >
-              {/* Strzałka lewa – desktop only */}
-              <button
-                type="button"
-                onClick={toggleMode}
-                className="absolute -left-9 hidden h-9 w-9 items-center justify-center rounded-md text-stone-400 transition-transform duration-200 hover:-translate-x-1 hover:scale-110 hover:text-stone-900 dark:hover:text-stone-50 md:flex"
-                aria-label="Przełącz widok"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              {/* Strzałka prawa – desktop only */}
-              <button
-                type="button"
-                onClick={toggleMode}
-                className="absolute -right-9 hidden h-9 w-9 items-center justify-center rounded-md text-stone-400 transition-transform duration-200 hover:translate-x-1 hover:scale-110 hover:text-stone-900 dark:hover:text-stone-50 md:flex"
-                aria-label="Przełącz widok"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-
               {/* Karta – teraz rounded-md */}
               <motion.div
                 initial={{ opacity: 0, y: 16, scale: 0.96 }}
@@ -393,8 +373,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         type="button"
                         onClick={() => switchMode("login")}
                         className={`rounded-md px-4 py-1.5 text-[11px] transition-all ${mode === "login"
-                            ? "bg-stone-900 text-stone-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
-                            : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
+                          ? "bg-stone-900 text-stone-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
+                          : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
                           }`}
                       >
                         Logowanie
@@ -403,8 +383,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                         type="button"
                         onClick={() => switchMode("register")}
                         className={`rounded-md px-4 py-1.5 text-[11px] transition-all ${mode === "register"
-                            ? "bg-stone-900 text-stone-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
-                            : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
+                          ? "bg-stone-900 text-stone-50 shadow-sm dark:bg-stone-100 dark:text-slate-950"
+                          : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
                           }`}
                       >
                         Rejestracja
@@ -660,8 +640,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                                   <div
                                     key={i}
                                     className={`h-1.5 flex-1 rounded-md transition-colors ${isActive
-                                        ? activeColor
-                                        : "bg-stone-200 dark:bg-stone-800"
+                                      ? activeColor
+                                      : "bg-stone-200 dark:bg-stone-800"
                                       }`}
                                   />
                                 );
@@ -721,18 +701,26 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                     onClick={handleGoogleAuth}
                     disabled={busy}
                     variant="outline"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-stone-300 bg-white text-[11px] font-medium text-stone-800 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-50 dark:hover:bg-stone-800"
+                    className="inline-flex w-full items-center justify-center gap-3 rounded-[4px] border border-[#dadce0] bg-white h-10 px-4 text-sm font-medium text-[#3c4043] transition-colors hover:bg-[#f8f9fa] hover:border-[#d2d4d7] focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-[#dadce0] dark:bg-white dark:border-[#dadce0] dark:text-[#3c4043] dark:hover:bg-[#f8f9fa]"
                   >
-                    {/* Prosty „G” jako ikona Google */}
-                    <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-white text-[11px] font-bold text-sky-500 dark:bg-stone-900">
-                      G
-                    </span>
+                    <svg
+                      width="18"
+                      height="18"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 48 48"
+                    >
+                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                      <path fill="none" d="M0 0h48v48H0z" />
+                    </svg>
                     <span className="truncate">
                       {busy
                         ? "Łączenie z Google…"
                         : mode === "login"
                           ? "Zaloguj się przez Google"
-                          : "Utwórz konto / zaloguj przez Google"}
+                          : "Utwórz konto przez Google"}
                     </span>
                   </Button>
                   <p className="text-center text-[10px] text-stone-500 dark:text-stone-400">
