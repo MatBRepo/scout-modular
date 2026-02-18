@@ -1604,10 +1604,7 @@ export default function AddPlayerPage() {
         {/* PROGRESS BAR (global postęp profilu) */}
         <div className="flex flex-col items-end gap-0.5">
           <div className="flex items-center gap-2">
-            <CircularProgress progress={completionPercent} size={36} strokeWidth={2} />
-            <span className="text-[11px] tabular-nums text-stone-700 dark:text-neutral-200">
-              {completionPercent}%
-            </span>
+            <CircularProgress progress={completionPercent} size={32} strokeWidth={2} showValue />
           </div>
         </div>
 

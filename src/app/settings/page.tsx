@@ -556,10 +556,7 @@ export default function SettingsPage() {
       <div className="flex items-center gap-3">
         <SavePill state={saveState} size="compact" />
         <div className="flex items-center gap-2">
-          <CircularProgress progress={profileCompletion} size={36} strokeWidth={2} />
-          <span className="text-[11px] tabular-nums text-stone-700 dark:text-neutral-200">
-            {profileCompletion}%
-          </span>
+          <CircularProgress progress={profileCompletion} size={32} strokeWidth={2} showValue />
         </div>
       </div>
     );

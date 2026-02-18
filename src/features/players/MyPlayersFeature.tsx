@@ -2861,10 +2861,7 @@ function PlayersTable({
                     {visibleCols.progress && (
                       <td className={getCellClass('progress')}>
                         <div className="flex items-center gap-2">
-                          <CircularProgress progress={r._progress} size={28} strokeWidth={2} />
-                          <span className="tabular-nums text-[11px] font-medium text-gray-700 dark:text-neutral-300">
-                            {r._progress}%
-                          </span>
+                          <CircularProgress progress={r._progress} size={32} strokeWidth={2} showValue />
                         </div>
                       </td>
                     )}
