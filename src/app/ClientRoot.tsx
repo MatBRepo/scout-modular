@@ -299,7 +299,7 @@ function AppShell({
               {/* BREADCRUMB W HEADERZE */}
               <nav
                 aria-label="Breadcrumb"
-                className="pointer-events-auto flex h-full items-center min-w-0 pr-2 pl-10 lg:pl-0"
+                className="pointer-events-auto flex h-full items-center min-w-0 pr-2 pl-[3rem] lg:pl-0"
               >
                 {/* DESKTOP: pełna ścieżka */}
                 <ol className="hidden items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:flex">
