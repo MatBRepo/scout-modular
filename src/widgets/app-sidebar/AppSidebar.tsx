@@ -938,7 +938,7 @@ export default function AppSidebar({
     <>
       {rankUpgradeOverlay}
       <aside
-        className={`fixed left-0 top-0 z-40 ${asideDesktop}`}
+        className={`fixed left-0 top-0 z-50 ${asideDesktop}`}
         aria-label="Główna nawigacja"
       >
         {inner}
