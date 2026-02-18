@@ -6,25 +6,40 @@
 @tailwind utilities;
 
 /* Root radius used by shadcn components */
-:root { --radius: 0.75rem; }
-html, body { height: 100%; }
+:root {
+  --radius: 0.75rem;
+}
+
+html,
+body {
+  height: 100%;
+}
 
 
 @layer utilities {
 
 
-  .primary {background:#089569 !important;}
-  .secondary {background: #4F47E6 !important; color:#fff !important;}
+  .primary {
+    background: #089569 !important;
+  }
+
+  .secondary {
+    background: #4F47E6 !important;
+    color: #fff !important;
+  }
 }
 
 @layer components {
-  .input, .select, .textarea {
-    @apply h-9 rounded-md border bg-background px-3 py-2 text-sm
-           ring-offset-background placeholder:text-muted-foreground
-           focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-0
-           disabled:cursor-not-allowed disabled:opacity-50;
+
+  .input,
+  .select,
+  .textarea {
+    @apply h-9 rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50;
   }
-  .textarea { @apply h-auto min-h-[112px]; }
+
+  .textarea {
+    @apply h-auto min-h-[112px];
+  }
 }
 
 /* ===== Design tokens (HSL) =====
@@ -56,8 +71,11 @@ html, body { height: 100%; }
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 218 11% 84%;
+    /* gray-300 */
+    --border-focus: 215 14% 75%;
+    /* gray-400 */
+    --input: 218 11% 84%;
     --ring: 222.2 84% 4.9%;
 
     /* charts (unused by core, useful for dashboards) */
@@ -95,8 +113,11 @@ html, body { height: 100%; }
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 0 0% 25%;
+    /* neutral-700 */
+    --border-focus: 0 0% 32%;
+    /* neutral-600 */
+    --input: 0 0% 25%;
     --ring: 215 20.2% 65.1%;
 
     --chart-1: 220 70% 50%;
@@ -108,17 +129,31 @@ html, body { height: 100%; }
 }
 
 @layer base {
-  * { @apply border-border; }
-  body { @apply bg-background text-foreground antialiased; }
+  * {
+    @apply border-border;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-0;
+    border-color: hsl(var(--border-focus)) !important;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
 }
 
 /* ===== Page chrome density & scrollbars (like shadcn-admin) ===== */
 @layer base {
   :root {
-    --page-pad: 1.25rem;   /* container padding */
-    --card-pad: 1rem;      /* card inner padding */
-    --grid-gap: 1rem;      /* gaps */
+    --page-pad: 1.25rem;
+    /* container padding */
+    --card-pad: 1rem;
+    /* card inner padding */
+    --grid-gap: 1rem;
+    /* gaps */
   }
+
   @media (min-width: 1024px) {
     :root {
       --page-pad: 1.5rem;
@@ -132,92 +167,172 @@ html, body { height: 100%; }
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground) / .4) hsl(var(--muted));
   }
-  *::-webkit-scrollbar        { height: 8px; width: 8px; }
-  *::-webkit-scrollbar-track  { background: hsl(var(--muted)); }
-  *::-webkit-scrollbar-thumb  { background: hsl(var(--muted-foreground) / .45); border-radius: 999px; }
-  *::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / .65); }
 
- html {
-    font-feature-settings: "cv11","ss01","zero","lnum","tnum";
+  *::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / .45);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / .65);
+  }
+
+  html {
+    font-feature-settings: "cv11", "ss01", "zero", "lnum", "tnum";
     /* If you prefer the simpler form: */
     /* font-variant-numeric: tabular-nums lining-nums; */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
   body {
-    @apply font-sans; /* <- Inter via --font-sans from next/font */
+    @apply font-sans;
+    /* <- Inter via --font-sans from next/font */
   }
 
 }
 
 /* ===== Component layer: cards / tables / forms / badges / breadcrumbs ===== */
 @layer components {
+
   /* Card */
   .card {
     @apply bg-card text-card-foreground rounded-md border shadow-sm;
   }
-  .card-header { @apply p-[var(--card-pad)] pb-3; }
-  .card-title  { @apply text-sm font-semibold; }
-  .card-content{ @apply p-[var(--card-pad)] pt-0; }
+
+  .card-header {
+    @apply p-[var(--card-pad)] pb-3;
+  }
+
+  .card-title {
+    @apply text-sm font-semibold;
+  }
+
+  .card-content {
+    @apply p-[var(--card-pad)] pt-0;
+  }
 
   /* Data table look (dense, subtle grid, sticky header on scrollable containers) */
   .data-table {
     @apply w-full border rounded-md overflow-hidden;
   }
-  .data-table table { @apply w-full border-collapse; }
-  .data-table thead th {
-    @apply text-xs font-medium text-muted-foreground bg-stone-100/50 uppercase tracking-wide text-left
-           border-b sticky top-0 z-10;
+
+  .data-table table {
+    @apply w-full border-collapse;
   }
+
+  .data-table thead th {
+    @apply text-xs font-medium text-muted-foreground bg-stone-100/50 uppercase tracking-wide text-left border-b sticky top-0 z-10;
+  }
+
   .data-table thead th,
   .data-table tbody td {
     @apply px-3 py-2 align-middle;
   }
-  .data-table tbody tr { @apply border-b; }
-  .data-table tbody tr:hover { @apply bg-stone-100/40; }
-  .data-table .cell-secondary { @apply text-xs text-muted-foreground; }
-  .data-table .cell-badge { @apply text-[10px] px-1.5 py-0.5 rounded-md ring-1; }
+
+  .data-table tbody tr {
+    @apply border-b;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-stone-100/40;
+  }
+
+  .data-table .cell-secondary {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .data-table .cell-badge {
+    @apply text-[10px] px-1.5 py-0.5 rounded-md ring-1;
+  }
 
   /* Inputs / Selects / Textareas match shadcn sizing */
-  .input, .select, .textarea {
-    @apply h-9 rounded-md border bg-background px-3 py-2 text-sm
-           ring-offset-background placeholder:text-muted-foreground
-           rounded-md focus:ring-ring focus:ring-offset-2
-           disabled:cursor-not-allowed disabled:opacity-50;
+  .input,
+  .select,
+  .textarea {
+    @apply h-9 rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50;
   }
-  .textarea { @apply h-auto min-h-[112px]; }
+
+  .textarea {
+    @apply h-auto min-h-[112px];
+  }
 
   /* Buttons (primary/secondary/ghost/destructive) */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium
-           transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
-           focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50
-           h-9 px-3;
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3;
   }
-  .btn-primary     { @apply bg-primary text-primary-foreground hover:bg-primary/90; }
-  .btn-secondary   { @apply bg-secondary text-secondary-foreground hover:bg-secondary/80; }
-  .btn-ghost       { @apply hover:bg-accent hover:text-accent-foreground; }
-  .btn-destructive { @apply bg-destructive text-destructive-foreground hover:bg-destructive/90; }
-  .btn-outline     { @apply border bg-transparent hover:bg-accent hover:text-accent-foreground; }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+  }
+
+  .btn-ghost {
+    @apply hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
+  }
+
+  .btn-outline {
+    @apply border bg-transparent hover:bg-accent hover:text-accent-foreground;
+  }
 
   /* Badges */
   .badge {
-    @apply inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium
-           ring-1 ring-inset;
+    @apply inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset;
   }
-  .badge-muted { @apply bg-stone-100 text-muted-foreground border-transparent; }
-  .badge-ok    { @apply bg-green-100 text-green-800 ring-green-200 dark:bg-green-900/30 dark:text-green-200 dark:ring-green-800/60; }
-  .badge-warn  { @apply bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/60; }
-  .badge-danger{ @apply bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-800/60; }
+
+  .badge-muted {
+    @apply bg-stone-100 text-muted-foreground border-transparent;
+  }
+
+  .badge-ok {
+    @apply bg-green-100 text-green-800 ring-green-200 dark:bg-green-900/30 dark:text-green-200 dark:ring-green-800/60;
+  }
+
+  .badge-warn {
+    @apply bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/60;
+  }
+
+  .badge-danger {
+    @apply bg-red-100 text-red-800 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-800/60;
+  }
 
   /* Breadcrumbs */
-  .crumb { @apply text-sm text-muted-foreground; }
-  .crumb a { @apply hover:text-foreground transition-colors; }
-  .crumb .sep { @apply mx-2 opacity-60; }
+  .crumb {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .crumb a {
+    @apply hover:text-foreground transition-colors;
+  }
+
+  .crumb .sep {
+    @apply mx-2 opacity-60;
+  }
 
   /* Toolbar / Page header spacing */
-  .page-wrap { @apply p-[var(--page-pad)]; }
-  .page-toolbar { @apply mb-3 flex items-center justify-between gap-2; }
+  .page-wrap {
+    @apply p-[var(--page-pad)];
+  }
+
+  .page-toolbar {
+    @apply mb-3 flex items-center justify-between gap-2;
+  }
 
   /* Simple avatar */
   .avatar {
@@ -227,18 +342,44 @@ html, body { height: 100%; }
 
 /* ===== Optional: your existing background effects (kept) ===== */
 @keyframes aurora-blob {
-  0%, 100% { transform: translate3d(0,0,0) scale(1); filter: saturate(1); }
-  35%      { transform: translate3d(14px,-10px,0) scale(1.05); filter: saturate(1.05); }
-  70%      { transform: translate3d(-12px,16px,0) scale(0.97); filter: saturate(0.98); }
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: saturate(1);
+  }
+
+  35% {
+    transform: translate3d(14px, -10px, 0) scale(1.05);
+    filter: saturate(1.05);
+  }
+
+  70% {
+    transform: translate3d(-12px, 16px, 0) scale(0.97);
+    filter: saturate(0.98);
+  }
 }
+
 @keyframes vignette {
-  0%,100% { opacity: 1; }
-  50%     { opacity: .92; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .92;
+  }
 }
 
 @layer utilities {
-  .animate-aurora-blob { animation: aurora-blob 18s ease-in-out infinite; }
-  .animate-vignette    { animation: vignette 10s ease-in-out infinite; }
+  .animate-aurora-blob {
+    animation: aurora-blob 18s ease-in-out infinite;
+  }
+
+  .animate-vignette {
+    animation: vignette 10s ease-in-out infinite;
+  }
 }
 
 
@@ -253,4 +394,6 @@ html, body { height: 100%; }
 } */
 
 
-.width-fit {width: fit-content !important;}
+.width-fit {
+  width: fit-content !important;
+}

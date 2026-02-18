@@ -1301,7 +1301,7 @@ export function ObservationEditor({
               <AccordionItem value="players" className="border-0">
                 <AccordionContent id="players-panel" className="pt-4 pb-5">
                   <div className="space-y-4 sm:space-y-5">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                       <div className="relative w-full sm:w-[360px]">
                         <Label className="text-sm">
                           Numer lub nazwisko zawodnika
@@ -1349,7 +1349,7 @@ export function ObservationEditor({
 
                       <Button
                         variant="outline"
-                        className="mt-1 h-10 rounded-md border border-[#089569] text-[#089569] bg-white hover:bg-[#089569]/5 dark:border-[#089569] dark:text-[#089569] sm:mt-6"
+                        className="mt-1 h-9 rounded-md border border-[#089569] text-[#089569] bg-white hover:bg-[#089569]/5 dark:border-[#089569] dark:text-[#089569]"
                         onClick={() => addPlayerFromInput()}
                         disabled={!quickInput.trim()}
                         title="Dodaj do listy"

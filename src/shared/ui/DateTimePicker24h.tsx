@@ -148,7 +148,7 @@ export function DateTimePicker24h({
       type="button"
       variant="outline"
       className={cn(
-        "w-full justify-start text-left font-normal border-gray-300 dark:border-neutral-700",
+        "w-full justify-start text-left font-normal border",
         "h-10 sm:h-10",
         !dateObj && "text-muted-foreground",
       )}

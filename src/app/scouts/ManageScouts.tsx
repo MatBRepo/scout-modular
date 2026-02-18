@@ -296,8 +296,8 @@ function KpiCell({
       : `${Math.round(vol01 * 100)}%`;
 
   return (
-    <div className="space-y-1">
-      <div className="text-lg font-semibold leading-none">{kpi}</div>
+    <div className="space-y-0.5">
+      <div className="text-base font-semibold leading-none">{kpi}</div>
       <div className="grid grid-cols-3 gap-2 text-[10px] text-dark">
         <div>
           <div className="flex flex-wrap items-center justify-between">
@@ -1131,7 +1131,6 @@ export default function ScoutsAdminPage() {
                     <thead className="bg-stone-100/80 text-dark dark:bg-neutral-900/80 dark:text-neutral-300">
                       <tr>
                         {[
-                          { key: "position", label: "Pozycja" },
                           { key: "name", label: "Scout" },
                           { key: "kpi", label: "KPI" },
                           { key: "players", label: "Zawodnicy" },
@@ -1180,26 +1179,18 @@ export default function ScoutsAdminPage() {
                       {filtered.map((s) => (
                         <React.Fragment key={s.id}>
                           <tr className="align-top transition-colors hover:bg-stone-50/80 dark:hover:bg-neutral-900/70">
-                            {/* Sticky position column */}
-                            <td className="sticky left-0 z-[1] bg-white/90 px-3 py-3 dark:bg-neutral-950/95">
-                              <PositionPill
-                                pos={s._position as number}
-                                delta={s._delta as number}
-                              />
-                            </td>
 
                             {/* Scout */}
                             <td className="px-3 py-3">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-col gap-1.5">
                                 <div>
                                   <div className="font-medium text-gray-900 dark:text-neutral-100">
                                     {s.name}
                                   </div>
-                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-dark dark:text-neutral-400">
+                                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-dark dark:text-neutral-400">
                                     {s.email && (
                                       <span className="inline-flex items-center gap-1">
-                                        <Mail className="h-3.5 w-3.5" />{" "}
-                                        {s.email}
+                                        <Mail className="h-3 w-3" /> {s.email}
                                       </span>
                                     )}
                                     {s.phone && (
@@ -1207,15 +1198,9 @@ export default function ScoutsAdminPage() {
                                         • {s.phone}
                                       </span>
                                     )}
-                                    {s.region && (
-                                      <span className="inline-flex items-center gap-1">
-                                        <MapPin className="h-3.5 w-3.5" />
-                                        {s.region}
-                                      </span>
-                                    )}
                                   </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-1">
+                                <div className="flex items-center gap-2">
                                   <RoleBadge role={s.role} />
                                   <ActivityTag
                                     lastActive={s.lastActive}
@@ -1285,7 +1270,7 @@ export default function ScoutsAdminPage() {
 
                           {expandedId === s.id && (
                             <tr className="bg-stone-50/60 dark:bg-neutral-900/60">
-                              <td colSpan={8} className="px-4 pb-4 pt-0">
+                              <td colSpan={7} className="px-4 pb-4 pt-0">
                                 <InlineScoutDetails scout={s} />
                               </td>
                             </tr>
@@ -1295,7 +1280,7 @@ export default function ScoutsAdminPage() {
                       {filtered.length === 0 && !loading && (
                         <tr>
                           <td
-                            colSpan={8}
+                            colSpan={7}
                             className="p-5 text-center text-sm text-dark dark:text-neutral-400"
                           >
                             Brak wyników dla bieżących filtrów.
