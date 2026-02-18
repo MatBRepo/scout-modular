@@ -365,7 +365,7 @@ export default function LnpSearchPanel() {
         </Card>
       </aside>
 
-      <main className="space-y-4 lg:col-span-8">
+      <main className="space-y-4 lg:col-span-8 md:pt-0">
         <div className="flex flex-wrap items-center justify-between gap-4 rounded border border-stone-200/60 bg-white/40 p-4 backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-950/40">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded bg-stone-900 flex items-center justify-center text-white dark:bg-white dark:text-black">

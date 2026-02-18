@@ -1328,20 +1328,29 @@ export function ObservationEditor({
                         {filteredPlayers.length > 0 && (
                           <div className="absolute left-0 right-0 top-[100%] z-20 mt-1 rounded-md border border-gray-200 bg-white text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-950">
                             {filteredPlayers.map((p) => (
-                              <button
+                              <div
                                 key={p.id}
-                                type="button"
-                                className="flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-neutral-800"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => addPlayerFromInput(p)}
+                                className="flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-stone-50 dark:hover:bg-neutral-900/50 transition-colors"
                               >
-                                <span>{p.name}</span>
-                                {(p as any).club && (
-                                  <span className="text-[11px] text-gray-500 dark:text-neutral-400">
-                                    {(p as any).club}
+                                <div className="flex flex-col min-w-0 pr-2">
+                                  <span className="truncate font-medium text-gray-900 dark:text-neutral-100">
+                                    {p.name}
                                   </span>
-                                )}
-                              </button>
+                                  {(p as any).club && (
+                                    <span className="truncate text-[11px] text-gray-500 dark:text-neutral-400">
+                                      {(p as any).club}
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => addPlayerFromInput(p)}
+                                  className="shrink-0 rounded-md border border-[#089569] bg-white px-2 py-1 text-[11px] font-semibold text-[#089569] transition-colors hover:bg-[#089569] hover:text-white dark:bg-neutral-950 dark:hover:bg-[#089569]"
+                                >
+                                  Dodaj
+                                </button>
+                              </div>
                             ))}
                           </div>
                         )}

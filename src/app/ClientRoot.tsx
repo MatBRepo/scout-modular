@@ -619,7 +619,7 @@ function AppShell({
 
         <main
           id="content"
-          className="min-h-screen px-3 py-4 md:px-6 md:py-6"
+          className="min-h-screen px-3 py-4 md:px-6 md:pt-0 md:pb-6"
         >
           <PageTransition>
             <motion.div

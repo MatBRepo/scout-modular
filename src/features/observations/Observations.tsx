@@ -494,7 +494,7 @@ export default function ObservationsFeature({
         setEditing(demo[0]);
         setPageMode("editor");
       }
-    } catch {}
+    } catch { }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -520,30 +520,31 @@ export default function ObservationsFeature({
 
 
   useEffect(() => {
-  // lock tylko gdy OTWARTE filtry na mobile
-  if (isMobile && filtersOpen) {
-    lockBodyScroll();
-    return () => unlockBodyScroll();
-  }
-  // jeśli filtry zamknięte, upewnij się że odblokowane
-  if (isMobile && !filtersOpen) {
-    unlockBodyScroll();
-  }
-}, [isMobile, filtersOpen]);
+    // lock tylko gdy OTWARTE filtry na mobile
+    if (isMobile && filtersOpen) {
+      lockBodyScroll();
+      return () => unlockBodyScroll();
+    }
+    // jeśli filtry zamknięte, upewnij się że odblokowane
+    if (isMobile && !filtersOpen) {
+      unlockBodyScroll();
+    }
+  }, [isMobile, filtersOpen]);
 
 
-useEffect(() => {
-  const anySheetOpen = filtersOpen || moreOpen || colsOpen;
+  useEffect(() => {
+    const anySheetOpen = filtersOpen || moreOpen || colsOpen;
 
-  if (isMobile && anySheetOpen) {
-    lockBodyScroll();
-    return () => unlockBodyScroll();
-  }
-  if (isMobile && !anySheetOpen) unlockBodyScroll();
-}, [isMobile, filtersOpen, moreOpen, colsOpen]);
+    if (isMobile && anySheetOpen) {
+      lockBodyScroll();
+      return () => unlockBodyScroll();
+    }
+    if (isMobile && !anySheetOpen) unlockBodyScroll();
+  }, [isMobile, filtersOpen, moreOpen, colsOpen]);
 
   // MASS SELECTION
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [isMultiSelect, setIsMultiSelect] = useState(false);
 
   // --- NEW: transient inline status note (zostawione, choć kolumna statusu to teraz liga) ---
   const [statusNote, setStatusNote] = useState<Record<number, string>>({});
@@ -579,7 +580,7 @@ useEffect(() => {
       if (u.visibleCols) setVisibleCols({ ...DEFAULT_COLS, ...u.visibleCols });
       if (u.sortKey) setSortKey(u.sortKey);
       if (u.sortDir) setSortDir(u.sortDir);
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {
@@ -597,7 +598,7 @@ useEffect(() => {
         sortDir,
       };
       localStorage.setItem(UI_KEY, JSON.stringify(u));
-    } catch {}
+    } catch { }
   }, [
     scope,
     q,
@@ -650,12 +651,12 @@ useEffect(() => {
         !q
           ? true
           : (r.match ?? "").toLowerCase().includes(q.toLowerCase()) ||
-            r.players?.some(
-              (p) =>
-                (p.name ?? `#${p.shirtNo ?? ""}`)
-                  .toLowerCase()
-                  .includes(q.toLowerCase())
-            ) === true
+          r.players?.some(
+            (p) =>
+              (p.name ?? `#${p.shirtNo ?? ""}`)
+                .toLowerCase()
+                .includes(q.toLowerCase())
+          ) === true
       )
       .filter((r) =>
         matchFilter
@@ -936,18 +937,18 @@ useEffect(() => {
         label: `Mecz: ${matchFilter.trim()}`,
         clear: () => setMatchFilter(""),
       });
-if (modeFilter)
-  chips.push({
-    key: "mode",
-    label:
-      "Tryb: " +
-      (modeFilter === "live"
-        ? "Live"
-        : modeFilter === "tv"
-        ? "TV"
-        : "Mix"),
-    clear: () => setModeFilter(""),
-  });
+    if (modeFilter)
+      chips.push({
+        key: "mode",
+        label:
+          "Tryb: " +
+          (modeFilter === "live"
+            ? "Live"
+            : modeFilter === "tv"
+              ? "TV"
+              : "Mix"),
+        clear: () => setModeFilter(""),
+      });
 
     if (lifecycleFilter)
       chips.push({
@@ -1127,81 +1128,8 @@ if (modeFilter)
                 Obserwacje
               </span>
 
-              {/* Center: Active filter chips (desktop) */}
-              <div className="hidden md:flex flex-1 items-start justify-center h-9">
-                <div className="flex items-center gap-1 h-9">
-                  {inlineChips.map((c) => (
-                    <Chip key={c.key} label={c.label} onClear={c.clear} />
-                  ))}
-
-                  {overflowChips.length > 0 && (
-                    <>
-                      <button
-                        ref={chipsMoreBtnRef}
-                        type="button"
-                        className="inline-flex h-9 items-center gap-1 rounded-md border border-gray-200 bg-white/90 px-2 text-[12px] font-medium text-gray-800 shadow-sm hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100"
-                        onClick={() => setChipsOpen((v) => !v)}
-                        onMouseEnter={() => {
-                          if (chipsHoverTimer.current)
-                            window.clearTimeout(chipsHoverTimer.current);
-                          setChipsOpen(true);
-                        }}
-                        onMouseLeave={() => {
-                          if (chipsHoverTimer.current)
-                            window.clearTimeout(chipsHoverTimer.current);
-                          chipsHoverTimer.current = window.setTimeout(
-                            () => setChipsOpen(false),
-                            160
-                          ) as unknown as number;
-                        }}
-                        aria-expanded={chipsOpen}
-                        title="Pokaż więcej filtrów"
-                      >
-                        <ChevronRightIcon className="h-4 w-4" />
-                        +{overflowChips.length}
-                      </button>
-
-                      <AnchoredPopover
-                        anchorRef={chipsMoreBtnRef as any}
-                        open={chipsOpen}
-                        onClose={() => setChipsOpen(false)}
-                        width={360}
-                        className="z-[210] overflow-hidden rounded-md border border-gray-200 bg-white p-2 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
-                      >
-                        <div
-                          className="w-full p-1"
-                          onMouseEnter={() => {
-                            if (chipsHoverTimer.current)
-                              window.clearTimeout(chipsHoverTimer.current);
-                            setChipsOpen(true);
-                          }}
-                          onMouseLeave={() => {
-                            if (chipsHoverTimer.current)
-                              window.clearTimeout(chipsHoverTimer.current);
-                            chipsHoverTimer.current = window.setTimeout(
-                              () => setChipsOpen(false),
-                              150
-                            ) as unknown as number;
-                          }}
-                        >
-                          <div className="mb-1 px-1 text-[11px] font-semibold text-gray-700 dark:text-neutral-200">
-                            Aktywne filtry
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1">
-                            {overflowChips.map((c) => (
-                              <Chip
-                                key={c.key}
-                                label={c.label}
-                                onClear={c.clear}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </AnchoredPopover>
-                    </>
-                  )}
-                </div>
-              </div>
+              {/* Center: Removed redundant active filter chips (desktop) */}
+              <div className="hidden md:flex flex-1 items-start justify-center h-9" />
             </div>
           }
           right={
@@ -1393,7 +1321,7 @@ if (modeFilter)
                       <option value="">— dowolny —</option>
                       <option value="live">Live</option>
                       <option value="tv">TV</option>
-                       <option value="mix">Mix</option>
+                      <option value="mix">Mix</option>
                     </select>
                   </div>
                   <div>
@@ -1486,7 +1414,7 @@ if (modeFilter)
                     <option value="">— dowolny —</option>
                     <option value="live">Live</option>
                     <option value="tv">TV</option>
-                     <option value="mix">Mix</option>
+                    <option value="mix">Mix</option>
                   </select>
                 </div>
                 <div>
@@ -1563,6 +1491,28 @@ if (modeFilter)
                 </div>
 
                 <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
+                  {/* Zaznacz kilka (mobile) */}
+                  <button
+                    className={`flex w-full items-center gap-2 px-3 py-3 text-left text-sm transition-colors ${isMultiSelect
+                        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                        : "hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      }`}
+                    onClick={() => {
+                      setIsMultiSelect(!isMultiSelect);
+                      if (isMultiSelect) setSelected(new Set());
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <Checkbox
+                      checked={isMultiSelect}
+                      className="h-4 w-4 pointer-events-none"
+                      onCheckedChange={() => { }}
+                    />
+                    <span className="font-medium">
+                      Zaznacz kilka (multiselect)
+                    </span>
+                  </button>
+
                   {/* Kolumny (mobile -> own sheet) */}
                   <button
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -1648,6 +1598,26 @@ if (modeFilter)
                   W koszu: {trashCount}
                 </span>
               </div>
+
+              {/* Zaznacz kilka (desktop) */}
+              <button
+                className={`mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors ${isMultiSelect
+                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                    : "hover:bg-stone-100 dark:hover:bg-neutral-900"
+                  }`}
+                onClick={() => {
+                  setIsMultiSelect(!isMultiSelect);
+                  if (isMultiSelect) setSelected(new Set());
+                  setMoreOpen(false);
+                }}
+              >
+                <Checkbox
+                  checked={isMultiSelect}
+                  className="h-4 w-4 pointer-events-none"
+                  onCheckedChange={() => { }}
+                />
+                <span>Zaznacz kilka</span>
+              </button>
 
               {/* Kolumny opens a separate popover anchored to the dots */}
               <button
@@ -1821,7 +1791,7 @@ if (modeFilter)
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-stone-100 text-gray-600 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
-                {visibleCols.select && (
+                {visibleCols.select && isMultiSelect && (
                   <th className={`${cellPad} w-10 text-left font-medium`}>
                     <Checkbox
                       aria-label="Zaznacz wszystkie"
@@ -1829,8 +1799,8 @@ if (modeFilter)
                         filtered.length === 0
                           ? false
                           : allChecked
-                          ? true
-                          : (someChecked ? ("indeterminate" as any) : false)
+                            ? true
+                            : (someChecked ? ("indeterminate" as any) : false)
                       }
                       onCheckedChange={(v) => {
                         if (Boolean(v))
@@ -1887,18 +1857,17 @@ if (modeFilter)
                   <tr
                     key={r.id}
                     className={`group border-t transition-colors duration-150 ${rowH} cursor-pointer
-                                ${
-                                  idx % 2 === 1
-                                    ? "bg-stone-100/40 dark:bg-neutral-900/30"
-                                    : "bg-transparent"
-                                }
+                                ${idx % 2 === 1
+                        ? "bg-stone-100/40 dark:bg-neutral-900/30"
+                        : "bg-transparent"
+                      }
                                 border-gray-200 hover:bg-stone-100/70 dark:border-neutral-800 dark:hover:bg-neutral-900/60`}
                     onClick={() => {
                       setEditing(r);
                       setPageMode("editor");
                     }}
                   >
-                    {visibleCols.select && (
+                    {visibleCols.select && isMultiSelect && (
                       <td className={`${cellPad}`}>
                         <Checkbox
                           aria-label={`Zaznacz obserwację #${r.id}`}
@@ -1939,19 +1908,19 @@ if (modeFilter)
                       </td>
                     )}
 
-{visibleCols.mode && (
-  <td
-    className={`${cellPad} hidden align-center sm:table-cell`}
-  >
-    <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
-      {mode === "live"
-        ? "Live"
-        : mode === "tv"
-        ? "TV"
-        : "Mix"}
-    </span>
-  </td>
-)}
+                    {visibleCols.mode && (
+                      <td
+                        className={`${cellPad} hidden align-center sm:table-cell`}
+                      >
+                        <span className="inline-flex items-center rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800 dark:bg-neutral-800 dark:text-neutral-100">
+                          {mode === "live"
+                            ? "Live"
+                            : mode === "tv"
+                              ? "TV"
+                              : "Mix"}
+                        </span>
+                      </td>
+                    )}
 
 
                     {visibleCols.status && (
@@ -2109,7 +2078,10 @@ if (modeFilter)
             <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
               <button
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
-                onClick={() => setSelected(new Set())}
+                onClick={() => {
+                  setSelected(new Set());
+                  setIsMultiSelect(false);
+                }}
                 aria-label="Wyczyść zaznaczenie"
                 title="Wyczyść zaznaczenie"
               >
