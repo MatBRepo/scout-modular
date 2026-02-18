@@ -407,14 +407,14 @@ function buildTargetNames(p: PlayerWithOwner) {
 function extractJsonPlayerName(item: any) {
   return normalizeName(
     item?.name ??
-      item?.player_name ??
-      item?.full_name ??
-      [
-        item?.first_name ?? item?.firstName,
-        item?.last_name ?? item?.lastName,
-      ]
-        .filter(Boolean)
-        .join(" "),
+    item?.player_name ??
+    item?.full_name ??
+    [
+      item?.first_name ?? item?.firstName,
+      item?.last_name ?? item?.lastName,
+    ]
+      .filter(Boolean)
+      .join(" "),
   );
 }
 
@@ -817,6 +817,7 @@ export default function MyPlayersFeature({
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [isMultiSelect, setIsMultiSelect] = useState(false);
 
   // 3-dots menu (desktop)
   const [moreOpen, setMoreOpen] = useState(false);
@@ -946,7 +947,7 @@ export default function MyPlayersFeature({
         !q
           ? true
           : r.name.toLowerCase().includes(q.toLowerCase()) ||
-            (r.club || "").toLowerCase().includes(q.toLowerCase()),
+          (r.club || "").toLowerCase().includes(q.toLowerCase()),
       )
       .filter((r) => pos[toPosGroup(r.pos)])
       .filter((r) =>
@@ -1343,6 +1344,17 @@ export default function MyPlayersFeature({
       });
     }
 
+    if (knownScope !== "all") {
+      chips.push({
+        key: "knownScope",
+        label: knownScope === "known" ? "Typ: Znani" : "Typ: Nieznani",
+        clear: () => {
+          changeKnownScope("all");
+          setPage(1);
+        },
+      });
+    }
+
     return chips;
   }, [q, pos, club, ageMin, ageMax, knownScope]);
 
@@ -1532,50 +1544,6 @@ export default function MyPlayersFeature({
                 Baza zawodników
               </span>
 
-              {/* Right: tabs block (desktop) */}
-              <div className="hidden shrink-0 md:block">
-                <Tabs
-                  className="items-center"
-                  value={knownScope}
-                  onValueChange={(v) =>
-                    changeKnownScope(v as KnownScope)
-                  }
-                >
-                  <TabsList>
-                    <TabsTrigger
-                      value="all"
-                      className="flex items-center gap-2"
-                    >
-                      <span>Wszyscy</span>
-                      <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
-                        {tabCounts.all}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="known"
-                      className="flex items-center gap-2"
-                    >
-                      <span>Znani</span>
-                      <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
-                        {tabCounts.known}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="unknown"
-                      className="flex items-center gap-2"
-                    >
-                      <span>Nieznani</span>
-                      <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
-                        {tabCounts.unknown}
-                      </span>
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="all" />
-                  <TabsContent value="known" />
-                  <TabsContent value="unknown" />
-                </Tabs>
-              </div>
-
               {/* Center: Active filter chips (desktop) */}
               <div className="hidden h-9 flex-1 items-start justify-center md:flex">
                 <div className="flex h-9 items-center gap-1">
@@ -1760,71 +1728,27 @@ export default function MyPlayersFeature({
           }
         />
 
-        {/* Tabs for mobile */}
-        <div className="mt-2 md:hidden">
-          <Tabs
-            className="w-full items-center"
-            value={knownScope}
-            onValueChange={(v) =>
-              changeKnownScope(v as KnownScope)
-            }
-          >
-            <TabsList className="flex w-full">
-              <TabsTrigger
-                value="all"
-                className="flex flex-1 items-center justify-center gap-2"
+        {/* Mobile: compact chips under toolbar */}
+        {isMobile && activeChips.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            {activeChips.map((c) => (
+              <span
+                key={c.key}
+                className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
               >
-                <span>Wszyscy</span>
-                <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
-                  {tabCounts.all}
+                <span className="max-w-[120px] truncate">
+                  {c.label}
                 </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="known"
-                className="flex flex-1 items-center justify-center gap-2"
-              >
-                <span>Znani</span>
-                <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
-                  {tabCounts.known}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="unknown"
-                className="flex flex-1 items-center justify-center gap-2"
-              >
-                <span>Nieznani</span>
-                <span className="rounded-full border border-stone-300 bg-white px-1.5 text-[10px] font-medium">
-                  {tabCounts.unknown}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" />
-            <TabsContent value="known" />
-            <TabsContent value="unknown" />
-
-            {/* Mobile: compact chips under tabs */}
-            {activeChips.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-1">
-                {activeChips.map((c) => (
-                  <span
-                    key={c.key}
-                    className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
-                  >
-                    <span className="max-w-[120px] truncate">
-                      {c.label}
-                    </span>
-                    <button
-                      className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
-                      onClick={c.clear}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </Tabs>
-        </div>
+                <button
+                  className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
+                  onClick={c.clear}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Desktop: anchored popovers */}
         {!isMobile && (
@@ -1894,6 +1818,31 @@ export default function MyPlayersFeature({
                   ))}
                 </div>
 
+                <div className="mb-3">
+                  <Label className="text-xs text-gray-900 dark:text-neutral-300">
+                    Typ zawodnika
+                  </Label>
+                  <div className="mt-1 flex gap-1 rounded-md bg-stone-100 p-0.5 dark:bg-neutral-900">
+                    {[
+                      { id: "all", label: "Wszyscy" },
+                      { id: "known", label: "Znani" },
+                      { id: "unknown", label: "Nieznani" },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => changeKnownScope(item.id as KnownScope)}
+                        className={`flex-1 rounded-sm py-1 text-[11px] font-medium transition-colors ${knownScope === item.id
+                          ? "bg-white text-gray-900 shadow-sm dark:bg-neutral-800 dark:text-stone-50"
+                          : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-stone-200"
+                          }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="mb-2">
                   <Label className="text-xs text-gray-900 dark:text-neutral-300">
                     Klub
@@ -1923,11 +1872,11 @@ export default function MyPlayersFeature({
                           v === ""
                             ? ""
                             : Math.max(
-                                0,
-                                Number.isNaN(Number(v))
-                                  ? 0
-                                  : Number(v),
-                              );
+                              0,
+                              Number.isNaN(Number(v))
+                                ? 0
+                                : Number(v),
+                            );
                         setAgeMin(n as any);
                         setPage(1);
                       }}
@@ -1946,8 +1895,8 @@ export default function MyPlayersFeature({
                         const v = e.target.value;
                         const n =
                           v === ""
-                          ? ""
-                          : Math.max(
+                            ? ""
+                            : Math.max(
                               0,
                               Number.isNaN(Number(v))
                                 ? 0
@@ -2046,13 +1995,18 @@ export default function MyPlayersFeature({
                 </div>
 
                 <button
-                  className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
+                  className={`mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors ${isMultiSelect
+                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                    : "hover:bg-stone-100 dark:hover:bg-neutral-900"
+                    }`}
                   onClick={() => {
-                    setColsOpen(true);
+                    setIsMultiSelect(!isMultiSelect);
+                    if (isMultiSelect) setSelected(new Set());
                     setMoreOpen(false);
                   }}
                 >
-                  <Columns3 className="h-4 w-4" /> Kolumny
+                  <Checkbox checked={isMultiSelect} className="h-4 w-4 pointer-events-none" onCheckedChange={() => { }} />
+                  <span>Zaznacz kilka</span>
                 </button>
 
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
@@ -2149,6 +2103,30 @@ export default function MyPlayersFeature({
                   </label>
                 ))}
               </div>
+
+              <div className="mb-4">
+                <Label className="text-xs">Typ zawodnika</Label>
+                <div className="mt-1.5 flex gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-800">
+                  {[
+                    { id: "all", label: "Wszyscy" },
+                    { id: "known", label: "Znani" },
+                    { id: "unknown", label: "Nieznani" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => changeKnownScope(item.id as KnownScope)}
+                      className={`flex-1 rounded-md py-2 text-xs font-medium transition-colors ${knownScope === item.id
+                        ? "bg-white text-gray-900 shadow-sm dark:bg-neutral-700 dark:text-stone-50"
+                        : "text-gray-500 dark:text-stone-400"
+                        }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="mb-3">
                 <Label className="text-xs">Klub</Label>
                 <Input
@@ -2173,11 +2151,11 @@ export default function MyPlayersFeature({
                         v === ""
                           ? ""
                           : Math.max(
-                              0,
-                              Number.isNaN(Number(v))
-                                ? 0
-                                : Number(v),
-                            );
+                            0,
+                            Number.isNaN(Number(v))
+                              ? 0
+                              : Number(v),
+                          );
                       setAgeMin(n as any);
                       setPage(1);
                     }}
@@ -2196,11 +2174,11 @@ export default function MyPlayersFeature({
                         v === ""
                           ? ""
                           : Math.max(
-                              0,
-                              Number.isNaN(Number(v))
-                                ? 0
-                                : Number(v),
-                            );
+                            0,
+                            Number.isNaN(Number(v))
+                              ? 0
+                              : Number(v),
+                          );
                       setAgeMax(n as any);
                       setPage(1);
                     }}
@@ -2283,13 +2261,18 @@ export default function MyPlayersFeature({
 
               <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-neutral-800 dark:border-neutral-800">
                 <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                  className={`flex w-full items-center gap-2 px-3 py-3 text-left text-sm transition-colors ${isMultiSelect
+                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                    : "hover:bg-stone-100 dark:hover:bg-neutral-800"
+                    }`}
                   onClick={() => {
+                    setIsMultiSelect(!isMultiSelect);
+                    if (isMultiSelect) setSelected(new Set());
                     setMoreSheetOpen(false);
-                    setColsSheetOpen(true);
                   }}
                 >
-                  <Columns3 className="h-4 w-4" /> Kolumny
+                  <Checkbox checked={isMultiSelect} className="h-4 w-4 pointer-events-none" onCheckedChange={() => { }} />
+                  <span className="font-medium">Zaznacz kilka (multiselect)</span>
                 </button>
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -2391,9 +2374,12 @@ export default function MyPlayersFeature({
               <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white/90 px-2 py-1 shadow-xl backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/85">
                 <button
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:hover:bg-neutral-800"
-                  onClick={() => setSelected(new Set())}
-                  aria-label="Wyczyść zaznaczenie"
-                  title="Wyczyść zaznaczenie"
+                  onClick={() => {
+                    setSelected(new Set());
+                    setIsMultiSelect(false);
+                  }}
+                  aria-label="Wyczyść zaznaczenie i zamknij tryb"
+                  title="Wyczyść zaznaczenie i zamknij tryb"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -2436,7 +2422,10 @@ export default function MyPlayersFeature({
                 <PlayersTable
                   rows={visible as PlayerRow[]}
                   observations={ownedObservations}
-                  visibleCols={visibleCols}
+                  visibleCols={{
+                    ...visibleCols,
+                    select: isMultiSelect && visibleCols.select,
+                  }}
                   selected={selected}
                   setSelected={setSelected}
                   scope={scope}
@@ -2673,10 +2662,10 @@ function PlayersTable({
                     rows.length === 0
                       ? false
                       : allChecked
-                      ? true
-                      : someChecked
-                      ? "indeterminate"
-                      : false
+                        ? true
+                        : someChecked
+                          ? "indeterminate"
+                          : false
                   }
                   onCheckedChange={(v) => {
                     if (v) {
@@ -3182,11 +3171,10 @@ function QuickObservation({
         <div className="flex items-center gap-2">
           {saveState !== "idle" && (
             <span
-              className={`hidden sm:inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${
-                saveState === "saving"
-                  ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/50"
-                  : "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-800/50"
-              }`}
+              className={`hidden sm:inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ${saveState === "saving"
+                ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/50"
+                : "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-800/50"
+                }`}
             >
               {saveState === "saving"
                 ? "Zapisywanie…"
@@ -3327,11 +3315,10 @@ function QuickObservation({
                     <button
                       key={m}
                       onClick={() => setQaMode(m)}
-                      className={`px-3 py-1 text-sm transition-colors ${
-                        qaMode === m
-                          ? "bg-blue-600 text-white"
-                          : "bg-white text-gray-700 hover:bg-stone-100 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                      }`}
+                      className={`px-3 py-1 text-sm transition-colors ${qaMode === m
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-gray-700 hover:bg-stone-100 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                        }`}
                     >
                       {m === "live" ? (
                         <span className="inline-flex items-center gap-1">
@@ -3356,11 +3343,10 @@ function QuickObservation({
                     <button
                       key={s}
                       onClick={() => setQaStatus(s)}
-                      className={`px-3 py-1 text-sm transition-colors ${
-                        qaStatus === s
-                          ? "bg-green-600 text-white"
-                          : "bg-white text-gray-700 hover:bg-stone-100 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                      }`}
+                      className={`px-3 py-1 text-sm transition-colors ${qaStatus === s
+                        ? "bg-green-600 text-white"
+                        : "bg-white text-gray-700 hover:bg-stone-100 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                        }`}
                     >
                       {s === "draft" ? "Szkic" : "Finalna"}
                     </button>
@@ -3446,11 +3432,10 @@ function QuickObservation({
                   {existingFiltered.map((o) => (
                     <tr
                       key={o.id}
-                      className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${
-                        obsSelectedId === o.id
-                          ? "bg-blue-50/60 dark:bg-blue-900/20"
-                          : ""
-                      }`}
+                      className={`cursor-pointer border-t border-gray-200 transition-colors hover:bg-stone-100/60 dark:border-neutral-800 dark:hover:bg-neutral-900/60 ${obsSelectedId === o.id
+                        ? "bg-blue-50/60 dark:bg-blue-900/20"
+                        : ""
+                        }`}
                       onClick={() =>
                         setObsSelectedId(o.id as number)
                       }
@@ -3478,11 +3463,10 @@ function QuickObservation({
                       </td>
                       <td className="w-px whitespace-nowrap p-2">
                         <span
-                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
-                            (o as any).mode === "tv"
-                              ? "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200"
-                              : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                          }`}
+                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${(o as any).mode === "tv"
+                            ? "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
+                            }`}
                         >
                           {(o as any).mode === "tv"
                             ? "TV"
@@ -3491,11 +3475,10 @@ function QuickObservation({
                       </td>
                       <td className="w-px whitespace-nowrap p-2">
                         <span
-                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${
-                            o.status === "final"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
-                              : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-                          }`}
+                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${o.status === "final"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+                            }`}
                         >
                           {o.status === "final"
                             ? "Finalna"

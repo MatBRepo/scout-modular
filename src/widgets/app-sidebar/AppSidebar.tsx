@@ -85,10 +85,10 @@ const rankLabel = (r: Rank) =>
   r === "platinum"
     ? "Platinum"
     : r === "gold"
-    ? "Gold"
-    : r === "silver"
-    ? "Silver"
-    : "Bronze";
+      ? "Gold"
+      : r === "silver"
+        ? "Silver"
+        : "Bronze";
 
 function rankClass(r: Rank) {
   switch (r) {
@@ -476,13 +476,13 @@ export default function AppSidebar({
       </div>
 
       {/* Bottom fixed panel */}
-      <div className="-mx-3 mt-6 border-t border-gray-200 bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/90">
+      <div className="-mx-3 mt-6 border-t border-border bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/90">
         {role === "admin" && (
           <>
             {/* ADMIN section */}
-            <div className="mt-1 rounded-md border border-stone-200 bg-stone-50/70 p-2.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+            <div className="mt-1 rounded-md border border-border bg-stone-50/70 p-2.5 shadow-sm dark:bg-neutral-900/40">
               <div className="mb-2 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-stone-200 dark:bg-neutral-950 dark:ring-neutral-800">
+                <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-border dark:bg-neutral-950">
                   <Settings className="h-3.5 w-3.5" />
                   Administracja
                 </span>
@@ -544,11 +544,10 @@ export default function AppSidebar({
                     type="button"
                     onClick={() => setManageOpen((v) => !v)}
                     aria-expanded={manageOpen}
-                    className={`group flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
-                      isManageSection
+                    className={`group flex w-full min-w-0 items-center justify-between rounded-md px-3 py-2 text-sm transition ${isManageSection
                         ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
                         : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
-                    }`}
+                      }`}
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="shrink-0">
@@ -659,7 +658,7 @@ export default function AppSidebar({
         <div ref={accountRef} className="relative">
           <button
             onClick={() => setAccountOpen((v) => !v)}
-            className="relative z-[60] flex w-full items-center justify-between rounded-md bg-white px-2 py-2 text-sm text-gray-800 transition hover:bg-stone-100 focus:ring-indigo-500 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:bg-neutral-900"
+            className="relative z-[60] flex w-full items-center justify-between rounded-md bg-white px-2 py-2 text-sm text-gray-800 transition hover:bg-stone-100 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:bg-neutral-900"
             aria-haspopup="menu"
             aria-expanded={accountOpen}
           >
@@ -684,7 +683,7 @@ export default function AppSidebar({
                 duration: prefersReduced ? 0 : 0.12,
                 ease: [0.2, 0.7, 0.2, 1],
               }}
-              className="inline-flex h-5 w-5 items-center justify-center rounded border border-gray-300 text-xs text-gray-700 dark:border-neutral-600 dark:text-neutral-100"
+              className="inline-flex h-5 w-5 items-center justify-center rounded border text-xs text-gray-700 dark:text-neutral-100"
             >
               {accountOpen ? "−" : "+"}
             </motion.span>
@@ -719,12 +718,12 @@ export default function AppSidebar({
                     absolute bottom-[calc(100%+8px)]
                     left-auto right-0 sm:left-32 sm:right-auto z-[60]
                     w-[286px] max-w-[286px]
-                    overflow-x-hidden rounded-md border border-gray-200 bg-white p-2 shadow-2xl
-                    dark:border-neutral-800 dark:bg-neutral-950
+                    overflow-x-hidden rounded-md border bg-white p-2 shadow-2xl
+                    dark:bg-neutral-950
                   "
                 >
                   {/* Rank card */}
-                  <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-gray-200 dark:bg-neutral-900 dark:ring-neutral-800">
+                  <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-border dark:bg-neutral-900">
                     <div className="mb-1 flex flex-wrap items-center justify-between">
                       <span className="whitespace-normal break-words font-semibold">
                         Twój poziom
@@ -776,7 +775,7 @@ export default function AppSidebar({
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <button
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] transition hover:bg-stone-100 focus:ring-indigo-500 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition hover:bg-stone-100 dark:hover:bg-neutral-800"
                         onClick={readCounts}
                         title="Odśwież liczniki"
                       >
@@ -789,7 +788,7 @@ export default function AppSidebar({
                   <div className="mt-2 space-y-1 px-1">
                     <div className="flex items-center justify-between gap-2">
                       <div
-                        className="min-w-0 flex flex-1 items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-[11px] text-gray-700 dark:border-neutral-800 dark:text-neutral-300"
+                        className="min-w-0 flex flex-1 items-center gap-1 rounded-md border px-2 py-1 text-[11px] text-gray-700 dark:text-neutral-300"
                         title={`Aktywni: ${playersCount} • Obserwacje: ${obsCount} • Score: ${score}`}
                       >
                         <TrendingUp className="h-3.5 w-3.5 shrink-0 opacity-70" />
@@ -1052,11 +1051,10 @@ function NavItem({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`group relative flex min-w-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${
-        active
+      className={`group relative flex min-w-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition focus:ring-indigo-500 ${active
           ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
           : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
-      }`}
+        }`}
       title={badge && badgeTitle ? `${badgeTitle}: ${badge}` : undefined}
       onClick={() => {
         onClickHref?.(href);
@@ -1065,11 +1063,10 @@ function NavItem({
     >
       <span
         aria-hidden
-        className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-md transition-all ${
-          active
+        className={`absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-md transition-all ${active
             ? "w-1 bg-indigo-500"
             : "w-0 bg-transparent group-hover:w-1 group-hover:bg-stone-300 dark:group-hover:bg-neutral-700"
-        }`}
+          }`}
       />
       <span className="shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
@@ -1108,11 +1105,10 @@ function SubNavItem({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition focus:ring-indigo-500 ${
-        active
+      className={`flex min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-[14px] transition focus:ring-indigo-500 ${active
           ? "bg-stone-100 text-gray-900 dark:bg-neutral-900 dark:text-neutral-100"
           : "text-gray-700 hover:bg-stone-50 dark:text-neutral-300 dark:hover:bg-neutral-900"
-      }`}
+        }`}
       onClick={() => {
         onClickHref?.(href);
         onClose?.();
@@ -1120,9 +1116,8 @@ function SubNavItem({
     >
       <span
         aria-hidden
-        className={`h-1.5 w-1.5 rounded-md ${
-          active ? "bg-indigo-500" : "bg-stone-300 dark:bg-neutral-700"
-        }`}
+        className={`h-1.5 w-1.5 rounded-md ${active ? "bg-indigo-500" : "bg-stone-300 dark:bg-neutral-700"
+          }`}
       />
       <span className="truncate">{label}</span>
       {pending && <Loader2 className="ml-auto h-3 w-3 animate-spin opacity-70" />}
