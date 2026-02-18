@@ -407,17 +407,31 @@ body {
       transform: translateX(-100%);
     }
 
-    50% {
-      transform: translateX(0);
-    }
-
     100% {
       transform: translateX(100%);
     }
   }
 
+  @keyframes progress-loading-color {
+    0% {
+      background-color: #ef4444;
+    }
+
+    /* red-500 */
+    50% {
+      background-color: #f97316;
+    }
+
+    /* orange-500 */
+    100% {
+      background-color: #10b981;
+    }
+
+    /* emerald-500 */
+  }
+
   .animate-progress-loading {
-    animation: progress-loading 2s infinite linear;
+    animation: progress-loading 1s infinite linear, progress-loading-color 1s infinite linear;
   }
 }
 
