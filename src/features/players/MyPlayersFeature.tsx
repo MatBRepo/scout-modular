@@ -2793,7 +2793,7 @@ function PlayersTable({
         </thead>
         <tbody>
           {loading ? (
-            Array.from({ length: rows.length > 0 ? rows.length : 5 }).map((_, i) => (
+            Array.from({ length: Math.min(rows.length || 3, 5) }).map((_, i) => (
               <tr key={i} className={`border-t border-gray-100 dark:border-neutral-900 ${rowH}`}>
                 {visibleCols.photo && <td className={getCellClass('photo')}><Skeleton className="h-8 w-8" /></td>}
                 {visibleCols.select && <td className={getCellClass('select')}><Skeleton className="h-4 w-4" /></td>}

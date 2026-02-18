@@ -1855,7 +1855,7 @@ export default function ObservationsFeature({
             </thead>
             <tbody>
               {loading ? (
-                Array.from({ length: filtered.length > 0 ? filtered.length : 5 }).map((_, i) => (
+                Array.from({ length: Math.min(filtered.length || 3, 5) }).map((_, i) => (
                   <tr key={i} className={`border-t border-gray-100 dark:border-neutral-900 ${rowH}`}>
                     {visibleCols.select && isMultiSelect && <td className={cn(cellPad, "pl-5")}><Skeleton className="h-4 w-4" /></td>}
                     {visibleCols.match && <td className={cn(cellPad, !isMultiSelect && "pl-5")}><Skeleton className="h-4 w-48" /></td>}
