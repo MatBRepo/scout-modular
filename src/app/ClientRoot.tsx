@@ -278,16 +278,16 @@ function AppShell({
   return (
     <>
       {/* wrapper dla treści: padding-left pod sidebar + padding-top pod fixed header (także na mobile) */}
-      <div className="pl-64 max-lg:pl-0 pt-[74px]">
+      <div className="pl-64 max-lg:pl-0 pt-[60px]">
         <header
-          className="fixed top-0 left-0 right-0 z-40 border-b border-gray-200/50 bg-white/50 backdrop-blur-md supports-[backdrop-filter]:bg-white/50 dark:border-neutral-800/50 dark:bg-neutral-950/50"
+          className="fixed top-0 left-0 right-0 z-40 h-[60px] border-b border-gray-200/50 bg-white/50 backdrop-blur-md supports-[backdrop-filter]:bg-white/50 dark:border-neutral-800/50 dark:bg-neutral-950/50"
           role="banner"
         >
           {/* osobny container, żeby header też respektował przestrzeń sidebaru */}
-          <div className="pointer-events-none relative mx-auto w-full lg:pl-64 max-lg:pl-0">
+          <div className="pointer-events-none relative flex h-full items-center mx-auto w-full lg:pl-64 max-lg:pl-0 px-4">
             {isAuthed && (
               <button
-                className="pointer-events-auto lg:hidden absolute left-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60"
+                className="pointer-events-auto lg:hidden absolute left-3 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60"
                 aria-label="Otwórz menu"
                 onClick={onOpenMobile}
               >
@@ -298,7 +298,7 @@ function AppShell({
             {/* BREADCRUMB W HEADERZE */}
             <nav
               aria-label="Breadcrumb"
-              className="pointer-events-auto absolute left-[60px] top-[12px] min-w-0 pr-2 lg:relative lg:left-3 lg:top-[30px] lg:-translate-y-5"
+              className="pointer-events-auto flex h-full items-center min-w-0 pr-2 max-lg:pl-10 lg:pl-4"
             >
               {/* DESKTOP: pełna ścieżka */}
               <ol className="hidden items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:flex">
@@ -443,7 +443,7 @@ function AppShell({
             </nav>
 
             {/* PASEK AKCJI W PRAWYM GÓRNYM ROGU */}
-            <div className="pointer-events-none relative -top-[5px] md:-top-[25px] flex items-end mx-auto justify-end w-full max-w-[1400px] py-2 md:py-3 pr-0 md:pr-5 2xl:pr-0">
+            <div className="pointer-events-none flex-1 flex items-center justify-end max-w-[1400px] h-full pr-0 md:pr-4">
               {isAuthed ? (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
