@@ -280,12 +280,12 @@ function AppShell({
       {/* wrapper dla treści: padding-left pod sidebar + padding-top pod fixed header (także na mobile) */}
       <div className="pl-64 max-lg:pl-0 pt-[60px]">
         <header
-          className="fixed top-0 left-0 right-0 z-40 h-[60px] border-b border-gray-200/50 bg-white/50 backdrop-blur-md supports-[backdrop-filter]:bg-white/50 dark:border-neutral-800/50 dark:bg-neutral-950/50"
+          className="fixed top-0 left-0 right-0 z-40 h-[60px] bg-white/50 backdrop-blur-md supports-[backdrop-filter]:bg-white/50 dark:bg-neutral-950/50"
           role="banner"
         >
           {/* osobny container, żeby header też respektował przestrzeń sidebaru */}
           <div className="lg:pl-64 h-full w-full">
-            <div className="pointer-events-none mx-auto flex h-full max-w-[1400px] items-center px-3 md:px-6">
+            <div className="pointer-events-none mx-auto flex h-full max-w-[1400px] items-center px-3 md:px-0">
               {isAuthed && (
                 <button
                   className="pointer-events-auto absolute left-3 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60 lg:hidden"
@@ -299,7 +299,7 @@ function AppShell({
               {/* BREADCRUMB W HEADERZE */}
               <nav
                 aria-label="Breadcrumb"
-                className="pointer-events-auto flex h-full items-center min-w-0 pr-2 max-lg:pl-10"
+                className="pointer-events-auto flex h-full items-center min-w-0 pr-2 pl-10 lg:pl-0"
               >
                 {/* DESKTOP: pełna ścieżka */}
                 <ol className="hidden items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:flex">
