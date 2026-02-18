@@ -280,7 +280,7 @@ function AppShell({
       {/* wrapper dla treści: padding-left pod sidebar + padding-top pod fixed header (także na mobile) */}
       <div className="pl-64 max-lg:pl-0 pt-[74px]">
         <header
-          className="fixed top-0 left-0 right-0 z-[1] border-b border-transparent bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent dark:bg-transparent max-h-[50px] overflow-hidden"
+          className="fixed top-0 left-0 right-0 z-40 border-b border-gray-200/50 bg-white/50 backdrop-blur-md supports-[backdrop-filter]:bg-white/50 dark:border-neutral-800/50 dark:bg-neutral-950/50"
           role="banner"
         >
           {/* osobny container, żeby header też respektował przestrzeń sidebaru */}
