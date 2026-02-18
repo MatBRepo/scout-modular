@@ -621,8 +621,8 @@ function ExtContent({ view, ext, setExt }: ExtContentProps) {
                   ext.english === true
                     ? "yes"
                     : ext.english === false
-                    ? "no"
-                    : ""
+                      ? "no"
+                      : ""
                 }
                 options={[
                   { value: "yes", label: "Tak" },
@@ -645,8 +645,8 @@ function ExtContent({ view, ext, setExt }: ExtContentProps) {
                   ext.euPassport === true
                     ? "yes"
                     : ext.euPassport === false
-                    ? "no"
-                    : ""
+                      ? "no"
+                      : ""
                 }
                 options={[
                   { value: "yes", label: "Tak" },
@@ -1094,10 +1094,10 @@ export default function PlayerEditorPage() {
             meta.mode === "unknown"
               ? "unknown"
               : meta.mode === "known"
-              ? "known"
-              : data.firstName || data.lastName
-              ? "known"
-              : "unknown";
+                ? "known"
+                : data.firstName || data.lastName
+                  ? "known"
+                  : "unknown";
 
           setChoice(mode);
 
@@ -1109,9 +1109,9 @@ export default function PlayerEditorPage() {
           setClub(basicMeta.club ?? data.club ?? "");
           setClubCountry(
             basicMeta.clubCountry ??
-              extended.birthCountry ??
-              data.nationality ??
-              ""
+            extended.birthCountry ??
+            data.nationality ??
+            ""
           );
           setUNote(meta.unknownNote ?? "");
 
@@ -1216,8 +1216,8 @@ export default function PlayerEditorPage() {
     choice === "unknown"
       ? cntBasicUnknown
       : choice === "known"
-      ? cntBasicKnown
-      : 0;
+        ? cntBasicKnown
+        : 0;
   const basicMax =
     choice === "unknown" ? 4 : choice === "known" ? 5 : 0;
 
@@ -1454,43 +1454,43 @@ export default function PlayerEditorPage() {
     setQaTeamB("");
   }
 
-const normalizedObservations = useMemo<ObsRec[]>(() => {
-  return (observations || []).map((o) => {
-    // base normalization
-    const base: ObsRec = {
-      ...o,
-      match: safeText(o.match),
-      date: safeText(o.date),
-      time: safeText(o.time),
-      opponentLevel: safeText(o.opponentLevel),
-    };
+  const normalizedObservations = useMemo<ObsRec[]>(() => {
+    return (observations || []).map((o) => {
+      // base normalization
+      const base: ObsRec = {
+        ...o,
+        match: safeText(o.match),
+        date: safeText(o.date),
+        time: safeText(o.time),
+        opponentLevel: safeText(o.opponentLevel),
+      };
 
-    // sync player name inside observation.players with current playerDisplayName
-    const playersArr = Array.isArray(o.players) ? o.players : [];
-    const syncedPlayers = playersArr.map((p: any) => {
-      const pid = Number(
-        p.id ?? p.playerId ?? p.player_id ?? p.player_id_fk
-      );
+      // sync player name inside observation.players with current playerDisplayName
+      const playersArr = Array.isArray(o.players) ? o.players : [];
+      const syncedPlayers = playersArr.map((p: any) => {
+        const pid = Number(
+          p.id ?? p.playerId ?? p.player_id ?? p.player_id_fk
+        );
 
-      if (!Number.isNaN(pid) && pid === playerId) {
-        const name = playerDisplayName;
-        return {
-          ...p,
-          // common possible fields used by the editor:
-          name,
-          label: name,
-          displayName: name,
-          player: name,
-        };
-      }
+        if (!Number.isNaN(pid) && pid === playerId) {
+          const name = playerDisplayName;
+          return {
+            ...p,
+            // common possible fields used by the editor:
+            name,
+            label: name,
+            displayName: name,
+            player: name,
+          };
+        }
 
-      return p;
+        return p;
+      });
+
+      (base as any).players = syncedPlayers;
+      return base;
     });
-
-    (base as any).players = syncedPlayers;
-    return base;
-  });
-}, [observations, playerId, playerDisplayName]);
+  }, [observations, playerId, playerDisplayName]);
 
 
   const existingFiltered = useMemo(() => {
@@ -1912,7 +1912,7 @@ const normalizedObservations = useMemo<ObsRec[]>(() => {
         <SavePill state={saveState} size="compact" />
 
         {/* PROGRESS BAR (global postęp profilu) */}
-        <div className="flex flex-col items-end gap-0.5">
+        <div className="relative -top-[5px] md:-top-[25px] flex flex-col items-end gap-0.5">
           <span className="hidden text-[10px] font-medium uppercase tracking-wide text-muted-foreground md:inline">
             Postęp profilu
           </span>
@@ -2491,17 +2491,17 @@ const normalizedObservations = useMemo<ObsRec[]>(() => {
                   )}
 
                   <div className="mb-6">
-<PlayerObservationsTable
-  playerName={playerDisplayName}
-  observations={normalizedObservations as any}
-  playerId={playerId ?? undefined} // ⬅️ NOWE – wiążemy obserwacje z tym zawodnikiem
-  onChange={(next) => {
-    const mapped = mapTableRowsToObservations(next as any[]);
-    setObservations((prev) =>
-      areObsListsEqual(prev, mapped) ? prev : mapped
-    );
-  }}
-/>
+                    <PlayerObservationsTable
+                      playerName={playerDisplayName}
+                      observations={normalizedObservations as any}
+                      playerId={playerId ?? undefined} // ⬅️ NOWE – wiążemy obserwacje z tym zawodnikiem
+                      onChange={(next) => {
+                        const mapped = mapTableRowsToObservations(next as any[]);
+                        setObservations((prev) =>
+                          areObsListsEqual(prev, mapped) ? prev : mapped
+                        );
+                      }}
+                    />
 
                   </div>
 

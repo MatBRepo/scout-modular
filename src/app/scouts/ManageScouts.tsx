@@ -323,7 +323,6 @@ function KpiCell({
         </div>
         <div className="flex flex-col">
           <div className="flex items-center justify-between">
-            <span>Wol</span>
             <span className="font-medium text-dark dark:text-neutral-200">{avgLabel}</span>
           </div>
           <TinyBar

@@ -1570,7 +1570,7 @@ export function ObservationEditor({
 
                             {/* expanded */}
                             {isOpen && (
-                              <div className="border-t border-gray-200 bg-[#E8FBF5] p-3 dark:border-neutral-800">
+                              <div className="border-t border-gray-200 bg-[#E8FBF5] p-3 dark:border-neutral-800 rounded-b-[10px]">
                                 <div className="relative">
                                   {!hasPosition && (
                                     <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
@@ -1885,7 +1885,7 @@ export function ObservationEditor({
 
                                 {isOpen && (
                                   <tr>
-                                    <td colSpan={5} className="bg-[#E8FBF5] p-3 text-sm">
+                                    <td colSpan={5} className="bg-[#E8FBF5] p-3 text-sm rounded-b-[10px]">
                                       <div className="relative">
                                         {!hasPosition && (
                                           <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
