@@ -1681,27 +1681,7 @@ export default function MyPlayersFeature({
           }
         />
 
-        {/* Mobile: compact chips under toolbar */}
-        {isMobile && activeChips.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1">
-            {activeChips.map((c) => (
-              <span
-                key={c.key}
-                className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:border-neutral-700 dark:bg-neutral-900"
-              >
-                <span className="max-w-[120px] truncate">
-                  {c.label}
-                </span>
-                <button
-                  className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
-                  onClick={c.clear}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Mobile: compact chips under toolbar removed as per user request */}
 
         {/* Desktop: anchored popovers */}
         {!isMobile && (
