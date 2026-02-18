@@ -1649,7 +1649,7 @@ export default function MyPlayersFeature({
                   title="Skrót: N"
                   aria-label="Dodaj zawodnika"
                   onClick={() => router.push("/players/new")}
-                  className={`${controlH} w-full sm:w-auto primary inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60`}
+                  className={`${controlH} w-full sm:w-auto primary inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none`}
                 >
                   <AddPlayerIcon className="h-4 w-4" />
                   <span>Dodaj zawodnika</span>
@@ -1685,7 +1685,7 @@ export default function MyPlayersFeature({
                       ref={filterBtnRef}
                       type="button"
                       variant="outline"
-                      className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+                      className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:outline-none dark:border-neutral-700`}
                       aria-pressed={filtersOpen}
                       onClick={() => {
                         setFiltersOpen((v) => !v);
@@ -1722,7 +1722,7 @@ export default function MyPlayersFeature({
                       }
                     }}
                     variant="outline"
-                    className={`${controlH} h-9 w-9 border-gray-300 p-0 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+                    className={`${controlH} h-9 w-9 border-gray-300 p-0 focus-visible:outline-none dark:border-neutral-700`}
                   >
                     <EllipsisVertical className="h-5 w-5" />
                   </Button>
@@ -2030,8 +2030,6 @@ export default function MyPlayersFeature({
                   )}
                   <span>{visibleCols.photo ? "Ukryj miniatury" : "Pokaż miniatury"}</span>
                 </button>
-
-                <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
 
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
@@ -2795,7 +2793,7 @@ function PlayersTable({
         </thead>
         <tbody>
           {loading ? (
-            Array.from({ length: 8 }).map((_, i) => (
+            Array.from({ length: rows.length > 0 ? rows.length : 5 }).map((_, i) => (
               <tr key={i} className={`border-t border-gray-100 dark:border-neutral-900 ${rowH}`}>
                 {visibleCols.photo && <td className={getCellClass('photo')}><Skeleton className="h-8 w-8" /></td>}
                 {visibleCols.select && <td className={getCellClass('select')}><Skeleton className="h-4 w-4" /></td>}
@@ -2976,7 +2974,7 @@ function PlayersTable({
                               <Button
                                 size="icon"
                                 variant="outline"
-                                className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:outline-none dark:border-neutral-700"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onOpen(r.id as number);
@@ -3033,7 +3031,7 @@ function PlayersTable({
                                   <Button
                                     size="icon"
                                     variant="outline"
-                                    className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                    className="h-8 w-8 border-gray-300 p-0 text-rose-600 transition hover:scale-105 hover:border-gray-400 focus-visible:outline-none dark:border-neutral-700"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setConfirmTrashId(
@@ -3056,7 +3054,7 @@ function PlayersTable({
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  className="h-8 w-8 border-gray-300 p-0 text-emerald-600 transition hover:scale-105 hover:border-gray-400 focus-visible:outline-none dark:border-neutral-700"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     onRestore(r.id as number);

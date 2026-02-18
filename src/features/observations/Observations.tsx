@@ -1180,7 +1180,7 @@ export default function ObservationsFeature({
                       ref={filtersBtnRef}
                       size="sm"
                       variant="outline"
-                      className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700`}
+                      className={`${controlH} h-9 border-gray-300 px-3 py-2 focus-visible:outline-none dark:border-neutral-700`}
                       onClick={() => {
                         setFiltersOpen((v) => !v);
                         setColsOpen(false);
@@ -1320,7 +1320,7 @@ export default function ObservationsFeature({
                       onChange={(e) =>
                         setModeFilter(e.target.value as Mode | "")
                       }
-                      className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                      className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-950"
                     >
                       <option value="">— dowolny —</option>
                       <option value="live">Live</option>
@@ -1337,7 +1337,7 @@ export default function ObservationsFeature({
                           e.target.value as Observation["status"] | ""
                         )
                       }
-                      className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
+                      className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-950"
                     >
                       <option value="">— dowolny —</option>
                       <option value="final">Finalna</option>
@@ -1634,8 +1634,6 @@ export default function ObservationsFeature({
                 <ColumnsIcon className="h-4 w-4" /> Kolumny
               </button>
 
-              <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
-
               <button
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
                 onClick={() => {
@@ -1857,7 +1855,7 @@ export default function ObservationsFeature({
             </thead>
             <tbody>
               {loading ? (
-                Array.from({ length: 8 }).map((_, i) => (
+                Array.from({ length: filtered.length > 0 ? filtered.length : 5 }).map((_, i) => (
                   <tr key={i} className={`border-t border-gray-100 dark:border-neutral-900 ${rowH}`}>
                     {visibleCols.select && isMultiSelect && <td className={cn(cellPad, "pl-5")}><Skeleton className="h-4 w-4" /></td>}
                     {visibleCols.match && <td className={cn(cellPad, !isMultiSelect && "pl-5")}><Skeleton className="h-4 w-48" /></td>}
@@ -1971,7 +1969,7 @@ export default function ObservationsFeature({
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700"
+                                  className="h-8 w-8 border-gray-300 p-0 transition hover:scale-105 hover:border-gray-400 focus-visible:outline-none dark:border-neutral-700"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setEditing(r);
@@ -1994,7 +1992,7 @@ export default function ObservationsFeature({
                                 >
                                   <Button
                                     size="sm"
-                                    className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                                    className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:outline-none"
                                     onClick={() => moveToTrash(r.id as number)}
                                   >
                                     Tak
