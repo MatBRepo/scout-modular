@@ -243,19 +243,33 @@ function SavePill({
   if (state === "idle") return null;
 
   return (
-    <span className={cn(base, colorMap[state])} aria-live="polite">
-      {state === "saving" ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin md:mr-2" />
-          <span className="hidden md:inline">Autozapis…</span>
-        </>
-      ) : (
-        <>
-          <Check className="h-4 w-4 md:mr-2" />
-          <span className="hidden md:inline">Zapisano</span>
-        </>
-      )}
-    </span>
+    <>
+      <span className={cn(base, colorMap[state], "hidden md:inline-flex")} aria-live="polite">
+        {state === "saving" ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin md:mr-2" />
+            <span className="hidden md:inline">Autozapis…</span>
+          </>
+        ) : (
+          <>
+            <Check className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Zapisano</span>
+          </>
+        )}
+      </span>
+
+      {/* Mobile bottom-header loader */}
+      <div className="fixed top-[57px] left-0 right-0 z-[60] h-[3px] md:hidden">
+        {state === "saving" && (
+          <div className="h-full w-full overflow-hidden bg-emerald-500/20">
+            <div className="animate-progress-loading h-full w-[40%] bg-emerald-500" />
+          </div>
+        )}
+        {state === "saved" && (
+          <div className="h-full w-full bg-emerald-500" />
+        )}
+      </div>
+    </>
   );
 }
 

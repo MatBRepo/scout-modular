@@ -401,6 +401,24 @@ body {
   .animate-border-pulse {
     animation: border-pulse 2s infinite;
   }
+
+  @keyframes progress-loading {
+    0% {
+      transform: translateX(-100%);
+    }
+
+    50% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-progress-loading {
+    animation: progress-loading 2s infinite linear;
+  }
 }
 
 
