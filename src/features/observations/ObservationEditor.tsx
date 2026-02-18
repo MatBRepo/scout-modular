@@ -1067,7 +1067,7 @@ export function ObservationEditor({
         <Card className="mt-1" ref={infoCardRef}>
           <CardHeader
             className={cn(
-              "group flex itemscenter justify-between rounded-md border-gray-200 transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex itemscenter justify-between rounded-md border-gray-200 transition-colors p-0 dark:border-neutral-800",
               infoOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -1254,7 +1254,7 @@ export function ObservationEditor({
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex itemscenter justify-between rounded-md border-gray-200 transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex itemscenter justify-between rounded-md border-gray-200 transition-colors p-0 dark:border-neutral-800",
               playersOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >
@@ -2029,7 +2029,7 @@ export function ObservationEditor({
         <Card className="mt-1">
           <CardHeader
             className={cn(
-              "group flex itemscenter justify-between rounded-md border-gray-200 transition-colors hover:bg-stone-50/80 p-0 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
+              "group flex itemscenter justify-between rounded-md border-gray-200 transition-colors p-0 dark:border-neutral-800",
               noteOpen && "bg-stone-100 dark:bg-neutral-900/70"
             )}
           >

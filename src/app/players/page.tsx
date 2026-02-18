@@ -147,8 +147,7 @@ export default function Page() {
         observations={observations}
         onChangePlayers={handleChangePlayers}
         onQuickAddObservation={handleQuickAddObservation}
-        // jeśli w przyszłości chcesz, możesz dodać prop `loading`
-        // loading={loading}
+        loading={loading}
       />
     </Suspense>
   );

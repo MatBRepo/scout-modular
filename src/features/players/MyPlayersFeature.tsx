@@ -581,11 +581,13 @@ export default function MyPlayersFeature({
   observations,
   onChangePlayers,
   onQuickAddObservation,
+  loading,
 }: {
   players: Player[];
   observations: Observation[];
   onChangePlayers: (next: Player[]) => void;
   onQuickAddObservation?: (o: Observation) => void;
+  loading?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1522,8 +1524,21 @@ export default function MyPlayersFeature({
   // === Widok ładowania auth / brak usera ===
   if (authLoading) {
     return (
-      <div className="w-full rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-900 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200">
-        Ładowanie Twoich zawodników…
+      <div className="w-full space-y-4 p-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <div className="flex gap-3">
+          <Skeleton className="h-9 flex-1" />
+          <Skeleton className="h-9 w-10" />
+          <Skeleton className="h-9 w-10" />
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -1545,7 +1560,7 @@ export default function MyPlayersFeature({
             <div className="flex w-full min-h-9 items-start gap-3">
               {/* Left: Title */}
               <span className="flex h-9 shrink-0 items-center text-xl font-semibold leading-none md:text-2xl">
-                Baza zawodników
+                {loading ? <Skeleton className="h-7 w-48" /> : "Baza zawodników"}
               </span>
 
               {/* Center: Active filter chips (desktop) */}
@@ -1650,9 +1665,16 @@ export default function MyPlayersFeature({
                   aria-label="Dodaj zawodnika"
                   onClick={() => router.push("/players/new")}
                   className={`${controlH} w-full sm:w-auto primary inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none`}
+                  disabled={loading}
                 >
-                  <AddPlayerIcon className="h-4 w-4" />
-                  <span>Dodaj zawodnika</span>
+                  {loading ? (
+                    <Skeleton className="h-4 w-32 bg-gray-700" />
+                  ) : (
+                    <>
+                      <AddPlayerIcon className="h-4 w-4" />
+                      <span>Dodaj zawodnika</span>
+                    </>
+                  )}
                 </Button>
 
                 {/* Wiersz: search + filtry + 3 kropki */}
@@ -1670,10 +1692,16 @@ export default function MyPlayersFeature({
                         setQ(e.target.value);
                         setPage(1);
                       }}
-                      placeholder="Szukaj po nazwisku/klubie… (/)"
+                      placeholder={loading ? "" : "Szukaj po nazwisku/klubie… (/)"}
                       className={`${controlH} w-full pl-8 pr-3 text-sm`}
                       aria-label="Szukaj w bazie zawodników"
+                      disabled={loading}
                     />
+                    {loading && (
+                      <div className="absolute inset-0 flex items-center pl-8 pointer-events-none">
+                        <Skeleton className="h-4 w-3/4" />
+                      </div>
+                    )}
                   </div>
 
                   {/* Filtry */}
@@ -1694,14 +1722,21 @@ export default function MyPlayersFeature({
                         setMoreSheetOpen(false);
                       }}
                       title="Filtry"
+                      disabled={loading}
                     >
-                      <ListFilter className="h-4 w-4" />
-                      {filtersCount ? (
-                        <span className="hidden sm:inline">
-                          {" "}
-                          ({filtersCount})
-                        </span>
-                      ) : null}
+                      {loading ? (
+                        <Skeleton className="h-4 w-4" />
+                      ) : (
+                        <>
+                          <ListFilter className="h-4 w-4" />
+                          {filtersCount ? (
+                            <span className="hidden sm:inline">
+                              {" "}
+                              ({filtersCount})
+                            </span>
+                          ) : null}
+                        </>
+                      )}
                     </Button>
                   </div>
 
@@ -1723,8 +1758,9 @@ export default function MyPlayersFeature({
                     }}
                     variant="outline"
                     className={`${controlH} h-9 w-9 border-gray-300 p-0 focus-visible:outline-none dark:border-neutral-700`}
+                    disabled={loading}
                   >
-                    <EllipsisVertical className="h-5 w-5" />
+                    {loading ? <Skeleton className="h-4 w-4 mx-auto" /> : <EllipsisVertical className="h-5 w-5" />}
                   </Button>
                 </div>
               </div>
@@ -2504,7 +2540,7 @@ export default function MyPlayersFeature({
                   cellPad={cellPad}
                   rowH={rowH}
                   pageSliceCount={visible.length}
-                  loading={authLoading}
+                  loading={loading || authLoading}
                   wrapRef={tableWrapRef}
                 />
 

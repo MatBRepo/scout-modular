@@ -1129,7 +1129,7 @@ export default function ObservationsFeature({
             <div className="flex items-start gap-3 w-full min-h-9">
               {/* Left: Title */}
               <span className="font-semibold text-xl md:text-2xl shrink-0 leading-none h-9 flex items-center">
-                Obserwacje
+                {loading ? <Skeleton className="h-7 w-40" /> : "Obserwacje"}
               </span>
 
               {/* Center: Removed redundant active filter chips (desktop) */}
@@ -1144,9 +1144,16 @@ export default function ObservationsFeature({
                   type="button"
                   onClick={addNew}
                   className={`${controlH} secondary inline-flex h-9 w-full shrink-0 items-center justify-center rounded-md bg-gray-900 px-3.5 text-sm font-semibold text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 sm:w-auto`}
+                  disabled={loading}
                 >
-                  <AddObservationIcon className="mr-2 h-4 w-4" />
-                  Dodaj obserwację
+                  {loading ? (
+                    <Skeleton className="h-4 w-32 bg-gray-700" />
+                  ) : (
+                    <>
+                      <AddObservationIcon className="mr-2 h-4 w-4" />
+                      Dodaj obserwację
+                    </>
+                  )}
                 </Button>
 
                 {/* Row: Search + Filtry + 3 dots – ALWAYS single row on mobile */}
@@ -1161,10 +1168,16 @@ export default function ObservationsFeature({
                       ref={searchRef}
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
-                      placeholder="Szukaj po meczu lub zawodnikach… (/) "
+                      placeholder={loading ? "" : "Szukaj po meczu lub zawodnikach… (/) "}
                       className={`${controlH} w-full pl-8 pr-3 text-sm`}
                       aria-label="Szukaj w obserwacjach"
+                      disabled={loading}
                     />
+                    {loading && (
+                      <div className="absolute inset-0 flex items-center pl-8 pointer-events-none">
+                        <Skeleton className="h-4 w-3/4" />
+                      </div>
+                    )}
                   </div>
 
                   {/* Filtry */}
@@ -1189,13 +1202,20 @@ export default function ObservationsFeature({
                       aria-pressed={filtersOpen}
                       type="button"
                       title="Filtry"
+                      disabled={loading}
                     >
-                      <ListFilter className="h-4 w-4" />
-                      {filtersCount ? (
-                        <span className="hidden sm:inline">
-                          {` (${filtersCount})`}
-                        </span>
-                      ) : null}
+                      {loading ? (
+                        <Skeleton className="h-4 w-4" />
+                      ) : (
+                        <>
+                          <ListFilter className="h-4 w-4" />
+                          {filtersCount ? (
+                            <span className="hidden sm:inline">
+                              {` (${filtersCount})`}
+                            </span>
+                          ) : null}
+                        </>
+                      )}
                     </Button>
                   </div>
 
@@ -1212,8 +1232,9 @@ export default function ObservationsFeature({
                     aria-label="Więcej"
                     aria-pressed={moreOpen}
                     type="button"
+                    disabled={loading}
                   >
-                    <EllipsisVertical className="h-5 w-5" />
+                    {loading ? <Skeleton className="h-4 w-4 mx-auto" /> : <EllipsisVertical className="h-5 w-5" />}
                   </Button>
                 </div>
               </div>
