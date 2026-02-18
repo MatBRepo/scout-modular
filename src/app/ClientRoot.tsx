@@ -443,7 +443,7 @@ function AppShell({
             </nav>
 
             {/* PASEK AKCJI W PRAWYM GÓRNYM ROGU */}
-            <div className="flex items-end mx-auto justify-end w-full max-w-[1400px] py-2 md:py-3 pr-0 md:pr-5 2xl:pr-0">
+            <div className="relative -top-[5px] md:-top-[25px] flex items-end mx-auto justify-end w-full max-w-[1400px] py-2 md:py-3 pr-0 md:pr-5 2xl:pr-0">
               {isAuthed ? (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}

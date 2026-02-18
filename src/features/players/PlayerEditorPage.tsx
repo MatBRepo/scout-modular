@@ -1912,7 +1912,7 @@ export default function PlayerEditorPage() {
         <SavePill state={saveState} size="compact" />
 
         {/* PROGRESS BAR (global postęp profilu) */}
-        <div className="relative -top-[5px] md:-top-[25px] flex flex-col items-end gap-0.5">
+        <div className="flex flex-col items-end gap-0.5">
           <span className="hidden text-[10px] font-medium uppercase tracking-wide text-muted-foreground md:inline">
             Postęp profilu
           </span>
