@@ -267,10 +267,10 @@ function TinyBar({
   return (
     <div
       title={title}
-      className="mt-0.5 h-1.5 w-20 rounded-full bg-gray-100 dark:bg-neutral-800"
+      className="mt-1 h-1 w-full min-w-[60px] max-w-[100px] rounded-full bg-gray-100 dark:bg-neutral-800"
     >
       <div
-        className={`h-1.5 rounded-full ${className}`}
+        className={`h-1 rounded-full ${className}`}
         style={{ width: `${Math.max(0, Math.min(100, Math.round(value)))}%` }}
       />
     </div>
@@ -292,17 +292,17 @@ function KpiCell({
 }) {
   const avgLabel =
     typeof avgObsPerPlayer === "number"
-      ? `${avgObsPerPlayer.toFixed(1)} / zawodnika`
+      ? `${avgObsPerPlayer.toFixed(1)} / zaw.`
       : `${Math.round(vol01 * 100)}%`;
 
   return (
-    <div className="space-y-0.5">
-      <div className="text-base font-semibold leading-none">{kpi}</div>
-      <div className="grid grid-cols-3 gap-2 text-[10px] text-dark">
-        <div>
-          <div className="flex flex-wrap items-center justify-between">
+    <div className="flex flex-col gap-1 min-w-[200px]">
+      <div className="text-sm font-bold leading-none">{kpi}</div>
+      <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-[9px] uppercase tracking-wider text-dark/70 dark:text-neutral-400">
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between">
             <span>Comp</span>
-            <span>{Math.round(comp01 * 100)}%</span>
+            <span className="font-medium text-dark dark:text-neutral-200">{Math.round(comp01 * 100)}%</span>
           </div>
           <TinyBar
             value={comp01 * 100}
@@ -310,10 +310,10 @@ function KpiCell({
             title="Śr. kompletność profili"
           />
         </div>
-        <div>
-          <div className="flex flex-wrap items-center justify-between">
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between">
             <span>Akt</span>
-            <span>{Math.round(act01 * 100)}%</span>
+            <span className="font-medium text-dark dark:text-neutral-200">{Math.round(act01 * 100)}%</span>
           </div>
           <TinyBar
             value={act01 * 100}
@@ -321,10 +321,10 @@ function KpiCell({
             title="Aktywność (ostatnie 14 dni)"
           />
         </div>
-        <div>
-          <div className="flex flex-wrap items-center justify-between">
-            <span>Śr. wolumen</span>
-            <span>{avgLabel}</span>
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between">
+            <span>Wol</span>
+            <span className="font-medium text-dark dark:text-neutral-200">{avgLabel}</span>
           </div>
           <TinyBar
             value={vol01 * 100}
@@ -1151,7 +1151,7 @@ export default function ScoutsAdminPage() {
                                 c.label
                               ) : (
                                 <button
-                                  className="inline-flex items-center gap-1 hover:text-gray-900 dark:hover:text-neutral-100"
+                                  className="inline-flex items-center gap-1 hover:text-gray-900 dark:hover:text-neutral-100 transition-colors"
                                   onClick={() => {
                                     if (active)
                                       setSortDir((d) =>
@@ -1200,7 +1200,7 @@ export default function ScoutsAdminPage() {
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                                   <RoleBadge role={s.role} />
                                   <ActivityTag
                                     lastActive={s.lastActive}
@@ -1250,21 +1250,19 @@ export default function ScoutsAdminPage() {
 
                             {/* Actions */}
                             <td className="px-3 py-3 text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  className="h-8 bg-gray-900 text-xs text-white hover:bg-gray-800"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpandedId((prev) =>
-                                      prev === s.id ? null : s.id
-                                    );
-                                  }}
-                                >
-                                  <ExternalLink className="mr-1 h-4 w-4" />
-                                  Szczegóły
-                                </Button>
-                              </div>
+                              <Button
+                                size="sm"
+                                className="h-8 bg-gray-900 text-[11px] text-white hover:bg-gray-800 transition-all dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedId((prev) =>
+                                    prev === s.id ? null : s.id
+                                  );
+                                }}
+                              >
+                                <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                                Szczegóły
+                              </Button>
                             </td>
                           </tr>
 
@@ -1389,7 +1387,7 @@ export default function ScoutsAdminPage() {
           </Accordion>
         </CardContent>
       </Card>
-    </div>
+    </div >
   );
 }
 

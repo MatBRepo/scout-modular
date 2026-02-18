@@ -39,6 +39,8 @@ import {
   Radio,
   Eraser,
   XCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -326,7 +328,7 @@ function toPosGroup(p: Player["pos"]): PosGroup {
 }
 
 const DEFAULT_COLS = {
-  photo: true,
+  photo: false,
   select: true,
   name: true,
   club: true,
@@ -341,7 +343,7 @@ const DEFAULT_COLS = {
 type ColKey = keyof typeof DEFAULT_COLS;
 
 const COL_LABELS: Record<ColKey, string> = {
-  photo: "",
+  photo: "Miniatury",
   select: "Zaznacz",
   name: "Nazwa",
   club: "Klub",
@@ -2009,6 +2011,24 @@ export default function MyPlayersFeature({
                   <span>Zaznacz kilka</span>
                 </button>
 
+                <button
+                  className={`mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors ${visibleCols.photo
+                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                    : "hover:bg-stone-100 dark:hover:bg-neutral-900"
+                    }`}
+                  onClick={() => {
+                    setVisibleCols(prev => ({ ...prev, photo: !prev.photo }));
+                    setMoreOpen(false);
+                  }}
+                >
+                  {visibleCols.photo ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                  <span>{visibleCols.photo ? "Ukryj miniatury" : "Pokaż miniatury"}</span>
+                </button>
+
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
 
                 <button
@@ -2273,6 +2293,23 @@ export default function MyPlayersFeature({
                 >
                   <Checkbox checked={isMultiSelect} className="h-4 w-4 pointer-events-none" onCheckedChange={() => { }} />
                   <span className="font-medium">Zaznacz kilka (multiselect)</span>
+                </button>
+                <button
+                  className={`flex w-full items-center gap-2 px-3 py-3 text-left text-sm transition-colors ${visibleCols.photo
+                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200"
+                    : "hover:bg-stone-100 dark:hover:bg-neutral-800"
+                    }`}
+                  onClick={() => {
+                    setVisibleCols(prev => ({ ...prev, photo: !prev.photo }));
+                    setMoreSheetOpen(false);
+                  }}
+                >
+                  {visibleCols.photo ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                  <span className="font-medium">{visibleCols.photo ? "Ukryj miniatury" : "Pokaż miniatury"}</span>
                 </button>
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
