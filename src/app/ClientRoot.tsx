@@ -285,7 +285,7 @@ function AppShell({
         >
           {/* osobny container, żeby header też respektował przestrzeń sidebaru */}
           <div className="lg:pl-64 h-full w-full">
-            <div className="pointer-events-none mx-auto flex h-full max-w-[1400px] items-center px-3 md:px-0">
+            <div className="pointer-events-none mx-auto flex h-full max-w-[1400px] items-center px-3 md:px-6">
               {isAuthed && (
                 <button
                   className="pointer-events-auto absolute left-3 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60 lg:hidden"
