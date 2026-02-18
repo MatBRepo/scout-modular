@@ -284,10 +284,10 @@ function AppShell({
           role="banner"
         >
           {/* osobny container, żeby header też respektował przestrzeń sidebaru */}
-          <div className="relative mx-auto w-full lg:pl-64 max-lg:pl-0">
+          <div className="pointer-events-none relative mx-auto w-full lg:pl-64 max-lg:pl-0">
             {isAuthed && (
               <button
-                className="lg:hidden absolute left-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60"
+                className="pointer-events-auto lg:hidden absolute left-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60"
                 aria-label="Otwórz menu"
                 onClick={onOpenMobile}
               >
@@ -298,7 +298,7 @@ function AppShell({
             {/* BREADCRUMB W HEADERZE */}
             <nav
               aria-label="Breadcrumb"
-              className="absolute left-[60px] top-[12px] min-w-0 pr-2 lg:relative lg:left-3 lg:top-[30px] lg:-translate-y-5"
+              className="pointer-events-auto absolute left-[60px] top-[12px] min-w-0 pr-2 lg:relative lg:left-3 lg:top-[30px] lg:-translate-y-5"
             >
               {/* DESKTOP: pełna ścieżka */}
               <ol className="hidden items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:flex">
@@ -443,13 +443,13 @@ function AppShell({
             </nav>
 
             {/* PASEK AKCJI W PRAWYM GÓRNYM ROGU */}
-            <div className="relative -top-[5px] md:-top-[25px] flex items-end mx-auto justify-end w-full max-w-[1400px] py-2 md:py-3 pr-0 md:pr-5 2xl:pr-0">
+            <div className="pointer-events-none relative -top-[5px] md:-top-[25px] flex items-end mx-auto justify-end w-full max-w-[1400px] py-2 md:py-3 pr-0 md:pr-5 2xl:pr-0">
               {isAuthed ? (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, ease: easeOutCustom }}
-                  className="ml-2 mr-2 md:mr-0 flex shrink-0 items-center gap-2 min-h-[36px]"
+                  className="pointer-events-auto ml-2 mr-2 md:mr-0 flex shrink-0 items-center gap-2 min-h-[36px]"
                 >
                   {headerActions ? (
                     <div className="flex items-center gap-2">

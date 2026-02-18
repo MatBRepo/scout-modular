@@ -2099,17 +2099,17 @@ export default function ObservationsFeature({
             </div>
           )}
 
-          {/* Mobile scroll hint */}
-          {showScrollHint && (
-            <div className="pointer-events-none sm:hidden">
-              <div className="absolute bottom-2 right-2 z-20 inline-flex items-center gap-2 rounded-md bg-gray-900/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur">
-                <span>Przeciągnij w bok</span>
-                <MoveHorizontal className="h-4 w-4" />
-              </div>
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white dark:from-neutral-950" />
-            </div>
-          )}
         </div>
+
+        {/* Mobile scroll hint: Moved under table as per user request */}
+        {showScrollHint && (
+          <div className="mt-4 flex flex-col items-center gap-2 sm:hidden px-4">
+            <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-3 py-1.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-800 dark:text-neutral-300 dark:ring-neutral-700">
+              <MoveHorizontal className="h-4 w-4" />
+              <span>Przewiń tabelę w bok, aby zobaczyć więcej</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Floating selection pill – aligned with players sizes */}
