@@ -261,7 +261,7 @@ function SavePill({
       <div className="fixed top-[57px] left-0 right-0 z-[60] h-[3px] md:hidden">
         {state === "saving" && (
           <div className="h-full w-full overflow-hidden bg-gray-500/10">
-            <div className="animate-progress-loading h-full w-[40%]" />
+            <div className="animate-progress-saving h-full w-0" />
           </div>
         )}
         {state === "saved" && (

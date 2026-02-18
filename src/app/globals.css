@@ -402,36 +402,27 @@ body {
     animation: border-pulse 2s infinite;
   }
 
-  @keyframes progress-loading {
+  @keyframes progress-saving {
     0% {
-      transform: translateX(-100%);
-    }
-
-    100% {
-      transform: translateX(100%);
-    }
-  }
-
-  @keyframes progress-loading-color {
-    0% {
+      width: 0%;
       background-color: #ef4444;
+      /* red-500 */
     }
 
-    /* red-500 */
     50% {
       background-color: #f97316;
+      /* orange-500 */
     }
 
-    /* orange-500 */
     100% {
+      width: 100%;
       background-color: #10b981;
+      /* emerald-500 */
     }
-
-    /* emerald-500 */
   }
 
-  .animate-progress-loading {
-    animation: progress-loading 1s infinite linear, progress-loading-color 1s infinite linear;
+  .animate-progress-saving {
+    animation: progress-saving 1s ease-in-out infinite;
   }
 }
 
