@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { supabase } from "@/shared/supabase-client";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AuthFinishPage() {
   const router = useRouter();

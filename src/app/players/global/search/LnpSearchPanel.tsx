@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { supabase } from "@/shared/supabase-client";
+import { supabase } from "@/lib/supabaseClient";
 
 /* ======================= TYPES & MODELS ======================= */
 

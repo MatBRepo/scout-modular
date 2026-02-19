@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
-import { supabase } from "@/shared/supabase-client";
+import { supabase } from "@/lib/supabaseClient";
 import LoaderOverlay from "@/shared/ui/LoaderOverlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -3,7 +3,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/shared/supabase-client";
+import { supabase } from "@/lib/supabaseClient";
 
 function getHashParams() {
   if (typeof window === "undefined") return {};

@@ -52,7 +52,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { AddPlayerIcon, PlayerOnlyTshirt } from "@/components/icons";
-import { supabase } from "@/shared/supabase-client";
+import { supabase } from "@/lib/supabaseClient";
 import { computePlayerProfileProgress } from "@/shared/playerProfileProgress";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";

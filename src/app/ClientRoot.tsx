@@ -278,7 +278,7 @@ function AppShell({
   return (
     <>
       {/* wrapper dla treści: padding-left pod sidebar + padding-top pod fixed header (także na mobile) */}
-      <div className="pl-64 max-lg:pl-0 pt-[60px]">
+      <div className="pl-64 max-lg:pl-0 pt-[66px]">
         <header
           className="fixed top-0 left-0 right-0 z-40 h-[60px] bg-white/50 backdrop-blur-md supports-[backdrop-filter]:bg-white/50 dark:bg-neutral-950/50"
           role="banner"

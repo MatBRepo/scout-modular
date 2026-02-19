@@ -13,7 +13,7 @@ import {
 
 import { ObservationEditor } from "@/features/observations/ObservationEditor";
 import type { XO as EditorXO } from "@/features/observations/ObservationEditor";
-import { supabase } from "@/shared/supabase-client";
+import { supabase } from "@/lib/supabaseClient";
 
 /* -------------------------------- Types -------------------------------- */
 
@@ -144,14 +144,14 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
       typeof p.playerId === "number"
         ? p.playerId
         : typeof p.player_id === "number"
-        ? p.player_id
-        : undefined,
+          ? p.player_id
+          : undefined,
     globalId:
       typeof p.globalId === "number"
         ? p.globalId
         : typeof p.global_id === "number"
-        ? p.global_id
-        : undefined,
+          ? p.global_id
+          : undefined,
   }));
 
   const meta = anyE.__listMeta || {};
@@ -312,15 +312,15 @@ export default function PlayerObservationsTable({
       typeof main.playerId === "number"
         ? main.playerId
         : typeof playerId === "number"
-        ? playerId
-        : null;
+          ? playerId
+          : null;
 
     const targetGlobalId =
       typeof main.globalId === "number"
         ? main.globalId
         : typeof globalId === "number"
-        ? globalId
-        : null;
+          ? globalId
+          : null;
 
     // jeśli nie mamy żadnego ID powiązanego z tabelami players/global_players – nie zapisujemy
     if (targetPlayerId == null && targetGlobalId == null) return;

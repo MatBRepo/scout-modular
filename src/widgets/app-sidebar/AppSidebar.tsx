@@ -26,7 +26,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { createPortal } from "react-dom";
 
 import { MyPlayersIconDefault } from "@/components/icons";
-import { supabase } from "@/shared/supabase-client";
+import { supabase } from "@/lib/supabaseClient";
 
 /* ========= Types ========= */
 type Role = "admin" | "scout" | "scout-agent";
