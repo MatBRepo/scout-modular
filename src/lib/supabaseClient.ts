@@ -7,21 +7,26 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const cookieStorage = {
   getItem: (key: string) => {
     if (typeof document === "undefined") return null;
-    const cookies = document.cookie.split(";");
-    for (const cookie of cookies) {
-      const [name, value] = cookie.trim().split("=");
-      if (name === key) return decodeURIComponent(value);
+    const nameEQ = key + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
     }
     return null;
   },
   setItem: (key: string, value: string) => {
     if (typeof document === "undefined") return;
     // Persist for 1 year, SameSite=Lax, Secure
-    document.cookie = `${key}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
+    const date = new Date();
+    date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
+    const expires = "; expires=" + date.toUTCString();
+    document.cookie = key + "=" + encodeURIComponent(value) + expires + "; path=/; SameSite=Lax; Secure";
   },
   removeItem: (key: string) => {
     if (typeof document === "undefined") return;
-    document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+    document.cookie = key + "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax; Secure";
   },
 };
 

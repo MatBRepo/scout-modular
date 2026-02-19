@@ -30,7 +30,7 @@ export default function AuthCallbackPage() {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
             console.error("[auth/callback] exchangeCodeForSession error:", error);
-            if (!cancelled) router.replace(`/login?e=oauth_exchange`);
+            if (!cancelled) router.replace(`/?e=oauth_exchange`);
             return;
           }
           if (!cancelled) router.replace("/players");
@@ -49,7 +49,7 @@ export default function AuthCallbackPage() {
           });
           if (error) {
             console.error("[auth/callback] setSession error:", error);
-            if (!cancelled) router.replace(`/login?e=oauth_setsession`);
+            if (!cancelled) router.replace(`/?e=oauth_setsession`);
             return;
           }
           if (!cancelled) router.replace("/players");
@@ -64,10 +64,10 @@ export default function AuthCallbackPage() {
         }
 
         // 4) Nadal nic -> wróć na login z info
-        if (!cancelled) router.replace("/login?e=missing_code");
+        if (!cancelled) router.replace("/?e=missing_code");
       } catch (e) {
         console.error("[auth/callback] unexpected:", e);
-        if (!cancelled) router.replace("/login?e=oauth_unknown");
+        if (!cancelled) router.replace("/?e=oauth_unknown");
       }
     })();
 

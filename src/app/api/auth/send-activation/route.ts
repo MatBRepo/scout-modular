@@ -26,7 +26,7 @@ export async function POST(req: Request) {
                 data: {
                     full_name: name,
                 },
-                redirectTo: `${req.headers.get("origin") || "https://scouting-s4s-dev.entriso.com"}/login`,
+                redirectTo: `${req.headers.get("origin") || "https://scouting-s4s-dev.entriso.com"}/`,
             },
         });
 

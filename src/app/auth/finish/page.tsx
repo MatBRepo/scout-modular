@@ -29,7 +29,7 @@ export default function AuthFinishPage() {
       }
 
       // fallback: jak sesji dalej brak, wróć na login z parametrem
-      router.replace("/login?e=session_missing");
+      router.replace("/?e=session_missing");
     };
 
     run();

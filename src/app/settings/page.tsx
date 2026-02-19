@@ -612,7 +612,7 @@ export default function SettingsPage() {
         <Card className="border-gray-300 bg-white/70 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/70">
           <CardContent className="flex flex-col items-start gap-3 p-4 text-sm text-dark dark:text-neutral-300 sm:flex-row sm:items-center sm:justify-between">
             <span>Musisz być zalogowany, aby zarządzać ustawieniami konta.</span>
-            <Button onClick={() => router.push("/login")}>Zaloguj się</Button>
+            <Button onClick={() => router.push("/")}>Zaloguj się</Button>
           </CardContent>
         </Card>
       </div>
