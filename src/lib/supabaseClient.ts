@@ -62,7 +62,7 @@ export function getSupabase(): SupabaseClient {
         autoRefreshToken: true,
         detectSessionInUrl: true,
         flowType: "pkce",
-        storage: cookieStorage, // ✅ Use cookies to prevent logouts on iOS
+        // storage: cookieStorage, // ✅ Temporarily disabled to debug login/PKCE issues
       },
     });
   }
