@@ -1,46 +1,47 @@
 // app/auth/callback/page.tsx
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-function getHashParams() {
-  if (typeof window === "undefined") return {};
-  const hash = window.location.hash?.replace(/^#/, "") || "";
-  const params = new URLSearchParams(hash);
-  const out: Record<string, string> = {};
-  params.forEach((v, k) => (out[k] = v));
-  return out;
-}
-
-export default function AuthCallbackPage() {
+/**
+ * Komponent wewnętrzny używający useSearchParams, co wymaga Suspense w Next.js app route
+ */
+function AuthCallbackContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        // 1) PKCE flow: ?code=...
-        const url = new URL(window.location.href);
-        const code = url.searchParams.get("code");
+        // 1) Sprawdź PKCE (code w query lub w hash - na wypadek różnych konfiguracji)
+        const code = searchParams.get("code") ||
+          new URLSearchParams(window.location.hash.replace("#", "")).get("code");
 
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
-            console.error("[auth/callback] exchangeCodeForSession error:", error);
-            if (!cancelled) router.replace(`/?e=oauth_exchange`);
+            console.error("[auth/callback] PKCE exchange error:", error);
+            // Jeśli błąd to "code already used" lub podobny, może sesja już jest?
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              if (!cancelled) router.replace("/players");
+              return;
+            }
+            if (!cancelled) router.replace("/?e=oauth_exchange");
             return;
           }
           if (!cancelled) router.replace("/players");
           return;
         }
 
-        // 2) Implicit flow: #access_token=...&refresh_token=...
-        const hash = getHashParams();
-        const access_token = hash["access_token"];
-        const refresh_token = hash["refresh_token"];
+        // 2) Sprawdź Implicit flow (access_token w hash)
+        const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
+        const access_token = hashParams.get("access_token");
+        const refresh_token = hashParams.get("refresh_token");
 
         if (access_token && refresh_token) {
           const { error } = await supabase.auth.setSession({
@@ -49,24 +50,45 @@ export default function AuthCallbackPage() {
           });
           if (error) {
             console.error("[auth/callback] setSession error:", error);
-            if (!cancelled) router.replace(`/?e=oauth_setsession`);
+            if (!cancelled) router.replace("/?e=oauth_setsession");
             return;
           }
           if (!cancelled) router.replace("/players");
           return;
         }
 
-        // 3) Fallback: może sesja już jest
-        const { data } = await supabase.auth.getSession();
-        if (data?.session) {
+        // 3) Błędy w URL (np. error=access_denied)
+        const errorMsg = searchParams.get("error") || hashParams.get("error");
+        if (errorMsg) {
+          console.error("[auth/callback] OAuth error from provider:", errorMsg);
+          if (!cancelled) router.replace(`/?e=oauth_provider&msg=${encodeURIComponent(errorMsg)}`);
+          return;
+        }
+
+        // 4) Fallback: może sesja już jest (np. detectSessionInUrl zadziałało wcześniej)
+        // Dajemy krotką chwilę na ewentualną inicjalizację klienta
+        await new Promise(r => setTimeout(r, 200));
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession) {
           if (!cancelled) router.replace("/players");
           return;
         }
 
-        // 4) Nadal nic -> wróć na login z info
-        if (!cancelled) router.replace("/?e=missing_code");
+        // 5) Nadal nic -> spróbuj ostatni raz po dłuższej chwili, może exchange jeszcze trwa
+        await new Promise(r => setTimeout(r, 1000));
+        const { data: { session: finalSession } } = await supabase.auth.getSession();
+        if (finalSession) {
+          if (!cancelled) router.replace("/players");
+          return;
+        }
+
+        // 6) Pustka -> wróć na login
+        if (!cancelled) {
+          console.warn("[auth/callback] Brak parametrów auth i brak sesji.");
+          router.replace("/?e=missing_code");
+        }
       } catch (e) {
-        console.error("[auth/callback] unexpected:", e);
+        console.error("[auth/callback] Unexpected error:", e);
         if (!cancelled) router.replace("/?e=oauth_unknown");
       }
     })();
@@ -74,11 +96,26 @@ export default function AuthCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, searchParams]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-sm opacity-80">Finalizuję logowanie…</div>
+    <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-slate-950">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-900 dark:border-stone-700 dark:border-t-stone-100" />
+        <div className="text-sm font-medium text-stone-600 dark:text-stone-400">Finalizuję logowanie…</div>
+      </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-sm opacity-50">Ładowanie…</div>
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
