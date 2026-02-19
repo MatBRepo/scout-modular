@@ -80,11 +80,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     (async () => {
+      console.log("[AuthGate] Pre-loading user session...");
       const { data, error } = await supabase.auth.getUser();
       if (!isMounted) return;
       if (error || !data?.user) {
+        console.log("[AuthGate] No user session found or error:", error);
         setUser(null);
       } else {
+        console.log("[AuthGate] User session loaded:", data.user.email);
         setUser(data.user);
       }
       setInitialLoading(false);
