@@ -95,7 +95,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     })();
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        console.log(`[AuthGate] Auth state change event: ${event}`, {
+          user: session?.user?.email,
+          hasSession: !!session,
+        });
         setUser(session?.user ?? null);
       }
     );
