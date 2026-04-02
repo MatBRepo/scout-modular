@@ -1002,6 +1002,92 @@ function ExtContent({ view, ext, setExt }: ExtContentProps) {
   }
 }
 
+function RatingRow({
+  aspect,
+  ratings,
+  setRatings,
+}: {
+  aspect: RatingAspect;
+  ratings: PlayerRatings;
+  setRatings: React.Dispatch<React.SetStateAction<PlayerRatings>>;
+}) {
+  const val = ratings[aspect.key] ?? 0;
+  const hasTooltip = !!aspect.tooltip;
+
+  return (
+    <div className="flex w-full max-w-[320px] flex-col justify-between rounded-md border border-stone-200 bg-white/90 p-3 text-xs shadow-sm transition-shadow dark:border-neutral-700 dark:bg-neutral-950/80">
+      <div className="mb-2 flex items-start gap-2 flex-1">
+        <div className="flex-1">
+          <div className="flex items-center gap-1">
+            <span className="text-[13px] font-medium">{aspect.label}</span>
+            {hasTooltip && (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="h-3.5 w-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs leading-snug">
+                    {aspect.tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+          {aspect.tooltip && (
+            <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
+              {aspect.tooltip}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="mt-1">
+        <StarRating
+          max={5}
+          value={val}
+          onChange={(v) =>
+            setRatings((prev) => ({
+              ...prev,
+              [aspect.key]: v,
+            }))
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function RatingGroup({
+  title,
+  aspects,
+  ratings,
+  setRatings,
+}: {
+  title: string;
+  aspects: RatingAspect[];
+  ratings: PlayerRatings;
+  setRatings: React.Dispatch<React.SetStateAction<PlayerRatings>>;
+}) {
+  if (!aspects.length) return null;
+  return (
+    <div className="space-y-3">
+      <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
+        <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
+        {title}
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        {aspects.map((aspect) => (
+          <RatingRow
+            key={aspect.id}
+            aspect={aspect}
+            ratings={ratings}
+            setRatings={setRatings}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function PlayerEditorPage() {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
@@ -1541,77 +1627,6 @@ export default function PlayerEditorPage() {
 
   const [extView, setExtView] = useState<ExtKey>("profile");
 
-  function RatingRow({ aspect }: { aspect: RatingAspect }) {
-    const val = ratings[aspect.key] ?? 0;
-    const hasTooltip = !!aspect.tooltip;
-
-    return (
-      <div className="flex w-full max-w-[320px] flex-col justify_between rounded-md border border-stone-200 bg-white/90 p-3 text-xs shadow-sm transition-shadow dark:border-neutral-700 dark:bg-neutral-950/80">
-        <div className="mb-2 flex items-start gap-2">
-          <div className="flex-1">
-            <div className="flex items-center gap-1">
-              <span className="text-[13px] font-medium">
-                {aspect.label}
-              </span>
-              {hasTooltip && (
-                <TooltipProvider delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      {/* optional trigger here */}
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs text-xs leading-snug">
-                      {aspect.tooltip}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-            {aspect.tooltip && (
-              <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
-                {aspect.tooltip}
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="mt-1">
-          <StarRating
-            max={5}
-            value={val}
-            onChange={(v) =>
-              setRatings((prev) => ({
-                ...prev,
-                [aspect.key]: v,
-              }))
-            }
-          />
-        </div>
-      </div>
-    );
-  }
-
-  function RatingGroup({
-    title,
-    aspects,
-  }: {
-    title: string;
-    aspects: RatingAspect[];
-  }) {
-    if (!aspects.length) return null;
-    return (
-      <div className="space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-stone-700 dark:bg-neutral-900 dark:text-neutral-200">
-          <span className="h-1.5 w-1.5 rounded-md bg-stone-500" />
-          {title}
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {aspects.map((aspect) => (
-            <RatingRow key={aspect.id} aspect={aspect} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle"
   );
@@ -1955,7 +1970,7 @@ export default function PlayerEditorPage() {
 
     setActions(node);
     return () => {
-      setActions(null);
+      // no-op cleanup
     };
   }, [setActions, saveState, router, completionPercent]);
 
@@ -2367,30 +2382,40 @@ export default function PlayerEditorPage() {
                         <RatingGroup
                           title="Podstawowe"
                           aspects={baseAspects}
+                          ratings={ratings}
+                          setRatings={setRatings}
                         />
 
                         {effectiveBucket === "GK" && (
                           <RatingGroup
                             title="Bramkarz (GK)"
                             aspects={gkAspects}
+                            ratings={ratings}
+                            setRatings={setRatings}
                           />
                         )}
                         {effectiveBucket === "DF" && (
                           <RatingGroup
                             title="Obrońca (DEF)"
                             aspects={defAspects}
+                            ratings={ratings}
+                            setRatings={setRatings}
                           />
                         )}
                         {effectiveBucket === "MF" && (
                           <RatingGroup
                             title="Pomocnik (MID)"
                             aspects={midAspects}
+                            ratings={ratings}
+                            setRatings={setRatings}
                           />
                         )}
                         {effectiveBucket === "FW" && (
                           <RatingGroup
                             title="Napastnik (ATT)"
                             aspects={attAspects}
+                            ratings={ratings}
+                            setRatings={setRatings}
                           />
                         )}
 
