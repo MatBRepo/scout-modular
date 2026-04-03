@@ -1186,7 +1186,7 @@ export default function ManagePage() {
           <div className="lg:col-span-2">
             <div className="w-full overflow-x-auto rounded-md border border-gray-200 dark:border-neutral-800">
               <table className="w-full text-sm">
-                <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
+                <thead className="hidden bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300 sm:table-header-group">
                   <tr>
                     <th className="p-3 text-left font-medium">Użytkownik</th>
                     <th className="p-3 text-left font-medium hidden md:table-cell">Kontakt</th>
@@ -1211,7 +1211,7 @@ export default function ManagePage() {
                     filtered.map((a) => (
                       <tr
                         key={a.id}
-                        className={`border-t border-gray-200 align-middle dark:border-neutral-700 ${detail?.id === a.id
+                        className={`flex flex-col border-t border-gray-200 align-middle dark:border-neutral-700 sm:table-row ${detail?.id === a.id
                           ? "bg-stone-50/80 dark:bg-neutral-900/60"
                           : ""
                           }`}
@@ -1254,16 +1254,21 @@ export default function ManagePage() {
                             ))}
                           </select>
                         </td>
-                        <td className="p-3">
-                          {a.active ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
-                              <CheckCircle className="h-3.5 w-3.5" /> Aktywne
+                        <td className="p-3 pb-1 sm:p-3">
+                          <div className="flex items-center justify-between sm:block">
+                            <span className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500 sm:hidden">
+                              Status
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                              <Ban className="h-3.5 w-3.5" /> Nieaktywne
-                            </span>
-                          )}
+                            {a.active ? (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
+                                <CheckCircle className="h-3.5 w-3.5" /> Aktywne
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                <Ban className="h-3.5 w-3.5" /> Nieaktywne
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-3 text-xs text-dark dark:text-neutral-400 hidden lg:table-cell">
                           {fmtDate(a.createdAt)}
@@ -1273,30 +1278,30 @@ export default function ManagePage() {
                               : "—"}
                           </div>
                         </td>
-                        <td className="p-3 text-right">
-                          <div className="flex flex-wrap justify-end gap-2">
+                        <td className="p-3 pt-1 text-right sm:p-3">
+                          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-end">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 border-gray-300 dark:border-neutral-700"
+                              className="h-8 border-gray-300 px-2 text-[10px] dark:border-neutral-700 sm:px-3 sm:text-sm"
                               onClick={() => onOpenDetail(a)}
                             >
-                              <Eye className="mr-1 h-4 w-4" /> Szczegóły
+                              <Eye className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Szczegóły
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 border-gray-300 dark:border-neutral-700"
+                              className="h-8 border-gray-300 px-2 text-[10px] dark:border-neutral-700 sm:px-3 sm:text-sm"
                               onClick={() => onToggleActive(a.id)}
                               title={a.active ? "Deaktywuj" : "Aktywuj"}
                             >
                               {a.active ? (
                                 <>
-                                  <XCircle className="mr-1 h-4 w-4" /> Deaktywuj
+                                  <XCircle className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Deaktywuj
                                 </>
                               ) : (
                                 <>
-                                  <CheckCircle className="mr-1 h-4 w-4" />{" "}
+                                  <CheckCircle className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />{" "}
                                   Aktywuj
                                 </>
                               )}
@@ -1305,21 +1310,21 @@ export default function ManagePage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400"
+                                className="h-8 border-blue-300 px-2 text-[10px] text-blue-600 dark:border-blue-700 dark:text-blue-400 sm:px-3 sm:text-sm"
                                 onClick={() => onResendActivation(a.id, a.email, a.name)}
                                 title="Wyślij ponownie email aktywacyjny"
                               >
-                                <Mail className="mr-1 h-4 w-4" /> Email
+                                <Mail className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Email
                               </Button>
                             )}
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
+                              className="h-8 border-red-200 px-2 text-[10px] text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40 sm:px-3 sm:text-sm"
                               onClick={() => setDeleteConfirm(a)}
                               title="Usuń użytkownika"
                             >
-                              <Trash2 className="mr-1 h-4 w-4" /> Usuń
+                              <Trash2 className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Usuń
                             </Button>
                           </div>
                         </td>
