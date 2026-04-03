@@ -1189,10 +1189,10 @@ export default function ManagePage() {
                 <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                   <tr>
                     <th className="p-3 text-left font-medium">Użytkownik</th>
-                    <th className="p-3 text-left font-medium">Kontakt</th>
-                    <th className="p-3 text-left font-medium">Rola</th>
+                    <th className="p-3 text-left font-medium hidden md:table-cell">Kontakt</th>
+                    <th className="p-3 text-left font-medium hidden sm:table-cell">Rola</th>
                     <th className="p-3 text-left font-medium">Status</th>
-                    <th className="p-3 text-left font-medium">Utworzono</th>
+                    <th className="p-3 text-left font-medium hidden lg:table-cell">Utworzono</th>
                     <th className="p-3 text-right font-medium">Akcje</th>
                   </tr>
                 </thead>
@@ -1229,7 +1229,7 @@ export default function ManagePage() {
                             {labelForRole(a.role)}
                           </div>
                         </td>
-                        <td className="p-3">
+                        <td className="p-3 hidden md:table-cell">
                           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700 dark:text-neutral-300">
                             <Mail className="h-3.5 w-3.5" /> {a.email}
                           </div>
@@ -1239,7 +1239,7 @@ export default function ManagePage() {
                             </div>
                           )}
                         </td>
-                        <td className="p-3">
+                        <td className="p-3 hidden sm:table-cell">
                           <select
                             className="rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
                             value={a.role}
@@ -1265,7 +1265,7 @@ export default function ManagePage() {
                             </span>
                           )}
                         </td>
-                        <td className="p-3 text-xs text-dark dark:text-neutral-400">
+                        <td className="p-3 text-xs text-dark dark:text-neutral-400 hidden lg:table-cell">
                           {fmtDate(a.createdAt)}
                           <div className="opacity-70">
                             {a.lastActive
@@ -1455,7 +1455,7 @@ export default function ManagePage() {
                   )}
 
                   {detailStats && !detailStatsError && (
-                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 text-[11px]">
                       <div className="rounded-md bg-stone-100 p-2 dark:bg-neutral-900">
                         <div className="font-medium text-dark dark:text-neutral-200">
                           Zawodnicy
