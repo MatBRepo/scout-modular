@@ -1212,21 +1212,41 @@ export default function ManagePage() {
                       <tr
                         key={a.id}
                         className={`flex flex-col border-t border-gray-200 align-middle dark:border-neutral-700 sm:table-row ${detail?.id === a.id
-                          ? "bg-stone-50/80 dark:bg-neutral-900/60"
+                          ? "bg-indigo-50/30 dark:bg-indigo-950/10"
                           : ""
                           }`}
                       >
                         <td className="p-3">
-                          <button
-                            className="text-left font-medium hover:underline"
-                            onClick={() => onOpenDetail(a)}
-                            title="Pokaż szczegóły po prawej"
-                          >
-                            {a.name}
-                          </button>
-                          <div className="mt-0.5 flex items-center gap-1 text-[11px] text-dark dark:text-neutral-400">
-                            <Shield className="h-3.5 w-3.5" />
-                            {labelForRole(a.role)}
+                          <div className="flex items-start justify-between sm:block">
+                            <div>
+                              <button
+                                className="text-left font-medium hover:underline"
+                                onClick={() => onOpenDetail(a)}
+                                title="Pokaż szczegóły"
+                              >
+                                {a.name}
+                              </button>
+                              <div className="mt-0.5 flex items-center gap-1 text-[11px] text-dark dark:text-neutral-400">
+                                <Shield className="h-3.5 w-3.5" />
+                                {labelForRole(a.role)}
+                              </div>
+                            </div>
+                            {/* Role Selector for Mobile Only */}
+                            <div className="sm:hidden">
+                              <select
+                                className="rounded-md border border-gray-300 bg-white p-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-950"
+                                value={a.role}
+                                onChange={(e) =>
+                                  onChangeRole(a.id, e.target.value as Role)
+                                }
+                              >
+                                {ROLES.map((r) => (
+                                  <option key={r} value={r}>
+                                    {labelForRole(r).slice(0, 5)}...
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
                         </td>
                         <td className="p-3 hidden md:table-cell">
@@ -1328,6 +1348,100 @@ export default function ManagePage() {
                             </Button>
                           </div>
                         </td>
+
+                        {/* SZCZEGÓŁY INLINE - MOBILE ONLY */}
+                        {detail?.id === a.id && (
+                          <td className="w-full border-t border-dashed border-gray-200 bg-stone-50/40 p-4 dark:border-neutral-800 dark:bg-neutral-900/30 lg:hidden">
+                            <div className="space-y-4 text-sm">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-semibold">Szczegóły konta</h4>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => setDetail(null)}
+                                >
+                                  Zamknij
+                                </Button>
+                              </div>
+
+                              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="space-y-3">
+                                  <div>
+                                    <div className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500">
+                                      E-mail
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Mail className="h-3.5 w-3.5 text-gray-400" />
+                                      {detail.email}
+                                    </div>
+                                  </div>
+                                  {detail.phone && (
+                                    <div>
+                                      <div className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500">
+                                        Telefon
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Phone className="h-3.5 w-3.5 text-gray-400" />
+                                        {detail.phone}
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500">
+                                      Statystyki S4S
+                                    </div>
+                                    {loadingDetailStats ? (
+                                      <div className="animate-pulse text-xs text-gray-400">Ładowanie...</div>
+                                    ) : detailStats ? (
+                                      <div className="mt-1 space-y-1 text-xs">
+                                        <div>Zawodnicy: <b>{detailStats.playersTotal}</b> (Aktywni: {detailStats.playersActive})</div>
+                                        <div>Obserwacje: <b>{detailStats.observationsTotal}</b> (Draft: {detailStats.observationsDraft})</div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-gray-400">Brak danych</div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div>
+                                    <div className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500">
+                                      Daty
+                                    </div>
+                                    <div className="space-y-0.5 text-xs text-dark/70 dark:text-neutral-400">
+                                      <div>Utworzono: {fmtDate(detail.createdAt)}</div>
+                                      <div>Aktywność: {detail.lastActive ? fmtDate(detail.lastActive) : "brak"}</div>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500">
+                                      Szybkie akcje
+                                    </div>
+                                    <div className="mt-1 flex flex-wrap gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 text-xs"
+                                        onClick={() => onToggleActive(detail.id)}
+                                      >
+                                        {detail.active ? "Deaktywuj" : "Aktywuj"}
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 border-red-200 text-xs text-red-600 dark:border-red-900/40"
+                                        onClick={() => setDeleteConfirm(detail)}
+                                      >
+                                        Usuń konto
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   {!loadingAccounts && filtered.length === 0 && (
@@ -1346,8 +1460,8 @@ export default function ManagePage() {
             </div>
           </div>
 
-          {/* Panel szczegółów po prawej */}
-          <div className="rounded-md border border-gray-200 bg-white p-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+          {/* Panel szczegółów po prawej - DESKTOP ONLY */}
+          <div className="hidden lg:block rounded-md border border-gray-200 bg-white p-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="text-sm font-semibold">Szczegóły konta</div>
               {detail && (
