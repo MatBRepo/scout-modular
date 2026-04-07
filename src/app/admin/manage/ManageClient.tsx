@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -590,12 +591,12 @@ export default function ManagePage() {
         setDetail(null);
         setDetailStats(null);
       }
-      alert("Użytkownik został pomyślnie usunięty.");
+      toast.success("Użytkownik został pomyślnie usunięty.");
     } catch (e: any) {
       console.error("Error deleting user:", e);
-      setErrorAccounts(
-        e?.message || "Nie udało się usunąć użytkownika. Możliwe, że posiada on powiązane dane (np. zawodników lub obserwacje)."
-      );
+      const msg = e?.message || "Nie udało się usunąć użytkownika. Możliwe, że posiada on powiązane dane (np. zawodników lub obserwacje).";
+      setErrorAccounts(msg);
+      toast.error(msg);
     } finally {
       setDeleteConfirm(null);
     }
@@ -618,18 +619,17 @@ export default function ManagePage() {
       const data = await res.json();
 
       if (data.mailSent) {
-        alert("Email aktywacyjny został wysłany!");
+        toast.success("Email aktywacyjny został wysłany!");
       } else if (data.link) {
         // Fallback - copy link to clipboard
         copy(data.link);
-        alert(
-          "Link aktywacyjny skopiowano do schowka.\n(Email nie został wysłany - prawdopodobnie brak PHP_MAILER_URL lub błąd połączenia).\nBłąd maila: " +
-          (data.mailError || "brak")
-        );
+        toast("Link aktywacyjny skopiowano do schowka.", {
+          description: "(Email nie został wysłany - prawdopodobnie brak PHP_MAILER_URL lub błąd połączenia).",
+        });
       }
     } catch (e: any) {
       console.error("Error resending activation:", e);
-      alert("Błąd: " + (e.message || "Wystąpił nieznany błąd"));
+      toast.error("Błąd: " + (e.message || "Wystąpił nieznany błąd"));
     }
   }
 
@@ -733,7 +733,7 @@ export default function ManagePage() {
     }
     if (invite.channel === "link") {
       copy(invite.url);
-      alert("Skopiowano link zaproszenia do schowka.");
+      toast.success("Skopiowano link zaproszenia do schowka.");
     }
   }
 
