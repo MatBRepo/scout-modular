@@ -574,19 +574,27 @@ export default function ManagePage() {
   async function onDeleteUser(id: string) {
     setErrorAccounts(null);
     try {
-      const supabase = getSupabase();
-      const { error } = await supabase.from("profiles").delete().eq("id", id);
-      if (error) throw error;
+      const res = await fetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Błąd serwera podczas usuwania użytkownika.");
+      }
 
       setAccounts((prev) => prev.filter((a) => a.id !== id));
       if (detail?.id === id) {
         setDetail(null);
         setDetailStats(null);
       }
+      alert("Użytkownik został pomyślnie usunięty.");
     } catch (e: any) {
       console.error("Error deleting user:", e);
       setErrorAccounts(
-        e?.message || "Nie udało się usunąć użytkownika z Supabase."
+        e?.message || "Nie udało się usunąć użytkownika. Możliwe, że posiada on powiązane dane (np. zawodników lub obserwacje)."
       );
     } finally {
       setDeleteConfirm(null);

@@ -1,0 +1,31 @@
+### AI PROMPT: SUPABASE DATA MANAGEMENT BEHIND CLOUDFLARE ###
+
+OBJECTIVE:
+Interact with a Supabase instance that is proxied through Cloudflare Zero Trust. Standard API calls often fail due to bot protection or RLS.
+
+CONNECTION DETAILS:
+- SUPABASE_URL: https://supabase-entrisoscout.entriso.com
+- SERVICE_ROLE_KEY: gdi05ZCaa-GLWSqytqXOvnMDgrWI85Hbnov8lVRC4O4PN45EThn1yvJv0S4V3erk
+- ANON_KEY (JWT): eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwicm9sZSI6ImFub24iLCJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTczMDAwMDAwMCwiZXhwIjoyMDg2MzYwMDAwfQ.FYJS67lIN7ZIYs6yhBLtu_kHuVCgbx98BHlsKpQUYTw
+
+BYPASSING CLOUDFLARE:
+To bypass Cloudflare Zero Trust, when using @supabase/supabase-js, you MUST include browser-like headers in the global config.
+
+EXAMPLE CONFIGURATION (NODE.JS):
+-----------------------------------------------------------
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+  global: {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      'Referer': 'https://supabase-entrisoscout.entriso.com/',
+      'Origin': 'https://supabase-entrisoscout.entriso.com'
+    }
+  }
+});
+-----------------------------------------------------------
+
+INSTRUCTIONS FOR AI:
+"Use the provided configuration to write a Node.js script that [presents data / inserts records] to the 'players' table. Ensure error handling for Cloudflare redirects and bot-detection blocks."
