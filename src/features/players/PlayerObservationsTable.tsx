@@ -21,7 +21,7 @@ type Bucket = "active" | "trash";
 type Mode = "live" | "tv" | "mix";
 type PositionKey = string;
 
-// ⬇️ ratings as any aspect map (key -> number 0–5)
+// ⬇️ ratings as an arbitrary map of aspects (key -> number 0–5)
 type ObsPlayer = {
   id: string;
   type: "known" | "unknown";
@@ -33,9 +33,9 @@ type ObsPlayer = {
   voiceUrl?: string | null;
   note?: string;
   ratings?: Record<string, number>;
-  /** connection with public.players.id (local player) */
+  /** association with public.players.id (local player) */
   playerId?: number | null;
-  /** connection with public.global_players.id (global player) */
+  /** association with public.global_players.id (global player) */
   globalId?: number | null;
 };
 
@@ -53,7 +53,7 @@ type XO = Observation & {
 function fmtDate(d?: string) {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleDateString("en-US", {
+    return new Date(d).toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -91,7 +91,7 @@ function toEditorXO(row: XO): EditorXO {
     position: p.position,
     overall: p.overall,
     note: p.note,
-    // ⬇️ WE TRANSFER all ratings and player id
+    // ⬇️ MOVING all ratings and player id
     ratings: (p as any).ratings ?? undefined,
     playerId: (p as any).playerId ?? (p as any).player_id ?? undefined,
     globalId: (p as any).globalId ?? (p as any).global_id ?? undefined,
@@ -138,7 +138,7 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     position: p.position as PositionKey,
     overall: p.overall,
     note: p.note,
-    ratings: p.ratings ?? undefined, // ⬅️ we preserve the aspect map
+    ratings: p.ratings ?? undefined, // ⬅️ preserve aspects map
     voiceUrl: (p as any).voiceUrl ?? null,
     playerId:
       typeof p.playerId === "number"
@@ -185,16 +185,16 @@ export default function PlayerObservationsTable({
 }: {
   playerName?: string;
   observations?: Observation[];
-  /** ID of local player (public.players.id) */
+  /** Local player ID (public.players.id) */
   playerId?: number | null;
-  /** ID of global player (public.global_players.id) */
+  /** Global player ID (public.global_players.id) */
   globalId?: number | null;
   /** optional – if you want to get the next state to the parent */
   onChange?: (next: Observation[]) => void;
 }) {
   const source = (observations ?? []) as XO[];
 
-  // local list state (so the UI refreshes after saving from the editor)
+  // local list state (to refresh UI after saving from editor)
   const [rows, setRows] = useState<XO[]>(() =>
     source.map((o) => ({
       bucket: (o as any).bucket ?? "active",
@@ -205,7 +205,7 @@ export default function PlayerObservationsTable({
     })),
   );
 
-  // when the parent replaces observations – synchronize
+  // when parent replaces observations – synchronize
   useEffect(() => {
     setRows(
       (observations as XO[]).map((o) => ({
@@ -228,8 +228,8 @@ export default function PlayerObservationsTable({
 
   const normalizedPlayerName = (playerName ?? "").trim().toLowerCase();
 
-  // select the "main" player in this observation – first by playerId,
-  // then by name, and finally the first on the list
+  // pick the "main" player in this observation – first by playerId,
+  // then by name, and finally the first from the list
   function getMainPlayer(row: XO): ObsPlayer | null {
     const list = row.players ?? [];
     if (!list.length) return null;
@@ -251,8 +251,8 @@ export default function PlayerObservationsTable({
     return byName ?? list[0];
   }
 
-  // ⬇️ PERFORMANCE SUMMARY – we take all Ratings from rows
-  // and calculate the sum, count, and average (sum / count)
+  // ⬇️ SUMMARY "Rating:" – we take all Ratings from rows
+  // and calculate sum, count, and average (sum / count)
   const performanceSummary = useMemo(() => {
     if (!rows.length) return null;
 
@@ -322,7 +322,7 @@ export default function PlayerObservationsTable({
           ? globalId
           : null;
 
-    // if we don't have any ID associated with players/global_players tables – we don't save
+    // if we don't have any ID linked to player/global_player tables – don't save
     if (targetPlayerId == null && targetGlobalId == null) return;
 
     const ratingEntries: { aspect_key: string; rating: number }[] = [];
@@ -404,7 +404,7 @@ export default function PlayerObservationsTable({
     const mainName = (playerName ?? "").trim() || "Unknown player";
 
     const newRow: XO = {
-      id: 0 as any, // temporary ID, Observations/Editor/server can assign final one
+      id: 0 as any, // temporary ID, Observations/Editor/server may assign final one
       player: mainName,
       match: "",
       date: "",
@@ -433,7 +433,7 @@ export default function PlayerObservationsTable({
   function save(obs: XO) {
     const mainName = (playerName ?? "").trim() || "Unknown player";
 
-    // make sure the main player is the one from the editor
+    // ensure the main player is the one from the editor
     const patched: XO = {
       ...obs,
       player: mainName,
@@ -453,7 +453,7 @@ export default function PlayerObservationsTable({
       return next;
     });
 
-    // try to save the "player performance" to Supabase (observation_ratings)
+    // try to save "player appearance" to Supabase (observation_ratings)
     if (typeof patched.id === "number" && patched.id > 0) {
       void upsertObservationRatingsForPlayer(patched);
     }
@@ -485,7 +485,7 @@ export default function PlayerObservationsTable({
       {/* section header in accordion */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold">Player observations</h3>
+          <h3 className="text-base font-semibold">Player Observations</h3>
           <p className="text-xs text-muted-foreground">
             All observations linked to:{" "}
             <strong>{(playerName ?? "").trim() || "Unknown player"}</strong>
@@ -494,7 +494,7 @@ export default function PlayerObservationsTable({
           {performanceSummary && (
             <p className="mt-0.5 text-[11px] text-muted-foreground">
               Average rating from{" "}
-              <strong>{performanceSummary.count}</strong> performances:{" "}
+              <strong>{performanceSummary.count}</strong> appearances:{" "}
               <strong>{performanceSummary.avg.toFixed(2)}</strong>
             </p>
           )}
@@ -512,7 +512,7 @@ export default function PlayerObservationsTable({
             <tr>
               <th className="px-2 py-2 text-left sm:px-3">Match</th>
               <th className="px-2 py-2 text-left sm:px-3">
-                Player performance
+                Player Performance
               </th>
               <th className="px-2 py-2 text-left sm:px-3">League</th>
               <th className="px-2 py-2 text-right sm:px-3">Actions</th>
@@ -591,7 +591,7 @@ export default function PlayerObservationsTable({
                     </div>
                   </td>
 
-                  {/* Player performance */}
+                  {/* Player Performance */}
                   <td className="px-2 py-2 sm:px-3">
                     {mainPlayer ? (
                       <div className="space-y-1 text-[12px] text-gray-800 dark:text-neutral-100">
@@ -661,9 +661,9 @@ export default function PlayerObservationsTable({
                 >
                   This player does not have any observations yet.
                   <br />
-                    {/* <Button size="sm" className="mt-3" onClick={addNew}>
+                  {/* <Button size="sm" className="mt-3" onClick={addNew}>
                     <Plus className="mr-1 h-4 w-4" />
-                    Add the first observation
+                    Add first observation
                   </Button> */}
                 </td>
               </tr>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabaseClient";
 
-/* ===== FORM CONTEXTS – same as in RequiredFieldsPage ===== */
+/* ===== FORM CONTEXTS – identical to RequiredFieldsPage ===== */
 
 export type FormContext =
   | "player_basic_known"
@@ -18,7 +18,7 @@ export type FormContext =
   | "player_editor_contact"
   | "player_editor_grade";
 
-/* ===== Default requirements – IDENTICAL to RequiredFieldsPage ===== */
+/* ===== Default Requirements – IDENTICAL to RequiredFieldsPage ===== */
 
 export const DEFAULT_REQUIRED: Record<string, boolean> = {
   // player_basic_known (AddPlayer)
@@ -67,7 +67,7 @@ export const DEFAULT_REQUIRED: Record<string, boolean> = {
   "player_editor_basic_unknown.clubCountry": true,
   "player_editor_basic_unknown.unknownNote": false,
 
-  // PlayerEditor – pitch profile
+  // PlayerEditor – field profile
   "player_editor_ext_profile.height": false,
   "player_editor_ext_profile.weight": false,
   "player_editor_ext_profile.dominantFoot": false,
@@ -86,7 +86,7 @@ export const DEFAULT_REQUIRED: Record<string, boolean> = {
   "player_editor_ext_eligibility.transfermarkt": false,
   "player_editor_ext_eligibility.wyscout": false,
 
-  // PlayerEditor – health and statistics
+  // PlayerEditor – health & stats
   "player_editor_ext_stats365.injuryHistory": false,
   "player_editor_ext_stats365.minutes365": false,
   "player_editor_ext_stats365.starts365": false,
@@ -105,7 +105,7 @@ export const DEFAULT_REQUIRED: Record<string, boolean> = {
   "player_editor_grade.finalComment": false,
 };
 
-/* ===== Key helper ===== */
+/* ===== Key Helper ===== */
 
 export function makeKey(context: FormContext | string, fieldKey: string) {
   return `${context}.${fieldKey}`;
@@ -117,6 +117,7 @@ type DbRow = {
   required: boolean;
 };
 
+/* ===========================================================
  *  useRequiredFields – hook used in AddPlayer / ObservationEditor
  * ========================================================= */
 

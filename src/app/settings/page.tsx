@@ -45,7 +45,7 @@ type ProfileRow = {
   phone: string | null;
   active: boolean | null;
   last_active: string | null;
-  country?: string | null; // requires profiles.country
+  country?: string | null; 
 };
 
 /* ======================= Utils ======================= */
@@ -53,7 +53,7 @@ type ProfileRow = {
 function fmtDate(d?: string | null) {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleString("pl-PL", {
+    return new Date(d).toLocaleString("en-GB", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -67,9 +67,9 @@ function fmtDate(d?: string | null) {
 
 function roleLabel(r?: Role | string | null) {
   if (r === "admin") return "Admin";
-  if (r === "scout-agent") return "Scout-agent";
+  if (r === "scout-agent") return "Scout Agent";
   if (r === "scout") return "Scout";
-  return "Nieznana rola";
+  return "Unknown Role";
 }
 
 const stepPillClass =
@@ -80,36 +80,36 @@ const stepPillClass =
 type Country = { code: string; name: string; flag: string };
 
 const COUNTRIES: Country[] = [
-  { code: "PL", name: "Polska", flag: "🇵🇱" },
-  { code: "DE", name: "Niemcy", flag: "🇩🇪" },
-  { code: "GB", name: "Anglia", flag: "🇬🇧" },
-  { code: "ES", name: "Hiszpania", flag: "🇪🇸" },
-  { code: "IT", name: "Włochy", flag: "🇮🇹" },
-  { code: "FR", name: "Francja", flag: "🇫🇷" },
-  { code: "NL", name: "Holandia", flag: "🇳🇱" },
-  { code: "PT", name: "Portugalia", flag: "🇵🇹" },
-  { code: "SE", name: "Szwecja", flag: "🇸🇪" },
-  { code: "NO", name: "Norwegia", flag: "🇳🇴" },
-  { code: "DK", name: "Dania", flag: "🇩🇰" },
-  { code: "BE", name: "Belgia", flag: "🇧🇪" },
-  { code: "CH", name: "Szwajcaria", flag: "🇨🇭" },
+  { code: "PL", name: "Poland", flag: "🇵🇱" },
+  { code: "DE", name: "Germany", flag: "🇩🇪" },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
+  { code: "ES", name: "Spain", flag: "🇪🇸" },
+  { code: "IT", name: "Italy", flag: "🇮🇹" },
+  { code: "FR", name: "France", flag: "🇫🇷" },
+  { code: "NL", name: "Netherlands", flag: "🇳🇱" },
+  { code: "PT", name: "Portugal", flag: "🇵🇹" },
+  { code: "SE", name: "Sweden", flag: "🇸🇪" },
+  { code: "NO", name: "Norway", flag: "🇳🇴" },
+  { code: "DK", name: "Denmark", flag: "🇩🇰" },
+  { code: "BE", name: "Belgium", flag: "🇧🇪" },
+  { code: "CH", name: "Switzerland", flag: "🇨🇭" },
   { code: "AT", name: "Austria", flag: "🇦🇹" },
-  { code: "CZ", name: "Czechy", flag: "🇨🇿" },
-  { code: "SK", name: "Słowacja", flag: "🇸🇰" },
-  { code: "UA", name: "Ukraina", flag: "🇺🇦" },
-  { code: "LT", name: "Litwa", flag: "🇱🇹" },
-  { code: "LV", name: "Łotwa", flag: "🇱🇻" },
+  { code: "CZ", name: "Czech Republic", flag: "🇨🇿" },
+  { code: "SK", name: "Slovakia", flag: "🇸🇰" },
+  { code: "UA", name: "Ukraine", flag: "🇺🇦" },
+  { code: "LT", name: "Lithuania", flag: "🇱🇹" },
+  { code: "LV", name: "Latvia", flag: "🇱🇻" },
   { code: "EE", name: "Estonia", flag: "🇪🇪" },
-  { code: "HU", name: "Węgry", flag: "🇭🇺" },
-  { code: "RO", name: "Rumunia", flag: "🇷🇴" },
-  { code: "HR", name: "Chorwacja", flag: "🇭🇷" },
+  { code: "HU", name: "Hungary", flag: "🇭🇺" },
+  { code: "RO", name: "Romania", flag: "🇷🇴" },
+  { code: "HR", name: "Croatia", flag: "🇭🇷" },
   { code: "RS", name: "Serbia", flag: "🇷🇸" },
-  { code: "SI", name: "Słowenia", flag: "🇸🇮" },
-  { code: "GR", name: "Grecja", flag: "🇬🇷" },
-  { code: "TR", name: "Turcja", flag: "🇹🇷" },
+  { code: "SI", name: "Slovenia", flag: "🇸🇮" },
+  { code: "GR", name: "Greece", flag: "🇬🇷" },
+  { code: "TR", name: "Turkey", flag: "🇹🇷" },
   { code: "US", name: "USA", flag: "🇺🇸" },
-  { code: "BR", name: "Brazylia", flag: "🇧🇷" },
-  { code: "AR", name: "Argentyna", flag: "🇦🇷" },
+  { code: "BR", name: "Brazil", flag: "🇧🇷" },
+  { code: "AR", name: "Argentina", flag: "🇦🇷" },
 ];
 
 import {
@@ -159,7 +159,7 @@ function CountrySearchCombobox({
                 <span className="truncate">{selected.name}</span>
               </>
             ) : (
-              <span className="text-muted-foreground">Wybierz kraj</span>
+              <span className="text-muted-foreground">Select Country</span>
             )}
           </span>
           <ChevronsUpDown
@@ -177,7 +177,7 @@ function CountrySearchCombobox({
       >
         <Command>
           <CommandInput
-            placeholder="Szukaj kraju..."
+            placeholder="Search country..."
             className={cn(
               "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-stone-200 bg-background px-3 text-sm",
               "shadow-none outline-none",
@@ -186,7 +186,7 @@ function CountrySearchCombobox({
             )}
           />
           <CommandList className="max-h-64">
-            <CommandEmpty>Brak wyników.</CommandEmpty>
+            <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {COUNTRIES.map((country) => {
                 const isActive = selected?.code === country.code;
@@ -248,12 +248,12 @@ function SavePill({
         {state === "saving" ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin md:mr-2" />
-            <span className="hidden md:inline">Autozapis…</span>
+            <span className="hidden md:inline">Autosaving…</span>
           </>
         ) : (
           <>
             <Check className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline">Zapisano</span>
+            <span className="hidden md:inline">Saved</span>
           </>
         )}
       </span>
@@ -400,7 +400,7 @@ export default function SettingsPage() {
       } catch (e: any) {
         console.error("[SettingsPage] load error:", e);
         if (!mounted) return;
-        setError(e?.message || "Nie udało się pobrać ustawień konta.");
+        setError(e?.message || "Failed to fetch account settings.");
         setProfile(null);
       } finally {
         if (mounted) setLoading(false);
@@ -485,7 +485,7 @@ export default function SettingsPage() {
             console.error("[SettingsPage] Supabase update error:", updateError);
             if (!cancelled) {
               setSaveState("idle");
-              setSaveError("Nie udało się zapisać danych profilu.");
+              setSaveError("Failed to save profile data.");
             }
             return;
           }
@@ -508,7 +508,7 @@ export default function SettingsPage() {
           console.error("[SettingsPage] Supabase update exception:", err);
           if (!cancelled) {
             setSaveState("idle");
-            setSaveError("Wystąpił błąd podczas zapisu profilu.");
+            setSaveError("An error occurred during profile save.");
           }
         }
       })();
@@ -526,15 +526,15 @@ export default function SettingsPage() {
     setPasswordError(null);
 
     if (!newPassword || !newPasswordConfirm) {
-      setPasswordError("Wpisz nowe hasło w oba pola.");
+      setPasswordError("Enter new password in both fields.");
       return;
     }
     if (newPassword.length < 8) {
-      setPasswordError("Hasło musi mieć co najmniej 8 znaków.");
+      setPasswordError("Password must be at least 8 characters.");
       return;
     }
     if (newPassword !== newPasswordConfirm) {
-      setPasswordError("Hasła nie są takie same.");
+      setPasswordError("Passwords do not match.");
       return;
     }
 
@@ -549,14 +549,14 @@ export default function SettingsPage() {
 
       setNewPassword("");
       setNewPasswordConfirm("");
-      toast.success("Hasło zostało zmienione.");
+      toast.success("Password updated successfully.");
     } catch (e: any) {
       console.error("[SettingsPage] change password error:", e);
       setPasswordError(
         e?.message ||
-        "Nie udało się zmienić hasła. Spróbuj ponownie lub użyj resetu hasła e-mailem."
+        "Failed to update password. Try again or use the email password reset option."
       );
-      toast.error("Błąd podczas zmiany hasła.");
+      toast.error("Error during password update.");
     } finally {
       setSavingPassword(false);
     }
@@ -586,7 +586,7 @@ export default function SettingsPage() {
     <div className="w-full">
       <div className="flex w-full items-center gap-2">
         <h2 className="mt-1 text-xl font-semibold leading-none tracking-tight">
-          Ustawienia konta
+          Account Settings
         </h2>
         {profile && (
           <span className="ml-auto inline-flex items-center rounded bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
@@ -605,14 +605,14 @@ export default function SettingsPage() {
         <Crumb
           items={[
             { label: "Start", href: "/" },
-            { label: "Ustawienia konta" },
+            { label: "Account Settings" },
           ]}
         />
         <ToolbarFull title={titleNode} right={null} />
         <Card className="border-gray-300 bg-white/70 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/70">
           <CardContent className="flex flex-col items-start gap-3 p-4 text-sm text-dark dark:text-neutral-300 sm:flex-row sm:items-center sm:justify-between">
-            <span>Musisz być zalogowany, aby zarządzać ustawieniami konta.</span>
-            <Button onClick={() => router.push("/")}>Zaloguj się</Button>
+            <span>You must be logged in to manage account settings.</span>
+            <Button onClick={() => router.push("/")}>Log In</Button>
           </CardContent>
         </Card>
       </div>
@@ -626,7 +626,7 @@ export default function SettingsPage() {
       <Crumb
         items={[
           { label: "Start", href: "/" },
-          { label: "Ustawienia konta" },
+          { label: "Account Settings" },
         ]}
       />
 
@@ -642,14 +642,14 @@ export default function SettingsPage() {
       {loading && (
         <Card className="border-dashed border-stone-300 bg-stone-50/80 dark:border-neutral-800 dark:bg-neutral-950/60">
           <CardContent className="px-4 py-6 text-sm text-stone-600 dark:text-neutral-300">
-            Ładowanie ustawień konta…
+            Loading account settings…
           </CardContent>
         </Card>
       )}
 
       {!loading && profile && (
         <div className="space-y-4">
-          {/* STEP 1 – Dane profilu */}
+          {/* STEP 1 – Profile Details */}
           <Card className="mt-1">
             <CardHeader
               className={cn(
@@ -665,13 +665,12 @@ export default function SettingsPage() {
                 className="flex w-full items-center justify-between px-4 py-4 text-left"
               >
                 <div>
-                  <div className={stepPillClass}>Krok 1 · Dane profilu</div>
+                  <div className={stepPillClass}>Step 1 · Profile Details</div>
                   <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                    Podstawowe informacje
+                    Basic Information
                   </div>
                   <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                    Imię i nazwisko, dane kontaktowe i kraj — baza do
-                    dopasowywania widoków i rozgrywek.
+                    Full name, contact info and country — base for matching views and competitions.
                   </p>
                 </div>
                 <div className="flex items-center gap-3 pl-4">
@@ -700,14 +699,14 @@ export default function SettingsPage() {
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
-                          <Label className="text-sm">Imię i nazwisko</Label>
+                          <Label className="text-sm">Full Name</Label>
                           <div className="relative mt-1">
                             <span className="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-muted-foreground">
                               <User className="h-3.5 w-3.5" />
                             </span>
                             <Input
                               className="pl-9"
-                              placeholder="Twoje imię i nazwisko"
+                              placeholder="Your full name"
                               value={form.fullName}
                               onChange={(e) =>
                                 setForm((s) => ({
@@ -720,7 +719,7 @@ export default function SettingsPage() {
                         </div>
 
                         <div>
-                          <Label className="text-sm">E-mail logowania</Label>
+                          <Label className="text-sm">Login Email</Label>
                           <div className="relative mt-1">
                             <span className="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-muted-foreground">
                               <Mail className="h-3.5 w-3.5" />
@@ -733,20 +732,19 @@ export default function SettingsPage() {
                             />
                           </div>
                           <p className="mt-1 text-[11px] text-muted-foreground">
-                            Zmiana adresu logowania wymaga osobnego procesu
-                            bezpieczeństwa.
+                            Changing your login address requires a separate security process.
                           </p>
                         </div>
 
                         <div>
-                          <Label className="text-sm">Telefon</Label>
+                          <Label className="text-sm">Phone</Label>
                           <div className="relative mt-1">
                             <span className="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-muted-foreground">
                               <Phone className="h-3.5 w-3.5" />
                             </span>
                             <Input
                               className="pl-9"
-                              placeholder="+48 123 456 789"
+                              placeholder="+44 123 456 789"
                               value={form.phone}
                               onChange={(e) =>
                                 setForm((s) => ({
@@ -759,7 +757,7 @@ export default function SettingsPage() {
                         </div>
 
                         <div>
-                          <Label className="text-sm">Kraj</Label>
+                          <Label className="text-sm">Country</Label>
                           <div className="mt-1 flex items-center gap-2">
                             <Globe2 className="hidden h-4 w-4 text-muted-foreground md:inline" />
                             <div className="w-full">
@@ -772,15 +770,14 @@ export default function SettingsPage() {
                             </div>
                           </div>
                           <p className="mt-1 text-[11px] text-muted-foreground">
-                            Kraj pomaga dopasować domyślne rozgrywki, strefę
-                            czasową i rekomendacje.
+                            Country helps match default competitions, time zones, and recommendations.
                           </p>
                         </div>
                       </div>
 
                       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
                         <span>
-                          Rola:{" "}
+                          Role:{" "}
                           <span className="font-medium">
                             {roleLabel(profile.role as Role)}
                           </span>
@@ -788,7 +785,7 @@ export default function SettingsPage() {
                         {profile.last_active && (
                           <span className="inline-flex items-center gap-1">
                             <CalendarClock className="h-3.5 w-3.5" />
-                            ostatnia aktywność: {fmtDate(profile.last_active)}
+                            last active: {fmtDate(profile.last_active)}
                           </span>
                         )}
                       </div>
@@ -799,7 +796,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* STEP 2 – Bezpieczeństwo */}
+          {/* STEP 2 – Security */}
           <Card className="mt-1">
             <CardHeader
               className={cn(
@@ -815,13 +812,12 @@ export default function SettingsPage() {
                 className="flex w-full items-center justify-between px-4 py-4 text-left"
               >
                 <div>
-                  <div className={stepPillClass}>Krok 2 · Bezpieczeństwo</div>
+                  <div className={stepPillClass}>Step 2 · Security</div>
                   <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                    Hasło i dostęp
+                    Password and Access
                   </div>
                   <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                    Zmień hasło do logowania. Hasło nie jest pokazywane ani
-                    przechowywane w panelu administracyjnym.
+                    Change your login password. The password is not shown or stored in the admin panel.
                   </p>
                 </div>
                 <div className="flex items-center gap-3 pl-4">
@@ -846,20 +842,18 @@ export default function SettingsPage() {
                   <AccordionContent id="security-panel" className="pt-4 pb-5">
                     <div className="space-y-3 text-sm">
                       <p className="text-[11px] leading-snug text-muted-foreground">
-                        Po zmianie hasła możesz zostać wylogowany z innych
-                        urządzeń. Użyj unikalnego hasła, którego nie używasz w
-                        innych serwisach.
+                        After changing your password, you may be logged out from other devices. Use a unique password that you don't use in other services.
                       </p>
 
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
                           <Label className="text-xs text-muted-foreground">
-                            Nowe hasło
+                            New Password
                           </Label>
                           <Input
                             type="password"
                             autoComplete="new-password"
-                            placeholder="Minimum 8 znaków"
+                            placeholder="Minimum 8 characters"
                             value={newPassword}
                             onChange={(e) =>
                               setNewPassword(e.target.value)
@@ -869,7 +863,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <Label className="text-xs text-muted-foreground">
-                            Powtórz nowe hasło
+                            Repeat New Password
                           </Label>
                           <Input
                             type="password"
@@ -896,7 +890,7 @@ export default function SettingsPage() {
                           className="min-w-[180px] bg-gray-900 text-white hover:bg-gray-800"
                         >
                           <LockKeyhole className="mr-2 h-4 w-4" />
-                          {savingPassword ? "Zmieniam hasło…" : "Zmień hasło"}
+                          {savingPassword ? "Updating Password…" : "Update Password"}
                         </Button>
                       </div>
                     </div>
@@ -906,7 +900,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* STEP 3 – Preferencje */}
+          {/* STEP 3 – Preferences */}
           <Card className="mt-1">
             <CardHeader
               className={cn(
@@ -922,13 +916,13 @@ export default function SettingsPage() {
                 className="flex w-full items-center justify-between px-4 py-4 text-left"
               >
                 <div>
-                  <div className={stepPillClass}>Krok 3 · Preferencje</div>
+                  <div className={stepPillClass}>Step 3 · Preferences</div>
                   <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                    Powiadomienia i wygląd
+                    Notifications and Appearance
                   </div>
                   <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                    Lekkie ustawienia dotyczące powiadomień i tonu interfejsu.
-                    Na razie przechowywane lokalnie w przeglądarce.
+                    Preferences for notifications and interface tone.
+                    Currently stored locally in the browser.
                   </p>
                 </div>
                 <div className="flex items-center gap-3 pl-4">
@@ -954,17 +948,17 @@ export default function SettingsPage() {
                     <div className="space-y-4 text-xs text-dark dark:text-neutral-300">
                       <div className="space-y-2">
                         <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Powiadomienia e-mail
+                          Email Notifications
                         </div>
                         <ToggleRow
-                          label="Podsumowania scoutingowe"
-                          description="Otrzymuj zestawienia, gdy pojawiają się nowi zawodnicy lub ważne zmiany."
+                          label="Scouting Summaries"
+                          description="Receive digests when new players appear or important changes occur."
                           checked={emailNotifications}
                           onCheckedChange={setEmailNotifications}
                         />
                         <ToggleRow
-                          label="Nowości produktowe Entriso Scouting"
-                          description="Informacje o nowych funkcjach i zmianach w panelu."
+                          label="Entriso Scouting Product News"
+                          description="Information about new features and changes in the dashboard."
                           checked={productNews}
                           onCheckedChange={setProductNews}
                         />
@@ -972,11 +966,11 @@ export default function SettingsPage() {
 
                       <div className="space-y-2">
                         <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Wygląd
+                          Appearance
                         </div>
                         <ToggleRow
-                          label="Ciemniejszy sidebar i akcenty"
-                          description="Wymusza ciemniejsze tony w bocznym panelu (lokalne ustawienie – możesz później wynieść do Supabase)."
+                          label="Darker Sidebar and Accents"
+                          description="Forces darker tones in the side panel (local setting – can be moved to Supabase later)."
                           checked={darkSidebar}
                           onCheckedChange={setDarkSidebar}
                         />

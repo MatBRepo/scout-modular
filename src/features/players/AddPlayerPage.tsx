@@ -133,7 +133,7 @@ type Country = { code: string; name: string; flag: string };
 const COUNTRIES: Country[] = [
   { code: "PL", name: "Poland", flag: "🇵🇱" },
   { code: "DE", name: "Germany", flag: "🇩🇪" },
-  { code: "GB", name: "England", flag: "🇬🇧" },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
   { code: "ES", name: "Spain", flag: "🇪🇸" },
   { code: "IT", name: "Italy", flag: "🇮🇹" },
   { code: "FR", name: "France", flag: "🇫🇷" },
@@ -194,7 +194,7 @@ function SavePill({
         {state === "saving" ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin md:mr-2" />
-            <span className="hidden md:inline">Autosaving…</span>
+            <span className="hidden md:inline">Auto-saving…</span>
           </>
         ) : (
           <>
@@ -226,7 +226,7 @@ function Chip({ text }: { text: string }) {
   );
 }
 
-/* Country combobox (old – np. kraj urodzenia) */
+/* Country combobox (e.g. birth country) */
 function CountryCombobox({
   value,
   onChange,
@@ -294,7 +294,7 @@ function CountryCombobox({
             )}
           />
           <CommandList className="max-h-64">
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>No results.</CommandEmpty>
             <CommandGroup>
               {COUNTRIES.map((c) => {
                 const isActive = c.name === value;
@@ -324,7 +324,7 @@ function CountryCombobox({
   );
 }
 
-/* NOWY: CountrySearchCombobox – taki jak w PlayerEditorPage dla kraju klubu */
+/* CountrySearchCombobox – like in PlayerEditorPage for club country */
 function CountrySearchCombobox({
   value,
   onChange,
@@ -384,7 +384,7 @@ function CountrySearchCombobox({
             )}
           />
           <CommandList className="max-h-64">
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>No results.</CommandEmpty>
             <CommandGroup>
               {COUNTRIES.map((country) => {
                 const isActive = selected?.code === country.code;
@@ -519,7 +519,7 @@ export default function AddPlayerPage() {
 
   const basicRef = useRef<HTMLDivElement | null>(null);
 
-  // default scout country – only if none set
+  // Default scout country – only if nothing is set
   useEffect(() => {
     if (!SCOUT_DEFAULT_COUNTRY) return;
     setExt((prev) => {
@@ -544,9 +544,9 @@ export default function AddPlayerPage() {
     return ratingConfig.filter((r) => r.enabled !== false);
   }, [ratingConfig]);
 
-  // AUTOMATIC calculation of profile mode (known / unknown)
-  // Known player = possesses first name or last name
-  // Unknown player = lack of first name and last name, but other data exists (e.g. number, club etc.)
+  // AUTOMATIC profile mode calculation (known / unknown)
+  // Known player = has first name or last name
+  // Unknown player = no first or last name, but has other data (e.g. number, club, etc.)
   useEffect(() => {
     const hasName =
       firstName.trim() !== "" && lastName.trim() !== "";
@@ -561,10 +561,10 @@ export default function AddPlayerPage() {
     let next: Choice = null;
 
     if (hasName) {
-      // as soon as first name or last name appears – treated as "known"
+      // as soon as first or last name appears – treat as "known"
       next = "known";
     } else if (hasAnyOtherData) {
-      // lack of first name/last name, but number/year/club/note exists -> "unknown"
+      // no name, but has number/year/club/note -> "unknown"
       next = "unknown";
     } else {
       next = null;
@@ -582,7 +582,7 @@ export default function AddPlayerPage() {
   ]);
 
 
-  // Name displayed in player observation table
+  // Display name in player observations table
   const playerDisplayName = useMemo(() => {
     if (choice === "known") {
       const fn = firstName.trim();
@@ -830,7 +830,7 @@ export default function AddPlayerPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Autosave to Supabase – for new record: INSERT, then UPDATE as in the editor
+  // Auto-save to Supabase – for new record: INSERT, then UPDATE as in editor
   useEffect(() => {
     let cancelled = false;
 
@@ -848,7 +848,6 @@ export default function AddPlayerPage() {
       return;
     }
 
-    // choice may help, but don't block immediately
     const isKnown = choice === "known";
 
     setSaveError(null);
@@ -862,7 +861,7 @@ export default function AddPlayerPage() {
           const supabase = getSupabase();
           const currentYear = new Date().getFullYear();
 
-          const isKnownX = isKnown; // or choice === "known"
+          const isKnownX = isKnown; 
           let name: string;
           let clubFinal: string;
           let posBucket: BucketPos;
@@ -931,7 +930,6 @@ export default function AddPlayerPage() {
             nationality: nationalityVal,
             photo: null,
             meta,
-            // tenant_id, created_by etc. if RLS requires it
           };
 
           let error;
@@ -971,7 +969,7 @@ export default function AddPlayerPage() {
           console.error("[AddPlayerPage] Supabase save exception:", err);
           if (!cancelled) {
             setSaveState("idle");
-            setSaveError("An error occurred while saving player to Supabase.");
+            setSaveError("An error occurred while saving the player to Supabase.");
           }
         }
       })();
@@ -1000,7 +998,7 @@ export default function AddPlayerPage() {
     uNote,
   ]);
 
-  // PROGRESS: global completion percent – jak w PlayerEditorPage
+  // PROGRESS: global completion percent – as in PlayerEditorPage
   const completionPercent = useMemo(() => {
     const virtualPlayer = {
       firstName,
@@ -1077,13 +1075,13 @@ export default function AddPlayerPage() {
     return true;
   }
 
-  // Header actions: Autozapis + Postęp profilu + powrót (jak w PlayerEditorPage)
+  // Header actions: Auto-save + Profile progress + back (like in PlayerEditorPage)
   useEffect(() => {
     const node = (
       <div className="flex items-center gap-3">
         <SavePill state={saveState} size="compact" />
 
-        {/* PROGRESS BAR (global postęp profilu) */}
+        {/* PROGRESS BAR (global profile progress) */}
         <div className="flex flex-col items-end gap-0.5">
           <div className="flex items-center gap-2">
             <CircularProgress progress={completionPercent} size={32} strokeWidth={2} showValue />
@@ -1113,7 +1111,6 @@ export default function AddPlayerPage() {
 
     setActions(node);
     return () => {
-      // No-op cleanup to prevent double re-render on every keystroke
     };
   }, [setActions, saveState, router, completionPercent]);
 
@@ -1121,7 +1118,7 @@ export default function AddPlayerPage() {
     <div className="w-full">
       <div className="flex items-center gap-2 w-full">
         <h2 className="mt-1 text-xl font-semibold leading-none tracking-tight">
-          {playerDisplayName === "Unknown player" ? "Add player" : playerDisplayName}
+          {playerDisplayName === "Unknown player" ? "Add Player" : playerDisplayName}
         </h2>
         {choice === "known" && (
           <span className="ml-auto inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-100">
@@ -1152,9 +1149,9 @@ export default function AddPlayerPage() {
 
 
 
-      {/* Kroki 1–4 – zsynchronizowane z PlayerEditorPage */}
+      {/* Steps 1–4 – synchronized with PlayerEditorPage */}
       <div className="space-y-4">
-        {/* KROK 1 – Podstawowe informacje + Główna pozycja (pitch) */}
+        {/* STEP 1 – Basic information + Main position (pitch) */}
         <Card ref={basicRef} className="mt-1">
           <CardHeader
             className={cn(
@@ -1172,11 +1169,11 @@ export default function AddPlayerPage() {
               <div>
                 <div className={stepPillClass}>Step 1 · Basic data</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Basic information
+                  Basic Information
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Just fill in the fields below – the system will decide if the
-                  profile is <b>named</b> or <b>anonymous</b>.
+                  Simply fill in the fields below – the system will decide whether 
+                  the profile is <b>named</b> or <b>anonymous</b>.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
@@ -1217,11 +1214,11 @@ export default function AddPlayerPage() {
                         <Input
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
-                          placeholder="e.g. Smith"
+                          placeholder="e.g. Doe"
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">Birth year</Label>
+                        <Label className="text-sm">Year of birth</Label>
                         <NumericField
                           value={
                             birthYear === "" ? undefined : Number(birthYear.replace(/\D/g, ""))
@@ -1233,14 +1230,13 @@ export default function AddPlayerPage() {
                             }
 
                             const next = String(Math.max(0, val));
-                            // block > 4 digits, without replacing with 9999
                             if (next.length > 4) {
                               return;
                             }
 
                             setBirthYear(next);
                           }}
-                          placeholder="0"
+                          placeholder="2005"
                         />
                       </div>
 
@@ -1257,7 +1253,7 @@ export default function AddPlayerPage() {
                               val == null ? "" : String(val)
                             )
                           }
-                          placeholder="e.g. 27"
+                          placeholder="e.g. 10"
                         />
                       </div>
                       <div>
@@ -1265,12 +1261,12 @@ export default function AddPlayerPage() {
                         <Input
                           value={club}
                           onChange={(e) => setClub(e.target.value)}
-                          placeholder="e.g. Lech Poznań U19"
+                          placeholder="e.g. Manchester United U19"
                         />
                       </div>
                       <div>
                         <Label className="pb-2 text-sm">
-                          Club country / current club country
+                          Club country
                         </Label>
                         <CountrySearchCombobox
                           value={clubCountry}
@@ -1291,12 +1287,12 @@ export default function AddPlayerPage() {
 
                       <div className="md:col-span-1">
                         <Label className="text-sm">
-                          Own note (optional)
+                          Internal note (optional)
                         </Label>
                         <Textarea
                           value={uNote}
                           onChange={(e) => setUNote(e.target.value)}
-                          placeholder="Short note about the player, scout context…"
+                          placeholder="Brief note about the player, scout context…"
                           className="mt-1"
                         />
                       </div>
@@ -1308,7 +1304,7 @@ export default function AddPlayerPage() {
           </CardContent>
         </Card>
 
-        {/* KROK 2 – Rozszerzone informacje */}
+        {/* STEP 2 – Extended information */}
         <Card className="mt-1">
           <CardHeader
             className={cn(
@@ -1326,11 +1322,10 @@ export default function AddPlayerPage() {
               <div>
                 <div className={stepPillClass}>Step 2 · Pitch profile</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Extended information
+                  Extended Information
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Additional sports, contract and contact data – useful in a
-                  professional scouting report.
+                  Additional sporting, contract, and contact data – useful in a professional scouting report.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
@@ -1363,17 +1358,14 @@ export default function AddPlayerPage() {
                 <AccordionContent id="ext-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
-                      You can gradually fill in this data as you get to know the
-                      player better.
+                      You can gradually complete this data as you get to know the player better.
                     </p>
                   )}
 
                   <Tabs value={extView} onValueChange={(v: any) => setExtView(v)} className="w-full">
-                    {/* wrapper does scroll */}
                     <div
                       className={cn(
                         "relative",
-                        // if you want full width on mobile without breaking card paddings:
                         "-mx-4 px-4 md:mx-0 md:px-0",
                         "overflow-x-auto overflow-y-hidden md:overflow-visible",
                         "[-webkit-overflow-scrolling:touch]",
@@ -1382,23 +1374,22 @@ export default function AddPlayerPage() {
                     >
                       <TabsList
                         className={cn(
-                          // key: list should have width from content, not 100%
                           "inline-flex min-w-max",
                           "gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-900",
                           "whitespace-nowrap"
                         )}
                       >
                         <TabsTrigger value="profile" className="flex-none">
-                          Pitch profile
+                          Pitch Profile
                         </TabsTrigger>
                         <TabsTrigger value="eligibility" className="flex-none">
-                          Status &amp; scouting
+                          Status &amp; Scouting
                         </TabsTrigger>
                         <TabsTrigger value="stats365" className="flex-none">
-                          Health and statistics
+                          Health &amp; Stats
                         </TabsTrigger>
                         <TabsTrigger value="contact" className="flex-none">
-                          Contact &amp; social
+                          Contact &amp; Social
                         </TabsTrigger>
                       </TabsList>
                     </div>
@@ -1425,7 +1416,7 @@ export default function AddPlayerPage() {
           </CardContent>
         </Card>
 
-        {/* KROK 3 – Ocena */}
+        {/* STEP 3 – Player Rating */}
         <Card className="mt-1">
           <CardHeader
             className={cn(
@@ -1441,14 +1432,13 @@ export default function AddPlayerPage() {
               className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
-                <div className={stepPillClass}>Step 3 · Rating</div>
+                <div className={stepPillClass}>Step 3 · Performance</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Player rating
+                  Player Rating
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Break down the rating into technical, mental and physical
-                  categories – you configure them in the "Player ratings
-                  configuration" module.
+                  Break down the rating into technical, mental, and physical categories – 
+                  configure them in the "Player Rating Configuration" module.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
@@ -1481,9 +1471,8 @@ export default function AddPlayerPage() {
                 <AccordionContent id="grade-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
-                      You can fill in ratings even for an anonymous profile –
-                      it's important to maintain consistency with the main
-                      position.
+                      You can fill in ratings even for an anonymous profile – 
+                      consistency with the main position is important.
                     </p>
                   )}
 
@@ -1507,13 +1496,13 @@ export default function AddPlayerPage() {
                       <div className="space-y-6">
                         {enabledRatingAspects.length === 0 && (
                           <p className="text-xs text-stone-500 dark:text-neutral-400">
-                            No rating categories configured. Add them in the
-                            panel "Player ratings configuration".
+                            No rating categories configured. Add them in the 
+                            "Player Rating Configuration" panel.
                           </p>
                         )}
 
                         <RatingGroup 
-                          title="Basic" 
+                          title="Core" 
                           aspects={baseAspects} 
                           ratings={ratings}
                           setRatings={setRatings}
@@ -1529,7 +1518,7 @@ export default function AddPlayerPage() {
                         )}
                         {effectiveBucket === "DF" && (
                           <RatingGroup
-                            title="Defender (DEF)"
+                            title="Defender (DF)"
                             aspects={defAspects}
                             ratings={ratings}
                             setRatings={setRatings}
@@ -1537,7 +1526,7 @@ export default function AddPlayerPage() {
                         )}
                         {effectiveBucket === "MF" && (
                           <RatingGroup
-                            title="Midfielder (MID)"
+                            title="Midfielder (MF)"
                             aspects={midAspects}
                             ratings={ratings}
                             setRatings={setRatings}
@@ -1545,7 +1534,7 @@ export default function AddPlayerPage() {
                         )}
                         {effectiveBucket === "FW" && (
                           <RatingGroup
-                            title="Forward (ATT)"
+                            title="Forward (FW)"
                             aspects={attAspects}
                             ratings={ratings}
                             setRatings={setRatings}
@@ -1555,9 +1544,8 @@ export default function AddPlayerPage() {
                         {!effectiveBucket &&
                           enabledRatingAspects.length > 0 && (
                             <p className="text-[11px] text-stone-500 dark:text-neutral-400">
-                              Set the <b>Main position</b> in step 1 to
-                              see additional rating categories
-                              (GK/DEF/MID/ATT).
+                              Set the <b>Main position</b> in step 1 to 
+                              see additional rating categories (GK/DF/MF/FW).
                             </p>
                           )}
                       </div>
@@ -1566,8 +1554,8 @@ export default function AddPlayerPage() {
                     {!effectiveMainPos && (
                       <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
                         <p className="mb-3 text-xs text-stone-700 dark:text-neutral-200 sm:text-sm">
-                          To enter ratings, first fill in the player's{" "}
-                          <b>Main position</b> in step 1.
+                          To enter ratings, first complete the{" "}
+                          <b>Main position</b> in Step 1.
                         </p>
                         <Button
                           size="sm"
@@ -1581,7 +1569,7 @@ export default function AddPlayerPage() {
                             });
                           }}
                         >
-                          Go to step 1
+                          Go to Step 1
                         </Button>
                       </div>
                     )}
@@ -1592,7 +1580,7 @@ export default function AddPlayerPage() {
           </CardContent>
         </Card>
 
-        {/* KROK 4 – Obserwacje */}
+        {/* STEP 4 – Observations */}
         <Card className="mt-1">
           <CardHeader
             className={cn(
@@ -1608,13 +1596,13 @@ export default function AddPlayerPage() {
               className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
-                <div className={stepPillClass}>Step 4 · Observations</div>
+                <div className={stepPillClass}>Step 4 · Scouting</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
                   Observations
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Add matches and assign them to the player's profile. You can
-                  use the global observation log.
+                   Add matches and assign them to the player's profile. You can 
+                   use the global observation journal.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
@@ -1646,9 +1634,8 @@ export default function AddPlayerPage() {
                 <AccordionContent id="obs-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
-                      You can also create observations for an anonymous profile
-                      – it's important to maintain consistency of the match and
-                      level.
+                      You can create observations for anonymous profiles as well – 
+                      consistency of the match and level is key.
                     </p>
                   )}
 
@@ -1745,7 +1732,7 @@ function ExtContent({
         byBucket[bucket] = [...byBucket[bucket], opt];
       });
 
-      // We don't show the goalkeeper in alternative positions
+      // Don't show goalkeeper in alternative positions
       const bucketOrder: BucketPos[] = ["DF", "MF", "FW"];
 
       return (
@@ -1793,7 +1780,7 @@ function ExtContent({
                 <SelectContent>
                   <SelectItem value="R">Right (R)</SelectItem>
                   <SelectItem value="L">Left (L)</SelectItem>
-                  <SelectItem value="Both">Both</SelectItem>
+                  <SelectItem value="Both">Ambidextrous</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1970,19 +1957,19 @@ function ExtContent({
                     releaseClause: e.target.value,
                   }))
                 }
-                placeholder="Amount, clause, notes…"
+                placeholder="Amount, conditions, notes…"
               />
             </div>
             <div>
               <Label className="text-sm">
-                League level of the current club
+                Current club's league level
               </Label>
               <Input
                 value={ext.leagueLevel}
                 onChange={(e) =>
                   setExt((s) => ({ ...s, leagueLevel: e.target.value }))
                 }
-                placeholder="e.g. Premier League, U19 CLJ, 3rd league…"
+                placeholder="e.g. Premier League, U19, Division 2…"
               />
             </div>
           </div>
@@ -2043,14 +2030,14 @@ function ExtContent({
                   injuryHistory: e.target.value,
                 }))
               }
-              placeholder="Short description of injuries, breaks, surgeries…"
+              placeholder="Brief description of injuries, absences, surgeries…"
               className="mt-1"
             />
           </div>
           <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
             <div>
               <NumericField
-                label="Minutes in the last 365 days"
+                label="Minutes in last 365 days"
                 value={
                   ext.minutes365 === ""
                     ? undefined
@@ -2068,7 +2055,7 @@ function ExtContent({
 
             <div>
               <NumericField
-                label="Matches as a starter"
+                label="Matches as starter"
                 value={
                   ext.starts365 === ""
                     ? undefined
@@ -2086,7 +2073,7 @@ function ExtContent({
 
             <div>
               <NumericField
-                label="Matches as a substitute"
+                label="Matches as substitute"
                 value={
                   ext.subs365 === "" ? undefined : Number(ext.subs365)
                 }
@@ -2102,7 +2089,7 @@ function ExtContent({
 
             <div>
               <NumericField
-                label="Goals in the last 365 days"
+                label="Goals in last 365 days"
                 value={
                   ext.goals365 === "" ? undefined : Number(ext.goals365)
                 }
@@ -2130,7 +2117,7 @@ function ExtContent({
                 onChange={(e) =>
                   setExt((s) => ({ ...s, phone: e.target.value }))
                 }
-                placeholder="+48…"
+                placeholder="+44…"
               />
             </div>
             <div>
@@ -2141,7 +2128,7 @@ function ExtContent({
                 onChange={(e) =>
                   setExt((s) => ({ ...s, email: e.target.value }))
                 }
-                placeholder="mail@example.com"
+                placeholder="email@example.com"
               />
             </div>
           </div>
@@ -2157,7 +2144,7 @@ function ExtContent({
               />
             </div>
             <div>
-              <Label className="text-sm">Link IG</Label>
+              <Label className="text-sm">IG link</Label>
               <Input
                 value={ext.ig}
                 onChange={(e) =>
@@ -2167,7 +2154,7 @@ function ExtContent({
               />
             </div>
             <div>
-              <Label className="text-sm">Link TikTok</Label>
+              <Label className="text-sm">TikTok link</Label>
               <Input
                 value={ext.tiktok}
                 onChange={(e) =>

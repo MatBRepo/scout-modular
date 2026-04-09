@@ -12,3 +12,7 @@ dist/
 .ssh/
 id_deploy*
 .deploy/
+
+# Scratch & Build Info
+temp_*.tsx
+*.tsbuildinfo

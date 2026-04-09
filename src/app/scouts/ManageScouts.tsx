@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useState,
   useCallback,
+  useRef,
 } from "react";
 import { useRouter } from "next/navigation";
 import { Toolbar } from "@/shared/ui/atoms";
@@ -292,28 +293,28 @@ function KpiCell({
 }) {
   const avgLabel =
     typeof avgObsPerPlayer === "number"
-      ? `${avgObsPerPlayer.toFixed(1)} / player`
+      ? `${avgObsPerPlayer.toFixed(1)} / pl.`
       : `${Math.round(vol01 * 100)}%`;
 
   return (
     <div className="flex flex-col gap-1 min-w-[200px]">
       <div className="text-sm font-bold leading-none">{kpi}</div>
-      <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-[9px] uppercase tracking-wider text-dark/70 dark:text-neutral-400">
+      <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-[9px] uppercase tracking-wider text-stone-700 dark:text-neutral-400">
         <div className="flex flex-col">
           <div className="flex items-center justify-between">
             <span>Comp</span>
-            <span className="font-medium text-dark dark:text-neutral-200">{Math.round(comp01 * 100)}%</span>
+            <span className="font-medium text-stone-900 dark:text-neutral-200">{Math.round(comp01 * 100)}%</span>
           </div>
           <TinyBar
             value={comp01 * 100}
             className="bg-indigo-500"
-            title="Avg. profile completeness"
+            title="Avg profile completeness"
           />
         </div>
         <div className="flex flex-col">
           <div className="flex items-center justify-between">
             <span>Act</span>
-            <span className="font-medium text-dark dark:text-neutral-200">{Math.round(act01 * 100)}%</span>
+            <span className="font-medium text-stone-900 dark:text-neutral-200">{Math.round(act01 * 100)}%</span>
           </div>
           <TinyBar
             value={act01 * 100}
@@ -323,12 +324,12 @@ function KpiCell({
         </div>
         <div className="flex flex-col">
           <div className="flex items-center justify-between">
-            <span className="font-medium text-dark dark:text-neutral-200">{avgLabel}</span>
+            <span className="font-medium text-stone-900 dark:text-neutral-200">{avgLabel}</span>
           </div>
           <TinyBar
             value={vol01 * 100}
             className="bg-stone-500"
-            title="Average volume of observations relative to players"
+            title="Average observation volume relative to players"
           />
         </div>
       </div>
@@ -367,7 +368,7 @@ function ActivityTag({
   let label = "No activity";
   let dotCls = "bg-gray-400";
   if (act > 0.66) {
-    label = "Highly active";
+    label = "Very active";
     dotCls = "bg-emerald-500";
   } else if (act > 0.33) {
     label = "Active";
@@ -378,12 +379,12 @@ function ActivityTag({
   }
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-dark dark:bg-neutral-900 dark:text-neutral-300">
+    <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-stone-900 dark:bg-neutral-900 dark:text-neutral-300">
       <span className={`h-1.5 w-1.5 rounded-full ${dotCls}`} />
       <span>{label}</span>
       {isFinite(days) && days < 999 && (
         <span className="text-[9px] text-neutral-500 dark:text-neutral-400">
-          ({days === 0 ? "today" : `${days} days ago`})
+          ({days === 0 ? "today" : `${days} d. ago`})
         </span>
       )}
     </span>
@@ -465,7 +466,7 @@ export default function ScoutsAdminPage() {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteName.trim() || !inviteEmail.trim()) {
-      toast.error("Please provide name and email.");
+      toast.error("Please provide both name and email.");
       return;
     }
 
@@ -486,10 +487,10 @@ export default function ScoutsAdminPage() {
 
       toast.success(data.mailSent
         ? "Invitation sent successfully!"
-        : "Invitation created (email not sent - configuration missing).");
+        : "Invitation created (email not sent - missing configuration).");
 
       if (!data.mailSent && data.link) {
-        // Fallback: copy link if email was not sent
+        // Fallback: copy link if email failed
         navigator.clipboard.writeText(data.link);
         toast.info("Link copied to clipboard.");
       }
@@ -667,8 +668,8 @@ export default function ScoutsAdminPage() {
   return (
     <div className="w-full space-y-4">
       <Toolbar
-        title="Scouts list"
-        subtitle="View the activity and quality of scouts' work, and quickly preview their list of players and observations."
+        title="Scouts List"
+        subtitle="Monitor activity and performance quality, and quickly view their players and observations."
         right={
           <div className="flex flex-wrap items-center gap-2">
             {/* INVITE SCOUT BUTTON + MODAL */}
@@ -679,30 +680,30 @@ export default function ScoutsAdminPage() {
                   className="flex items-center gap-1 bg-gray-900 text-xs text-white hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
                 >
                   <UserPlus className="h-4 w-4" />
-                  Invite scout
+                  Invite Scout
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleInvite}>
                   <DialogHeader>
-                    <DialogTitle>Invite new scout</DialogTitle>
+                    <DialogTitle>Invite New Scout</DialogTitle>
                     <DialogDescription>
-                      Enter scout details to generate a link and send an invitation email.
+                      Enter the scout's name and email to generate a link and send an invitation email.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="name">Full name</Label>
+                      <Label htmlFor="name">Name and Surname</Label>
                       <Input
                         id="name"
                         value={inviteName}
                         onChange={(e) => setInviteName(e.target.value)}
-                        placeholder="e.g. John Doe"
+                        placeholder="e.g. John Smith"
                         required
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="email">E-mail</Label>
+                      <Label htmlFor="email">Email</Label>
                       <Input
                         id="email"
                         type="email"
@@ -718,10 +719,10 @@ export default function ScoutsAdminPage() {
                       {inviting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sending...
+                          Sending…
                         </>
                       ) : (
-                        "Send invitation"
+                        "Send Invitation"
                       )}
                     </Button>
                   </DialogFooter>
@@ -738,7 +739,7 @@ export default function ScoutsAdminPage() {
                 <Input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search by surname, email, region..."
+                  placeholder="Search by name, email, region…"
                   className="w-72 max-w-full pl-8"
                 />
               </div>
@@ -779,14 +780,14 @@ export default function ScoutsAdminPage() {
               title={
                 lastRefresh
                   ? `Last refresh: ${fmtDate(lastRefresh)}`
-                  : "Refresh now from Supabase"
+                  : "Refresh from Supabase"
               }
               disabled={loading}
             >
               <RefreshCw
                 className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
               />
-              {loading ? "Loading..." : "Refresh"}
+              {loading ? "Loading…" : "Refresh"}
               {lastRefresh && (
                 <span className="ml-1 text-[10px] text-muted-foreground">
                   {fmtTimeShort(lastRefresh)}
@@ -798,791 +799,558 @@ export default function ScoutsAdminPage() {
       />
 
       {/* Search bar on mobile (global) */}
-      <div className="sm:hidden">
+      <div className="px-1 sm:hidden">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search scout..."
+            placeholder="Search scouts…"
             className="w-full pl-8"
           />
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
-          {error}
-        </div>
-      )}
-
-      {/* ========== SECTION 1 – SCOUTS LIST (filters + table/cards + Details inline) ========== */}
-      <Card className="mt-1">
+      {/* Accordion Statistics / Summary */}
+      <Card className="overflow-hidden border-stone-200 dark:border-neutral-800">
         <CardHeader
+          onClick={() => setSummaryOpen(!summaryOpen)}
+          className="flex cursor-pointer select-none flex-row items-center justify-between bg-stone-50/50 px-4 py-3 hover:bg-stone-50 dark:bg-neutral-900/50 dark:hover:bg-neutral-900"
+        >
+          <div className="flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-stone-500" />
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-neutral-200">
+              Scouting Statistics
+            </h3>
+          </div>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-stone-400 transition-transform duration-200",
+              summaryOpen ? "rotate-180" : "rotate-0"
+            )}
+          />
+        </CardHeader>
+        {summaryOpen && (
+          <CardContent className="p-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-stone-500 dark:text-neutral-400">
+                  Total Scouts
+                </p>
+                <p className="text-2xl font-bold text-stone-900 dark:text-white">
+                  {summary.totalScouts}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-stone-500 dark:text-neutral-400">
+                  Total Players
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold text-stone-900 dark:text-white">
+                    {summary.totalPlayers}
+                  </p>
+                  <span className="text-xs text-stone-400">
+                    ({(summary.totalPlayers / (summary.totalScouts || 1)).toFixed(1)} / sc)
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-stone-500 dark:text-neutral-400">
+                  Observations
+                </p>
+                <p className="text-2xl font-bold text-stone-900 dark:text-white">
+                  {summary.totalObs}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-stone-500 dark:text-neutral-400">
+                  Active (14d)
+                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {summary.active14}
+                  </p>
+                  <span className="text-xs text-stone-400">
+                    ({Math.round((summary.active14 / (summary.totalScouts || 1)) * 100)}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Main Container: Filters (Desktop Left/Mobile Toggle) + List */}
+      <div className="flex flex-col gap-4 lg:flex-row">
+        {/* FILTERS PANEL */}
+        <div
           className={cn(
-            "group flex items-center justify-between rounded-md border-gray-200 p-0 transition-colors hover:bg-stone-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
-            listOpen && "bg-stone-100 dark:bg-neutral-900/70"
+            "w-full shrink-0 space-y-4 lg:w-64",
+            !filtersOpenMobile && "hidden lg:block",
+            filtersOpenMobile && "block"
           )}
         >
-          <button
-            type="button"
-            aria-expanded={listOpen}
-            aria-controls="scouts-list-panel"
-            onClick={() => setListOpen((v) => !v)}
-            className="flex w-full items-center justify-between px-4 py-4 text-left"
-          >
-            <div>
-              <div className={stepPillClass}>Section 1 · Scouts list</div>
-              <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                Scout rankings and work details
+          <Card className="border-stone-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+            <CardHeader className="px-4 py-3">
+              <div className="flex items-center justify-between">
+                <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-stone-900/70 dark:text-neutral-400">
+                  Advanced Filters
+                </h4>
+                {activeFiltersCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    onClick={resetFilters}
+                    className="h-auto p-0 text-[10px] text-rose-500 hover:bg-transparent hover:text-rose-600"
+                  >
+                    Reset
+                  </Button>
+                )}
               </div>
-              <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                Filters, KPI and a quick look at the player and observation list
-                without leaving the table.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 pl-4">
-              <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                {summary.totalScouts} scouts
-              </span>
+            </CardHeader>
+            <CardContent className="space-y-5 px-4 pb-6">
+              {/* Filter: Only Active 14d */}
+              <div
+                className="flex cursor-pointer items-center justify-between rounded-md border border-transparent bg-stone-50 px-3 py-2 transition-colors hover:bg-stone-100 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                onClick={() => setOnlyActive14(!onlyActive14)}
+              >
+                <span className="text-xs font-medium text-stone-700 dark:text-neutral-300">
+                  Only active (14d)
+                </span>
+                <div
+                  className={cn(
+                    "flex h-4 w-8 items-center rounded-full p-0.5 transition-colors",
+                    onlyActive14 ? "bg-emerald-500" : "bg-gray-300 dark:bg-neutral-700"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "h-3 w-3 rounded-full bg-white transition-transform",
+                      onlyActive14 ? "translate-x-4" : "translate-x-0"
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Filter: Name */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-semibold text-stone-500">
+                  Filter by name
+                </Label>
+                <div className="relative">
+                  <Users className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
+                  <Input
+                    value={nameQ}
+                    onChange={(e) => setNameQ(e.target.value)}
+                    placeholder="e.g. Smith…"
+                    className="h-9 pl-8 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Filter: Role */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-semibold text-stone-500">
+                  Role
+                </Label>
+                <div className="grid grid-cols-2 gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-900">
+                  <button
+                    onClick={() => setRoleFilter("all")}
+                    className={cn(
+                      "rounded px-2 py-1.5 text-[10px] font-bold transition-all",
+                      roleFilter === "all"
+                        ? "bg-white text-stone-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-100"
+                        : "text-stone-500 hover:text-stone-900 dark:text-neutral-400 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    ALL
+                  </button>
+                  <button
+                    onClick={() => setRoleFilter("scout")}
+                    className={cn(
+                      "rounded px-2 py-1.5 text-[10px] font-bold transition-all",
+                      roleFilter === "scout"
+                        ? "bg-white text-stone-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-100"
+                        : "text-stone-500 hover:text-stone-900 dark:text-neutral-400 dark:hover:text-neutral-200"
+                    )}
+                  >
+                    SCOUT
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter: Region */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-semibold text-stone-500">
+                  Region / Location
+                </Label>
+                <div className="relative">
+                  <MapPin className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
+                  <Input
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    placeholder="e.g. Warsaw…"
+                    className="h-9 pl-8 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Filter: Minimums */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold text-stone-500">
+                    Min. Players
+                  </Label>
+                  <Input
+                    type="number"
+                    value={minPlayers}
+                    onChange={(e) =>
+                      setMinPlayers(
+                        e.target.value === "" ? "" : parseInt(e.target.value)
+                      )
+                    }
+                    placeholder="0"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold text-stone-500">
+                    Min. Obs
+                  </Label>
+                  <Input
+                    type="number"
+                    value={minObs}
+                    onChange={(e) =>
+                      setMinObs(
+                        e.target.value === "" ? "" : parseInt(e.target.value)
+                      )
+                    }
+                    placeholder="0"
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* SCOUTS LIST AREA */}
+        <div className="flex-1 space-y-4">
+          <Card className="border-stone-200 dark:border-neutral-800">
+            <CardHeader
+              onClick={() => setListOpen(!listOpen)}
+              className="flex cursor-pointer select-none flex-row items-center justify-between bg-stone-50/30 px-4 py-3 hover:bg-stone-50 dark:bg-neutral-900/30 dark:hover:bg-neutral-900"
+            >
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-stone-500" />
+                <h3 className="text-sm font-semibold text-stone-900 dark:text-neutral-200">
+                  Scouts Ranking / Table ({filtered.length})
+                </h3>
+              </div>
               <ChevronDown
                 className={cn(
-                  "h-5 w-5 transition-transform",
+                  "h-4 w-4 text-stone-400 transition-transform duration-200",
                   listOpen ? "rotate-180" : "rotate-0"
                 )}
               />
-            </div>
-          </button>
-        </CardHeader>
-        <CardContent className="px-3 py-0 md:px-4">
-          <Accordion
-            type="single"
-            collapsible
-            value={listOpen ? "list" : undefined}
-            onValueChange={(v) => setListOpen(v === "list")}
-            className="w-full"
-          >
-            <AccordionItem value="list" className="border-0">
-              <AccordionContent id="scouts-list-panel" className="pt-4 pb-4">
-                {/* Filters */}
-                <div className="mb-4">
-                  <Card className="border-gray-200 shadow-sm dark:border-neutral-800">
-                    <CardContent
-                      className={cn(
-                        "grid gap-3 p-3 transition-[grid-template-rows,opacity]",
-                        filtersOpenMobile
-                          ? "grid-rows-[1fr] opacity-100 sm:grid-rows-[1fr]"
-                          : "grid-rows-[0fr] opacity-0 sm:grid-rows-[1fr] sm:opacity-100"
-                      )}
-                    >
-                      <div className="overflow-hidden">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                          <div>
-                            <Label className="mb-1 block text-xs text-muted-foreground">
-                              Surname / first name (by name only)
-                            </Label>
-                            <Input
-                              value={nameQ}
-                              onChange={(e) => setNameQ(e.target.value)}
-                              placeholder="e.g. Kowalski"
-                            />
-                          </div>
-                          <div>
-                            <Label className="mb-1 block text-xs text-muted-foreground">
-                              Region
-                            </Label>
-                            <Input
-                              value={region}
-                              onChange={(e) => setRegion(e.target.value)}
-                              placeholder="e.g. Region..."
-                            />
-                          </div>
-                          <div>
-                            <Label className="mb-1 block text-xs text-muted-foreground">
-                              Min. players
-                            </Label>
-                            <Input
-                              type="number"
-                              value={minPlayers}
-                              onChange={(e) =>
-                                setMinPlayers(
-                                  e.target.value === ""
-                                    ? ""
-                                    : Number(e.target.value)
-                                )
+            </CardHeader>
+            {listOpen && (
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-stone-100 bg-stone-50/50 dark:border-neutral-800 dark:bg-neutral-900/50">
+                        <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-500 dark:text-neutral-400">
+                          <button
+                            onClick={() => {
+                              if (sortKey === "position")
+                                setSortDir(sortDir === "asc" ? "desc" : "asc");
+                              else {
+                                setSortKey("position");
+                                setSortDir("asc");
                               }
-                              placeholder="—"
-                            />
-                          </div>
-                          <div>
-                            <Label className="mb-1 block text-xs text-muted-foreground">
-                              Min. observations
-                            </Label>
-                            <Input
-                              type="number"
-                              value={minObs}
-                              onChange={(e) =>
-                                setMinObs(
-                                  e.target.value === ""
-                                    ? ""
-                                    : Number(e.target.value)
-                                )
+                            }}
+                            className="flex items-center gap-1 hover:text-stone-900 dark:hover:text-neutral-200"
+                          >
+                            Pos
+                            {sortKey === "position" && (
+                              <span className="text-[8px]">
+                                {sortDir === "asc" ? "▲" : "▼"}
+                              </span>
+                            )}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-500 dark:text-neutral-400">
+                          <button
+                            onClick={() => {
+                              if (sortKey === "name")
+                                setSortDir(sortDir === "asc" ? "desc" : "asc");
+                              else {
+                                setSortKey("name");
+                                setSortDir("asc");
                               }
-                              placeholder="—"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                          <div className="inline-flex flex-wrap gap-1">
-                            <Button
-                              variant={
-                                roleFilter === "all" ? "default" : "outline"
+                            }}
+                            className="flex items-center gap-1 hover:text-stone-900 dark:hover:text-neutral-200"
+                          >
+                            Scout
+                            {sortKey === "name" && (
+                              <span className="text-[8px]">
+                                {sortDir === "asc" ? "▲" : "▼"}
+                              </span>
+                            )}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-500 dark:text-neutral-400">
+                          <button
+                            onClick={() => {
+                              if (sortKey === "kpi")
+                                setSortDir(sortDir === "asc" ? "desc" : "asc");
+                              else {
+                                setSortKey("kpi");
+                                setSortDir("desc");
                               }
-                              className="h-7 px-2 text-[11px]"
-                              onClick={() => setRoleFilter("all")}
-                            >
-                              All
-                            </Button>
-                            <Button
-                              variant={
-                                roleFilter === "scout"
-                                  ? "default"
-                                  : "outline"
+                            }}
+                            className="flex items-center gap-1 hover:text-stone-900 dark:hover:text-neutral-200"
+                          >
+                            KPI Summary
+                            {sortKey === "kpi" && (
+                              <span className="text-[8px]">
+                                {sortDir === "asc" ? "▲" : "▼"}
+                              </span>
+                            )}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-stone-500 dark:text-neutral-400 hidden sm:table-cell">
+                          <button
+                            onClick={() => {
+                              if (sortKey === "players")
+                                setSortDir(sortDir === "asc" ? "desc" : "asc");
+                              else {
+                                setSortKey("players");
+                                setSortDir("desc");
                               }
-                              className="h-7 px-2 text-[11px]"
-                              onClick={() => setRoleFilter("scout")}
-                            >
-                              Scout
-                            </Button>
-                            <Button
-                              variant={
-                                roleFilter === "scout-agent"
-                                  ? "default"
-                                  : "outline"
-                              }
-                              className="h-7 px-2 text-[11px]"
-                              onClick={() => setRoleFilter("scout-agent")}
-                            >
-                              Scout-agent
-                            </Button>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <label className="inline-flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
-                              <input
-                                type="checkbox"
-                                className="h-3 w-3 rounded border-gray-300 text-gray-900"
-                                checked={onlyActive14}
-                                onChange={(e) =>
-                                  setOnlyActive14(e.target.checked)
-                                }
-                              />
-                              <span>Only active 14 days</span>
-                            </label>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-[11px] text-muted-foreground hover:bg-muted"
-                              onClick={resetFilters}
-                            >
-                              Reset filters
-                            </Button>
-                          </div>
-                        </div>
-
-                        {activeFiltersCount > 0 && (
-                          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                            <span className="text-muted-foreground">
-                              Active filters ({activeFiltersCount}):
-                            </span>
-                            <div className="flex flex-wrap gap-1">
-                              {q.trim() && (
-                                <Chip
-                                  label={
-                                    `Search (global): "${q.trim()}"`
-                                  }
-                                />
-                              )}
-                              {nameQ.trim() && (
-                                <Chip label={`Name: ${nameQ}`} />
-                              )}
-                              {region.trim() && (
-                                <Chip label={`Region: ${region}`} />
-                              )}
-                              {minPlayers !== "" && (
-                                <Chip
-                                  label={`Min. players: ${minPlayers}`}
-                                />
-                              )}
-                              {minObs !== "" && (
-                                <Chip
-                                  label={`Min. observations: ${minObs}`}
-                                />
-                              )}
-                              {roleFilter !== "all" && (
-                                <Chip
-                                  label={
-                                    roleFilter === "scout"
-                                      ? "Role: Scout"
-                                      : "Role: Scout-agent"
-                                  }
-                                />
-                              )}
-                              {onlyActive14 && (
-                                <Chip label="Only active 14 days" />
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Mobile: cards + inline Details */}
-                <div className="space-y-2 md:hidden">
-                  {filtered.map((s) => (
-                    <div
-                      key={s.id}
-                      className="rounded-xl border border-gray-200 bg-white/70 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/70 dark:ring-white/5"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <PositionPill
-                          pos={s._position as number}
-                          delta={s._delta as number}
-                        />
-                        <div className="flex flex-col items-end gap-1">
-                          <RoleBadge role={s.role} />
-                          <ActivityTag
-                            lastActive={s.lastActive}
-                            activity01={s.activity01}
-                          />
-                          <span className={rankPillCls(s._rankBand as Rank)}>
-                            {rankLabel(s._rankBand as Rank)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-2 font-medium text-gray-900 dark:text-neutral-100">
-                        {s.name}
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-dark dark:text-neutral-400">
-                        {s.email && <span className="truncate">{s.email}</span>}
-                        {s.phone && <span>· {s.phone}</span>}
-                        {s.region && <span>· {s.region}</span>}
-                      </div>
-
-                      <div className="mt-3">
-                        <KpiCell
-                          kpi={s._kpi as number}
-                          comp01={s._avgCompleteness as number}
-                          act01={s._activity as number}
-                          vol01={s._vol01 as number}
-                          avgObsPerPlayer={s._avgObsPerPlayer as number}
-                        />
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-3 text-xs text-dark dark:text-neutral-400">
-                        <div className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" /> {s.playersCount}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <NotebookPen className="h-3.5 w-3.5" />{" "}
-                          {s.observationsCount}
-                        </div>
-                        <div className="text-right">
-                          {fmtDate(s.lastActive)}
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex justify-end">
-                        <Button
-                          size="sm"
-                          className="bg-gray-900 text-xs text-white hover:bg-gray-800"
-                          onClick={() =>
-                            setExpandedId((prev) =>
-                              prev === s.id ? null : s.id
-                            )
-                          }
-                        >
-                          <ExternalLink className="mr-1 h-4 w-4" />
-                          Details
-                        </Button>
-                      </div>
-
-                      {expandedId === s.id && (
-                        <div className="mt-3">
-                          <InlineScoutDetails scout={s} />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {filtered.length === 0 && !loading && (
-                    <div className="rounded-xl border border-gray-200 p-4 text-center text-sm text-dark dark:border-neutral-800 dark:text-neutral-400">
-                      No results for current filters.
-                    </div>
-                  )}
-                </div>
-
-                {/* Desktop: table + inline Details row */}
-                <div className="hidden w-full overflow-x-auto rounded-xl border border-gray-200 bg-white/70 shadow-sm ring-1 ring-black/5 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/70 dark:ring-white/5 md:block">
-                  <table className="w-full text-sm">
-                    <thead className="bg-stone-100/80 text-dark dark:bg-neutral-900/80 dark:text-neutral-300">
-                      <tr>
-                        {[
-                          { key: "name", label: "Scout" },
-                          { key: "kpi", label: "KPI" },
-                          { key: "players", label: "Players" },
-                          { key: "obs", label: "Observations" },
-                          { key: "lastActive", label: "Last active" },
-                          { key: "rank", label: "Rank" },
-                          { key: "actions", label: "Actions", right: true },
-                        ].map((c, i) => {
-                          const active =
-                            sortKey === (c.key as any) && c.key !== "actions";
-                          return (
-                            <th
-                              key={c.key}
-                              className={cn(
-                                "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-dark/70 dark:text-neutral-400",
-                                i === 0 && "pl-5"
-                              )}
-                            >
-                              {c.key === "actions" ? (
-                                c.label
-                              ) : (
-                                <button
-                                  className="inline-flex items-center gap-1 hover:text-gray-900 dark:hover:text-neutral-100 transition-colors"
-                                  onClick={() => {
-                                    if (active)
-                                      setSortDir((d) =>
-                                        d === "asc" ? "desc" : "asc"
-                                      );
-                                    setSortKey(c.key as any);
-                                  }}
-                                >
-                                  {c.label}
-                                  {active ? (
-                                    sortDir === "asc" ? (
-                                      <ChevronUp className="h-3.5 w-3.5" />
-                                    ) : (
-                                      <ChevronDown className="h-3.5 w-3.5" />
-                                    )
-                                  ) : null}
-                                </button>
-                              )}
-                            </th>
-                          );
-                        })}
+                            }}
+                            className="flex items-center gap-1 hover:text-stone-900 dark:hover:text-neutral-200"
+                          >
+                            Stats
+                            {sortKey === "players" && (
+                              <span className="text-[8px]">
+                                {sortDir === "asc" ? "▲" : "▼"}
+                              </span>
+                            )}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-stone-500 dark:text-neutral-400">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100/80 dark:divide-neutral-800/80">
-                      {filtered.map((s) => (
-                        <React.Fragment key={s.id}>
-                          <tr className="align-top transition-colors hover:bg-stone-50/80 dark:hover:bg-neutral-900/70">
-
-                            {/* Scout */}
-                            <td className="px-3 py-3 pl-5">
-                              <div className="flex flex-col gap-1.5">
-                                <div>
-                                  <div className="font-medium text-gray-900 dark:text-neutral-100">
-                                    {s.name}
-                                  </div>
-                                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-dark dark:text-neutral-400">
-                                    {s.email && (
-                                      <span className="inline-flex items-center gap-1">
-                                        <Mail className="h-3 w-3" /> {s.email}
-                                      </span>
-                                    )}
-                                    {s.phone && (
-                                      <span className="inline-flex items-center gap-1">
-                                        · {s.phone}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                  <RoleBadge role={s.role} />
-                                  <ActivityTag
-                                    lastActive={s.lastActive}
-                                    activity01={s.activity01}
-                                  />
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* KPI */}
-                            <td className="px-3 py-3">
-                              <KpiCell
-                                kpi={s._kpi as number}
-                                comp01={s._avgCompleteness as number}
-                                act01={s._activity as number}
-                                vol01={s._vol01 as number}
-                                avgObsPerPlayer={
-                                  s._avgObsPerPlayer as number
-                                }
-                              />
-                            </td>
-
-                            {/* Raw counts */}
-                            <td className="px-3 py-3">
-                              <span className="inline-flex items-center gap-1">
-                                <Users className="h-4 w-4" /> {s.playersCount}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3">
-                              <span className="inline-flex items-center gap-1">
-                                <NotebookPen className="h-4 w-4" />{" "}
-                                {s.observationsCount}
-                              </span>
-                            </td>
-
-                            {/* Last active */}
-                            <td className="px-3 py-3 text-sm text-dark dark:text-neutral-300">
-                              {fmtDate(s.lastActive)}
-                            </td>
-
-                            {/* Rank band */}
-                            <td className="px-3 py-3">
-                              <span className={rankPillCls(s._rankBand as Rank)}>
-                                {rankLabel(s._rankBand as Rank)}
-                              </span>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="px-3 py-3 text-right">
-                              <Button
-                                size="sm"
-                                className="h-8 bg-gray-900 text-[11px] text-white hover:bg-gray-800 transition-all dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedId((prev) =>
-                                    prev === s.id ? null : s.id
-                                  );
-                                }}
-                              >
-                                <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                                Details
-                              </Button>
-                            </td>
-                          </tr>
-
-                          {expandedId === s.id && (
-                            <tr className="bg-stone-50/60 dark:bg-neutral-900/60">
-                              <td colSpan={7} className="px-4 pb-4 pt-0">
-                                <InlineScoutDetails scout={s} />
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))}
-                      {filtered.length === 0 && !loading && (
+                    <tbody className="divide-y divide-stone-100 dark:divide-neutral-800">
+                      {filtered.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={7}
-                            className="p-5 text-center text-sm text-dark dark:text-neutral-400"
+                            colSpan={5}
+                            className="px-4 py-12 text-center text-sm text-stone-400"
                           >
-                            No results for current filters.
+                            {loading ? "Loading scouts…" : "No scouts found matching current filters."}
                           </td>
                         </tr>
+                      ) : (
+                        filtered.map((s) => (
+                          <React.Fragment key={s.id}>
+                            <tr
+                              className={cn(
+                                "group transition-colors",
+                                expandedId === s.id
+                                  ? "bg-indigo-50/30 dark:bg-indigo-950/20"
+                                  : "hover:bg-stone-50/50 dark:hover:bg-neutral-900/30"
+                              )}
+                            >
+                              <td className="px-4 py-4">
+                                <PositionPill
+                                  pos={s._position ?? 0}
+                                  delta={s._delta ?? 0}
+                                />
+                              </td>
+                              <td className="px-4 py-4 min-w-[200px]">
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-stone-900 dark:text-neutral-200">
+                                      {s.name}
+                                    </span>
+                                    <RoleBadge role={s.role} />
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <ActivityTag
+                                      lastActive={s.lastActive}
+                                      activity01={s.activity01}
+                                    />
+                                    <span className={rankPillCls(s._rankBand || "bronze")}>
+                                      {rankLabel(s._rankBand || "bronze")}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4">
+                                <KpiCell
+                                  kpi={s._kpi ?? 0}
+                                  comp01={s._avgCompleteness ?? 0}
+                                  act01={s._activity ?? 0}
+                                  vol01={s._vol01 ?? 0}
+                                  avgObsPerPlayer={s._avgObsPerPlayer ?? 0}
+                                />
+                              </td>
+                              <td className="px-4 py-4 hidden sm:table-cell">
+                                <div className="flex flex-col gap-1 text-xs">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-stone-500">Players:</span>
+                                    <span className="font-semibold text-stone-900 dark:text-neutral-300">
+                                      {s.playersCount}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span className="text-stone-500">Observations:</span>
+                                    <span className="font-semibold text-stone-900 dark:text-neutral-300">
+                                      {s.observationsCount}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={cn(
+                                    "h-8 px-2 text-xs font-semibold",
+                                    expandedId === s.id
+                                      ? "text-indigo-600 dark:text-indigo-400"
+                                      : "text-stone-500 hover:text-stone-900 dark:hover:text-neutral-100"
+                                  )}
+                                  onClick={() =>
+                                    setExpandedId(expandedId === s.id ? null : s.id)
+                                  }
+                                >
+                                  {expandedId === s.id ? "Hide" : "Details"}
+                                </Button>
+                              </td>
+                            </tr>
+
+                            {/* DETAILS PANEL (expanded) */}
+                            {expandedId === s.id && (
+                              <tr className="bg-stone-50/50 dark:bg-neutral-900/50">
+                                <td colSpan={5} className="px-4 pb-6 pt-2">
+                                  <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                                    {/* Left: Contact & Info */}
+                                    <div className="space-y-4">
+                                      <div className="space-y-2">
+                                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                                          Contact Information
+                                        </h4>
+                                        <div className="space-y-1.5 text-sm">
+                                          <div className="flex items-center gap-2">
+                                            <Mail className="h-4 w-4 text-stone-400" />
+                                            {s.email ? (
+                                              <a
+                                                href={`mailto:${s.email}`}
+                                                className="text-indigo-600 hover:underline dark:text-indigo-400"
+                                              >
+                                                {s.email}
+                                              </a>
+                                            ) : (
+                                              <span className="italic text-stone-400">
+                                                No email
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <MapPin className="h-4 w-4 text-stone-400" />
+                                            <span className="text-stone-600 dark:text-neutral-300">
+                                              Region: {s.region || "Not specified"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Note box */}
+                                      <div className="space-y-2">
+                                        <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                                          <NotebookPen className="h-3 w-3" />
+                                          Internal Notes
+                                        </h4>
+                                        <div className="rounded-md border border-stone-200 bg-white p-3 text-xs italic text-stone-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
+                                          {s.note || "No administrative notes for this scout."}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Middle: Expanded Stats */}
+                                    <div className="space-y-4 md:col-span-2">
+                                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                                        Contribution & Performance Details
+                                      </h4>
+                                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                                        <div className="rounded-md border border-stone-100 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
+                                          <div className="text-[10px] font-medium text-stone-400">
+                                            Profile Accuracy
+                                          </div>
+                                          <div className="mt-1 text-lg font-bold text-stone-900 dark:text-white">
+                                            {Math.round((s._avgCompleteness || 0) * 100)}%
+                                          </div>
+                                        </div>
+                                        <div className="rounded-md border border-stone-100 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
+                                          <div className="text-[10px] font-medium text-stone-400">
+                                            Obs Quality Index
+                                          </div>
+                                          <div className="mt-1 text-lg font-bold text-stone-900 dark:text-white">
+                                            {(s._avgObsPerPlayer || 0).toFixed(1)}
+                                            <span className="ml-1 text-[10px] font-normal text-stone-400">
+                                              / pl
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div className="rounded-md border border-stone-100 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
+                                          <div className="text-[10px] font-medium text-stone-400">
+                                            Rank Experience
+                                          </div>
+                                          <div className="mt-1 text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                                            {s.playersCount * 2 + s.observationsCount} xp
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex flex-wrap gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-8 border-gray-300 text-[11px] dark:border-neutral-700"
+                                          onClick={() => router.push(`/players?scoutId=${s.id}`)}
+                                        >
+                                          <Users className="mr-1.5 h-3.5 w-3.5" />
+                                          View Players
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-8 border-gray-300 text-[11px] dark:border-neutral-700"
+                                          onClick={() => router.push(`/observations?scoutId=${s.id}`)}
+                                        >
+                                          <Search className="mr-1.5 h-3.5 w-3.5" />
+                                          View Observations
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))
                       )}
                     </tbody>
                   </table>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </CardContent>
-      </Card>
-
-      {/* ========== SECTION 2 – SCOUT PANEL SUMMARY (separate accordion) ========== */}
-      <Card className="mt-1">
-        <CardHeader
-          className={cn(
-            "group flex items-center justify-between rounded-md border-gray-200 p-0 transition-colors hover:bg-stone-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/60",
-            summaryOpen && "bg-stone-100 dark:bg-neutral-900/70"
-          )}
-        >
-          <button
-            type="button"
-            aria-expanded={summaryOpen}
-            aria-controls="summary-panel"
-            onClick={() => setSummaryOpen((v) => !v)}
-            className="flex w-full items-center justify-between px-4 py-4 text-left"
-          >
-            <div>
-              <div className={stepPillClass}>Section 2 · Summary</div>
-              <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                Scout panel summary
-              </div>
-              <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                A quick look at the total number of scouts, players, and
-                observations in the system.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 pl-4">
-              {lastRefresh && (
-                <div className="hidden items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-muted-foreground ring-1 ring-gray-200 backdrop-blur-sm dark:bg-neutral-900/80 dark:text-neutral-300 dark:ring-neutral-700 md:inline-flex">
-                  <CalendarClock className="h-3 w-3" />
-                  <span>Last sync:</span>
-                  <span className="font-medium">
-                    {fmtTimeShort(lastRefresh)}
-                  </span>
-                </div>
-              )}
-              <ChevronDown
-                className={cn(
-                  "h-5 w-5 transition-transform",
-                  summaryOpen ? "rotate-180" : "rotate-0"
-                )}
-              />
-            </div>
-          </button>
-        </CardHeader>
-        <CardContent className="px-4 py-0 md:px-4">
-          <Accordion
-            type="single"
-            collapsible
-            value={summaryOpen ? "summary" : undefined}
-            onValueChange={(v) => setSummaryOpen(v === "summary")}
-            className="w-full"
-          >
-            <AccordionItem value="summary" className="border-0">
-              <AccordionContent id="summary-panel" className="pt-4 pb-5">
-                <div className="mb-2 md:hidden">
-                  {lastRefresh && (
-                    <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-muted-foreground ring-1 ring-gray-200 backdrop-blur-sm dark:bg-neutral-900/80 dark:text-neutral-300 dark:ring-neutral-700">
-                      <CalendarClock className="h-3 w-3" />
-                      <span>Last sync:</span>
-                      <span className="font-medium">
-                        {fmtTimeShort(lastRefresh)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-[11px] sm:grid-cols-4">
-                  <SummaryTile
-                    label="Scouts"
-                    value={summary.totalScouts}
-                    hint="Total number of active profiles in the system"
-                  />
-                  <SummaryTile
-                    label="Active 14 days"
-                    value={summary.active14}
-                    hint="Scouts with activity in the last 14 days"
-                  />
-                  <SummaryTile
-                    label="Players"
-                    value={summary.totalPlayers}
-                    hint="Players assigned to scouts"
-                  />
-                  <SummaryTile
-                    label="Observations"
-                    value={summary.totalObs}
-                    hint="Total number of observations in the system"
-                  />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-/* ============================ Small helpers ============================ */
-
-function SummaryTile({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: number;
-  hint: string;
-}) {
-  return (
-    <div className="rounded-lg bg-white/70 p-2 text-xs ring-1 ring-gray-100 dark:bg-neutral-950/60 dark:ring-neutral-800">
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-neutral-50">
-        {value}
-      </div>
-      <div className="mt-0.5 text-[10px] text-muted-foreground">{hint}</div>
-    </div>
-  );
-}
-
-function Chip({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[10px] text-muted-foreground ring-1 ring-gray-200 dark:bg-neutral-950 dark:ring-neutral-700">
-      {label}
-    </span>
-  );
-}
-
-/* =========== Inline “Details” – lists of players & observations =========== */
-
-function InlineScoutDetails({ scout }: { scout: Scout }) {
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [observations, setObservations] = useState<Observation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const supabase = getSupabase();
-
-        const { data: playerRows, error: playersError } = await supabase
-          .from("players")
-          .select("*")
-          .eq("user_id", scout.id);
-
-        if (playersError) throw playersError;
-
-        const { data: obsRows, error: obsError } = await supabase
-          .from("observations")
-          .select("*")
-          .eq("user_id", scout.id);
-
-        if (obsError) throw obsError;
-
-        if (!mounted) return;
-        setPlayers((playerRows || []) as Player[]);
-        setObservations((obsRows || []) as Observation[]);
-      } catch (e: any) {
-        console.error("[InlineScoutDetails] load error:", e);
-        if (!mounted) return;
-        setError(
-          e?.message ||
-          "Failed to fetch players and observations list from Supabase."
-        );
-        setPlayers([]);
-        setObservations([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [scout.id]);
-
-  return (
-    <div className="mt-2 rounded-xl border border-dashed border-gray-300 bg-stone-50/80 p-3 text-xs text-dark shadow-sm dark:border-neutral-700 dark:bg-neutral-900/70 dark:text-neutral-200">
-      {loading && (
-        <p className="mb-2 text-[11px] text-muted-foreground">
-          Loading players and observations list...
-        </p>
-      )}
-      {error && (
-        <div className="mb-2 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
-          {error}
-        </div>
-      )}
-      {!loading && !error && (
-        <p className="mb-2 text-[11px] text-muted-foreground">
-          Players and observations assigned to this scout (Supabase data).
-        </p>
-      )}
-
-      <div className="grid gap-3 md:grid-cols-2">
-        {/* Players */}
-        <div>
-          <div className="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" />
-              Players ({players.length})
-            </span>
-          </div>
-          <div className="overflow-x-auto rounded-md border border-gray-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/60">
-            <table className="w-full text-[11px]">
-              <thead className="bg-stone-100 text-[10px] uppercase tracking-wide text-muted-foreground dark:bg-neutral-900">
-                <tr>
-                  <th className="px-2 py-1 text-left font-medium">Player</th>
-                  <th className="px-2 py-1 text-left font-medium">Club</th>
-                  <th className="px-2 py-1 text-left font-medium">Pos.</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
-                {players.map((p, idx) => (
-                  <tr key={String((p as any).id ?? idx)}>
-                    <td className="px-2 py-1">{(p as any).name}</td>
-                    <td className="px-2 py-1">
-                      {(p as any).club || "—"}
-                    </td>
-                    <td className="px-2 py-1">
-                      {(p as any).pos || "—"}
-                    </td>
-                  </tr>
-                ))}
-                {players.length === 0 && !loading && (
-                  <tr>
-                    <td
-                      colSpan={3}
-                      className="px-2 py-2 text-[11px] text-muted-foreground"
-                    >
-                      No players for this scout.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Observations */}
-        <div>
-          <div className="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <NotebookPen className="h-3.5 w-3.5" />
-              Observations ({observations.length})
-            </span>
-          </div>
-          <div className="overflow-x-auto rounded-md border border-gray-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/60">
-            <table className="w-full text-[11px]">
-              <thead className="bg-stone-100 text-[10px] uppercase tracking-wide text-muted-foreground dark:bg-neutral-900">
-                <tr>
-                  <th className="px-2 py-1 text-left font-medium">Match</th>
-                  <th className="px-2 py-1 text-left font-medium">Player</th>
-                  <th className="px-2 py-1 text-left font-medium">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
-                {observations.map((o, idx) => (
-                  <tr key={String((o as any).id ?? idx)}>
-                    <td className="px-2 py-1">
-                      {(o as any).match || "—"}
-                    </td>
-                    <td className="px-2 py-1">
-                      {(o as any).player || "—"}
-                    </td>
-                    <td className="px-2 py-1">
-                      {(o as any).date || "—"}
-                    </td>
-                  </tr>
-                ))}
-                {observations.length === 0 && !loading && (
-                  <tr>
-                    <td
-                      colSpan={3}
-                      className="px-2 py-2 text-[11px] text-muted-foreground"
-                    >
-                      No observations associated with this scout.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              </CardContent>
+            )}
+          </Card>
         </div>
       </div>
     </div>

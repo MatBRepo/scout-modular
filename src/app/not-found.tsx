@@ -11,12 +11,14 @@ export default function NotFound() {
           <SearchX className="h-6 w-6" />
         </div>
 
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400 dark:text-stone-500">
           Error 404
         </p>
-          Page not found
+        <h1 className="mt-2 text-xl font-semibold text-stone-900 dark:text-stone-50">
+          Page Not Found
         </h1>
         <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
-          The page you are looking for does not exist, has been moved
+          The page you are looking for does not exist, has been moved,
           or the address contains an error.
         </p>
 
@@ -28,7 +30,7 @@ export default function NotFound() {
           >
             <Link href="/">
               <Home className="mr-2 h-4 w-4" />
-              Go to home page
+              Go to Homepage
             </Link>
           </Button>
 
@@ -39,13 +41,13 @@ export default function NotFound() {
           >
             <Link href="/players">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to players list
+              Return to Players List
             </Link>
           </Button>
         </div>
 
         <p className="mt-4 text-[11px] text-stone-400 dark:text-stone-500">
-          If the problem persists, contact the system administrator.
+          If the problem persists, please contact the system administrator.
         </p>
       </div>
     </div>

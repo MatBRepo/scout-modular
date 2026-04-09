@@ -83,8 +83,6 @@ function Portal({ children }: { children: React.ReactNode }) {
   return el ? createPortal(children, el) : null;
 }
 
-
-
 /* ====== body scroll lock (mobile sheets) ====== */
 
 let __bodyLockCount = 0;
@@ -107,7 +105,7 @@ function lockBodyScroll() {
   body.dataset.scrollLockTop = body.style.top || "";
   body.dataset.scrollLockWidth = body.style.width || "";
 
-  // block (best on iOS: body fixed + top)
+  // lock (best for iOS: body fixed + top)
   body.style.overflow = "hidden";
   body.style.position = "fixed";
   body.style.top = `-${scrollY}px`;
@@ -121,7 +119,7 @@ function unlockBodyScroll() {
   if (typeof window === "undefined") return;
 
   __bodyLockCount = Math.max(0, __bodyLockCount - 1);
-  if (__bodyLockCount > 0) return; // something is still open
+  if (__bodyLockCount > 0) return; // something still open
 
   const body = document.body;
   const html = document.documentElement;
@@ -143,8 +141,6 @@ function unlockBodyScroll() {
 
   window.scrollTo(0, y);
 }
-
-
 
 function MobileSheet({
   open,
@@ -193,8 +189,6 @@ function MobileSheet({
     </Portal>
   );
 }
-
-
 
 /* ================= Anchored popover (desktop) ================= */
 
@@ -305,7 +299,7 @@ function AnchoredPopover({
 
 /* =======================================
    Types & constants
-======================================= */
+ ======================================= */
 
 const POS = ["GK", "DF", "MF", "FW"] as const;
 type PosGroup = (typeof POS)[number];
@@ -354,7 +348,7 @@ const COL_LABELS: Record<ColKey, string> = {
   pos: "Position",
   age: "Age",
   progress: "Profile",
-  rating: "Observation rating",
+  rating: "Observation Rating",
   obs: "Observations",
   actions: "Actions",
 };
@@ -386,10 +380,10 @@ type PlayerRow = Player & {
   _avgRating: number | null;
 };
 
-// how many rows one loading "pulls"
+// Batch size for infinite scroll
 const PAGE_SIZE = 50;
 
-/* ========= helpers dla observation/player ========= */
+/* ========= helpers for observation/player ========= */
 
 function normalizeName(s?: string | null) {
   return (s ?? "").toString().trim().toLowerCase();
@@ -424,7 +418,7 @@ function extractJsonPlayerName(item: any) {
   );
 }
 
-/** Zwraca obiekt zawodnika w observation.players odpowiadający danemu Player */
+/** Returns player object in observation.players corresponding to given Player */
 function findPlayerEntryInObservation(
   o: ObservationWithOwner,
   p: PlayerWithOwner,
@@ -436,14 +430,14 @@ function findPlayerEntryInObservation(
   for (const item of playersJson) {
     if (!item) continue;
 
-    // najpierw spróbuj po ID
+    // first try by ID
     const jsonId =
       item.player_id ?? item.playerId ?? item.id ?? item.player_id_fk ?? null;
     if (jsonId !== null && p.id != null && Number(jsonId) === Number(p.id)) {
       return item;
     }
 
-    // fallback: po nazwie
+    // fallback: by name
     const jsonName = extractJsonPlayerName(item);
     if (jsonName && targetNames.has(jsonName)) {
       return item;
@@ -452,12 +446,12 @@ function findPlayerEntryInObservation(
   return null;
 }
 
-/* ========= helper: czy observation zawiera playera ========= */
+/* ========= helper: does observation include player ========= */
 
 function observationIncludesPlayer(o: ObservationWithOwner, p: PlayerWithOwner) {
   const targetNames = buildTargetNames(p);
 
-  // 1) legacy / quick connection: observations.player (text)
+  // 1) legacy / shortcut binding: observation.player (text)
   if (targetNames.size > 0 && targetNames.has(normalizeName(o.player))) {
     return true;
   }
@@ -469,7 +463,7 @@ function observationIncludesPlayer(o: ObservationWithOwner, p: PlayerWithOwner) 
 
 /* ========= rating helpers ========= */
 
-/** Konwertuje wartość do liczby 0–5; wszystko poza zakresem odrzucamy */
+/** Converts value to 0-5 number; anything out of range is discarded */
 function toRating(value: unknown): number | null {
   if (value == null) return null;
   let n: number | null = null;
@@ -483,15 +477,15 @@ function toRating(value: unknown): number | null {
 
   if (n == null) return null;
 
-  // Akceptujemy tylko skalę 0–5 (jak StarRating)
+  // Accept only 0-5 scale (like StarRating)
   if (n < 0 || n > 5) return null;
   return n;
 }
 
 /**
- * Fallback z PlayerEditorPage:
- * bierzemy wartości z player.meta.ratings (Record<string, number>)
- * i liczymy z nich średnią 0–5.
+ * Fallback from PlayerEditorPage:
+ * we take values from player.meta.ratings (Record<string, number>)
+ * and calculate the average 0-5.
  */
 function collectRatingsFromPlayerMeta(p: PlayerWithOwner): number[] {
   const meta = (p as any)?.meta;
@@ -507,19 +501,19 @@ function collectRatingsFromPlayerMeta(p: PlayerWithOwner): number[] {
 }
 
 /**
- * Próba wyciągnięcia „Oceny z obserwacji” dla konkretnego zawodnika
- * z pojedynczej obserwacji – używane TYLKO jako fallback,
- * gdy nie mamy danych w observation_ratings.
+ * Attempt to extract "Overall Rating" for a specific player
+ * from a single observation - used ONLY as fallback,
+ * when we don't have data in observation_ratings.
  */
 function extractOverallRatingForPlayer(
   o: ObservationWithOwner,
   p: PlayerWithOwner,
 ): number | null {
-  // 1) próbujemy z players[] (per zawodnik)
+  // 1) try from players[] (per player)
   const entry = findPlayerEntryInObservation(o, p);
 
   if (entry) {
-    // 1A) mapa aspektów -> średnia z aspektów
+    // 1A) aspects map -> average of aspects
     const ratingsMap =
       entry.ratings ??
       entry.aspects ??
@@ -540,11 +534,11 @@ function extractOverallRatingForPlayer(
       }
     }
 
-    // 1B) fallback – per-player pola liczebne
+    // 1B) fallback – per-player numeric fields
     const candidatesFromEntry = [
       (entry as any).overallRating,
       (entry as any).overall_rating,
-      (entry as any).overall, // <- Editor często zapisuje tutaj
+      (entry as any).overall, // Editor often saves here
       (entry as any).rating,
       (entry as any).ocena,
       (entry as any).score,
@@ -556,7 +550,7 @@ function extractOverallRatingForPlayer(
     }
   }
 
-  // 2) fallback – pola na samej obserwacji
+  // 2) fallback – fields on the observation itself
   const candidatesFromObs = [
     (o as any).overallRating,
     (o as any).overall_rating,
@@ -576,7 +570,7 @@ function extractOverallRatingForPlayer(
 
 /* =======================================
    Main feature
-======================================= */
+ ======================================= */
 
 export default function MyPlayersFeature({
   players,
@@ -595,7 +589,7 @@ export default function MyPlayersFeature({
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
 
-  // === Supabase auth: tylko swoje rekordy (user_id/profile_id) ===
+  // === Supabase auth: only own records (user_id/profile_id) ===
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -623,10 +617,10 @@ export default function MyPlayersFeature({
     };
   }, []);
 
-  // Filtrowanie po właścicielu — user_id/profile_id
+  // Filtering by owner — user_id/profile_id
   const ownedPlayers = useMemo(() => {
     const base = players as PlayerWithOwner[];
-    // if no record has user_id/profile_id → we do not filter
+    // if no record has user_id/profile_id → we don't filter
     const hasOwnerMeta = base.some((p) => p.user_id || p.profile_id);
     if (!authUserId || !hasOwnerMeta) {
       return base;
@@ -644,16 +638,16 @@ export default function MyPlayersFeature({
 
     // No authenticated user
     if (!authUserId) {
-      // if there is no meta — better to show all than nothing
+      // if no meta — better to show all than empty
       return hasOwnerMeta ? [] : base;
     }
 
-    // No owner meta → we assume the list is already filtered on the server side
+    // No owner meta → assume list is already server-side filtered
     if (!hasOwnerMeta) {
       return base;
     }
 
-    // Standard mode: we only filter this user's observations
+    // Standard mode: filter only this user's observations
     return base.filter((o) => {
       const uid = o.user_id ?? o.userId ?? null;
       const pid = o.profile_id ?? o.profileId ?? null;
@@ -661,7 +655,7 @@ export default function MyPlayersFeature({
     });
   }, [observations, authUserId]);
 
-  // ===== RATING STATS z observation_ratings (per użytkownik) =====
+  // ===== RATING STATS from observation_ratings (per user) =====
   const [ratingStatsMap, setRatingStatsMap] = useState<
     Map<number, { avg: number | null; ratingsCount: number; obsCount: number }>
   >(new Map());
@@ -698,7 +692,7 @@ export default function MyPlayersFeature({
       try {
         setRatingStatsLoading(true);
 
-        // We build .or() manually to handle player_id OR global_id
+        // Build .or() manually to handle player_id OR global_id
         const filters: string[] = [];
         if (playerIds.length) {
           filters.push(`player_id.in.(${playerIds.join(",")})`);
@@ -713,7 +707,7 @@ export default function MyPlayersFeature({
             "player_id, global_id, rating, observation_id, observations!inner(id, user_id, status, bucket)",
           )
           .eq("observations.user_id", authUserId)
-          // optionally: only final observations in the active bucket
+          // optionally: only final observations in active bucket
           .eq("observations.status", "final")
           .eq("observations.bucket", "active");
 
@@ -746,7 +740,7 @@ export default function MyPlayersFeature({
         >();
 
         (data as Row[]).forEach((row) => {
-          // Set target local player_id:
+          // Establish target local player_id:
           let pid: number | null = null;
 
           if (typeof row.player_id === "number") {
@@ -754,7 +748,7 @@ export default function MyPlayersFeature({
           } else if (typeof row.global_id === "number") {
             const locals = globalToLocalIds.get(row.global_id);
             if (locals && locals.length > 0) {
-              // if there are several local ones, take the first one
+              // if multiple local, take the first one
               pid = locals[0];
             }
           }
@@ -843,7 +837,7 @@ export default function MyPlayersFeature({
   const [chipsOpen, setChipsOpen] = useState(false);
   const chipsHoverTimer = useRef<number | null>(null);
 
-  // „Pagination” → infinity scroll: number of the "package"
+  // Pagination → infinity scroll: batch number
   const [page, setPage] = useState(1);
 
   // Quick creator fields
@@ -887,10 +881,10 @@ export default function MyPlayersFeature({
   }
 
   // Base with obs count + known flag + progress + avg rating
-  // Rating – PRIORYTETY:
+  // Rating – PRIORITIES:
   // 1) observation_ratings (DB, per user) – saved averages from appearances
-  // 2) fallback: średnia z obserwacji (players[].ratings / overall)
-  // 3) fallback: meta.ratings na obiekcie zawodnika
+  // 2) fallback: average from observations (players[].ratings / overall)
+  // 3) fallback: meta.ratings on player object
   const withObsCount = useMemo<PlayerRow[]>(() => {
     const pls = ownedPlayers as PlayerWithOwner[];
     const obs = ownedObservations as ObservationWithOwner[];
@@ -902,7 +896,7 @@ export default function MyPlayersFeature({
       let obsCount = stats?.obsCount ?? 0;
       let avgRating: number | null = stats?.avg ?? null;
 
-      // if we don't have data from observation_ratings → fallback to logic based on observations only
+      // if no data from observation_ratings → fallback to logic based on observations themselves
       if (!stats) {
         // all observations that actually contain the player
         const relatedObs = obs.filter((o) =>
@@ -921,7 +915,7 @@ export default function MyPlayersFeature({
             ? obsRatings.reduce((a, b) => a + b, 0) / obsRatings.length
             : null;
 
-        // 3) meta.ratings (only if there's nothing else)
+        // 3) meta.ratings (only if nothing else)
         const metaRatings = collectRatingsFromPlayerMeta(p);
         const fromMeta =
           metaRatings.length > 0
@@ -1007,7 +1001,7 @@ export default function MyPlayersFeature({
         case "rating": {
           const aVal = typeof a._avgRating === "number" ? a._avgRating : null;
           const bVal = typeof b._avgRating === "number" ? b._avgRating : null;
-          // No rating always at the end regardless of the sorting direction
+          // No rating always at the end regardless of sort direction
           if (aVal == null && bVal == null) return 0;
           if (aVal == null) return 1;
           if (bVal == null) return -1;
@@ -1021,14 +1015,14 @@ export default function MyPlayersFeature({
     return base;
   }, [baseFilteredNoKnown, knownScope, sortKey, sortDir]);
 
-  // ======= INFINITY SCROLL: widoczne wiersze =======
+  // ======= INFINITY SCROLL: visible rows =======
   const total = filtered.length;
   const visible = useMemo(
     () => filtered.slice(0, page * PAGE_SIZE),
     [filtered, page],
   );
 
-  // clamp page when the list changes
+  // clamp page when list changes
   useEffect(() => {
     const maxPage = Math.max(1, Math.ceil(Math.max(total, 1) / PAGE_SIZE));
     if (page > maxPage) setPage(maxPage);
@@ -1036,7 +1030,7 @@ export default function MyPlayersFeature({
 
   const hasMore = visible.length < total;
 
-  // IntersectionObserver: pulling consecutive packages
+  // IntersectionObserver: pulling more batches
   useEffect(() => {
     if (!hasMore) return;
     const el = loadMoreRef.current;
@@ -1108,7 +1102,7 @@ export default function MyPlayersFeature({
     setSelected(new Set());
   }
 
-  // exports – tylko własny widok, ale operujemy na filtered (już zawęzonym)
+  // exports – only user's view, but operating on filtered
   function exportCSV() {
     const headers = [
       "id",
@@ -1166,7 +1160,7 @@ export default function MyPlayersFeature({
       "Position",
       "Age",
       "Status",
-      "Avg. rating",
+      "Avg. Rating",
       "Observations",
       "Profile %",
     ];
@@ -1287,7 +1281,7 @@ export default function MyPlayersFeature({
     closeQuick();
   }
 
-  /* ===== active chips (hide "Poz.: Wszystkie" by default) ===== */
+  /* ===== active chips (hide "Pos.: All" by default) ===== */
 
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
@@ -1438,7 +1432,7 @@ export default function MyPlayersFeature({
     );
   }, [ownedPlayers, selected]);
 
-  /* ===== NEW: global trash count for players ===== */
+  /* ===== global trash count for players ===== */
   const trashCount = useMemo(
     () =>
       (ownedPlayers as PlayerWithOwner[]).filter(
@@ -1447,7 +1441,7 @@ export default function MyPlayersFeature({
     [ownedPlayers],
   );
 
-  /* ===== NEW: empty trash (only players belonging to this user) ===== */
+  /* ===== empty trash (only players belonging to this user) ===== */
   function emptyTrash() {
     if (!authUserId) return;
 
@@ -1523,7 +1517,7 @@ export default function MyPlayersFeature({
     </span>
   );
 
-  // === Widok ładowania auth / brak usera ===
+  // === Auth loading view / no user ===
   if (authLoading) {
     return (
       <div className="w-full space-y-4 p-4">
@@ -1548,8 +1542,7 @@ export default function MyPlayersFeature({
   if (!authUserId) {
     return (
       <div className="w-full rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
-        Failed to link the player list with the logged-in
-        account. Try refreshing the page or logging in again.
+        Could not associate player list with the logged-in account. Try refreshing the page or logging in again.
       </div>
     );
   }
@@ -1562,7 +1555,7 @@ export default function MyPlayersFeature({
             <div className="flex w-full min-h-9 items-start gap-3">
               {/* Left: Title */}
               <span className="flex h-9 shrink-0 items-center text-xl font-semibold leading-none md:text-2xl">
-                {loading ? <Skeleton className="h-7 w-48" /> : "Player database"}
+                {loading ? <Skeleton className="h-7 w-48" /> : "Player Database"}
               </span>
 
               {/* Center: Spacer */}
@@ -1573,7 +1566,7 @@ export default function MyPlayersFeature({
             <div className="flex min-h-9 w-full flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between">
               <div />
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
-                {/* Dodaj zawodnika */}
+                {/* Add Player */}
                 <Button
                   type="button"
                   title="Shortcut: N"
@@ -1587,12 +1580,12 @@ export default function MyPlayersFeature({
                   ) : (
                     <>
                       <AddPlayerIcon className="h-4 w-4" />
-                      <span>Add player</span>
+                      <span>Add Player</span>
                     </>
                   )}
                 </Button>
 
-                {/* Wiersz: search + filtry + 3 kropki */}
+                {/* Row: search + filters + 3 dots */}
                 <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:justify-start sm:gap-3">
                   {/* Search */}
                   <div className="relative h-9 min-w-[160px] flex-1 sm:w-64 sm:flex-none">
@@ -1607,7 +1600,7 @@ export default function MyPlayersFeature({
                         setQ(e.target.value);
                         setPage(1);
                       }}
-                      placeholder={loading ? "" : "Search by surname/club… (/)"}
+                      placeholder={loading ? "" : "Search by name/club… (/)"}
                       className={`${controlH} w-full pl-8 pr-3 text-sm`}
                       aria-label="Search in player database"
                       disabled={loading}
@@ -1683,8 +1676,6 @@ export default function MyPlayersFeature({
           }
         />
 
-        {/* Mobile: compact chips under toolbar removed as per user request */}
-
         {/* Desktop: anchored popovers */}
         {!isMobile && (
           <>
@@ -1724,7 +1715,7 @@ export default function MyPlayersFeature({
                       >
                         <Eraser className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">
-                          Clear
+                          Clear All
                         </span>
                       </button>
                     </TooltipTrigger>
@@ -1755,7 +1746,7 @@ export default function MyPlayersFeature({
 
                 <div className="mb-3">
                   <Label className="text-xs text-gray-900 dark:text-neutral-300">
-                    Player type
+                    Player Type
                   </Label>
                   <div className="mt-1 flex gap-1 rounded-md bg-stone-100 p-0.5 dark:bg-neutral-900">
                     {[
@@ -1795,7 +1786,7 @@ export default function MyPlayersFeature({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs text-gray-900 dark:text-neutral-300">
-                      Min age
+                      Min Age
                     </Label>
                     <Input
                       type="number"
@@ -1820,7 +1811,7 @@ export default function MyPlayersFeature({
                   </div>
                   <div>
                     <Label className="text-xs text-gray-900 dark:text-neutral-300">
-                      Max age
+                      Max Age
                     </Label>
                     <Input
                       type="number"
@@ -1883,14 +1874,14 @@ export default function MyPlayersFeature({
             >
               <div className="w-full p-3">
                 <div className="mb-2 text-xs font-medium text-gray-900 dark:text-neutral-400">
-                  Column visibility
+                  Column Visibility
                 </div>
                 {Object.keys(DEFAULT_COLS).map((k) => {
                   const key = k as ColKey;
                   return (
                     <label
                       key={key}
-                      className="flex cursor-pointer items-center justify-between px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
                       <span className="text-gray-800 dark:text-neutral-100">
                         {COL_LABELS[key]}
@@ -1910,7 +1901,7 @@ export default function MyPlayersFeature({
               </div>
             </AnchoredPopover>
 
-            {/* More popover – with trash count + "Empty trash" */}
+            {/* More popover – with trash count + "Empty Trash" */}
             <AnchoredPopover
               open={moreOpen}
               onClose={() => setMoreOpen(false)}
@@ -1941,7 +1932,7 @@ export default function MyPlayersFeature({
                   }}
                 >
                   <Checkbox checked={isMultiSelect} className="h-4 w-4 pointer-events-none" onCheckedChange={() => { }} />
-                  <span>Multi-select</span>
+                  <span>Select Multiple</span>
                 </button>
 
                 <button
@@ -1959,7 +1950,7 @@ export default function MyPlayersFeature({
                   ) : (
                     <Eye className="h-4 w-4" />
                   )}
-                  <span>{visibleCols.photo ? "Hide thumbnails" : "Show thumbnails"}</span>
+                  <span>{visibleCols.photo ? "Hide Thumbnails" : "Show Thumbnails"}</span>
                 </button>
 
                 <button
@@ -1996,32 +1987,11 @@ export default function MyPlayersFeature({
                     }}
                   >
                     <XCircle className="h-4 w-4" />
-                    <span>Empty trash</span>
+                    <span>Empty Trash</span>
                   </button>
                 )}
 
                 <div className="my-1 h-px bg-gray-200 dark:bg-neutral-800" />
-
-                {/* 
-                <button
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    exportCSV();
-                  }}
-                >
-                  <FileDown className="h-4 w-4" /> CSV Export
-                </button>
-                <button
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    exportExcel();
-                  }}
-                >
-                  <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
-                </button>
-                */}
               </div>
             </AnchoredPopover>
           </>
@@ -2030,7 +2000,7 @@ export default function MyPlayersFeature({
         {/* MOBILE SHEETS */}
         {isMobile && (
           <>
-            {/* Filtry */}
+            {/* Filters */}
             <MobileSheet
               open={filtersOpen}
               onClose={() => setFiltersOpen(false)}
@@ -2058,7 +2028,7 @@ export default function MyPlayersFeature({
               </div>
 
               <div className="mb-4">
-                <Label className="text-xs">Player type</Label>
+                <Label className="text-xs">Player Type</Label>
                 <div className="mt-1.5 flex gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-800">
                   {[
                     { id: "all", label: "All" },
@@ -2093,7 +2063,7 @@ export default function MyPlayersFeature({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Min age</Label>
+                  <Label className="text-xs">Min Age</Label>
                   <Input
                     type="number"
                     min={0}
@@ -2116,7 +2086,7 @@ export default function MyPlayersFeature({
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Max age</Label>
+                  <Label className="text-xs">Max Age</Label>
                   <Input
                     type="number"
                     min={0}
@@ -2186,7 +2156,7 @@ export default function MyPlayersFeature({
                     setPage(1);
                   }}
                 >
-                  Clear
+                  Clear All
                 </Button>
                 <Button
                   className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
@@ -2205,7 +2175,7 @@ export default function MyPlayersFeature({
             >
               <div className="mb-1 flex items-center justify-between gap-2 px-1">
                 <div className="text-xs font-medium text-stone-500 dark:text-neutral-400">
-                  Trash status
+                  Trash Contents
                 </div>
                 <div className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
                   In trash: {trashCount}
@@ -2225,7 +2195,7 @@ export default function MyPlayersFeature({
                   }}
                 >
                   <Checkbox checked={isMultiSelect} className="h-4 w-4 pointer-events-none" onCheckedChange={() => { }} />
-                  <span className="font-medium">Multi-select</span>
+                  <span className="font-medium">Select Multiple (multiselect)</span>
                 </button>
                 <button
                   className={`flex w-full items-center gap-2 px-3 py-3 text-left text-sm transition-colors ${visibleCols.photo
@@ -2242,7 +2212,7 @@ export default function MyPlayersFeature({
                   ) : (
                     <Eye className="h-4 w-4" />
                   )}
-                  <span className="font-medium">{visibleCols.photo ? "Hide thumbnails" : "Show thumbnails"}</span>
+                  <span className="font-medium">{visibleCols.photo ? "Hide Thumbnails" : "Show Thumbnails"}</span>
                 </button>
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -2278,31 +2248,8 @@ export default function MyPlayersFeature({
                     }}
                   >
                     <XCircle className="h-4 w-4" />
-                    <span>Empty trash</span>
+                    <span>Empty Trash</span>
                   </button>
-                )}
-
-                {!isMobile && (
-                  <>
-                    <button
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
-                      onClick={() => {
-                        setMoreSheetOpen(false);
-                        exportCSV();
-                      }}
-                    >
-                      <FileDown className="h-4 w-4" /> CSV Export
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
-                      onClick={() => {
-                        setMoreSheetOpen(false);
-                        exportExcel();
-                      }}
-                    >
-                      <FileSpreadsheet className="h-4 w-4" /> Excel Export
-                    </button>
-                  </>
                 )}
               </div>
             </MobileSheet>
@@ -2443,18 +2390,17 @@ export default function MyPlayersFeature({
                   wrapRef={tableWrapRef}
                 />
 
-                {/* Mobile scroll hint: Moved under table as per user request */}
                 {showScrollHint && (
                   <div className="mt-4 flex flex-col items-center gap-2 sm:hidden px-4">
                     <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-3 py-1.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-800 dark:text-neutral-300 dark:ring-neutral-700">
                       <MoveHorizontal className="h-4 w-4" />
-                      <span>Scroll table sideways to see more</span>
+                      <span>Scroll sideways to see more</span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Sentinel for infinite scroll */}
+              {/* infinite scroll sentinel */}
               {hasMore && (
                 <div
                   ref={loadMoreRef}
@@ -2497,8 +2443,8 @@ export default function MyPlayersFeature({
 }
 
 /* =======================================
-   Table
-======================================= */
+   Table Component
+ ======================================= */
 
 function PlayersTable({
   rows,
@@ -2702,14 +2648,14 @@ function PlayersTable({
             {visibleCols.progress && (
               <th className={`${getCellClass('progress')} text-left`}>
                 <SortHeader k="progress">
-                  Profile completeness
+                  Profile Completion
                 </SortHeader>
               </th>
             )}
             {visibleCols.rating && (
               <th className={`${getCellClass('rating')} text-left`}>
                 <SortHeader k="rating">
-                  Observation rating
+                  Observation Rating
                 </SortHeader>
               </th>
             )}
@@ -2778,12 +2724,12 @@ function PlayersTable({
                               </div>
                             )
                           ) : jersey ? (
-                            // UNKNOWN + shirt number exists
+                            // UNKNOWN + jersey number provided
                             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
                               {jersey}
                             </div>
                           ) : (
-                            // UNKNOWN + no number → jersey
+                            // UNKNOWN + no jersey number → tshirt icon
                             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
                               <PlayerOnlyTshirt
                                 className="h-6 w-6"
@@ -2906,7 +2852,7 @@ function PlayersTable({
                                 aria-label={
                                   r._known
                                     ? "Edit"
-                                    : "Complete data"
+                                    : "Complete Data"
                                 }
                               >
                                 {r._known ? (
@@ -2919,7 +2865,7 @@ function PlayersTable({
                             <TooltipContent>
                               {r._known
                                 ? "Edit"
-                                : "Complete data"}
+                                : "Complete Data"}
                             </TooltipContent>
                           </Tooltip>
 
@@ -2934,20 +2880,20 @@ function PlayersTable({
                                     onTrash(r.id as number);
                                     setConfirmTrashId(null);
                                   }}
-                                  >
-                                    Yes
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setConfirmTrashId(null);
-                                    }}
-                                  >
-                                    No
-                                  </Button>
+                                >
+                                  Yes
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmTrashId(null);
+                                  }}
+                                >
+                                  No
+                                </Button>
                               </div>
                             ) : (
                               <Tooltip>
@@ -3009,7 +2955,7 @@ function PlayersTable({
                     }
                     className={`${cellPad} text-center text-sm text-gray-900 dark:text-neutral-400`}
                   >
-                    No results for current filters.
+                    No results for the current filters.
                   </td>
                 </tr>
               )}
@@ -3022,8 +2968,8 @@ function PlayersTable({
 }
 
 /* =======================================
-   Quick Observation
-======================================= */
+   Quick Observation Component
+ ======================================= */
 
 function QuickObservation({
   player,
@@ -3112,7 +3058,7 @@ function QuickObservation({
     useState<SaveState>("idle");
   const tRef = useRef<number | null>(null);
 
-  // simple visual "autosave" without localStorage / Supabase
+  // simple visual "autosave" without localStorage / Supabase persistency here
   useEffect(() => {
     setSaveState("saving");
     window.clearTimeout(tRef.current || undefined);
@@ -3161,7 +3107,7 @@ function QuickObservation({
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-neutral-800">
         <div className="min-w-0">
           <div className="text-xs uppercase tracking-wide text-gray-700 dark:text-neutral-400">
-            Quick observation
+            Quick Observation
           </div>
           <div className="truncate text-sm font-semibold text-gray-900 dark:text-neutral-100">
             {player.name}
@@ -3177,7 +3123,7 @@ function QuickObservation({
             >
               {saveState === "saving"
                 ? "Saving…"
-                : "Saved locally"}
+                : "Draft saved locally"}
             </span>
           )}
           <Button
@@ -3226,8 +3172,7 @@ function QuickObservation({
                 Match
               </div>
               <div className="mb-3 text-xs text-gray-700 dark:text-neutral-400">
-                Enter teams — the "Match" field is composed
-                automatically.
+                Enter teams — the "Match" field is composed automatically.
               </div>
 
               <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
@@ -3241,7 +3186,7 @@ function QuickObservation({
                         teamB,
                       )
                     }
-                    placeholder="e.g. Lech U19"
+                    placeholder="e.g. Leeds U19"
                     className="mt-1"
                   />
                 </div>
@@ -3260,7 +3205,7 @@ function QuickObservation({
                         e.target.value,
                       )
                     }
-                    placeholder="e.g. Wisła U19"
+                    placeholder="e.g. Wigan U19"
                     className="mt-1"
                   />
                 </div>
@@ -3272,7 +3217,7 @@ function QuickObservation({
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Match date</Label>
+                  <Label>Match Date</Label>
                   <Input
                     type="date"
                     value={qaDate}
@@ -3283,7 +3228,7 @@ function QuickObservation({
                   />
                 </div>
                 <div>
-                  <Label>Match time</Label>
+                  <Label>Match Time</Label>
                   <Input
                     type="time"
                     value={qaTime}
@@ -3381,7 +3326,7 @@ function QuickObservation({
                   <TooltipContent>
                     {canSave
                       ? "Save new observation"
-                      : "Complete: Team A/B and Date"}
+                      : "Required: Team A/B and Date"}
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -3493,7 +3438,7 @@ function QuickObservation({
                         colSpan={6}
                         className="p-6 text-center text-sm text-gray-800 dark:text-neutral-400"
                       >
-                        No observations for the given criteria.
+                        No observations found for the given criteria.
                       </td>
                     </tr>
                   )}
@@ -3519,7 +3464,7 @@ function QuickObservation({
                       disabled={obsSelectedId == null}
                       onClick={onDuplicate}
                     >
-                      Copy to player
+                      Copy to Player
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -3533,11 +3478,11 @@ function QuickObservation({
                       disabled={obsSelectedId == null}
                       onClick={onReassign}
                     >
-                      Assign to player
+                      Assign to Player
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Change assignment without copying
+                    Reassign without copying
                   </TooltipContent>
                 </Tooltip>
               </div>
