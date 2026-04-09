@@ -1791,7 +1791,7 @@ export default function ObservationsFeature({
                     className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   >
                     <span className="text-gray-800 dark:text-neutral-100">
-                      {COL_PL[key]}
+                      {COL_NAMES[key]}
                     </span>
                     <Checkbox
                       checked={visibleCols[key]}
