@@ -60,33 +60,33 @@ export const titleCaseAll = (input: string) =>
  * (gdy chcemy mieć pełną kontrolę per URL).
  */
 const PATH_LABELS: Record<string, string> = {
-  "/": "Strona główna",
+  "/": "Home",
 
   // Zawodnicy
-  "/players": "Zawodnicy",
-  "/players/new": "Dodaj zawodnika",
+  "/players": "Players",
+  "/players/new": "Add player",
 
   // Obserwacje
-  "/observations": "Obserwacje",
-  "/observations/new": "Nowa obserwacja",
+  "/observations": "Observations",
+  "/observations/new": "New observation",
 
   // Globalni zawodnicy (admin)
-  "/players/global": "Zawodnicy (global)",
-  "/players/global/search": "Wyszukaj",
+  "/players/global": "Global players",
+  "/players/global/search": "Search",
 
   // Administracja / zarządzanie
   "/admin": "Admin",
-  "/admin/manage": "Użytkownicy",
-  "/admin/manage/metrics": "Metryki",
-  "/admin/manage/ratings": "Oceny",
-  "/admin/manage/ranks": "Rangi",
-  "/admin/manage/required-fields": "Wymagane",
+  "/admin/manage": "Users",
+  "/admin/manage/metrics": "Metrics",
+  "/admin/manage/ratings": "Ratings",
+  "/admin/manage/ranks": "Ranks",
+  "/admin/manage/required-fields": "Required fields",
 
   // Inne
-  "/scouts": "Lista scoutów",
-  "/duplicates": "Duplikaty",
-  "/settings": "Ustawienia",
-  "/settings/navigation": "Nawigacja",
+  "/scouts": "Scouts list",
+  "/duplicates": "Duplicates",
+  "/settings": "Settings",
+  "/settings/navigation": "Navigation",
 };
 
 /**
@@ -94,23 +94,23 @@ const PATH_LABELS: Record<string, string> = {
  * gdy nie zdefiniowaliśmy konkretnej pełnej ścieżki.
  */
 const SEGMENT_LABELS: Record<string, string> = {
-  players: "Zawodnicy",
-  observations: "Obserwacje",
-  "global-players": "Globalna baza",
+  players: "Players",
+  observations: "Observations",
+  "global-players": "Global database",
   global: "Global",
-  search: "Wyszukaj",
+  search: "Search",
   admin: "Admin",
-  manage: "Zarządzanie",
-  metrics: "Metryki",
-  ratings: "Oceny",
-  ranks: "Rangi",
-  "required-fields": "Wymagane pola",
-  scouts: "Lista scoutów",
-  duplicates: "Duplikaty",
-  settings: "Ustawienia",
-  navigation: "Nawigacja",
-  new: "Nowy",
-  edit: "Edycja",
+  manage: "Management",
+  metrics: "Metrics",
+  ratings: "Ratings",
+  ranks: "Ranks",
+  "required-fields": "Required fields",
+  scouts: "Scouts list",
+  duplicates: "Duplicates",
+  settings: "Settings",
+  navigation: "Navigation",
+  new: "New",
+  edit: "Edit",
 };
 
 function getCrumbLabel(
@@ -119,7 +119,7 @@ function getCrumbLabel(
   index: number,
   searchParams: ReadonlyURLSearchParams | null
 ) {
-  if (index === 0) return "Strona główna";
+  if (index === 0) return "Home";
 
   const segmentKey = segment.toLowerCase();
 
@@ -131,7 +131,7 @@ function getCrumbLabel(
       if (playerName.trim().length > 0) {
         return playerName;
       }
-      return "Zawodnik";
+      return "Player";
     }
 
     if (fullPath.startsWith("/observations/")) {
@@ -142,10 +142,10 @@ function getCrumbLabel(
       if (obsLabel.trim().length > 0) {
         return obsLabel;
       }
-      return "Obserwacja";
+      return "Observation";
     }
 
-    return "Szczegóły";
+    return "Details";
   }
 
   // 1) priorytet: konkretna pełna ścieżka
@@ -173,7 +173,7 @@ function buildBreadcrumb(
 
   const items: Crumb[] = [];
 
-  items.push({ label: "Strona główna", href: "/" });
+  items.push({ label: "Home", href: "/" });
 
   let acc = "";
   parts.forEach((p, index) => {
@@ -272,8 +272,8 @@ function AppShell({
 
   const currentCrumbLabel =
     crumbs.length > 0
-      ? crumbs[crumbs.length - 1]?.label || "Bieżąca strona"
-      : "Bieżąca strona";
+      ? crumbs[crumbs.length - 1]?.label || "Current page"
+      : "Current page";
 
   return (
     <>
@@ -289,7 +289,7 @@ function AppShell({
               {isAuthed && (
                 <button
                   className="pointer-events-auto absolute left-3 top-1/2 -translate-y-1/2 rounded-md border border-gray-300/70 p-2 hover:bg-white/60 dark:border-neutral-700/60 dark:hover:bg-neutral-900/60 lg:hidden"
-                  aria-label="Otwórz menu"
+                  aria-label="Open menu"
                   onClick={onOpenMobile}
                 >
                   <Menu className="h-5 w-5" />
@@ -305,7 +305,7 @@ function AppShell({
                 <ol className="hidden items-center gap-1 text-sm text-stone-600 dark:text-neutral-300 md:flex">
                   {crumbs.map((c, i) => {
                     const last = i === crumbs.length - 1;
-                    const label = c.label || "Strona główna";
+                    const label = c.label || "Home";
 
                     return (
                       <li key={c.href} className="flex min-w-0 items-center">
@@ -348,7 +348,7 @@ function AppShell({
                   <Link
                     href="/"
                     className="flex items-center"
-                    aria-label="Strona główna"
+                    aria-label="Home"
                   >
                     <HomeIcon className="h-4 w-4" aria-hidden="true" />
                   </Link>
@@ -367,8 +367,8 @@ function AppShell({
                     className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full border border-stone-200 bg-white/80 text-stone-600 shadow-sm hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100 dark:hover:bg-neutral-800"
                     aria-label={
                       breadcrumbsExpanded
-                        ? "Ukryj pełną ścieżkę nawigacji"
-                        : "Pokaż pełną ścieżkę nawigacji"
+                        ? "Hide full navigation path"
+                        : "Show full navigation path"
                     }
                   >
                     <ChevronDown
@@ -393,7 +393,7 @@ function AppShell({
                       <ol className="flex flex-wrap items-center gap-1 text-stone-700 dark:text-neutral-100">
                         {crumbs.map((c, i) => {
                           const last = i === crumbs.length - 1;
-                          const label = c.label || "Strona główna";
+                          const label = c.label || "Home";
 
                           return (
                             <li
@@ -475,8 +475,8 @@ function AppShell({
                               <Button
                                 size="icon"
                                 className="h-9 w-9 secondary rounded-md bg-gray-900 text-white hover:bg-gray-800"
-                                aria-label="Dodaj obserwację"
-                                title="Dodaj obserwację"
+                                aria-label="Add observation"
+                                title="Add observation"
                                 onClick={onAddObservation}
                               >
                                 <AddObservationIcon className="h-4 w-4" />
@@ -502,7 +502,7 @@ function AppShell({
                             </span>
                             {/* Desktop: tekst + mała strzałka */}
                             <span className="hidden items-center md:inline-flex">
-                              <span>Zawodnicy</span>
+                              <span>Players</span>
                               <ChevronRight
                                 className="ml-1 h-3.5 w-3.5 opacity-70"
                                 aria-hidden="true"
@@ -528,8 +528,8 @@ function AppShell({
                               <Button
                                 size="icon"
                                 className="h-9 w-9 primary rounded-md bg-gray-900 text-white hover:bg-gray-800"
-                                aria-label="Dodaj zawodnika"
-                                title="Dodaj zawodnika"
+                                aria-label="Add player"
+                                title="Add player"
                                 onClick={onAddPlayer}
                               >
                                 <AddPlayerIcon className="h-4 w-4" />
@@ -555,7 +555,7 @@ function AppShell({
                             </span>
                             {/* Desktop: tekst + mała strzałka */}
                             <span className="hidden items-center md:inline-flex">
-                              <span>Obserwacje</span>
+                              <span>Observations</span>
                               <ChevronRight
                                 className="ml-1 h-3.5 w-3.5 opacity-70"
                                 aria-hidden="true"
@@ -570,9 +570,9 @@ function AppShell({
                         <div className="flex items-center gap-2 md:hidden">
                           <Button
                             className="h-9 w-9 primary rounded-md bg-gray-900 text-white hover:bg-gray-800"
-                            aria-label="Dodaj zawodnika"
+                            aria-label="Add player"
                             onClick={onAddPlayer}
-                            title="Dodaj zawodnika"
+                            title="Add player"
                           >
                             <AddPlayerIcon className="h-4 w-4 text-white" />
                           </Button>
@@ -581,9 +581,9 @@ function AppShell({
                             size="icon"
                             variant="outline"
                             className="h-9 w-9 rounded-md border border-stone-300 dark:border-neutral-700"
-                            aria-label="Dodaj obserwację"
+                            aria-label="Add observation"
                             onClick={onAddObservation}
-                            title="Dodaj obserwację"
+                            title="Add observation"
                           >
                             <AddObservationIcon className="h-4 w-4" />
                           </Button>
@@ -593,19 +593,19 @@ function AppShell({
                           <Button
                             onClick={onAddPlayer}
                             className="h-9 rounded-md bg-gray-900 text-white hover:bg-gray-800 primary"
-                            aria-label="Dodaj zawodnika"
+                            aria-label="Add player"
                           >
                             <AddPlayerIcon className="mr-2 h-4 w-4" />
-                            Dodaj zawodnika
+                            Add player
                           </Button>
                           <Button
                             onClick={onAddObservation}
                             variant="outline"
                             className="h-9 rounded-md border-none dark:border-neutral-700 secondary"
-                            aria-label="Dodaj obserwację"
+                            aria-label="Add observation"
                           >
                             <AddObservationIcon className="mr-2 h-4 w-4" />
-                            Dodaj obserwację
+                            Add observation
                           </Button>
                         </div>
                       </>
