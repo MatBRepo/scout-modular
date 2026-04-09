@@ -114,7 +114,7 @@ function rankTrophyColor(r: Rank) {
       return "text-orange-500";
   }
 }
-const formatNum = (n: number) => new Intl.NumberFormat("pl-PL").format(n);
+const formatNum = (n: number) => new Intl.NumberFormat("en-GB").format(n);
 
 function labelForRole(r: Role) {
   if (r === "admin") return "Admin";
@@ -167,7 +167,7 @@ export default function AppSidebar({
   const handleNavClick = (href: string) => {
     setPendingHref(href);
 
-    // anchor-only (hash) – nie ma zmiany pathname, więc czyścimy szybko sami
+    // anchor-only (hash) – pathname doesn't change, so we clear it quickly ourselves
     if (href.includes("#")) {
       setTimeout(() => {
         setPendingHref((current) => (current === href ? null : current));
@@ -204,7 +204,7 @@ export default function AppSidebar({
       const meta = (data.user.user_metadata || {}) as any;
       const nameFromMeta =
         meta.full_name || meta.name || meta.display_name || "";
-      const finalName = nameFromMeta || data.user.email || "Użytkownik";
+      const finalName = nameFromMeta || data.user.email || "User";
       setDisplayName(finalName);
     })();
 
@@ -385,7 +385,7 @@ export default function AppSidebar({
     "/admin/manage/required-fields"
   );
 
-  /* ===== Mobile/desktop accordion state for "Zarządzanie" ===== */
+  /* ===== Mobile/desktop accordion state for "Management" ===== */
   const [manageOpen, setManageOpen] = useState(false);
 
   /* ===== Logout via Supabase ===== */
@@ -407,13 +407,13 @@ export default function AppSidebar({
       {(role === "scout" || role === "scout-agent" || role === "admin") && (
         <div className="mt-1">
           <div className="pb-1 text-[11px] font-semibold tracking-wide text-gray-800 dark:text-neutral-400">
-            Zawodnicy
+            Players
           </div>
 
           <NavItem
             href="/players"
             icon={<MyPlayersIconDefault />}
-            label="Moi zawodnicy"
+            label="My players"
             active={isPlayersSection}
             pending={pendingHref === "/players"}
             onClickHref={handleNavClick}
@@ -425,7 +425,7 @@ export default function AppSidebar({
       <NavItem
         href="/observations"
         icon={<NotebookPen className="h-4 w-4" />}
-        label="Obserwacje"
+        label="Observations"
         active={
           pathname === "/observations" ||
           pathname?.startsWith("/observations/")
@@ -463,7 +463,7 @@ export default function AppSidebar({
         <Link
           href="/"
           className="flex gap-2 rounded-md font-semibold tracking-tight focus:ring-indigo-500 place-items-center"
-          title="Wróć na kokpit"
+          title="Back to dashboard"
           onClick={onClose}
         >
           <BrandMark showName={true} />
@@ -484,7 +484,7 @@ export default function AppSidebar({
               <div className="mb-2 flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-semibold ring-1 ring-border dark:bg-neutral-950">
                   <Settings className="h-3.5 w-3.5" />
-                  Administracja
+                  Administration
                 </span>
                 <div className="h-px flex-1 bg-gradient-to-r from-indigo-300/50 to-transparent dark:from-indigo-700/30" />
               </div>
@@ -495,7 +495,7 @@ export default function AppSidebar({
                   <NavItem
                     href="/players/global"
                     icon={<Globe className="h-4 w-4" />}
-                    label="Zawodnicy (global)"
+                    label="Players (global)"
                     active={isGlobalSection}
                     pending={pendingHref === "/players/global"}
                     onClickHref={handleNavClick}
@@ -504,7 +504,7 @@ export default function AppSidebar({
                   <div className="mt-0.5 space-y-0.5 pl-9">
                     <SubNavItem
                       href="/players/global"
-                      label="Globalna baza"
+                      label="Global database"
                       active={globalBaseActive}
                       pending={pendingHref === "/players/global"}
                       onClickHref={handleNavClick}
@@ -512,13 +512,13 @@ export default function AppSidebar({
                     />
                     <SubNavItem
                       href="/players/global/search"
-                      label="Wyszukaj"
+                      label="Search"
                       active={globalSearchActive}
                       pending={pendingHref === "/players/global/search"}
                       onClickHref={handleNavClick}
                       onClose={onClose}
                     />
-                    {/* 3rd level under Wyszukaj */}
+                    {/* 3rd level under Search */}
                     <div className="space-y-0.5 pl-6">
                       <SubNavItem
                         href="/players/global/search#tm"
@@ -538,7 +538,7 @@ export default function AppSidebar({
                   </div>
                 </div>
 
-                {/* Zarządzanie + submenu */}
+                {/* Management + submenu */}
                 <div>
                   <button
                     type="button"
@@ -553,7 +553,7 @@ export default function AppSidebar({
                       <span className="shrink-0">
                         <Settings className="h-4 w-4" />
                       </span>
-                      <span className="truncate">Zarządzanie</span>
+                      <span className="truncate">Management</span>
                     </span>
                     <motion.span
                       aria-hidden
@@ -584,7 +584,7 @@ export default function AppSidebar({
                         <div className="mt-0.5 space-y-0.5 pl-9">
                           <SubNavItem
                             href="/admin/manage"
-                            label="Użytkownicy"
+                            label="Users"
                             active={manageBaseActive}
                             pending={pendingHref === "/admin/manage"}
                             onClickHref={handleNavClick}
@@ -592,7 +592,7 @@ export default function AppSidebar({
                           />
                           <SubNavItem
                             href="/admin/manage/metrics"
-                            label="Metryki obserwacji"
+                            label="Observation metrics"
                             active={manageMetricsActive}
                             pending={pendingHref === "/admin/manage/metrics"}
                             onClickHref={handleNavClick}
@@ -600,7 +600,7 @@ export default function AppSidebar({
                           />
                           <SubNavItem
                             href="/admin/manage/ratings"
-                            label="Oceny zawodnika"
+                            label="Player ratings"
                             active={manageRatingsActive}
                             pending={pendingHref === "/admin/manage/ratings"}
                             onClickHref={handleNavClick}
@@ -608,7 +608,7 @@ export default function AppSidebar({
                           />
                           <SubNavItem
                             href="/admin/manage/ranks"
-                            label="Rangi użytkowników"
+                            label="User ranks"
                             active={manageRanksActive}
                             pending={pendingHref === "/admin/manage/ranks"}
                             onClickHref={handleNavClick}
@@ -616,7 +616,7 @@ export default function AppSidebar({
                           />
                           <SubNavItem
                             href="/admin/manage/required-fields"
-                            label="Wymagane pola"
+                            label="Required fields"
                             active={manageRequiredActive}
                             pending={pendingHref === "/admin/manage/required-fields"}
                             onClickHref={handleNavClick}
@@ -631,7 +631,7 @@ export default function AppSidebar({
                 <NavItem
                   href="/scouts"
                   icon={<Users className="h-4 w-4" />}
-                  label="Lista scoutów"
+                  label="Scouts list"
                   active={pathname === "/scouts" || pathname?.startsWith("/scouts/")}
                   pending={pendingHref === "/scouts"}
                   onClickHref={handleNavClick}
@@ -641,7 +641,7 @@ export default function AppSidebar({
                 <NavItem
                   href="/duplicates"
                   icon={<TriangleAlert className="h-4 w-4" />}
-                  label="Duplikaty"
+                  label="Duplicates"
                   active={pathname === "/duplicates"}
                   pending={pendingHref === "/duplicates"}
                   onClickHref={handleNavClick}
@@ -652,7 +652,7 @@ export default function AppSidebar({
           </>
         )}
 
-        {/* SEPARATOR między Administracja a account-row */}
+        {/* SEPARATOR between Administration and account-row */}
         <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
 
         <div ref={accountRef} className="relative">
@@ -667,7 +667,7 @@ export default function AppSidebar({
                 {initials}
               </span>
               <span className="flex min-w-0 items-center gap-1">
-                <span className="truncate">{displayName || "Użytkownik"}</span>
+                <span className="truncate">{displayName || "User"}</span>
                 <span aria-hidden className="opacity-40">
                   |
                 </span>
@@ -726,7 +726,7 @@ export default function AppSidebar({
                   <div className="mx-1 mb-2 rounded-md bg-stone-100 p-3 text-xs ring-1 ring-border dark:bg-neutral-900">
                     <div className="mb-1 flex flex-wrap items-center justify-between">
                       <span className="whitespace-normal break-words font-semibold">
-                        Twój poziom
+                        Your level
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ${rankClass(
@@ -741,7 +741,7 @@ export default function AppSidebar({
                     <div className="mt-1">
                       <div className="mb-1 flex flex-wrap items-center justify-between whitespace-normal break-words">
                         <span className="opacity-70">
-                          Postęp do {rankLabel(next as Rank)}
+                          Progress to {rankLabel(next as Rank)}
                         </span>
                         <span className="opacity-70">{pct}%</span>
                       </div>
@@ -752,21 +752,21 @@ export default function AppSidebar({
                         />
                       </div>
                       <div className="mt-1 whitespace-normal break-words text-[10px] opacity-70">
-                        Brakuje {remaining} pkt (np.{" "}
-                        {Math.ceil(remaining / 2)} aktywnych zawodników lub{" "}
-                        {remaining} obserwacji).
+                        Need {remaining} pts (e.g.{" "}
+                        {Math.ceil(remaining / 2)} active players or{" "}
+                        {remaining} observations).
                       </div>
                     </div>
 
                     <div className="mt-2 grid grid-cols-2 gap-1 text-[11px]">
                       <div className="rounded-md p-2">
-                        <div className="opacity-60">Zawodnicy</div>
+                        <div className="opacity-60">Players</div>
                         <div className="text-sm font-semibold">
                           {formatNum(playersCount)}
                         </div>
                       </div>
                       <div className="rounded-md p-2">
-                        <div className="opacity-60">Obserwacje</div>
+                        <div className="opacity-60">Observations</div>
                         <div className="text-sm font-semibold">
                           {formatNum(obsCount)}
                         </div>
@@ -777,10 +777,10 @@ export default function AppSidebar({
                       <button
                         className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition hover:bg-stone-100 dark:hover:bg-neutral-800"
                         onClick={readCounts}
-                        title="Odśwież liczniki"
+                        title="Refresh counters"
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
-                        Odśwież
+                        Refresh
                       </button>
                     </div>
                   </div>
@@ -789,12 +789,12 @@ export default function AppSidebar({
                     <div className="flex items-center justify-between gap-2">
                       <div
                         className="min-w-0 flex flex-1 items-center gap-1 rounded-md border px-2 py-1 text-[11px] text-gray-700 dark:text-neutral-300"
-                        title={`Aktywni: ${playersCount} • Obserwacje: ${obsCount} • Score: ${score}`}
+                        title={`Active: ${playersCount} • Observations: ${obsCount} • Score: ${score}`}
                       >
                         <TrendingUp className="h-3.5 w-3.5 shrink-0 opacity-70" />
                         <span className="truncate">
-                          {formatNum(playersCount)} zawodników •{" "}
-                          {formatNum(obsCount)} obserwacji
+                          {formatNum(playersCount)} players •{" "}
+                          {formatNum(obsCount)} observations
                         </span>
                       </div>
 
@@ -803,8 +803,8 @@ export default function AppSidebar({
                         onClick={() =>
                           setTheme(theme === "dark" ? "light" : "dark")
                         }
-                        aria-label="Przełącz motyw (T)"
-                        title="Przełącz motyw (T)"
+                        aria-label="Toggle theme (T)"
+                        title="Toggle theme (T)"
                       >
                         {theme === "dark" ? (
                           <Sun className="h-3 w-3" />
@@ -815,8 +815,7 @@ export default function AppSidebar({
                     </div>
 
                     <p className="px-0.5 text-[10px] text-gray-500 dark:text-neutral-500">
-                      Wskazówka: dodawaj pełne profile i finalne obserwacje, aby
-                      szybciej awansować.
+                      Tip: add full profiles and final observations to level up faster.
                     </p>
                   </div>
 
@@ -830,13 +829,13 @@ export default function AppSidebar({
                       handleNavClick("/settings");
                     }}
                   >
-                    <Settings className="h-4 w-4" /> Ustawienia
+                    <Settings className="h-4 w-4" /> Settings
                   </Link>
 
                   <div className="my-2 h-px bg-gray-200 dark:bg-neutral-800" />
 
                   <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-800 dark:text-neutral-400">
-                    Rola
+                    Role
                   </div>
                   <div className="px-2 pb-2 text-sm text-dark dark:text-neutral-200">
                     {displayName
@@ -850,10 +849,10 @@ export default function AppSidebar({
                     role="menuitem"
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 focus:ring-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
-                    title="Wyloguj się"
+                    title="Sign out"
                   >
                     <LogOut className="h-4 w-4" />
-                    Wyloguj
+                    Sign out
                   </button>
                 </motion.div>
               </>
@@ -907,7 +906,7 @@ export default function AppSidebar({
               className={`fixed left-0 top-0 z-50 lg:hidden ${asideMobile}`}
               role="dialog"
               aria-modal="true"
-              aria-label="Nawigacja"
+              aria-label="Navigation"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -920,7 +919,7 @@ export default function AppSidebar({
             >
               <button
                 onClick={onClose}
-                aria-label="Zamknij panel"
+                aria-label="Close panel"
                 className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-stone-50 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
               >
                 <X className="h-4 w-4" />
@@ -939,7 +938,7 @@ export default function AppSidebar({
       {rankUpgradeOverlay}
       <aside
         className={`fixed left-0 top-0 z-50 ${asideDesktop}`}
-        aria-label="Główna nawigacja"
+        aria-label="Main navigation"
       >
         {inner}
       </aside>
@@ -982,17 +981,17 @@ function RankUpgradeOverlay({
                 <Trophy className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold">Gratulacje! Awans rangi</div>
+                <div className="text-sm font-semibold">Congratulations! Rank upgrade</div>
                 <div className="text-xs text-gray-600 dark:text-neutral-400">
-                  Twoje konto zostało podniesione z{" "}
-                  <span className="font-semibold">{rankLabel(from)}</span> do{" "}
+                  Your account has been upgraded from{" "}
+                  <span className="font-semibold">{rankLabel(from)}</span> to{" "}
                   <span className="font-semibold">{rankLabel(to)}</span>.
                 </div>
               </div>
             </div>
             <button
               onClick={onClose}
-              aria-label="Zamknij"
+              aria-label="Close"
               className="rounded-md p-1 text-gray-500 hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
             >
               <X className="h-4 w-4" />
@@ -1001,12 +1000,12 @@ function RankUpgradeOverlay({
 
           <div className="mt-2 rounded-md bg-stone-50 p-3 text-xs text-gray-700 dark:bg-neutral-900 dark:text-neutral-300">
             <p>
-              Ranking rośnie, gdy dodajesz{" "}
-              <span className="font-semibold">aktywnych zawodników</span> i kończysz{" "}
-              <span className="font-semibold">obserwacje</span>.
+              Your rank increases when you add{" "}
+              <span className="font-semibold">active players</span> and complete{" "}
+              <span className="font-semibold">observations</span>.
             </p>
             <p className="mt-1">
-              Aktualny poziom: <span className="font-semibold">{rankLabel(to)}</span>.
+              Current level: <span className="font-semibold">{rankLabel(to)}</span>.
             </p>
           </div>
 
@@ -1015,7 +1014,7 @@ function RankUpgradeOverlay({
               onClick={onClose}
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 hover:bg-stone-100 focus:ring-indigo-500 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-900"
             >
-              OK, super
+              OK, great
             </button>
           </div>
         </div>

@@ -2,17 +2,17 @@
 import { getSupabase } from "@/lib/supabaseClient";
 
 export type Metric = {
-  id: string;        // uuid z DB
-  key: string;       // krótki klucz, np. "decyzje"
-  label: string;     // opis w UI
-  enabled: boolean;  // czy pokazywać
+  id: string;        // uuid from DB
+  key: string;       // short key, e.g. "decisions"
+  label: string;     // description in UI
+  enabled: boolean;  // whether to show
 };
 
 export type MetricGroupKey = "BASE" | "GK" | "DEF" | "MID" | "ATT";
 
 export type MetricsConfig = Record<MetricGroupKey, Metric[]>;
 
-/** Pusty config – używany zanim dociągniemy dane z Supabase */
+/** Empty config – used before fetching data from Supabase */
 export const EMPTY_METRICS: MetricsConfig = {
   BASE: [],
   GK: [],
@@ -22,15 +22,15 @@ export const EMPTY_METRICS: MetricsConfig = {
 };
 
 /**
- * Sync fallback – zwraca pustą strukturę.
- * Używany tylko jako initialValue w useState.
+ * Sync fallback – returns empty structure.
+ * Used only as initialValue in useState.
  */
 export function loadMetrics(): MetricsConfig {
   return EMPTY_METRICS;
 }
 
 /**
- * Główny loader z Supabase – *jedyna* prawdziwa konfiguracja metryk.
+ * Main loader from Supabase – *the only* true metrics configuration.
  */
 export async function syncMetricsFromSupabase(): Promise<MetricsConfig> {
   try {
@@ -72,7 +72,7 @@ export async function syncMetricsFromSupabase(): Promise<MetricsConfig> {
   }
 }
 
-/* Opcjonalne helpery pod przyszły ekran „Zarządzanie metrykami” */
+/* Optional helpers for future "Metrics Management" screen */
 
 export async function upsertMetric(metric: {
   id?: string;
@@ -109,16 +109,16 @@ export async function deleteMetric(id: string) {
 }
 
 /**
- * saveMetrics – kompatybilne z dotychczasowym kodem:
- * przyjmuje cały config i synchronizuje go z tabelą obs_metrics w Supabase.
+ * saveMetrics – compatible with current code:
+ * takes the whole config and synchronizes it with the obs_metrics table in Supabase.
  * 
- * Wywołania w UI (setAndSave) zostają bez zmian – tylko backend się zmienił.
+ * UI calls (setAndSave) remain unchanged – only the backend changed.
  */
 export async function saveMetrics(cfg: MetricsConfig): Promise<void> {
   try {
     const supabase = getSupabase();
 
-    // 1. Pobierz obecne ID z bazy
+    // 1. Get current IDs from the database
     const { data: existing, error: existingError } = await supabase
       .from("obs_metrics")
       .select("id");
@@ -132,7 +132,7 @@ export async function saveMetrics(cfg: MetricsConfig): Promise<void> {
       (existing ?? []).map((row: any) => row.id as string)
     );
 
-    // 2. Zflattenuj nową konfigurację do listy wierszy
+    // 2. Flatten the new configuration to a list of rows
     const rows: {
       id: string;
       group_key: MetricGroupKey;
@@ -157,13 +157,13 @@ export async function saveMetrics(cfg: MetricsConfig): Promise<void> {
 
     const newIds = new Set<string>(rows.map((r) => r.id).filter(Boolean));
 
-    // 3. Usuń metryki, których już nie ma w configu
+    // 3. Delete metrics that are no longer in the config
     const idsToDelete = [...existingIds].filter((id) => !newIds.has(id));
     if (idsToDelete.length) {
       await supabase.from("obs_metrics").delete().in("id", idsToDelete);
     }
 
-    // 4. Upsert całej listy (nowe + istniejące)
+    // 4. Upsert the whole list (new + existing)
     if (rows.length) {
       await supabase
         .from("obs_metrics")

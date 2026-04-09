@@ -58,7 +58,7 @@ async function fetchHtml(pathOrUrl: string) {
   return res.text();
 }
 
-/* ---------------- helpers jak w stream ---------------- */
+/* ---------------- helpers as in stream ---------------- */
 const clean = (s?: string | null) => (s ?? "").replace(/\s+/g, " ").trim();
 
 function parseIntLoose(s?: string | null) {
@@ -287,7 +287,7 @@ export async function POST(req: Request) {
 
     if (!Array.isArray(players) || !players.length) {
       return NextResponse.json(
-        { error: "Brak zawodników w payloadzie" },
+        { error: "No players in payload" },
         { status: 400 }
       );
     }
@@ -300,7 +300,7 @@ export async function POST(req: Request) {
         results.push({
           tm_player_id: p.tm_player_id,
           ok: false,
-          error: "Brak tm_player_id lub player_path",
+          error: "Missing tm_player_id or player_path",
         });
         continue;
       }

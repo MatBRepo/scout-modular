@@ -102,7 +102,7 @@ type ParsedTable = {
 function parseFirstTable(html: string): ParsedTable | null {
   const $ = cheerio.load(html);
 
-  // Transfermarkt często ma kilka tabel; bierzemy pierwszą "pełną"
+  // Transfermarkt often has several tables; we take the first "full" one
   let table = $("table.items").first();
   if (!table.length) {
     table = $("table").first();
@@ -247,13 +247,13 @@ function buildPlayerUrls(playerPath: string): {
   playerId: string;
   urls: PlayerUrls;
 } {
-  // przykładowe ścieżki:
+  // example paths:
   // /bartosz-mrozek/profil/spieler/345452
   // /bartosz-mrozek/marktwertverlauf/spieler/345452
   const cleanPath = ensurePath(playerPath);
   const m = cleanPath.match(/^\/([^/]+)\/[^/]+\/spieler\/(\d+)/);
   if (!m) {
-    throw new Error(`Nieoczekiwany format player_path: ${playerPath}`);
+    throw new Error(`Unexpected player_path format: ${playerPath}`);
   }
   const slug = m[1];
   const playerId = m[2];
@@ -298,20 +298,20 @@ export async function GET(req: Request) {
       return new Response(
         JSON.stringify({
           error:
-            "Missing ?path= (np. /bartosz-mrozek/profil/spieler/345452) lub ?id=345452",
+            "Missing ?path= (e.g. /bartosz-mrozek/profil/spieler/345452) or ?id=345452",
         }),
         { status: 400 }
       );
     }
 
-    // jeśli podane samo id – zbuduj podstawowy path
+    // if only id provided – build basic path
     const playerPath =
       path ||
       `/spieler/profil/spieler/${encodeURIComponent(idParam as string)}`;
 
     const { slug, playerId, urls } = buildPlayerUrls(playerPath);
 
-    // można ograniczyć liczbę tabów (dla wydajności) – na start bierzemy wszystkie
+    // tabs can be limited (for performance) – taking all for start
     const tabsToFetch: PlayerTabKey[] = [
       "profile",
       "statsCurrentSeason",
@@ -343,7 +343,7 @@ export async function GET(req: Request) {
 
     let profile: any | null = null;
 
-    // równoległe pobieranie (uwaga na limit / throttling – w razie czego można zrobić sekwencyjnie)
+    // parallel fetching (watch out for limit / throttling – can do sequentially in case of issues)
     await Promise.all(
       tabsToFetch.map(async (key) => {
         const url = urls[key];

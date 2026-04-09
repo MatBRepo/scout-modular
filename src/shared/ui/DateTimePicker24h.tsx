@@ -51,7 +51,7 @@ function useIsMobileQuery(query = "(max-width: 640px)") {
 export function DateTimePicker24h({
   value,
   onChange,
-  placeholder = "Data i godzina meczu",
+  placeholder = "Match date and time",
 }: Props) {
   const isMobile = useIsMobileQuery();
   const [isOpen, setIsOpen] = useState(false);
@@ -216,7 +216,7 @@ export function DateTimePicker24h({
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Clock className="h-4 w-4" />
-          Godzina
+          Hour
         </div>
 
         <div className="text-xs text-muted-foreground">
@@ -251,8 +251,8 @@ export function DateTimePicker24h({
 
       {/* Minutes chips */}
       <div className="mt-3 mb-2 flex items-center justify-between">
-        <div className="text-sm font-medium">Minuty</div>
-        <div className="text-xs text-muted-foreground">co 5 min</div>
+        <div className="text-sm font-medium">Minutes</div>
+        <div className="text-xs text-muted-foreground">every 5 min</div>
       </div>
 
       <div className="grid grid-cols-6 gap-2">
@@ -285,7 +285,7 @@ export function DateTimePicker24h({
     <div className="flex flex-col sm:flex-row sm:divide-x">
       <div className="flex w-32 flex-col bg-stone-50 sm:w-36 dark:bg-stone-900/70">
         <div className="px-3 py-2 text-xs font-medium text-muted-foreground">
-          Godzina
+          Hour
         </div>
         <ScrollArea className="h-64 w-full">
           <div className="space-y-1 p-2">
@@ -307,7 +307,7 @@ export function DateTimePicker24h({
 
       <div className="flex w-32 flex-col bg-stone-50 sm:w-36 dark:bg-stone-900/70">
         <div className="px-3 py-2 text-xs font-medium text-muted-foreground">
-          Minuta
+          Minute
         </div>
         <ScrollArea className="h-64 w-full">
           <div className="space-y-1 p-2">
@@ -354,21 +354,21 @@ export function DateTimePicker24h({
       {/* Header */}
       <div className="px-4 pb-3">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">Wybierz datę i godzinę</div>
+          <div className="text-sm font-semibold">Select date and time</div>
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className="h-9 w-9"
             onClick={() => setIsOpen(false)}
-            aria-label="Zamknij"
+            aria-label="Close"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         <div className="mt-1 text-xs text-muted-foreground">
-          {dateObj ? format(dateObj, "dd.MM.yyyy HH:mm") : "Brak wybranej daty"}
+          {dateObj ? format(dateObj, "dd.MM.yyyy HH:mm") : "No date selected"}
         </div>
       </div>
 
@@ -390,7 +390,7 @@ export function DateTimePicker24h({
             onClick={setNow}
           >
             <Clock className="mr-2 h-4 w-4" />
-            Teraz
+            Now
           </Button>
           <Button
             type="button"
@@ -399,14 +399,14 @@ export function DateTimePicker24h({
             onClick={clearAll}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Wyczyść
+            Clear
           </Button>
           <Button
             type="button"
             className="flex-1"
             onClick={() => setIsOpen(false)}
           >
-            Gotowe
+            Done
           </Button>
         </div>
       </div>
@@ -426,14 +426,14 @@ export function DateTimePicker24h({
       {/* Top action row */}
       <div className="flex items-center justify-between gap-2 border-b px-2 py-2">
         <div className="px-2 text-xs text-muted-foreground">
-          {dateObj ? format(dateObj, "dd.MM.yyyy HH:mm") : "Wybierz datę i godzinę"}
+          {dateObj ? format(dateObj, "dd.MM.yyyy HH:mm") : "Select date and time"}
         </div>
         <div className="flex items-center gap-1">
           <Button type="button" size="sm" variant="ghost" onClick={setNow}>
-            Teraz
+            Now
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={clearAll}>
-            Wyczyść
+            Clear
           </Button>
           <Button
             type="button"
@@ -441,7 +441,7 @@ export function DateTimePicker24h({
             variant="ghost"
             className="h-8 w-8"
             onClick={() => setIsOpen(false)}
-            aria-label="Zamknij"
+            aria-label="Close"
           >
             <X className="h-4 w-4" />
           </Button>

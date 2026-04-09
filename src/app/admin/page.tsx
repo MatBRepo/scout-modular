@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 
 export default function AdminPage() {
-    // Automatyczne przekierowanie z /admin na /admin/manage
-    // Rozwiązuje to problem 404, gdy użytkownik próbuje wejść na /admin lub klika w breadcrumbs.
+    // Automatic redirect from /admin to /admin/manage
+    // Resolves 404 issue when user tries to access /admin or clicks breadcrumbs.
     redirect("/admin/manage");
 }

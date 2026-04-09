@@ -4,9 +4,9 @@ import { getSupabase } from "@/lib/supabaseClient";
 export type RatingGroupKey = "GEN" | "GK" | "DF" | "MF" | "FW" | string;
 
 export type RatingAspect = {
-  id: string;          // uuid z tabeli
-  key: string;         // np. "phys_attrs"
-  label: string;       // np. "Atrybuty fizyczne (1–5)"
+  id: string;          // uuid from table
+  key: string;         // e.g. "phys_attrs"
+  label: string;       // e.g. "Physical attributes (1–5)"
   tooltip?: string | null;
   enabled: boolean;
   sort_order: number;
@@ -17,12 +17,12 @@ export type RatingsConfig = RatingAspect[];
 
 export const EMPTY_RATINGS: RatingsConfig = [];
 
-/** Sync fallback – używany jako initialValue w useState. */
+/** Sync fallback – used as initialValue in useState. */
 export function loadRatings(): RatingsConfig {
   return EMPTY_RATINGS;
 }
 
-/** Główne pobranie konfiguracji ocen z Supabase. */
+/** Main fetch of rating configuration from Supabase. */
 export async function syncRatingsFromSupabase(): Promise<RatingsConfig> {
   try {
     const supabase = getSupabase();
@@ -51,7 +51,7 @@ export async function syncRatingsFromSupabase(): Promise<RatingsConfig> {
   }
 }
 
-/** Na przyszłość – edycja konfiguracji z UI. */
+/** For the future – configuration editing from UI. */
 export async function saveRatings(cfg: RatingsConfig) {
   const supabase = getSupabase();
   const payload = cfg.map((a) => ({

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
         if (!email || !userId) {
             return NextResponse.json(
-                { error: "Email i userId są wymagane." },
+                { error: "Email and userId are required." },
                 { status: 400 }
             );
         }
@@ -31,9 +31,9 @@ export async function POST(req: Request) {
         });
 
         if (linkError) {
-            console.error("Błąd generowania linku aktywacyjnego:", linkError);
+            console.error("Error generating activation link:", linkError);
             return NextResponse.json(
-                { error: `Błąd Supabase: ${linkError.message}` },
+                { error: `Supabase error: ${linkError.message}` },
                 { status: 500 }
             );
         }
@@ -77,10 +77,10 @@ export async function POST(req: Request) {
                 }
             } catch (err: any) {
                 mailError = err.message;
-                console.error("Błąd połączenia z PHP Mailer:", err);
+                console.error("Error connecting to PHP Mailer:", err);
             }
         } else {
-            console.warn("PHP_MAILER_URL nie jest skonfigurowany.");
+            console.warn("PHP_MAILER_URL is not configured.");
         }
 
         return NextResponse.json({
@@ -90,9 +90,9 @@ export async function POST(req: Request) {
             link: activationLink, // Fallback for manual sending
         });
     } catch (err: any) {
-        console.error("Fatalny błąd API send-activation:", err);
+        console.error("Fatal send-activation API error:", err);
         return NextResponse.json(
-            { error: err.message || "Wewnętrzny błąd serwera." },
+            { error: err.message || "Internal server error." },
             { status: 500 }
         );
     }

@@ -75,257 +75,257 @@ function SavePill({
       {state === "saving" ? (
         <>
           <Loader2 className="h-3.5 w-3.5 animate-spin md:mr-1.5" />
-          <span className="hidden md:inline">Zapisuję ustawienia…</span>
+          <span className="hidden md:inline">Saving settings…</span>
         </>
       ) : (
         <>
           <CheckCircle2 className="h-3.5 w-3.5 md:mr-1.5" />
-          <span className="hidden md:inline">Zapisano ustawienia</span>
+          <span className="hidden md:inline">Settings saved</span>
         </>
       )}
     </span>
   );
 }
 
-/* ===== Definicje pól w formularzach ===== */
+/* ===== Field definitions in forms ===== */
 const FORM_DEFS: FormDef[] = [
   {
     id: "player_basic_known",
-    label: "AddPlayer – zawodnik znany",
+    label: "AddPlayer – known player",
     description:
-      "Formularz używany, gdy znasz dane osobowe zawodnika (imię, nazwisko, rocznik).",
-    highlight: "AddPlayerPage – tryb „Znam zawodnika”.",
+      "Form used when you know the player's personal details (first name, last name, birth year).",
+    highlight: "AddPlayerPage – \"I know the player\" mode.",
     fields: [
-      { key: "firstName", label: "Imię", description: "Np. Jan." },
-      { key: "lastName", label: "Nazwisko", description: "Np. Kowalski." },
+      { key: "firstName", label: "First Name", description: "E.g. John." },
+      { key: "lastName", label: "Last Name", description: "E.g. Doe." },
       {
         key: "birthYear",
-        label: "Rok urodzenia",
-        description: "Np. 2005. Używane do wyliczania wieku.",
+        label: "Birth Year",
+        description: "E.g. 2005. Used to calculate age.",
       },
       {
         key: "club",
-        label: "Aktualny klub",
-        description: "Nazwa aktualnego klubu zawodnika.",
+        label: "Current Club",
+        description: "The player's current club name.",
       },
       {
         key: "clubCountry",
-        label: "Kraj aktualnego klubu",
-        description: "Np. Polska, Niemcy…",
+        label: "Current Club Country",
+        description: "E.g. Poland, Germany…",
       },
       {
         key: "jerseyNumber",
-        label: "Numer na koszulce",
+        label: "Jersey Number",
         description:
-          "Opcjonalne – można uczynić wymaganym, jeśli chcesz zawsze mieć numer.",
+          "Optional – can be made required if you always want to have a number.",
       },
     ],
   },
   {
     id: "player_basic_unknown",
-    label: "AddPlayer – zawodnik nieznany",
+    label: "AddPlayer – unknown player",
     description:
-      "Formularz, gdy nie znasz danych osobowych zawodnika (obserwacja po numerze / klubie).",
-    highlight: "AddPlayerPage – tryb „Nie znam zawodnika”.",
+      "Form used when you don't know the player's personal details (observation by number / club).",
+    highlight: "AddPlayerPage – \"I don't know the player\" mode.",
     fields: [
       {
         key: "jerseyNumber_unknown",
-        label: "Numer na koszulce",
-        description: "Np. 27.",
+        label: "Jersey Number",
+        description: "E.g. 27.",
       },
       {
         key: "uClub",
-        label: "Aktualny klub",
-        description: "Nazwa klubu zawodnika.",
+        label: "Current Club",
+        description: "The player's club name.",
       },
       {
         key: "uClubCountry",
-        label: "Kraj aktualnego klubu",
-        description: "Np. Polska, Anglia…",
+        label: "Current Club Country",
+        description: "E.g. Poland, England…",
       },
       {
         key: "uNote",
-        label: "Notatka własna",
+        label: "Own Note",
         description:
-          "Krótki opis zawodnika / kontekstu obserwacji. Może być opcjonalna.",
+          "Short description of the player / observation context. Can be optional.",
       },
     ],
   },
   {
     id: "observation_new",
-    label: "AddPlayer – sekcja „Nowa obserwacja”",
+    label: "AddPlayer – \"New Observation\" section",
     description:
-      "Sekcja „Nowa obserwacja” wewnątrz formularza dodawania zawodnika.",
-    highlight: "Panel „Obserwacje” w AddPlayerPage.",
+      "The \"New Observation\" section inside the add player form.",
+    highlight: "\"Observations\" panel in AddPlayerPage.",
     fields: [
       {
         key: "match",
-        label: "Mecz",
-        description: "Tekst meczu, np. „Lech U19 vs Wisła U19”.",
+        label: "Match",
+        description: "Match text, e.g. \"Lech U19 vs Wisla U19\".",
       },
       {
         key: "date",
-        label: "Data meczu",
-        description: "Pole typu data, używane do sortowania i podglądu.",
+        label: "Match Date",
+        description: "Date field, used for sorting and preview.",
       },
       {
         key: "time",
-        label: "Godzina meczu",
-        description: "Opcjonalne – przydatne do dokładnego logowania.",
+        label: "Match Time",
+        description: "Optional – useful for precise logging.",
       },
       {
         key: "opponentLevel",
-        label: "Poziom przeciwnika",
-        description: "Np. CLJ U17, 3 liga, top akademia…",
+        label: "Opponent Level",
+        description: "E.g. CLJ U17, 3rd division, top academy…",
       },
       {
         key: "mode",
-        label: "Tryb (Live / TV)",
-        description: "Czy obserwacja była na żywo, czy z TV / wideo.",
+        label: "Mode (Live / TV)",
+        description: "Whether the observation was live or from TV / video.",
       },
       {
         key: "status",
-        label: "Status (Szkic / Finalna)",
-        description: "Możesz wymusić, aby zawsze był wybrany status.",
+        label: "Status (Draft / Final)",
+        description: "You can force a status to always be selected.",
       },
     ],
   },
   {
     id: "observations_main",
-    label: "ObservationEditor – formularz główny",
+    label: "ObservationEditor – main form",
     description:
-      "Konfiguracja wymagalności pól w głównym formularzu obserwacji.",
+      "Configuration of field requirements in the main observation form.",
     highlight:
-      "Używane w ObservationEditor (widok obserwacji – drużyny, data, zawodnicy itd.).",
+      "Used in ObservationEditor (observation view – teams, date, players etc.).",
     fields: [
       {
         key: "teamA",
-        label: "Drużyna A",
-        description: "Pierwsza drużyna w meczu.",
+        label: "Team A",
+        description: "First team in the match.",
       },
       {
         key: "teamB",
-        label: "Drużyna B",
-        description: "Druga drużyna w meczu.",
+        label: "Team B",
+        description: "Second team in the match.",
       },
       {
         key: "reportDate",
-        label: "Data meczu",
-        description: "Data używana do sortowania i raportów.",
+        label: "Match Date",
+        description: "Date used for sorting and reports.",
       },
       {
         key: "time",
-        label: "Godzina meczu",
-        description: "Godzina rozpoczęcia meczu (opcjonalna).",
+        label: "Match Time",
+        description: "Match start time (optional).",
       },
       {
         key: "conditions",
-        label: "Tryb meczu (Live / TV)",
-        description: "Czy obserwacja była na żywo, czy z transmisji.",
+        label: "Match Mode (Live / TV)",
+        description: "Whether the observation was live or from a broadcast.",
       },
       {
         key: "competition",
-        label: "Liga / turniej",
-        description: "Nazwa rozgrywek (np. CLJ U19, Puchar Polski).",
+        label: "League / Tournament",
+        description: "Competition name (e.g. CLJ U19, Polish Cup).",
       },
       {
         key: "players",
-        label: "Lista zawodników",
+        label: "Player List",
         description:
-          "Czy wymagany jest co najmniej jeden zawodnik w obserwacji.",
+          "Whether at least one player is required in the observation.",
       },
       {
         key: "note",
-        label: "Notatka ogólna",
-        description: "Tekstowa notatka do całej obserwacji.",
+        label: "General Note",
+        description: "Textual note for the entire observation.",
       },
     ],
   },
   {
     id: "player_editor_basic_known",
-    label: "PlayerEditor – podstawowe (znany)",
+    label: "PlayerEditor – basic (known)",
     description:
-      "Podstawowa sekcja w edytorze zawodnika – gdy profil jest znany (imię, nazwisko).",
-    highlight: "PlayerEditorPage – sekcja „Podstawowe informacje” (znany).",
+      "Basic section in the player editor – when the profile is known (first name, last name).",
+    highlight: "PlayerEditorPage – \"Basic Information\" section (known).",
     fields: [
       {
         key: "firstName",
-        label: "Imię",
-        description: "Pole `firstName` z PlayerEditor (znany zawodnik).",
+        label: "First Name",
+        description: "`firstName` field from PlayerEditor (known player).",
       },
       {
         key: "lastName",
-        label: "Nazwisko",
-        description: "Pole `lastName` z PlayerEditor (znany zawodnik).",
+        label: "Last Name",
+        description: "`lastName` field from PlayerEditor (known player).",
       },
       {
         key: "birthYear",
-        label: "Rok urodzenia",
-        description: "ext.birthYear – rok urodzenia używany do wieku.",
+        label: "Birth Year",
+        description: "ext.birthYear – birth year used for age.",
       },
       {
         key: "club",
-        label: "Aktualny klub",
-        description: "Pole `club` z PlayerEditor.",
+        label: "Current Club",
+        description: "`club` field from PlayerEditor.",
       },
       {
         key: "clubCountry",
-        label: "Kraj aktualnego klubu",
-        description: "ext.clubCountry – kraj klubu zawodnika.",
+        label: "Current Club Country",
+        description: "ext.clubCountry – player's club country.",
       },
       {
         key: "jerseyNumber",
-        label: "Numer na koszulce",
-        description: "ext.jerseyNumber – numer na koszulce (opcjonalnie).",
+        label: "Jersey Number",
+        description: "ext.jerseyNumber – jersey number (optional).",
       },
     ],
   },
   {
     id: "player_editor_basic_unknown",
-    label: "PlayerEditor – podstawowe (nieznany)",
+    label: "PlayerEditor – basic (unknown)",
     description:
-      "Podstawowa sekcja w edytorze, gdy profil jest traktowany jako nieznany (brak imienia/nazwiska).",
+      "Basic section in the editor when the profile is treated as unknown (lack of first/last name).",
     highlight:
-      "PlayerEditorPage – sekcja „Podstawowe informacje” (profil nieznany).",
+      "PlayerEditorPage – \"Basic Information\" section (unknown profile).",
     fields: [
       {
         key: "jerseyNumber",
-        label: "Numer na koszulce",
-        description: "ext.jerseyNumber – numer, po którym rozpoznajesz gracza.",
+        label: "Jersey Number",
+        description: "ext.jerseyNumber – number by which you recognize the player.",
       },
       {
         key: "club",
-        label: "Aktualny klub",
-        description: "Pole `club` z PlayerEditor.",
+        label: "Current Club",
+        description: "`club` field from PlayerEditor.",
       },
       {
         key: "clubCountry",
-        label: "Kraj aktualnego klubu",
-        description: "ext.clubCountry – kraj klubu zawodnika.",
+        label: "Current Club Country",
+        description: "ext.clubCountry – player's club country.",
       },
       {
         key: "unknownNote",
-        label: "Notatka własna (nieznany)",
+        label: "Own Note (unknown)",
         description:
-          "ext.unknownNote – opis zawodnika dla profilu nieznanego.",
+          "ext.unknownNote – description for unknown profile.",
       },
     ],
   },
   {
     id: "player_editor_ext_profile",
-    label: "PlayerEditor – profil boiskowy",
+    label: "PlayerEditor – on-pitch profile",
     description:
-      "Zakładka „Profil boiskowy” w sekcji Rozszerzone informacje (wzrost, waga, pozycje).",
+      "\"On-pitch Profile\" tab in the Extended Information section (height, weight, positions).",
     highlight: "PlayerEditorPage – ExtContent(view=\"profile\").",
     fields: [
-      { key: "height", label: "Wzrost (cm)" },
-      { key: "weight", label: "Waga (kg)" },
-      { key: "dominantFoot", label: "Dominująca noga" },
-      { key: "mainPos", label: "Główna pozycja" },
+      { key: "height", label: "Height (cm)" },
+      { key: "weight", label: "Weight (kg)" },
+      { key: "dominantFoot", label: "Dominant Foot" },
+      { key: "mainPos", label: "Main Position" },
       {
         key: "altPositions",
-        label: "Pozycje alternatywne",
-        description: "Lista pozycji alternatywnych (ext.altPositions).",
+        label: "Alternative Positions",
+        description: "List of alternative positions (ext.altPositions).",
       },
     ],
   },
@@ -333,67 +333,67 @@ const FORM_DEFS: FormDef[] = [
     id: "player_editor_ext_eligibility",
     label: "PlayerEditor – status & scouting",
     description:
-      "Zakładka „Status & scouting” – paszport UE, kontrakt, agencja, linki.",
+      "\"Status & scouting\" tab – EU passport, contract, agency, links.",
     highlight: "PlayerEditorPage – ExtContent(view=\"eligibility\").",
     fields: [
-      { key: "english", label: "Znajomość języka angielskiego" },
-      { key: "euPassport", label: "Paszport UE" },
-      { key: "birthCountry", label: "Kraj urodzenia" },
-      { key: "contractStatus", label: "Status kontraktu" },
-      { key: "agency", label: "Agencja menadżerska" },
-      { key: "releaseClause", label: "Klauzula wykupu" },
-      { key: "leagueLevel", label: "Poziom rozgrywkowy obecnego klubu" },
-      { key: "clipsLinks", label: "Linki do klipów / time-codes" },
-      { key: "transfermarkt", label: "Link do Transfermarkt" },
-      { key: "wyscout", label: "Link do Wyscout" },
+      { key: "english", label: "English Proficiency" },
+      { key: "euPassport", label: "EU Passport" },
+      { key: "birthCountry", label: "Birth Country" },
+      { key: "contractStatus", label: "Contract Status" },
+      { key: "agency", label: "Management Agency" },
+      { key: "releaseClause", label: "Release Clause" },
+      { key: "leagueLevel", label: "Current Club League Level" },
+      { key: "clipsLinks", label: "Clip Links / Time-codes" },
+      { key: "transfermarkt", label: "Transfermarkt Link" },
+      { key: "wyscout", label: "Wyscout Link" },
     ],
   },
   {
     id: "player_editor_ext_stats365",
-    label: "PlayerEditor – zdrowie i statystyki",
+    label: "PlayerEditor – health & statistics",
     description:
-      "Zakładka „Zdrowie i statystyki” – historia urazów, minuty, gole itd.",
+      "\"Health & statistics\" tab – injury history, minutes, goals, etc.",
     highlight: "PlayerEditorPage – ExtContent(view=\"stats365\").",
     fields: [
-      { key: "injuryHistory", label: "Historia urazów" },
-      { key: "minutes365", label: "Minuty w ostatnich 365 dniach" },
-      { key: "starts365", label: "Mecze jako starter" },
-      { key: "subs365", label: "Mecze jako rezerwowy" },
-      { key: "goals365", label: "Gole w ostatnich 365 dniach" },
+      { key: "injuryHistory", label: "Injury History" },
+      { key: "minutes365", label: "Minutes in last 365 days" },
+      { key: "starts365", label: "Matches as starter" },
+      { key: "subs365", label: "Matches as substitute" },
+      { key: "goals365", label: "Goals in last 365 days" },
     ],
   },
   {
     id: "player_editor_contact",
-    label: "PlayerEditor – kontakt & social",
+    label: "PlayerEditor – contact & social",
     description:
-      "Zakładka „Kontakt & social” – telefon, e-mail i linki do sociali.",
+      "\"Contact & social\" tab – phone, email, and social links.",
     highlight: "PlayerEditorPage – ExtContent(view=\"contact\").",
     fields: [
-      { key: "phone", label: "Telefon kontaktowy" },
-      { key: "email", label: "E-mail kontaktowy" },
-      { key: "fb", label: "Link FB" },
-      { key: "ig", label: "Link IG" },
-      { key: "tiktok", label: "Link TikTok" },
+      { key: "phone", label: "Contact Phone" },
+      { key: "email", label: "Contact Email" },
+      { key: "fb", label: "FB Link" },
+      { key: "ig", label: "IG Link" },
+      { key: "tiktok", label: "TikTok Link" },
     ],
   },
   {
     id: "player_editor_grade",
-    label: "PlayerEditor – ocena",
+    label: "PlayerEditor – rating",
     description:
-      "Zakładka „Ocena” – poziom docelowy i podsumowanie. Kategorie 1–5 są konfigurowane osobno w panelu ocen.",
-    highlight: "PlayerEditorPage – sekcja „Ocena”.",
+      "\"Rating\" tab – target level and summary. Categories 1–5 are configured separately in the ratings panel.",
+    highlight: "PlayerEditorPage – \"Rating\" section.",
     fields: [
       {
         key: "notes",
-        label: "Poziom docelowy (notes)",
+        label: "Target Level (notes)",
         description:
-          "Pole grade.notes / meta.targetLevel – opis docelowego poziomu.",
+          "grade.notes / meta.targetLevel field – target level description.",
       },
       {
         key: "finalComment",
-        label: "Podsumowanie (finalComment)",
+        label: "Summary (finalComment)",
         description:
-          "Pole grade.finalComment / meta.finalSummary – końcowa rekomendacja.",
+          "grade.finalComment / meta.finalSummary field – final recommendation.",
       },
     ],
   },
@@ -410,22 +410,22 @@ const FORM_DEF_BY_ID: Record<FormContext, FormDef> = FORM_DEFS.reduce(
 const FORM_GROUPS: { id: string; label: string; items: FormContext[] }[] = [
   {
     id: "addPlayer",
-    label: "Dodawanie zawodnika",
+    label: "Adding a player",
     items: ["player_basic_known", "player_basic_unknown", "observation_new"],
   },
   {
     id: "observations",
-    label: "Obserwacje",
+    label: "Observations",
     items: ["observations_main"],
   },
   {
     id: "player_basic",
-    label: "Edytor zawodnika – podstawowe",
+    label: "Player Editor – Basic",
     items: ["player_editor_basic_known", "player_editor_basic_unknown"],
   },
   {
     id: "player_ext",
-    label: "Edytor zawodnika – rozszerzone",
+    label: "Player Editor – Extended",
     items: [
       "player_editor_ext_profile",
       "player_editor_ext_eligibility",
@@ -436,7 +436,7 @@ const FORM_GROUPS: { id: string; label: string; items: FormContext[] }[] = [
   },
 ];
 
-/* ===== Domyślne wymagalności (fallback, jeśli nie ma nic w bazie) ===== */
+/* ===== Default requirements (fallback if nothing in database) ===== */
 
 const DEFAULT_REQUIRED: Record<string, boolean> = {
   // player_basic_known (AddPlayer)
@@ -471,7 +471,7 @@ const DEFAULT_REQUIRED: Record<string, boolean> = {
   "observations_main.players": true,
   "observations_main.note": false,
 
-  // PlayerEditor – podstawowe (znany)
+  // PlayerEditor – basic (known)
   "player_editor_basic_known.firstName": true,
   "player_editor_basic_known.lastName": true,
   "player_editor_basic_known.birthYear": true,
@@ -479,7 +479,7 @@ const DEFAULT_REQUIRED: Record<string, boolean> = {
   "player_editor_basic_known.clubCountry": true,
   "player_editor_basic_known.jerseyNumber": false,
 
-  // PlayerEditor – podstawowe (nieznany)
+  // PlayerEditor – basic (unknown)
   "player_editor_basic_unknown.jerseyNumber": true,
   "player_editor_basic_unknown.club": true,
   "player_editor_basic_unknown.clubCountry": true,
@@ -536,7 +536,7 @@ function makeKey(context: FormContext, fieldKey: string) {
 export default function RequiredFieldsPage() {
   const router = useRouter();
 
-  // "Aktywny" formularz na potrzeby globalnego headera
+  // "Active" form for global header purposes
   const [activeForm, setActiveForm] =
     useState<FormContext>("player_basic_known");
 
@@ -547,7 +547,7 @@ export default function RequiredFieldsPage() {
 
   const [requiredMap, setRequiredMap] = useState<Record<string, boolean>>({});
 
-  // Accordion: pierwszy otwarty domyślnie, reszta zamknięta
+  // Accordion: first open by default, rest closed
   const [groupsOpen, setGroupsOpen] = useState<Record<string, boolean>>({
     addPlayer: true,
     observations: false,
@@ -555,7 +555,7 @@ export default function RequiredFieldsPage() {
     player_ext: false,
   });
 
-  // Tabs: który formularz jest aktywny w każdej grupie
+  // Tabs: which form is active in each group
   const [activeByGroup, setActiveByGroup] = useState<
     Record<string, FormContext>
   >({
@@ -596,7 +596,7 @@ export default function RequiredFieldsPage() {
           console.error("[RequiredFieldsPage] load error", error);
           setRequiredMap({ ...DEFAULT_REQUIRED });
           setError(
-            "Nie udało się pobrać konfiguracji z Supabase – użyto wartości domyślnych."
+            "Failed to fetch configuration from Supabase – using default values."
           );
         } else if (!data || data.length === 0) {
           setRequiredMap({ ...DEFAULT_REQUIRED });
@@ -613,7 +613,7 @@ export default function RequiredFieldsPage() {
         console.error("[RequiredFieldsPage] exception while load:", e);
         setRequiredMap({ ...DEFAULT_REQUIRED });
         setError(
-          "Wystąpił nieoczekiwany błąd podczas pobierania konfiguracji."
+          "An unexpected error occurred while fetching configuration."
         );
       } finally {
         if (!cancelled) setLoading(false);
@@ -682,7 +682,7 @@ export default function RequiredFieldsPage() {
   function handleResetToDefaults() {
     setRequiredMap({ ...DEFAULT_REQUIRED });
     setError(null);
-    setSuccess("Przywrócono domyślną konfigurację wymagalności pól.");
+    setSuccess("Restored default field requirements configuration.");
   }
 
   async function handleSave() {
@@ -712,9 +712,9 @@ export default function RequiredFieldsPage() {
 
       if (error) {
         console.error("[RequiredFieldsPage] save error", error);
-        setError("Nie udało się zapisać konfiguracji. Spróbuj ponownie.");
+        setError("Failed to save configuration. Please try again.");
       } else {
-        setSuccess("Konfiguracja wymagalności pól została zapisana.");
+        setSuccess("Field requirements configuration has been saved.");
 
         if (typeof window !== "undefined") {
           window.dispatchEvent(new Event("required-fields-updated"));
@@ -722,7 +722,7 @@ export default function RequiredFieldsPage() {
       }
     } catch (e) {
       console.error("[RequiredFieldsPage] exception while save:", e);
-      setError("Wystąpił nieoczekiwany błąd podczas zapisu.");
+      setError("An unexpected error occurred while saving.");
     } finally {
       setSaving(false);
     }
@@ -756,12 +756,12 @@ export default function RequiredFieldsPage() {
   const headerTitle = (
     <div className="flex flex-col gap-0.5">
       <h2 className="text-xl font-semibold leading-none tracking-tight">
-        Wymagalność pól w formularzach
+        Field Requirements in Forms
       </h2>
       <p className=" text-xs text-muted-foreground py-3">
-        Ustal, które pola w AddPlayer, PlayerEditor i Observations muszą być
-        wypełnione przed zapisem (w tym w auto-zapisie). Ustawienia są globalne
-        dla całej aplikacji.
+        Set which fields in AddPlayer, PlayerEditor, and Observations must be
+        filled before saving (including auto-save). These settings are global
+        for the entire application.
       </p>
     </div>
   );
@@ -771,7 +771,7 @@ export default function RequiredFieldsPage() {
       <SavePill state={saveState} size="compact" />
 
       <span className="hidden text-xs text-muted-foreground md:inline">
-        {isDirty ? "Masz niezapisane zmiany" : "Wszystkie zmiany zapisane"}
+        {isDirty ? "You have unsaved changes" : "All changes saved"}
       </span>
 
       <Button
@@ -780,7 +780,7 @@ export default function RequiredFieldsPage() {
         onClick={() => router.push("/admin/manage")}
         className="hidden h-8 rounded-md px-3 text-xs sm:inline-flex"
       >
-        Wróć do zarządzania
+        Back to management
       </Button>
 
       <div className="flex items-center gap-1">
@@ -789,7 +789,7 @@ export default function RequiredFieldsPage() {
           variant="outline"
           size="icon"
           className="inline-flex h-8 w-8 rounded-md p-0 sm:hidden"
-          aria-label="Wróć do zarządzania"
+          aria-label="Back to management"
           onClick={() => router.push("/admin/manage")}
         >
           ←
@@ -802,7 +802,7 @@ export default function RequiredFieldsPage() {
           disabled={saving || loading}
           className="h-8 rounded-md px-3 text-xs"
         >
-          Domyślne
+          Default
         </Button>
         <Button
           type="button"
@@ -814,10 +814,10 @@ export default function RequiredFieldsPage() {
           {saving ? (
             <>
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              Zapisuję…
+              Saving…
             </>
           ) : (
-            "Zapisz"
+            "Save"
           )}
         </Button>
       </div>
@@ -828,27 +828,27 @@ export default function RequiredFieldsPage() {
     <div className="w-full space-y-4">
       <ToolbarFull title={headerTitle} right={headerRight} />
 
-      {/* mały status jak w PlayerEditor – chipy po prawej, bez gradientów */}
+      {/* small status like in PlayerEditor – chips on the right, no gradients */}
       <Card className="rounded-md border border-stone-200 bg-card px-4 py-3 text-sm dark:border-neutral-800">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground sm:text-sm">
-            Aktywna konfiguracja wymagalności wpływa na walidację w AddPlayer,
-            PlayerEditor oraz ObservationEditor.
+            The active requirement configuration affects validation in AddPlayer,
+            PlayerEditor, and ObservationEditor.
           </p>
           <div className="flex flex-col items-end text-xs text-muted-foreground sm:text-sm">
             <span>
-              Aktywny formularz:{" "}
+              Active form:{" "}
               <span className="font-medium text-foreground">
                 {activeFormDef.label}
               </span>
             </span>
             <span className="mt-0.5 text-[10px]">
-              {activeStats.required} z {activeStats.total} pól oznaczonych jako{" "}
-              <span className="font-medium text-foreground">wymagane</span>
+              {activeStats.required} of {activeStats.total} fields marked as{" "}
+              <span className="font-medium text-foreground">required</span>
             </span>
             {activeStats.changed > 0 && (
               <span className="mt-0.5 inline-flex items-center rounded-md border border-amber-300 bg-background px-1.5 py-0.5 text-[10px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
-                Zmieniono {activeStats.changed} pól względem domyślnych
+                Changed {activeStats.changed} fields relative to defaults
               </span>
             )}
           </div>
@@ -858,18 +858,18 @@ export default function RequiredFieldsPage() {
       {loading && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Ładowanie konfiguracji z Supabase…
+          Loading configuration from Supabase…
         </p>
       )}
 
-      {/* ====================== SEKCJE (akordeony) + TABS ====================== */}
+      {/* ====================== SECTIONS (accordions) + TABS ====================== */}
       <div className="space-y-4">
         {FORM_GROUPS.map((group) => {
           const groupOpen = groupsOpen[group.id] ?? false;
           const groupActiveForm =
             activeByGroup[group.id] ?? group.items[0] ?? activeForm;
 
-          // policz wymagane / total w całej sekcji (dla nagłówka akordeonu)
+          // calculate required / total in the whole section (for accordion header)
           let groupTotal = 0;
           let groupRequired = 0;
           for (const ctx of group.items) {
@@ -902,20 +902,20 @@ export default function RequiredFieldsPage() {
                 >
                   <div>
                     <div className={stepPillClass}>
-                      Sekcja · {group.label}
+                      Section · {group.label}
                     </div>
                     <div className="mt-1 text-sm font-semibold leading-none tracking-tight">
-                      Formularze w tej sekcji
+                      Forms in this section
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Wybierz jeden z formularzy (taby poniżej), aby ustawić
-                      wymagalność jego pól.
+                      Select one of the forms (tabs below) to set its field
+                      requirements.
                     </p>
                   </div>
                   <div className="flex items-center gap-3 pl-4">
                     <div className="flex flex-col items-end text-xs text-muted-foreground">
                       <span>
-                        Wymagane w sekcji:{" "}
+                        Required in section:{" "}
                         <span className="font-medium text-foreground">
                           {groupRequired}/{groupTotal}
                         </span>
@@ -939,7 +939,7 @@ export default function RequiredFieldsPage() {
                       setActiveInGroup(group.id, value as FormContext)
                     }
                   >
-                    {/* Tabs – kafelki formularzy (AddPlayer – znany / nieznany / itp.) */}
+                    {/* Tabs – form tiles (AddPlayer – known / unknown / etc.) */}
                     <TabsList className="flex flex-wrap gap-2 rounded-md bg-transparent p-0">
                       {group.items.map((ctx) => {
                         const form = FORM_DEF_BY_ID[ctx];
@@ -980,7 +980,7 @@ export default function RequiredFieldsPage() {
                                 {form.label}
                               </span>
                               <span className="inline-flex items-center rounded-md border border-stone-200 px-2 py-0.5 text-[10px] text-stone-600 dark:border-neutral-700 dark:text-neutral-300">
-                                {requiredCount}/{total} wymagane
+                                {requiredCount}/{total} required
                               </span>
                             </div>
                             {form.highlight && (
@@ -990,7 +990,7 @@ export default function RequiredFieldsPage() {
                             )}
                             {changed && (
                               <span className="mt-0.5 text-[9px] text-amber-700 dark:text-amber-300">
-                                • Zmieniono względem domyślnych
+                                • Changed relative to defaults
                               </span>
                             )}
                           </TabsTrigger>
@@ -1024,11 +1024,11 @@ export default function RequiredFieldsPage() {
                           value={ctx}
                           className="mt-3 space-y-3"
                         >
-                          {/* Nagłówek „Krok 2” dla konkretnego formularza */}
+                          {/* Header "Step 2" for a specific form */}
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex flex-col gap-0.5">
                               <div className={stepPillClass}>
-                                Krok 2 · Wymagalność pól
+                                Step 2 · Field requirements
                               </div>
                               <div className="mt-1 text-sm font-semibold leading-none tracking-tight">
                                 {form.label}
@@ -1039,7 +1039,7 @@ export default function RequiredFieldsPage() {
                               {form.highlight && (
                                 <p className="mt-1 text-xs text-muted-foreground">
                                   <span className="font-medium text-foreground">
-                                    Powiązanie w aplikacji:
+                                    App association:
                                   </span>{" "}
                                   {form.highlight}
                                 </p>
@@ -1047,14 +1047,14 @@ export default function RequiredFieldsPage() {
                             </div>
                             <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
                               <span>
-                                Wymagane pola:{" "}
+                                Required fields:{" "}
                                 <span className="font-medium text-foreground">
                                   {requiredCount}/{total}
                                 </span>
                               </span>
                               {changedCount > 0 && (
                                 <span className="text-[10px]">
-                                  Zmienione:{" "}
+                                  Changed:{" "}
                                   <span className="font-medium text-foreground">
                                     {changedCount}
                                   </span>
@@ -1069,7 +1069,7 @@ export default function RequiredFieldsPage() {
                                   onClick={() => setAllInForm(ctx, true)}
                                   className="h-7 rounded-md px-2 text-[10px]"
                                 >
-                                  Wszystko wymagane
+                                  All required
                                 </Button>
                                 <Button
                                   type="button"
@@ -1079,7 +1079,7 @@ export default function RequiredFieldsPage() {
                                   onClick={() => setAllInForm(ctx, false)}
                                   className="h-7 rounded-md px-2 text-[10px]"
                                 >
-                                  Wszystko opcjonalne
+                                  All optional
                                 </Button>
                               </div>
                             </div>
@@ -1087,12 +1087,11 @@ export default function RequiredFieldsPage() {
 
                           <Separator className="my-1" />
 
-                          {/* Lista pól – kafelki jak mini-ExtContent */}
+                          {/* Field list – tiles like mini-ExtContent */}
                           <div className="space-y-1.5">
                             {form.fields.length === 0 ? (
                               <div className="rounded-md border border-dashed border-stone-200 bg-background px-4 py-6 text-center text-sm text-muted-foreground dark:border-neutral-800">
-                                Dla tego formularza nie zdefiniowano żadnych
-                                pól.
+                                No fields defined for this form.
                               </div>
                             ) : (
                               form.fields.map((field) => {
@@ -1116,25 +1115,25 @@ export default function RequiredFieldsPage() {
                                         </span>
                                         <span className="rounded-md border border-stone-200 px-1.5 py-0.5 text-[9px] text-stone-600 dark:border-neutral-700 dark:text-neutral-300">
                                           {required
-                                            ? "Wymagane"
-                                            : "Opcjonalne"}
+                                            ? "Required"
+                                            : "Optional"}
                                         </span>
                                         {changed && (
                                           <span className="rounded-md border border-amber-300 px-1.5 py-0.5 text-[9px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
-                                            Zmienione
+                                            Changed
                                           </span>
                                         )}
                                         {isDefaultRequired &&
                                           !changed &&
                                           required && (
                                             <span className="rounded-md border border-stone-300 px-1.5 py-0.5 text-[9px] text-stone-600 dark:border-neutral-600 dark:text-neutral-300">
-                                              Domyślnie wymagane
+                                              Required by default
                                             </span>
                                           )}
                                       </div>
                                       <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                                         <span>
-                                          Klucz:{" "}
+                                          Key:{" "}
                                           <code className="rounded-md bg-muted px-1 py-0.5">
                                             {field.key}
                                           </code>
@@ -1145,7 +1144,7 @@ export default function RequiredFieldsPage() {
                                       </div>
                                     </div>
 
-                                    {/* Minimalistyczny „switch” */}
+                                    {/* Minimalist "switch" */}
                                     <div className="flex flex-col items-end gap-1">
                                       <button
                                         type="button"
@@ -1171,8 +1170,8 @@ export default function RequiredFieldsPage() {
                                       </button>
                                       <span className="text-[10px] text-muted-foreground">
                                         {required
-                                          ? "Ustaw jako opcjonalne"
-                                          : "Ustaw jako wymagane"}
+                                          ? "Set as optional"
+                                          : "Set as required"}
                                       </span>
                                     </div>
                                   </div>
@@ -1191,16 +1190,16 @@ export default function RequiredFieldsPage() {
         })}
       </div>
 
-      {/* info + globalny status / błędy / sukces */}
+      {/* info + global status / errors / success */}
       <div className="space-y-2 text-xs text-muted-foreground sm:text-sm">
         <p>
-          Te ustawienia są używane przez formularze AddPlayer, PlayerEditor i
-          Observations do weryfikacji wymagalności przed zapisem (w tym
-          auto-zapis).
+          These settings are used by the AddPlayer, PlayerEditor, and
+          Observations forms to verify requirements before saving (including
+          auto-save).
         </p>
         {isDirty && (
           <span className="inline-flex items-center rounded-md border border-amber-300 bg-background px-2 py-0.5 text-[10px] text-amber-800 dark:border-amber-500/70 dark:text-amber-200">
-            Masz niezapisane zmiany – kliknij „Zapisz”.
+            You have unsaved changes – click "Save".
           </span>
         )}
       </div>

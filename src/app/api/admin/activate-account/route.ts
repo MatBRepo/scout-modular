@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
         if (!userId) {
             return NextResponse.json(
-                { error: "userId jest wymagany." },
+                { error: "userId is required." },
                 { status: 400 }
             );
         }
@@ -25,9 +25,9 @@ export async function POST(req: Request) {
         );
 
         if (authError) {
-            console.error("Błąd aktywacji Auth:", authError);
+            console.error("Error activating Auth:", authError);
             return NextResponse.json(
-                { error: `Błąd Auth: ${authError.message}` },
+                { error: `Auth Error: ${authError.message}` },
                 { status: 500 }
             );
         }
@@ -39,21 +39,21 @@ export async function POST(req: Request) {
             .eq("id", userId);
 
         if (profileError) {
-            console.error("Błąd aktywacji profilu:", profileError);
+            console.error("Error activating profile:", profileError);
             return NextResponse.json(
-                { error: `Błąd Profilu: ${profileError.message}` },
+                { error: `Profile Error: ${profileError.message}` },
                 { status: 500 }
             );
         }
 
         return NextResponse.json({
             success: true,
-            message: "Konto zostało aktywowane i email potwierdzony.",
+            message: "Account activated and email confirmed.",
         });
     } catch (err: any) {
-        console.error("Fatalny błąd API activate-account:", err);
+        console.error("Fatal activate-account API error:", err);
         return NextResponse.json(
-            { error: err.message || "Wewnętrzny błąd serwera." },
+            { error: err.message || "Internal server error." },
             { status: 500 }
         );
     }

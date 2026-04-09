@@ -418,7 +418,7 @@ if (!supabaseAdmin) {
   );
 }
 
-/* --------- cache: odczyt z tm_flat_competition_players --------- */
+/* --------- cache: read from tm_flat_competition_players --------- */
 
 async function loadFromCache(country: string, season: number) {
   if (!supabaseAdmin) return null;
@@ -459,7 +459,7 @@ async function loadFromCache(country: string, season: number) {
   };
 }
 
-/* ------------ scrap + zapis do tm_flat_competition_players ------------ */
+/* ------------ scrape + save to tm_flat_competition_players ------------ */
 
 async function scrapeAndCache(country: string, season: number) {
   const url = `${BASE}/wettbewerbe/national/wettbewerbe/${encodeURIComponent(
@@ -470,7 +470,7 @@ async function scrapeAndCache(country: string, season: number) {
   const competitions = parseCompetitionsDetailed(html, country, season);
 
   if (!competitions.length) {
-    throw new Error(`Brak rozgrywek dla kraju=${country}, sezon=${season}`);
+    throw new Error(`No competitions for country=${country}, season=${season}`);
   }
 
   const flatRows: FlatClubPlayerRow[] = [];
@@ -549,7 +549,7 @@ async function scrapeAndCache(country: string, season: number) {
           }
         } catch (err: any) {
           console.error(
-            "[TM SCRAPER] Błąd przy klubie",
+            "[TM SCRAPER] Error for club",
             club.name,
             err?.message
           );
@@ -557,7 +557,7 @@ async function scrapeAndCache(country: string, season: number) {
       }
     } catch (err: any) {
       console.error(
-        "[TM SCRAPER] Błąd przy rozgrywkach",
+        "[TM SCRAPER] Error for competition",
         comp.name,
         err?.message
       );
@@ -570,7 +570,7 @@ async function scrapeAndCache(country: string, season: number) {
   const downloadedAt = new Date().toISOString();
 
   if (supabaseAdmin) {
-    // wyczyść stare rekordy
+    // clear old records
     const { error: delErr } = await supabaseAdmin
       .from("tm_flat_competition_players")
       .delete()
@@ -583,7 +583,7 @@ async function scrapeAndCache(country: string, season: number) {
       );
     }
 
-    // insert w chunkach
+    // insert in chunks
     const chunkSize = 1000;
     for (let i = 0; i < flatRows.length; i += chunkSize) {
       const chunk = flatRows.slice(i, i + chunkSize);
@@ -595,7 +595,7 @@ async function scrapeAndCache(country: string, season: number) {
           "[tm_flat_competition_players] insert error:",
           insErr.message
         );
-        // nie przerywam całości – dane i tak wrócą w odpowiedzi
+        // don't stop everything – data will return in response anyway
         break;
       }
     }
@@ -647,7 +647,7 @@ export async function GET(req: Request) {
       refreshParam === "true" ||
       refreshParam === "yes";
 
-    // 1) cache FIRST (jeśli nie refresh)
+    // 1) cache FIRST (if not refresh)
     if (!refresh) {
       const cached = await loadFromCache(country, season);
       if (cached) {
@@ -666,7 +666,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // 2) brak cache albo refresh=1 => scrap + zapis (jeśli Supabase dostępne)
+    // 2) no cache or refresh=1 => scrape + save (if Supabase available)
     const scraped = await scrapeAndCache(country, season);
 
     return new Response(
@@ -685,7 +685,7 @@ export async function GET(req: Request) {
     console.error("[TM SCRAPER competition/list] Fatal error:", e);
     return new Response(
       JSON.stringify({
-        error: e?.message || "Nieznany błąd TM competition/list",
+        error: e?.message || "Unknown error in TM competition/list",
       }),
       { headers: { "Content-Type": "application/json" } }
     );

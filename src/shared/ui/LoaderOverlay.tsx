@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 
 export default function LoaderOverlay({
-  text = "Ładowanie kokpitu…",
+  text = "Loading dashboard…",
 }: { text?: string }) {
   // respect prefers-reduced-motion
   const [reduced, setReduced] = useState(false);

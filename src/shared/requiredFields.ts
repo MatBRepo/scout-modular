@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabaseClient";
 
-/* ===== KONTEKSTY FORMULARZY – takie same jak w RequiredFieldsPage ===== */
+/* ===== FORM CONTEXTS – same as in RequiredFieldsPage ===== */
 
 export type FormContext =
   | "player_basic_known"
@@ -18,7 +18,7 @@ export type FormContext =
   | "player_editor_contact"
   | "player_editor_grade";
 
-/* ===== Domyślne wymagalności – IDENTYCZNE jak w RequiredFieldsPage ===== */
+/* ===== Default requirements – IDENTICAL to RequiredFieldsPage ===== */
 
 export const DEFAULT_REQUIRED: Record<string, boolean> = {
   // player_basic_known (AddPlayer)
@@ -35,7 +35,7 @@ export const DEFAULT_REQUIRED: Record<string, boolean> = {
   "player_basic_unknown.uClubCountry": true,
   "player_basic_unknown.uNote": false,
 
-  // observation_new (AddPlayer – sekcja obserwacji)
+  // observation_new (AddPlayer – observation section)
   "observation_new.match": true,
   "observation_new.date": true,
   "observation_new.time": false,
@@ -53,7 +53,7 @@ export const DEFAULT_REQUIRED: Record<string, boolean> = {
   "observations_main.players": true,
   "observations_main.note": false,
 
-  // PlayerEditor – podstawowe (znany)
+  // PlayerEditor – basic (known)
   "player_editor_basic_known.firstName": true,
   "player_editor_basic_known.lastName": true,
   "player_editor_basic_known.birthYear": true,
@@ -61,13 +61,13 @@ export const DEFAULT_REQUIRED: Record<string, boolean> = {
   "player_editor_basic_known.clubCountry": true,
   "player_editor_basic_known.jerseyNumber": false,
 
-  // PlayerEditor – podstawowe (nieznany)
+  // PlayerEditor – basic (unknown)
   "player_editor_basic_unknown.jerseyNumber": true,
   "player_editor_basic_unknown.club": true,
   "player_editor_basic_unknown.clubCountry": true,
   "player_editor_basic_unknown.unknownNote": false,
 
-  // PlayerEditor – profil boiskowy
+  // PlayerEditor – pitch profile
   "player_editor_ext_profile.height": false,
   "player_editor_ext_profile.weight": false,
   "player_editor_ext_profile.dominantFoot": false,
@@ -86,26 +86,26 @@ export const DEFAULT_REQUIRED: Record<string, boolean> = {
   "player_editor_ext_eligibility.transfermarkt": false,
   "player_editor_ext_eligibility.wyscout": false,
 
-  // PlayerEditor – zdrowie i statystyki
+  // PlayerEditor – health and statistics
   "player_editor_ext_stats365.injuryHistory": false,
   "player_editor_ext_stats365.minutes365": false,
   "player_editor_ext_stats365.starts365": false,
   "player_editor_ext_stats365.subs365": false,
   "player_editor_ext_stats365.goals365": false,
 
-  // PlayerEditor – kontakt & social
+  // PlayerEditor – contact & social
   "player_editor_contact.phone": false,
   "player_editor_contact.email": false,
   "player_editor_contact.fb": false,
   "player_editor_contact.ig": false,
   "player_editor_contact.tiktok": false,
 
-  // PlayerEditor – ocena
+  // PlayerEditor – rating
   "player_editor_grade.notes": false,
   "player_editor_grade.finalComment": false,
 };
 
-/* ===== Pomocnik klucza ===== */
+/* ===== Key helper ===== */
 
 export function makeKey(context: FormContext | string, fieldKey: string) {
   return `${context}.${fieldKey}`;
@@ -117,8 +117,7 @@ type DbRow = {
   required: boolean;
 };
 
-/* ===========================================================
- *  useRequiredFields – hook używany w AddPlayer / ObservationEditor
+ *  useRequiredFields – hook used in AddPlayer / ObservationEditor
  * ========================================================= */
 
 export function useRequiredFields() {
@@ -143,10 +142,10 @@ export function useRequiredFields() {
 
         if (error) {
           console.error("[useRequiredFields] load error", error);
-          // fallback do domyślnych
+          // fallback to defaults
           setRequiredMap({ ...DEFAULT_REQUIRED });
         } else if (!data || data.length === 0) {
-          // brak wierszy → też fallback
+          // no rows → also fallback
           setRequiredMap({ ...DEFAULT_REQUIRED });
         } else {
           const next: Record<string, boolean> = { ...DEFAULT_REQUIRED };
@@ -168,7 +167,7 @@ export function useRequiredFields() {
 
     load();
 
-    // Nasłuchaj eventu z RequiredFieldsPage
+    // Listen for event from RequiredFieldsPage
     const handleUpdated = () => {
       load();
     };

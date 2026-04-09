@@ -36,11 +36,11 @@ type GroupedMetrics = Record<MetricGroupKey, MetricRow[]>;
 /* ---------- Constant labels ---------- */
 
 const GROUP_LABEL: Record<MetricGroupKey, string> = {
-  BASE: "Kategorie bazowe",
-  GK: "Bramkarz (GK)",
-  DEF: "Obrońca (CB/FB/WB)",
-  MID: "Pomocnik (6/8/10)",
-  ATT: "Napastnik (9/7/11)",
+  BASE: "Base categories",
+  GK: "Goalkeeper (GK)",
+  DEF: "Defender (CB/FB/WB)",
+  MID: "Midfielder (6/8/10)",
+  ATT: "Forward (9/7/11)",
 };
 
 /* ---------- Default metrics (z Twojego opisu) ---------- */
@@ -53,142 +53,142 @@ type DefaultMetric = {
 };
 
 const DEFAULT_METRICS: DefaultMetric[] = [
-  // KATEGORIE BAZOWE (BASE)
+  // BASE CATEGORIES
   {
     group_key: "BASE",
     key: "base_decisions_pressure",
     label:
-      "Decyzje pod presją — wybór i szybkość decyzji w 1–2 s, minimalizacja strat.",
+      "Decisions under pressure — choice and speed of decision in 1–2 s, minimizing losses.",
     sort_order: 1,
   },
   {
     group_key: "BASE",
     key: "base_first_touch_retention",
     label:
-      "Pierwszy kontakt & utrzymanie — jakość przyjęcia, kierunkowe przyjęcie, ochrona piłki.",
+      "First touch & retention — quality of receiving, directional touch, ball protection.",
     sort_order: 2,
   },
   {
     group_key: "BASE",
     key: "base_progression",
     label:
-      "Progresja gry — przesuwanie akcji do przodu: podaniem, prowadzeniem lub ruchem (praktyczny „meter gain”).",
+      "Game progression — moving play forward: by pass, carry or movement (practical 'meter gain').",
     sort_order: 3,
   },
   {
     group_key: "BASE",
     key: "base_off_ball",
     label:
-      "Gra bez piłki (skanowanie, pozycjonowanie, pressing) — skan przed przyjęciem, ustawienie między liniami, reakcja po stracie (5 s).",
+      "Off-ball play (scanning, positioning, pressing) — scan before receiving, positioning between lines, reaction after loss (5 s).",
     sort_order: 4,
   },
   {
     group_key: "BASE",
     key: "base_duels_intensity",
     label:
-      "Pojedynki & intensywność — 1v1 w ziemi/powietrzu, determinacja, doskok, powroty.",
+      "Duels & intensity — 1v1 ground/aerial, determination, closing down, recovery runs.",
     sort_order: 5,
   },
   {
     group_key: "BASE",
     key: "base_dynamics_workrate",
     label:
-      "Dynamika & tempo pracy — szybkość pierwszych kroków, przyspieszenie, powtarzalność sprintów.",
+      "Dynamics & work rate — speed of first steps, acceleration, repeatability of sprints.",
     sort_order: 6,
   },
 
-  // BRAMKARZ (GK)
+  // GOALKEEPER (GK)
   {
     group_key: "GK",
     key: "gk_shot_stopping",
-    label: "Shot-stopping & 1v1 — czas reakcji, skracanie kątów.",
+    label: "Shot-stopping & 1v1 — reaction time, closing angles.",
     sort_order: 1,
   },
   {
     group_key: "GK",
     key: "gk_aerial",
-    label: "Gra w powietrzu & wyjścia — ocena dośrodkowań, timing, chwyt.",
+    label: "Aerial play & exits — cross assessment, timing, handling.",
     sort_order: 2,
   },
   {
     group_key: "GK",
     key: "gk_build_up",
     label:
-      "Gra nogami & budowanie — decyzje w krótkiej budowie, długie wznowienia.",
+      "Feet play & build-up — decisions in short build-up, long restarts.",
     sort_order: 3,
   },
 
-  // OBROŃCA (DEF)
+  // DEFENDER (DEF)
   {
     group_key: "DEF",
     key: "def_1v1_defending",
-    label: "1v1 w defensywie — pozycja ciała, timing, bezfaulowość.",
+    label: "1v1 defending — body position, timing, discipline (not fouling).",
     sort_order: 1,
   },
   {
     group_key: "DEF",
     key: "def_aerial",
-    label: "Gra w powietrzu — pozycjonowanie, wygrane główki.",
+    label: "Aerial play — positioning, headers won.",
     sort_order: 2,
   },
   {
     group_key: "DEF",
     key: "def_build_up_press",
     label:
-      "Wyprowadzenie pod pressingiem — odwaga, łamanie linii, diagonale.",
+      "Build-up under pressure — courage, breaking lines, diagonals.",
     sort_order: 3,
   },
   {
     group_key: "DEF",
     key: "def_crossing_runs",
     label:
-      "Dośrodkowanie & wejścia (FB/WB) — jakość i wybór strefy.",
+      "Crossing & overlapping (FB/WB) — quality and zone choice.",
     sort_order: 4,
   },
 
-  // POMOCNIK (MID)
+  // MIDFIELDER (MID)
   {
     group_key: "MID",
     key: "mid_press_resistance",
     label:
-      "Odporność na pressing / obrót — gra półobrotem, wyjście z presji.",
+      "Press resistance / turning — half-turn play, escaping pressure.",
     sort_order: 1,
   },
   {
     group_key: "MID",
     key: "mid_creation",
     label:
-      "Kreacja / ostatnie podanie — jakość i timing zagrań kluczowych.",
+      "Creation / final pass — quality and timing of key plays.",
     sort_order: 2,
   },
   {
     group_key: "MID",
     key: "mid_tempo_control",
     label:
-      "Kontrola tempa — przyspieszanie/zwalnianie rytmu, wybór trzeciego człowieka.",
+      "Tempo control — accelerating/decelerating rhythm, choice of third man.",
     sort_order: 3,
   },
 
-  // NAPASTNIK (ATT)
+  // FORWARD (ATT)
   {
     group_key: "ATT",
     key: "att_movement_line",
     label:
-      "Ruch na linii / atak przestrzeni — timing startów, utrzymanie pozycji spalonego.",
+      "Movement on the line / attacking space — start timing, staying onside.",
     sort_order: 1,
   },
   {
     group_key: "ATT",
     key: "att_finishing",
     label:
-      "Wykończenie — techniki strzału (P/L/głowa), spokój w polu karnym.",
+      "Finishing — shooting techniques (R/L/head), calmness in the box.",
     sort_order: 2,
   },
   {
     group_key: "ATT",
     key: "att_link_play",
     label:
-      "Łączenie gry / gra na ścianę — zgrywanie, podwójne akcje ze „szóstką”/„dziesiątką”.",
+      "Link-up play / target play — flick-ons, double actions with #6/#10.",
     sort_order: 3,
   },
 ];
@@ -259,7 +259,7 @@ export default function MetricsSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // DnD: które id z której grupy przeciągamy
+  // DnD: which id from which group we are dragging
   const [dragging, setDragging] = useState<{
     group: MetricGroupKey;
     id: string;
@@ -313,7 +313,7 @@ export default function MetricsSettingsPage() {
         console.error("Error loading metrics:", e);
         if (!mounted) return;
         setError(
-          e?.message || "Nie udało się pobrać metryk z Supabase (obs_metrics)."
+          e?.message || "Failed to fetch metrics from Supabase (obs_metrics)."
         );
       } finally {
         if (mounted) setLoading(false);
@@ -370,7 +370,7 @@ export default function MetricsSettingsPage() {
       if (error) throw error;
     } catch (e: any) {
       console.error("Error updating metric:", e);
-      setError("Nie udało się zaktualizować metryki. Odśwież stronę.");
+      setError("Failed to update metric. Please refresh the page.");
     } finally {
       setSaving(false);
     }
@@ -386,7 +386,7 @@ export default function MetricsSettingsPage() {
         current.length > 0
           ? Math.max(...current.map((m) => m.sort_order || 0))
           : 0;
-      const label = "Nowa metryka";
+      const label = "New metric";
       const key = slugKey(label);
 
       const insertPayload = {
@@ -420,14 +420,14 @@ export default function MetricsSettingsPage() {
       });
     } catch (e: any) {
       console.error("Error adding metric:", e);
-      setError("Nie udało się dodać metryki.");
+      setError("Failed to add metric.");
     } finally {
       setSaving(false);
     }
   }
 
   async function removeMetric(group: MetricGroupKey, id: string) {
-    if (!confirm("Na pewno chcesz usunąć tę metrykę?")) return;
+    if (!confirm("Are you sure you want to delete this metric?")) return;
     setSaving(true);
     setError(null);
     try {
@@ -445,13 +445,13 @@ export default function MetricsSettingsPage() {
       if (error) throw error;
     } catch (e: any) {
       console.error("Error deleting metric:", e);
-      setError("Nie udało się usunąć metryki.");
+      setError("Failed to delete metric.");
     } finally {
       setSaving(false);
     }
   }
 
-  // Naprawa reorder: używamy update zamiast upsert (żeby nie pchać nulli w NOT NULL)
+  // Reorder fix: using update instead of upsert (to avoid pushing nulls into NOT NULL)
   async function moveMetric(
     group: MetricGroupKey,
     id: string,
@@ -491,7 +491,7 @@ export default function MetricsSettingsPage() {
       ]);
     } catch (e: any) {
       console.error("Error reordering metrics:", e);
-      setError("Nie udało się zmienić kolejności. Odśwież widok.");
+      setError("Failed to change order. Please refresh the view.");
     } finally {
       setSaving(false);
     }
@@ -527,7 +527,7 @@ export default function MetricsSettingsPage() {
     ids.splice(from, 1);
     ids.splice(to, 0, sourceId);
 
-    // lokalnie nadajemy nowe sort_order w tej grupie
+    // locally assigning new sort_order in this group
     setGroups((prev) => {
       const idToSort: Record<string, number> = {};
       ids.forEach((id, idx) => {
@@ -567,14 +567,14 @@ export default function MetricsSettingsPage() {
     } catch (e: any) {
       console.error("Error reordering metrics (drag & drop):", e);
       setError(
-        "Nie udało się zmienić kolejności (drag & drop). Odśwież widok."
+        "Failed to change order (drag & drop). Please refresh the view."
       );
     } finally {
       setSaving(false);
     }
   }
 
-  /* ---------- Seed domyślnych metryk ---------- */
+  /* ---------- Seed default metrics ---------- */
 
   async function seedDefaults() {
     setSaving(true);
@@ -600,7 +600,7 @@ export default function MetricsSettingsPage() {
 
       if (toInsert.length === 0) {
         setError(
-          "Wszystkie domyślne metryki są już w bazie (na podstawie key)."
+          "All default metrics are already in the database (based on key)."
         );
         return;
       }
@@ -633,7 +633,7 @@ export default function MetricsSettingsPage() {
     } catch (e: any) {
       console.error("Error seeding default metrics:", e);
       setError(
-        "Nie udało się załadować domyślnych metryk. Sprawdź logi / konsolę."
+        "Failed to load default metrics. Check logs / console."
       );
     } finally {
       setSaving(false);
@@ -648,18 +648,18 @@ export default function MetricsSettingsPage() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-            Konfiguracja metryk (obserwacje)
+            Metrics Configuration (observations)
           </h1>
           <p className="mt-1 text-sm text-dark dark:text-neutral-300">
-            Definiuj pola używane w arkuszu obserwacji S4S. Metryki można
-            włączać/wyłączać, edytować i zmieniać ich kolejność (strzałkami
-            lub drag & drop).
+            Define fields used in the S4S observation sheet. Metrics can be
+            enabled/disabled, edited, and reordered (using arrows
+            or drag & drop).
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
           {saving && (
             <div className="text-xs text-dark dark:text-neutral-400">
-              Zapisywanie zmian…
+              Saving changes…
             </div>
           )}
           <Button
@@ -669,7 +669,7 @@ export default function MetricsSettingsPage() {
             className="border-gray-300 text-xs dark:border-neutral-700"
             onClick={seedDefaults}
           >
-            Załaduj domyślne metryki S4S
+            Load default S4S metrics
           </Button>
         </div>
       </div>
@@ -684,7 +684,7 @@ export default function MetricsSettingsPage() {
       {loading ? (
         <Card className="border-gray-200 dark:border-neutral-800">
           <CardContent className="p-4 text-sm text-dark dark:text-neutral-400">
-            Ładowanie metryk z Supabase…
+            Loading metrics from Supabase…
           </CardContent>
         </Card>
       ) : (
@@ -698,10 +698,10 @@ export default function MetricsSettingsPage() {
                 key={g}
                 icon={<Ruler className="h-4 w-4" />}
                 title={GROUP_LABEL[g]}
-                description="Dodawaj / edytuj pola, włączaj/wyłączaj i zmieniaj kolejność w obrębie grupy."
+                description="Add / edit fields, enable/disable, and change order within the group."
                 badge={
                   <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] text-dark ring-1 ring-gray-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
-                    {activeCount}/{arr.length} aktywnych
+                    {activeCount}/{arr.length} active
                   </span>
                 }
                 defaultOpen={g === "BASE"}
@@ -713,7 +713,7 @@ export default function MetricsSettingsPage() {
                     size="sm"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Dodaj metrykę
+                    Add metric
                   </Button>
                 </div>
 
@@ -723,19 +723,19 @@ export default function MetricsSettingsPage() {
                       <tr>
                         <th className="w-10 p-2 text-left font-medium">#</th>
                         <th className="min-w-[260px] p-2 text-left font-medium">
-                          Etykieta
+                          Label
                         </th>
                         <th className="min-w-[160px] p-2 text-left font-medium">
                           Key
                         </th>
                         <th className="w-32 p-2 text-left font-medium">
-                          Widoczna
+                          Visible
                         </th>
                         <th className="w-32 p-2 text-left font-medium">
-                          Kolejność
+                          Order
                         </th>
                         <th className="w-28 p-2 text-right font-medium">
-                          Akcje
+                          Actions
                         </th>
                       </tr>
                     </thead>
@@ -769,7 +769,7 @@ export default function MetricsSettingsPage() {
                                 onChange={(val) =>
                                   updateMetric(g, m.id, { label: val })
                                 }
-                                placeholder="Etykieta metryki…"
+                                placeholder="Metric label…"
                               />
                             </td>
                             <td className="p-2">
@@ -780,7 +780,7 @@ export default function MetricsSettingsPage() {
                                     key: slugKey(val),
                                   })
                                 }
-                                placeholder="krótki-klucz"
+                                placeholder="short-key"
                               />
                             </td>
 
@@ -794,8 +794,8 @@ export default function MetricsSettingsPage() {
                                 className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-stone-50 px-2 py-1 text-xs transition hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
                                 title={
                                   m.enabled
-                                    ? "Wyłącz metrykę"
-                                    : "Włącz metrykę"
+                                    ? "Disable metric"
+                                    : "Enable metric"
                                 }
                               >
                                 {m.enabled ? (
@@ -803,7 +803,7 @@ export default function MetricsSettingsPage() {
                                 ) : (
                                   <ToggleLeft className="h-4 w-4 text-gray-400" />
                                 )}
-                                {m.enabled ? "Włączona" : "Wyłączona"}
+                                {m.enabled ? "Enabled" : "Disabled"}
                               </button>
                             </td>
 
@@ -813,7 +813,7 @@ export default function MetricsSettingsPage() {
                                   className="rounded-md border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                   onClick={() => moveMetric(g, m.id, -1)}
                                   disabled={index === 0}
-                                  title="Przenieś w górę"
+                                  title="Move up"
                                 >
                                   <ArrowUp className="h-3.5 w-3.5" />
                                 </button>
@@ -821,7 +821,7 @@ export default function MetricsSettingsPage() {
                                   className="rounded-md border border-gray-300 p-1 text-xs hover:bg-stone-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
                                   onClick={() => moveMetric(g, m.id, 1)}
                                   disabled={index === arr.length - 1}
-                                  title="Przenieś w dół"
+                                  title="Move down"
                                 >
                                   <ArrowDown className="h-3.5 w-3.5" />
                                 </button>
@@ -834,9 +834,9 @@ export default function MetricsSettingsPage() {
                                 size="sm"
                                 className="h-8 border-gray-300 text-xs text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:hover:bg-red-900/20"
                                 onClick={() => removeMetric(g, m.id)}
-                                title="Usuń metrykę"
+                                title="Delete metric"
                               >
-                                Usuń
+                                Delete
                               </Button>
                             </td>
                           </tr>
@@ -849,14 +849,13 @@ export default function MetricsSettingsPage() {
                             colSpan={6}
                             className="p-6 text-center text-sm text-dark dark:text-neutral-400"
                           >
-                            Brak metryk w tej grupie — dodaj pierwszą
-                            metrykę lub użyj przycisku{" "}
+                            No metrics in this group — add the first metric or use the{" "}
                             <button
                               type="button"
                               className="underline"
                               onClick={seedDefaults}
                             >
-                              domyślnych metryk S4S
+                              default S4S metrics
                             </button>
                             .
                           </td>

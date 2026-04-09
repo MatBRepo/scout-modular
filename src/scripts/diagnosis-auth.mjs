@@ -25,34 +25,34 @@ async function testConnection(testName, headers) {
     });
     console.log(`Status: ${response.status} ${response.statusText}`);
     const text = await response.text();
-    console.log(`Odpowiedź: ${text.slice(0, 500)}`);
+    console.log(`Response: ${text.slice(0, 500)}`);
   } catch (err) {
-    console.error(`Błąd: ${err.message}`);
+    console.error(`Error: ${err.message}`);
   }
 }
 
 async function main() {
-  console.log('📡 Diagnoza połączenia z:', url);
+  console.log('📡 Connection diagnosis with:', url);
 
-  // Wariant 1: Standardowy Anon
-  await testConnection('Standardowy Anon (apikey + Bearer)', {
+  // Variant 1: Standard Anon
+  await testConnection('Standard Anon (apikey + Bearer)', {
     'apikey': anonKey,
     'Authorization': `Bearer ${anonKey}`
   });
 
-  // Wariant 2: Service Role od użytkownika (apikey + Bearer)
+  // Variant 2: User Service Role (apikey + Bearer)
   await testConnection('Service Role User (apikey + Bearer)', {
     'apikey': serviceRoleKey,
     'Authorization': `Bearer ${serviceRoleKey}`
   });
 
-  // Wariant 3: Tylko apikey (Service Role)
-  await testConnection('Tylko apikey (Service Role)', {
+  // Variant 3: Only apikey (Service Role)
+  await testConnection('Only apikey (Service Role)', {
     'apikey': serviceRoleKey
   });
 
-  // Wariant 4: Tylko Authorization (Service Role)
-  await testConnection('Tylko Authorization (Service Role)', {
+  // Variant 4: Only Authorization (Service Role)
+  await testConnection('Only Authorization (Service Role)', {
     'Authorization': `Bearer ${serviceRoleKey}`
   });
 }

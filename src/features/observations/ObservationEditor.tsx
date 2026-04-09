@@ -86,7 +86,7 @@ type ObsPlayer = {
   def?: Record<string, number>;
   mid?: Record<string, number>;
   att?: Record<string, number>;
-  ratings?: Record<string, number>; // ⬅️ płaska mapa wszystkich ocen (BASE/GK/DEF/MID/ATT)
+  ratings?: Record<string, number>; // ⬅️ flat map of all ratings (BASE/GK/DEF/MID/ATT)
 
   note?: string;
 };
@@ -114,7 +114,7 @@ function fmtDateHuman(date?: string, time?: string) {
   try {
     const d = date ? new Date(date) : null;
     if (!d) return "—";
-    const dd = d.toLocaleDateString("pl-PL", {
+    const dd = d.toLocaleDateString("en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -129,7 +129,7 @@ function isNumberLike(value: string) {
   return /^[0-9]{1,3}$/.test(value.trim());
 }
 
-/* 💊 SavePill – stan zapisu (bez localStorage) */
+/* 💊 SavePill – save state (without localStorage) */
 function SavePill({
   state,
   size = "default",
@@ -158,20 +158,20 @@ function SavePill({
       {state === "saving" ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Zapisywanie…
+          Saving…
         </>
       ) : (
         <>
           <CheckCircle2 className="mr-2 h-4 w-4" />
-          Zapisano
+          Saved
         </>
       )}
     </span>
   );
 }
 
-/* Znacznik “Wymagane” przy polu */
-function ReqChip({ text = "Wymagane" }: { text?: string }) {
+/* “Required” marker next to the field */
+function ReqChip({ text = "Required" }: { text?: string }) {
   return (
     <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100">
       {text}
@@ -209,7 +209,7 @@ function MetricItem({
   );
 }
 
-/* Przycisk do nagrywania notatki głosowej i transkrypcji do pola */
+/* Button for recording voice note and transcription to field */
 function VoiceNoteButton({
   onTranscription,
 }: {
@@ -245,14 +245,14 @@ function VoiceNoteButton({
 
     if (!SR) {
       alert(
-        "Twoja przeglądarka nie obsługuje rozpoznawania mowy. Spróbuj w Chrome na desktopie."
+        "Your browser does not support speech recognition. Try using Chrome on desktop."
       );
       return;
     }
 
     if (!isRecording) {
       const recognition = new SR();
-      recognition.lang = "pl-PL";
+      recognition.lang = "en-US";
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
 
@@ -263,22 +263,22 @@ function VoiceNoteButton({
             onTranscription(text);
           }
         } catch (e) {
-          console.error("[VoiceNoteButton] Błąd w onresult:", e);
+          console.error("[VoiceNoteButton] Error in onresult:", e);
         }
       };
 
       recognition.onerror = (event: any) => {
-        console.error("[VoiceNoteButton] Błąd rozpoznawania:", event);
+        console.error("[VoiceNoteButton] Recognition error:", event);
         if (
           event.error === "not-allowed" ||
           event.error === "service-not-allowed"
         ) {
           alert(
-            "Brak dostępu do mikrofonu lub funkcja jest zablokowana. Sprawdź uprawnienia przeglądarki i HTTPS."
+            "Microphone access denied or feature blocked. Check browser permissions and HTTPS."
           );
         } else if (event.error === "network") {
           alert(
-            "Wystąpił problem sieciowy podczas rozpoznawania mowy. Spróbuj ponownie."
+            "A network problem occurred during speech recognition. Please try again."
           );
         }
         setIsRecording(false);
@@ -310,7 +310,7 @@ function VoiceNoteButton({
         )}
       >
         <Mic className="h-3.5 w-3.5" />
-        <span>Notatka głosowa niedostępna w tej przeglądarce</span>
+        <span>Voice note unavailable in this browser</span>
       </button>
     );
   }
@@ -329,8 +329,8 @@ function VoiceNoteButton({
       <Mic className="h-3.5 w-3.5" />
       <span>
         {isRecording
-          ? "Nagrywanie… kliknij, aby zatrzymać"
-          : "Nagraj notatkę głosową"}
+          ? "Recording… click to stop"
+          : "Record voice note"}
       </span>
     </button>
   );
@@ -417,7 +417,7 @@ export function ObservationEditor({
         }
       } catch (err) {
         console.error(
-          "[ObservationEditor] Błąd ładowania players z Supabase:",
+          "[ObservationEditor] Error loading players from Supabase:",
           err
         );
         if (!cancelled) setAllPlayers([]);
@@ -447,7 +447,7 @@ export function ObservationEditor({
           setMetrics(cfg);
         }
       } catch (err) {
-        console.error("[ObservationEditor] Błąd ładowania metryk:", err);
+        console.error("[ObservationEditor] Error loading metrics:", err);
       }
     })();
 
@@ -483,16 +483,16 @@ export function ObservationEditor({
     "ST",
   ];
   const POS_INFO: Record<PositionKey, string> = {
-    GK: "Bramkarz",
-    CB: "Środkowy obrońca",
-    LB: "Lewy obrońca",
-    RB: "Prawy obrońca",
-    CMD: "Defensywny pomocnik (6)",
-    CM: "Środkowy pomocnik (8)",
-    CAM: "Ofensywny pomocnik (10)",
-    LW: "Lewy skrzydłowy (11)",
-    RW: "Prawy skrzydłowy (7)",
-    ST: "Środkowy napastnik (9)",
+    GK: "Goalkeeper",
+    CB: "Center Back",
+    LB: "Left Back",
+    RB: "Right Back",
+    CMD: "Defensive Midfielder (6)",
+    CM: "Central Midfielder (8)",
+    CAM: "Attacking Midfielder (10)",
+    LW: "Left Winger (11)",
+    RW: "Right Winger (7)",
+    ST: "Striker (9)",
   };
 
   const [teamA, setTeamA] = useState(o.teamA ?? "");
@@ -518,7 +518,7 @@ export function ObservationEditor({
   const headerMeta = `${fmtDateHuman(
     o.reportDate || (o as any).date,
     o.__listMeta?.time || (o as any).time
-  )} • ${(o.players?.length ?? 0)} zawodników`;
+  )} • ${(o.players?.length ?? 0)} players`;
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle"
@@ -554,10 +554,10 @@ export function ObservationEditor({
       def: {},
       mid: {},
       att: {},
-      ratings: {}, // ⬅️ start z pustą mapą
+      ratings: {}, // ⬅️ start with empty map
     };
     setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
-    setExpandedId(p.id); // expand Ocena for new player
+    setExpandedId(p.id); // expand rating for new player
   }
 
   function addPlayerUnknownFromNumber(no: string) {
@@ -578,7 +578,7 @@ export function ObservationEditor({
       ratings: {}, // ⬅️
     };
     setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
-    setExpandedId(p.id); // expand Ocena for new player
+    setExpandedId(p.id); // expand rating for new player
   }
 
   function updatePlayer(id: string, patchPartial: Partial<ObsPlayer>) {
@@ -616,7 +616,7 @@ export function ObservationEditor({
         return {
           ...p,
           [group]: nextGroup,
-          ratings: nextRatings, // ⬅️ aktualizujemy płaską mapę
+          ratings: nextRatings, // ⬅️ updating flat map
         } as ObsPlayer;
       });
       return { ...prev, players };
@@ -666,7 +666,7 @@ export function ObservationEditor({
         ratings: {}, // ⬅️
       };
       setO((prev) => ({ ...prev, players: [...(prev.players ?? []), p] }));
-      setExpandedId(p.id); // expand Ocena for new player
+      setExpandedId(p.id); // expand rating for new player
     }
     setQuickInput("");
   }
@@ -697,7 +697,7 @@ export function ObservationEditor({
     const payload: any = {
       name: rawName,
       pos: (newPlayerPosition || promotePlayer.position || "CM") as string,
-      club: newPlayerClub.trim() || "Do uzupełnienia",
+      club: newPlayerClub.trim() || "To be completed",
       age: 0,
       status: "active",
       meta: {
@@ -719,14 +719,14 @@ export function ObservationEditor({
 
       if (error) {
         console.error(
-          "[ObservationEditor] Błąd insert do players (promote):",
+          "[ObservationEditor] Error inserting to players (promote):",
           error
         );
       } else if (data) {
         setAllPlayers((prev) => [...prev, data as Player]);
       }
     } catch (err) {
-      console.error("[ObservationEditor] Wyjątek przy zapisie players:", err);
+      console.error("[ObservationEditor] Exception during players save:", err);
     }
 
     setPromotePlayer(null);
@@ -758,19 +758,19 @@ export function ObservationEditor({
 
   const missingRequirements = useMemo(() => {
     const items: string[] = [];
-    if (isRequired("teamA") && !hasTeamA) items.push("ustaw drużynę A");
-    if (isRequired("teamB") && !hasTeamB) items.push("ustaw drużynę B");
+    if (isRequired("teamA") && !hasTeamA) items.push("set Team A");
+    if (isRequired("teamB") && !hasTeamB) items.push("set Team B");
     if (isRequired("reportDate") && !hasDate)
-      items.push("wybierz datę meczu");
-    if (isRequired("time") && !hasTime) items.push("ustaw godzinę meczu");
+      items.push("select match date");
+    if (isRequired("time") && !hasTime) items.push("set match time");
     if (isRequired("competition") && !hasCompetition)
-      items.push("uzupełnij ligę / turniej");
+      items.push("complete league / tournament");
     if (isRequired("conditions") && !hasConditions)
-      items.push("wybierz tryb meczu (Live / TV / MIX)");
+      items.push("select match mode (Live / TV / MIX)");
     if (isRequired("players") && playerCount === 0)
-      items.push("dodaj przynajmniej jednego zawodnika");
+      items.push("add at least one player");
     if (isRequired("note") && !hasNote)
-      items.push("dodaj notatkę do obserwacji");
+      items.push("add observation note");
     return items;
   }, [
     hasTeamA,
@@ -826,7 +826,7 @@ export function ObservationEditor({
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      console.error("[ObservationEditor] Brak użytkownika przy zapisie", {
+      console.error("[ObservationEditor] No user when saving", {
         userError,
       });
       setSaveState("idle");
@@ -1008,7 +1008,7 @@ export function ObservationEditor({
           }}
         >
           <ChevronLeft className="h-4 w-4 md:mr-1" />
-          <span className="hidden md:inline">Wróć do listy</span>
+          <span className="hidden md:inline">Back to list</span>
         </Button>
       </div>
     );
@@ -1032,7 +1032,7 @@ export function ObservationEditor({
         title={
           <div className="mb-3 flex flex-col gap-1">
             <span className="text-2xl font-semibold">
-              Mecz:&nbsp;{o.match || "—"}
+              Match:&nbsp;{o.match || "—"}
             </span>
             <span className="text-xs text-dark dark:text-neutral-300">
               {headerMeta}
@@ -1046,7 +1046,7 @@ export function ObservationEditor({
         missingRequirements.length > 0 && (
           <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
             <div className="font-semibold">
-              Uzupełnij wymagane pola, aby zapisać obserwację:
+              Complete the required fields to save the observation:
             </div>
             <ul className="mt-1 list-disc space-y-0.5 pl-4">
               {missingRequirements.map((item) => (
@@ -1079,13 +1079,13 @@ export function ObservationEditor({
               className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
-                <div className={stepPillClass}>Krok 1 · Informacje ogólne</div>
+                <div className={stepPillClass}>Step 1 · General information</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Dane meczu
+                  Match details
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Wpisz drużyny oraz datę meczu – nazwa meczu zbuduje się
-                  automatycznie.
+                  Enter the teams and the match date – the match name will build
+                  automatically.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
@@ -1111,14 +1111,14 @@ export function ObservationEditor({
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       <div>
-                        <Label className="text-sm">Drużyna A</Label>
+                        <Label className="text-sm">Team A</Label>
                         <div className="relative mt-1">
                           <Input
                             value={teamA}
                             onChange={(e) =>
                               updateMatchFromTeams(e.target.value, teamB)
                             }
-                            placeholder="np. Gospodarze U19"
+                            placeholder="e.g. Home Team U19"
                             className={cn(
                               "rounded-md",
                               isRequired("teamA") && !teamA.trim()
@@ -1131,14 +1131,14 @@ export function ObservationEditor({
                       </div>
 
                       <div>
-                        <Label className="text-sm">Drużyna B</Label>
+                        <Label className="text-sm">Team B</Label>
                         <div className="relative mt-1">
                           <Input
                             value={teamB}
                             onChange={(e) =>
                               updateMatchFromTeams(teamA, e.target.value)
                             }
-                            placeholder="np. Goście U19"
+                            placeholder="e.g. Away Team U19"
                             className={cn(
                               "rounded-md",
                               isRequired("teamB") && !teamB.trim()
@@ -1150,7 +1150,7 @@ export function ObservationEditor({
                         </div>
                       </div>
                       <div>
-                        <Label className="text-sm">Data i godzina meczu</Label>
+                        <Label className="text-sm">Match date and time</Label>
                         <div className="mt-1 rounded-md">
                           <DateTimePicker24h
                             value={{ date: matchDate, time: matchTime }}
@@ -1164,7 +1164,7 @@ export function ObservationEditor({
                     </div>
 
                     <div>
-                      <Label className="text-sm">Tryb meczu</Label>
+                      <Label className="text-sm">Match mode</Label>
                       <div className="mt-2 grid gap-2 sm:grid-cols-3">
                         {CONDITIONS.map((mode) => {
                           const isActive = (o.conditions ?? "live") === mode;
@@ -1174,10 +1174,10 @@ export function ObservationEditor({
 
                           const title = isLive ? "Live" : isTv ? "TV" : "MIX";
                           const subtitle = isLive
-                            ? "Na żywo z boiska"
+                            ? "Live from the stadium"
                             : isTv
-                              ? "Transmisja / wideo"
-                              : "Część na żywo, część z wideo";
+                              ? "Broadcast / video"
+                              : "Part live, part from video";
 
                           return (
                             <button
@@ -1218,14 +1218,14 @@ export function ObservationEditor({
                     </div>
 
                     <div>
-                      <Label className="text-sm">Liga / turniej</Label>
+                      <Label className="text-sm">League / tournament</Label>
                       <div className="relative mt-1">
                         <Input
                           value={o.competition ?? ""}
                           onChange={(e) =>
                             setField("competition", e.target.value)
                           }
-                          placeholder="np. CLJ U19, Puchar Polski"
+                          placeholder="e.g. Youth League, Cup"
                           className={cn(
                             "rounded-md",
                             isRequired("competition") && !hasCompetition
@@ -1239,7 +1239,7 @@ export function ObservationEditor({
                       </div>
                       {isRequired("competition") && !hasCompetition && (
                         <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-200">
-                          Pole ustawione jako wymagane w konfiguracji.
+                          Field set as required in configuration.
                         </p>
                       )}
                     </div>
@@ -1266,18 +1266,18 @@ export function ObservationEditor({
               className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
-                <div className={stepPillClass}>Krok 2 · Zawodnicy</div>
+                <div className={stepPillClass}>Step 2 · Players</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Obserwowani zawodnicy
+                  Observed players
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Jeden input – numer lub nazwisko, dropdown z wynikami i
-                  szczegóły pod wierszem zawodnika.
+                  One input – number or name, results dropdown and
+                  details below the player row.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
                 <span className="whitespace-nowrap rounded-md border px-2 py-0.5 text-xs text-muted-foreground dark:border-neutral-700">
-                  {o.players?.length ?? 0} pozycja
+                  {o.players?.length ?? 0} { (o.players?.length ?? 0) === 1 ? 'player' : 'players' }
                 </span>
 
                 <ChevronDown
@@ -1304,7 +1304,7 @@ export function ObservationEditor({
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                       <div className="relative w-full sm:w-[360px]">
                         <Label className="text-sm">
-                          Numer lub nazwisko zawodnika
+                          Player number or name
                         </Label>
                         <div className="relative mt-1">
                           <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -1317,11 +1317,11 @@ export function ObservationEditor({
                                 addPlayerFromInput();
                               }
                             }}
-                            placeholder="np. 9 lub Piotr Nowak"
+                            placeholder="e.g. 9 or John Doe"
                             className="rounded-md pl-8 pr-24"
                           />
                           <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-gray-400">
-                            Enter ↵, aby dodać
+                            Enter ↵ to add
                           </div>
                         </div>
 
@@ -1348,7 +1348,7 @@ export function ObservationEditor({
                                   onClick={() => addPlayerFromInput(p)}
                                   className="shrink-0 rounded-md border border-[#089569] bg-white px-2 py-1 text-[11px] font-semibold text-[#089569] transition-colors hover:bg-[#089569] hover:text-white dark:bg-neutral-950 dark:hover:bg-[#089569]"
                                 >
-                                  Dodaj
+                                  Add
                                 </button>
                               </div>
                             ))}
@@ -1361,10 +1361,10 @@ export function ObservationEditor({
                         className="mt-1 h-9 rounded-md border border-[#089569] text-[#089569] bg-white hover:bg-[#089569]/5 dark:border-[#089569] dark:text-[#089569]"
                         onClick={() => addPlayerFromInput()}
                         disabled={!quickInput.trim()}
-                        title="Dodaj do listy"
+                        title="Add to list"
                       >
                         <Plus className="mr-1 h-4 w-4" />
-                        Dodaj do listy
+                        Add to list
                       </Button>
                     </div>
 
@@ -1413,14 +1413,14 @@ export function ObservationEditor({
 
                                   {isUnknownPlayer && (
                                     <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                      nieznany
+                                      unknown
                                     </span>
                                   )}
                                 </div>
 
                                 {p.shirtNo && (
                                   <div className="mt-0.5 text-[11px] text-stone-700 dark:text-stone-200">
-                                    Nr: {p.shirtNo}
+                                    No: {p.shirtNo}
                                   </div>
                                 )}
                               </div>
@@ -1438,17 +1438,17 @@ export function ObservationEditor({
                                     setExpandedId((cur) => (cur === p.id ? null : p.id));
                                     setConfirmDeleteId(null);
                                   }}
-                                  title={isOpen ? "Ukryj oceny" : "Pokaż oceny"}
+                                  title={isOpen ? "Hide ratings" : "Show ratings"}
                                 >
                                   {isOpen ? (
                                     <>
                                       <ChevronUp className="mr-1 h-4 w-4" />
-                                      Ukryj
+                                      Hide
                                     </>
                                   ) : (
                                     <>
                                       <ChevronDown className="mr-1 h-4 w-4" />
-                                      Oceny
+                                      Ratings
                                     </>
                                   )}
                                 </Button>
@@ -1459,7 +1459,7 @@ export function ObservationEditor({
                                     variant="outline"
                                     className="h-8 w-8 rounded-md border-gray-300 p-0 text-red-600 dark:border-neutral-700"
                                     onClick={() => setConfirmDeleteId(p.id)}
-                                    title="Usuń zawodnika"
+                                    title="Remove player"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -1473,7 +1473,7 @@ export function ObservationEditor({
                                         setConfirmDeleteId(null);
                                       }}
                                     >
-                                      Tak
+                                      Yes
                                     </Button>
                                     <Button
                                       size="sm"
@@ -1481,7 +1481,7 @@ export function ObservationEditor({
                                       className="h-8 rounded-md border-gray-300 px-2 text-xs dark:border-neutral-700"
                                       onClick={() => setConfirmDeleteId(null)}
                                     >
-                                      Nie
+                                      No
                                     </Button>
                                   </div>
                                 )}
@@ -1491,9 +1491,9 @@ export function ObservationEditor({
                             {/* fields */}
                             <div className="grid grid-cols-2 gap-2 px-3 pb-3">
                               <div className="col-span-2">
-                                <Label className="text-[11px] text-stone-600 dark:text-neutral-400">
-                                  Pozycja w meczu
-                                </Label>
+                                  <Label className="text-[11px] text-stone-600 dark:text-neutral-400">
+                                    Match position
+                                  </Label>
                                 <div className="mt-1">
                                   <Select
                                     value={p.position ?? "__none"}
@@ -1510,14 +1510,14 @@ export function ObservationEditor({
                                       title={
                                         p.position
                                           ? `${p.position} — ${POS_INFO[p.position]}`
-                                          : "Wybierz pozycję"
+                                          : "Select position"
                                       }
                                     >
-                                      <SelectValue placeholder="— wybierz pozycję —" />
+                                      <SelectValue placeholder="— select position —" />
                                     </SelectTrigger>
 
                                     <SelectContent className="w-[16rem] max-w-xs bg-white dark:bg-neutral-950">
-                                      <SelectItem value="__none">— bez pozycji —</SelectItem>
+                                      <SelectItem value="__none">— no position —</SelectItem>
                                       {POSITIONS.map((posKey) => (
                                         <SelectItem key={posKey} value={posKey}>
                                           {posKey}
@@ -1530,7 +1530,7 @@ export function ObservationEditor({
 
                               <div>
                                 <Label className="text-[11px] text-stone-600 dark:text-neutral-400">
-                                  Minuty
+                                  Minutes
                                 </Label>
                                 <Input
                                   type="number"
@@ -1549,7 +1549,7 @@ export function ObservationEditor({
 
                               <div>
                                 <Label className="text-[11px] text-stone-600 dark:text-neutral-400">
-                                  Ocena
+                                  Rating
                                 </Label>
                                 <div className="mt-1">
                                   <StarRating
@@ -1574,7 +1574,7 @@ export function ObservationEditor({
                                     }}
                                   >
                                     <AddPlayerIcon className="mr-2 h-6 w-6" strokeColorAll="#ffffff" />
-                                    Dodaj do mojej bazy
+                                    Add to my database
                                   </Button>
                                 </div>
                               )}
@@ -1587,20 +1587,20 @@ export function ObservationEditor({
                                   {!hasPosition && (
                                     <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
                                       <p className="mb-3 text-xs text-stone-700 dark:text-neutral-200">
-                                        Aby wprowadzić oceny, najpierw uzupełnij <b>Pozycja w meczu</b>.
+                                        To enter ratings, first complete <b>Match position</b>.
                                       </p>
                                       <button
                                         type="button"
                                         onClick={() => openPositionSelect(p.id)}
                                         className="inline-flex h-9 items-center justify-center rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800"
                                       >
-                                        Pozycja w meczu
+                                        Match position
                                       </button>
                                     </div>
                                   )}
 
                                   <div className={cn("space-y-4", !hasPosition && "pointer-events-none blur-[1.5px]")}>
-                                    <Group title="Kategorie bazowe">
+                                    <Group title="Base categories">
                                       {metrics.BASE.filter((m) => m.enabled).map((m) => (
                                         <MetricItem
                                           key={m.id}
@@ -1612,7 +1612,7 @@ export function ObservationEditor({
                                     </Group>
 
                                     {showGK && (
-                                      <Group title="Bramkarz (GK)">
+                                      <Group title="Goalkeeper (GK)">
                                         {metrics.GK.filter((m) => m.enabled).map((m) => (
                                           <MetricItem
                                             key={m.id}
@@ -1625,7 +1625,7 @@ export function ObservationEditor({
                                     )}
 
                                     {showDEF && (
-                                      <Group title="Obrońca (CB/FB/WB)">
+                                      <Group title="Defender (CB/FB/WB)">
                                         {metrics.DEF.filter((m) => m.enabled).map((m) => (
                                           <MetricItem
                                             key={m.id}
@@ -1638,7 +1638,7 @@ export function ObservationEditor({
                                     )}
 
                                     {showMID && (
-                                      <Group title="Pomocnik (6/8/10)">
+                                      <Group title="Midfielder (6/8/10)">
                                         {metrics.MID.filter((m) => m.enabled).map((m) => (
                                           <MetricItem
                                             key={m.id}
@@ -1651,7 +1651,7 @@ export function ObservationEditor({
                                     )}
 
                                     {showATT && (
-                                      <Group title="Napastnik (9/7/11)">
+                                      <Group title="Forward (9/7/11)">
                                         {metrics.ATT.filter((m) => m.enabled).map((m) => (
                                           <MetricItem
                                             key={m.id}
@@ -1665,16 +1665,16 @@ export function ObservationEditor({
 
                                     <div className="mt-2 rounded-md bg-none p-0 shadow-sm dark:bg-neutral-950/80">
                                       <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
-                                        Notatka do zawodnika
+                                        Player note
                                       </div>
                                       <Textarea
                                         value={p.note ?? ""}
                                         onChange={(e) => updatePlayer(p.id, { note: e.target.value })}
-                                        placeholder="Notatka o zawodniku…"
+                                        placeholder="Note about player…"
                                         className="min-h-[80px] rounded-md bg-white/90 text-sm dark:bg-neutral-950"
                                       />
                                       <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
-                                        Wewnętrzna notatka – widoczna tylko w tej obserwacji.
+                                        Internal note – visible only in this observation.
                                       </p>
                                     </div>
                                   </div>
@@ -1688,8 +1688,8 @@ export function ObservationEditor({
                       {(o.players ?? []).length === 0 && (
                         <div className="rounded-md border border-gray-200 bg-white p-4 text-center text-sm text-dark shadow-sm dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
                           {isRequired("players")
-                            ? "Musisz dodać przynajmniej jednego zawodnika, aby zapisać obserwację (pole ustawione jako wymagane)."
-                            : "Brak zawodników — wpisz numer lub nazwisko i kliknij Enter lub przycisk dodawania."}
+                            ? "You must add at least one player to save the observation (field set as required)."
+                            : "No players — enter number or name and click Enter or the add button."}
                         </div>
                       )}
                     </div>
@@ -1699,11 +1699,11 @@ export function ObservationEditor({
                       <table className="w-full table-auto text-sm">
                         <thead className="bg-stone-50 text-dark dark:bg-neutral-900 dark:text-neutral-300">
                           <tr className="text-xs sm:text-sm">
-                            <th className="p-3 text-left font-medium">Zawodnik</th>
-                            <th className="p-3 text-left font-medium">Pozycja w meczu</th>
-                            <th className="p-3 text-left font-medium">Minuty</th>
-                            <th className="p-3 text-left font-medium">Ocena</th>
-                            <th className="p-3 text-right font-medium">Akcje</th>
+                            <th className="p-3 text-left font-medium">Player</th>
+                            <th className="p-3 text-left font-medium">Match position</th>
+                            <th className="p-3 text-left font-medium">Minutes</th>
+                            <th className="p-3 text-left font-medium">Rating</th>
+                            <th className="p-3 text-right font-medium">Actions</th>
                           </tr>
                         </thead>
 
@@ -1748,14 +1748,14 @@ export function ObservationEditor({
 
                                         {isUnknownPlayer && (
                                           <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                            nieznany
+                                            unknown
                                           </span>
                                         )}
                                       </div>
 
                                       {p.shirtNo && (
                                         <div className="mt-0.5 text-[11px] text-stone-700 dark:text-stone-200">
-                                          Nr: {p.shirtNo}
+                                          No: {p.shirtNo}
                                         </div>
                                       )}
                                     </div>
@@ -1777,14 +1777,14 @@ export function ObservationEditor({
                                           title={
                                             p.position
                                               ? `${p.position} — ${POS_INFO[p.position]}`
-                                              : "Wybierz pozycję"
+                                              : "Select position"
                                           }
                                         >
-                                          <SelectValue placeholder="— wybierz pozycję —" />
+                                          <SelectValue placeholder="— select position —" />
                                         </SelectTrigger>
 
                                         <SelectContent className="w-[16rem] max-w-xs bg-white dark:bg-neutral-950">
-                                          <SelectItem value="__none">— bez pozycji —</SelectItem>
+                                          <SelectItem value="__none">— no position —</SelectItem>
                                           {POSITIONS.map((posKey) => (
                                             <SelectItem key={posKey} value={posKey}>
                                               {posKey}
@@ -1837,12 +1837,12 @@ export function ObservationEditor({
                                         {isOpen ? (
                                           <>
                                             <ChevronUp className="mr-1 h-4 w-4" />
-                                            <span className="hidden sm:inline">Ukryj oceny</span>
+                                            <span className="hidden sm:inline">Hide ratings</span>
                                           </>
                                         ) : (
                                           <>
                                             <ChevronDown className="mr-1 h-4 w-4" />
-                                            <span className="hidden sm:inline">Oceny</span>
+                                            <span className="hidden sm:inline">Ratings</span>
                                           </>
                                         )}
                                       </Button>
@@ -1853,7 +1853,7 @@ export function ObservationEditor({
                                           variant="outline"
                                           className="h-8 w-8 rounded-md border-gray-300 p-0 text-red-600 dark:border-neutral-700"
                                           onClick={() => setConfirmDeleteId(p.id)}
-                                          title="Usuń zawodnika"
+                                          title="Remove player"
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -1867,7 +1867,7 @@ export function ObservationEditor({
                                               setConfirmDeleteId(null);
                                             }}
                                           >
-                                            Tak
+                                            Yes
                                           </Button>
                                           <Button
                                             size="sm"
@@ -1875,7 +1875,7 @@ export function ObservationEditor({
                                             className="h-8 rounded-md border-gray-300 px-2 text-xs dark:border-neutral-700"
                                             onClick={() => setConfirmDeleteId(null)}
                                           >
-                                            Nie
+                                            No
                                           </Button>
                                         </div>
                                       )}
@@ -1905,20 +1905,20 @@ export function ObservationEditor({
                                         {!hasPosition && (
                                           <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
                                             <p className="mb-3 text-xs text-stone-700 dark:text-neutral-200 sm:text-sm">
-                                              Aby wprowadzić oceny, najpierw uzupełnij <b>Pozycja w meczu</b>.
+                                              To enter ratings, first complete <b>Match position</b>.
                                             </p>
                                             <button
                                               type="button"
                                               onClick={() => openPositionSelect(p.id)}
                                               className="inline-flex h-9 items-center justify-center rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800"
                                             >
-                                              Pozycja w meczu
+                                              Match position
                                             </button>
                                           </div>
                                         )}
 
                                         <div className={cn("space-y-4", !hasPosition && "pointer-events-none blur-[1.5px]")}>
-                                          <Group title="Kategorie bazowe">
+                                          <Group title="Base categories">
                                             {metrics.BASE.filter((m) => m.enabled).map((m) => (
                                               <MetricItem
                                                 key={m.id}
@@ -1930,7 +1930,7 @@ export function ObservationEditor({
                                           </Group>
 
                                           {showGK && (
-                                            <Group title="Bramkarz (GK)">
+                                            <Group title="Goalkeeper (GK)">
                                               {metrics.GK.filter((m) => m.enabled).map((m) => (
                                                 <MetricItem
                                                   key={m.id}
@@ -1943,7 +1943,7 @@ export function ObservationEditor({
                                           )}
 
                                           {showDEF && (
-                                            <Group title="Obrońca (CB/FB/WB)">
+                                            <Group title="Defender (CB/FB/WB)">
                                               {metrics.DEF.filter((m) => m.enabled).map((m) => (
                                                 <MetricItem
                                                   key={m.id}
@@ -1956,7 +1956,7 @@ export function ObservationEditor({
                                           )}
 
                                           {showMID && (
-                                            <Group title="Pomocnik (6/8/10)">
+                                            <Group title="Midfielder (6/8/10)">
                                               {metrics.MID.filter((m) => m.enabled).map((m) => (
                                                 <MetricItem
                                                   key={m.id}
@@ -1969,7 +1969,7 @@ export function ObservationEditor({
                                           )}
 
                                           {showATT && (
-                                            <Group title="Napastnik (9/7/11)">
+                                            <Group title="Forward (9/7/11)">
                                               {metrics.ATT.filter((m) => m.enabled).map((m) => (
                                                 <MetricItem
                                                   key={m.id}
@@ -1983,16 +1983,16 @@ export function ObservationEditor({
 
                                           <div className="mt-2 rounded-md bg-none p-0 shadow-sm dark:bg-neutral-950/80">
                                             <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-700 dark:text-neutral-200">
-                                              Notatka do zawodnika
+                                              Player note
                                             </div>
                                             <Textarea
                                               value={p.note ?? ""}
                                               onChange={(e) => updatePlayer(p.id, { note: e.target.value })}
-                                              placeholder="Notatka o zawodniku…"
+                                              placeholder="Note about player…"
                                               className="min-h-[80px] rounded-md bg-white/90 text-sm dark:bg-neutral-950"
                                             />
                                             <p className="mt-1 text-[11px] text-stone-500 dark:text-neutral-400">
-                                              Wewnętrzna notatka – widoczna tylko w tej obserwacji.
+                                              Internal note – visible only in this observation.
                                             </p>
                                           </div>
                                         </div>
@@ -2008,8 +2008,8 @@ export function ObservationEditor({
                             <tr>
                               <td colSpan={5} className="p-6 text-center text-sm text-dark dark:text-neutral-400">
                                 {isRequired("players")
-                                  ? "Musisz dodać przynajmniej jednego zawodnika, aby zapisać obserwację (pole ustawione jako wymagane)."
-                                  : "Brak zawodników — wpisz numer lub nazwisko i kliknij Enter lub przycisk dodawania."}
+                                  ? "You must add at least one player to save the observation (field set as required)."
+                                  : "No players — enter number or name and click Enter or the add button."}
                               </td>
                             </tr>
                           )}
@@ -2041,18 +2041,18 @@ export function ObservationEditor({
               className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
-                <div className={stepPillClass}>Krok 3 · Notatka</div>
+                <div className={stepPillClass}>Step 3 · Note</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Notatka do obserwacji
+                  Observation note
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Krótki opis, kontekst, obserwacje ogólne.
+                  Short description, context, general observations.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
                 {isRequired("note") && !hasNote && (
                   <span className="rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-100">
-                    Wymagane wg konfiguracji
+                    Required by configuration
                   </span>
                 )}
                 <ChevronDown
@@ -2075,11 +2075,11 @@ export function ObservationEditor({
               <AccordionItem value="note" className="border-0">
                 <AccordionContent id="note-panel" className="pt-4 pb-5">
                   <div className="space-y-2">
-                    <Label className="text-sm">Notatka tekstowa</Label>
+                    <Label className="text-sm">Text note</Label>
                     <Textarea
                       value={o.note ?? ""}
                       onChange={(e) => setField("note", e.target.value)}
-                      placeholder="Krótka notatka…"
+                      placeholder="Short note…"
                       className="min-h-[140px] rounded-md"
                     />
                     <div className="inline-flex flex-wrap items-center gap-2 text-xs text-dark dark:text-neutral-400">
@@ -2104,7 +2104,7 @@ export function ObservationEditor({
           <div className="fixed left-1/2 top-1/2 z-[111] max-h-[80vh] w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md border border-gray-200 bg-white p-4 shadow-2xl dark:border-neutral-800 dark:bg-neutral-950">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold">
-                Dodaj zawodnika do bazy
+                Add player to database
               </h2>
               <button
                 className="rounded-md p-1 text-dark hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
@@ -2116,30 +2116,30 @@ export function ObservationEditor({
 
             <div className="space-y-3 text-sm">
               <div>
-                <Label className="text-xs">Imię i nazwisko</Label>
+                <Label className="text-xs">Full name</Label>
                 <Input
                   className="mt-1 rounded-md"
                   value={(promotePlayer.name || "").replace(/^#/, "").trim()}
                   readOnly
                 />
                 <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
-                  Nazwa z obserwacji – edycję zrobisz później w „Mojej bazie”.
+                  Name from observation – you can edit later in "My database".
                 </p>
               </div>
 
               <div>
-                <Label className="text-xs">Klub (opcjonalnie)</Label>
+                <Label className="text-xs">Club (optional)</Label>
                 <Input
                   className="mt-1 rounded-md"
                   value={newPlayerClub}
                   onChange={(e) => setNewPlayerClub(e.target.value)}
-                  placeholder="np. Lech U19"
+                  placeholder="e.g. Lech U19"
                 />
               </div>
 
               <div>
                 <Label className="text-xs">
-                  Domyślna pozycja (opcjonalnie)
+                  Default position (optional)
                 </Label>
                 <select
                   className="mt-1 w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
@@ -2150,7 +2150,7 @@ export function ObservationEditor({
                     )
                   }
                 >
-                  <option value="">— bez pozycji —</option>
+                  <option value="">— no position —</option>
                   {POSITIONS.map((pos) => (
                     <option key={pos} value={pos}>
                       {pos} — {POS_INFO[pos]}
@@ -2166,13 +2166,13 @@ export function ObservationEditor({
                 className="rounded-md border-gray-300 dark:border-neutral-700"
                 onClick={() => setPromotePlayer(null)}
               >
-                Anuluj
+                Cancel
               </Button>
               <Button
                 className="rounded-md bg-gray-900 text-white hover:bg-gray-800"
                 onClick={handlePromotePlayerSave}
               >
-                Dodaj do mojej bazy
+                Add to my database
               </Button>
             </div>
           </div>

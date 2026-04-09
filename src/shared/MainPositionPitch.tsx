@@ -25,62 +25,62 @@ export const POS_DATA: Array<{
     {
       value: "GK",
       code: "GK",
-      name: "Bramkarz",
-      desc: "Odbicia, gra na linii, wyjścia i gra nogami.",
+      name: "Goalkeeper",
+      desc: "Saves, line play, exits and footwork.",
     },
     {
       value: "CB",
       code: "CB",
-      name: "Środkowy obrońca",
-      desc: "Gra w powietrzu, ustawienie, wyprowadzenie.",
+      name: "Center back",
+      desc: "Aerial play, positioning, build-up.",
     },
     {
       value: "LB",
       code: "LB",
-      name: "Lewy obrońca",
-      desc: "Obrona strony, dośrodkowania, wsparcie ataku.",
+      name: "Left back",
+      desc: "Side defense, crosses, attack support.",
     },
     {
       value: "RB",
       code: "RB",
-      name: "Prawy obrońca",
-      desc: "Obrona strony, dośrodkowania, wsparcie ataku.",
+      name: "Right back",
+      desc: "Side defense, crosses, attack support.",
     },
     {
       value: "CDM",
       code: "CDM",
-      name: "Śr. pomocnik defensywny",
-      desc: "Odbiór, asekuracja, pierwsze podanie.",
+      name: "Central defensive midfielder",
+      desc: "Tackle, protection, first pass.",
     },
     {
       value: "CM",
       code: "CM",
-      name: "Środkowy pomocnik",
-      desc: "Równowaga defensywa/kreacja.",
+      name: "Central midfielder",
+      desc: "Defensive/creative balance.",
     },
     {
       value: "CAM",
       code: "CAM",
-      name: "Ofensywny pomocnik",
-      desc: "Ostatnie podanie, kreacja, strzał.",
+      name: "Attacking midfielder",
+      desc: "Final pass, creation, shot.",
     },
     {
       value: "LW",
       code: "LW",
-      name: "Lewy pomocnik/skrzydłowy",
-      desc: "1v1, dośrodkowania, zejścia do strzału.",
+      name: "Left midfielder/winger",
+      desc: "1v1, crosses, cutting inside for a shot.",
     },
     {
       value: "RW",
       code: "RW",
-      name: "Prawy pomocnik/skrzydłowy",
-      desc: "1v1, dośrodkowania, zejścia do strzału.",
+      name: "Right midfielder/winger",
+      desc: "1v1, crosses, cutting inside for a shot.",
     },
     {
       value: "ST",
       code: "ST",
-      name: "Napastnik",
-      desc: "Wykończenie, gra tyłem, ruch w polu karnym.",
+      name: "Striker",
+      desc: "Finishing, hold-up play, movement in the box.",
     },
   ];
 
@@ -119,10 +119,10 @@ export function MainPositionPitch({ value, onChange }: MainPositionPitchProps) {
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="font-medium text-foreground text-sm">
-            Boisko – główna pozycja
+            Pitch – main position
           </div>
           <p className="mt-0.5 text-xs text-stone-500 dark:text-neutral-400">
-            Kliknij na znacznik na boisku, aby ustawić główną pozycję zawodnika.
+            Click a marker on the pitch to set the player's main position.
           </p>
         </div>
         {activeMeta && (
@@ -132,7 +132,7 @@ export function MainPositionPitch({ value, onChange }: MainPositionPitchProps) {
         )}
       </div>
 
-      {/* >>> ZAMIANA tej części za <div ...> w dokumencie <<< */}
+      {/* REPLACEMENT of this part for <div ...> in document */}
       <div className="mx-auto w-full max-w-[700px] rounded border-none bg-transparent">
         <div className="relative w-full overflow-hidden rounded-[20px] bg-[#76C35D] aspect-[4/3] sm:aspect-[590/350]">
           <svg
@@ -285,7 +285,7 @@ export function MainPositionPitch({ value, onChange }: MainPositionPitchProps) {
           </>
         ) : (
           <span>
-            Najedź na znacznik i kliknij, aby wybrać główną pozycję zawodnika.
+            Hover over a marker and click to select the player's main position.
           </span>
         )}
       </div>

@@ -104,7 +104,7 @@ function fmtDate(d?: string | null) {
     const date = new Date(d);
     const t = date.getTime();
     if (!Number.isFinite(t) || t <= 0) return "—";
-    return date.toLocaleString("pl-PL", {
+    return date.toLocaleString("en-GB", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -122,7 +122,7 @@ function fmtTimeShort(iso?: string | null) {
     const date = new Date(iso);
     const t = date.getTime();
     if (!Number.isFinite(t) || t <= 0) return "—";
-    return date.toLocaleTimeString("pl-PL", {
+    return date.toLocaleTimeString("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -216,7 +216,7 @@ function mapRowToScout(row: DbScoutRow): Scout {
 
   return {
     id: row.id,
-    name: row.name || "Bez nazwy",
+    name: row.name || "Unnamed",
     email: row.email || undefined,
     phone: row.phone || undefined,
     region: row.region || undefined,
@@ -292,7 +292,7 @@ function KpiCell({
 }) {
   const avgLabel =
     typeof avgObsPerPlayer === "number"
-      ? `${avgObsPerPlayer.toFixed(1)} / zaw.`
+      ? `${avgObsPerPlayer.toFixed(1)} / player`
       : `${Math.round(vol01 * 100)}%`;
 
   return (
@@ -307,18 +307,18 @@ function KpiCell({
           <TinyBar
             value={comp01 * 100}
             className="bg-indigo-500"
-            title="Śr. kompletność profili"
+            title="Avg. profile completeness"
           />
         </div>
         <div className="flex flex-col">
           <div className="flex items-center justify-between">
-            <span>Akt</span>
+            <span>Act</span>
             <span className="font-medium text-dark dark:text-neutral-200">{Math.round(act01 * 100)}%</span>
           </div>
           <TinyBar
             value={act01 * 100}
             className="bg-emerald-500"
-            title="Aktywność (ostatnie 14 dni)"
+            title="Activity (last 14 days)"
           />
         </div>
         <div className="flex flex-col">
@@ -328,7 +328,7 @@ function KpiCell({
           <TinyBar
             value={vol01 * 100}
             className="bg-stone-500"
-            title="Średni wolumen obserwacji względem zawodników"
+            title="Average volume of observations relative to players"
           />
         </div>
       </div>
@@ -364,16 +364,16 @@ function ActivityTag({
       : computeActivity01FromLastActive(lastActive);
   const days = daysSince(lastActive);
 
-  let label = "Brak aktywności";
+  let label = "No activity";
   let dotCls = "bg-gray-400";
   if (act > 0.66) {
-    label = "Bardzo aktywny";
+    label = "Highly active";
     dotCls = "bg-emerald-500";
   } else if (act > 0.33) {
-    label = "Aktywny";
+    label = "Active";
     dotCls = "bg-amber-400";
   } else if (act > 0) {
-    label = "Rzadko aktywny";
+    label = "Rarely active";
     dotCls = "bg-orange-500";
   }
 
@@ -383,7 +383,7 @@ function ActivityTag({
       <span>{label}</span>
       {isFinite(days) && days < 999 && (
         <span className="text-[9px] text-neutral-500 dark:text-neutral-400">
-          ({days === 0 ? "dzisiaj" : `${days} dni temu`})
+          ({days === 0 ? "today" : `${days} days ago`})
         </span>
       )}
     </span>
@@ -448,7 +448,7 @@ export default function ScoutsAdminPage() {
     } catch (e: any) {
       console.error("Error fetching scouts:", e);
       setError(
-        e?.message || "Nie udało się pobrać listy scoutów z Supabase."
+        e?.message || "Failed to fetch scouts list from Supabase."
       );
       setRows([]);
     } finally {
@@ -465,7 +465,7 @@ export default function ScoutsAdminPage() {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteName.trim() || !inviteEmail.trim()) {
-      toast.error("Proszę podać imię i e-mail.");
+      toast.error("Please provide name and email.");
       return;
     }
 
@@ -482,25 +482,25 @@ export default function ScoutsAdminPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Błąd podczas wysyłania zaproszenia.");
+      if (!res.ok) throw new Error(data.error || "Error while sending invitation.");
 
       toast.success(data.mailSent
-        ? "Zaproszenie wysłane pomyślnie!"
-        : "Zaproszenie utworzone (e-mail nie wysłany - brak konfiguracji).");
+        ? "Invitation sent successfully!"
+        : "Invitation created (email not sent - configuration missing).");
 
       if (!data.mailSent && data.link) {
-        // Fallback: kopiowanie linku jeśli e-mail nie poszedł
+        // Fallback: copy link if email was not sent
         navigator.clipboard.writeText(data.link);
-        toast.info("Link skopiowano do schowka.");
+        toast.info("Link copied to clipboard.");
       }
 
       setInviteOpen(false);
       setInviteName("");
       setInviteEmail("");
-      fetchScouts(); // odśwież listę
+      fetchScouts(); // refresh list
     } catch (err: any) {
       console.error("Invite error:", err);
-      toast.error(err.message || "Nie udało się zaprosić scouta.");
+      toast.error(err.message || "Failed to invite scout.");
     } finally {
       setInviting(false);
     }
@@ -667,8 +667,8 @@ export default function ScoutsAdminPage() {
   return (
     <div className="w-full space-y-4">
       <Toolbar
-        title="Lista scoutów"
-        subtitle="Zobacz aktywność i jakość pracy scoutów oraz szybko podejrzyj listę ich zawodników i obserwacji."
+        title="Scouts list"
+        subtitle="View the activity and quality of scouts' work, and quickly preview their list of players and observations."
         right={
           <div className="flex flex-wrap items-center gap-2">
             {/* INVITE SCOUT BUTTON + MODAL */}
@@ -679,25 +679,25 @@ export default function ScoutsAdminPage() {
                   className="flex items-center gap-1 bg-gray-900 text-xs text-white hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
                 >
                   <UserPlus className="h-4 w-4" />
-                  Zaproś scouta
+                  Invite scout
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleInvite}>
                   <DialogHeader>
-                    <DialogTitle>Zaproś nowego scouta</DialogTitle>
+                    <DialogTitle>Invite new scout</DialogTitle>
                     <DialogDescription>
-                      Wpisz dane scouta, aby wygenerować link i wysłać e-mail z zaproszeniem.
+                      Enter scout details to generate a link and send an invitation email.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="name">Imię i nazwisko</Label>
+                      <Label htmlFor="name">Full name</Label>
                       <Input
                         id="name"
                         value={inviteName}
                         onChange={(e) => setInviteName(e.target.value)}
-                        placeholder="np. Jan Kowalski"
+                        placeholder="e.g. John Doe"
                         required
                       />
                     </div>
@@ -708,7 +708,7 @@ export default function ScoutsAdminPage() {
                         type="email"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="np. jan@example.com"
+                        placeholder="e.g. john@example.com"
                         required
                       />
                     </div>
@@ -718,10 +718,10 @@ export default function ScoutsAdminPage() {
                       {inviting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Wysyłanie…
+                          Sending...
                         </>
                       ) : (
-                        "Wyślij zaproszenie"
+                        "Send invitation"
                       )}
                     </Button>
                   </DialogFooter>
@@ -738,7 +738,7 @@ export default function ScoutsAdminPage() {
                 <Input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Szukaj po nazwisku, e-mailu, regionie…"
+                  placeholder="Search by surname, email, region..."
                   className="w-72 max-w-full pl-8"
                 />
               </div>
@@ -749,7 +749,7 @@ export default function ScoutsAdminPage() {
                   className="h-8 text-xs text-muted-foreground hover:bg-muted"
                   onClick={() => setQ("")}
                 >
-                  Wyczyść
+                  Clear
                 </Button>
               )}
             </div>
@@ -762,7 +762,7 @@ export default function ScoutsAdminPage() {
               onClick={() => setFiltersOpenMobile((v) => !v)}
             >
               <Filter className="h-4 w-4" />
-              Filtry
+              Filters
               {activeFiltersCount > 0 && (
                 <span className="ml-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gray-900 text-[10px] font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
                   {activeFiltersCount}
@@ -778,15 +778,15 @@ export default function ScoutsAdminPage() {
               onClick={doRefresh}
               title={
                 lastRefresh
-                  ? `Ostatnie odświeżenie: ${fmtDate(lastRefresh)}`
-                  : "Odśwież teraz z Supabase"
+                  ? `Last refresh: ${fmtDate(lastRefresh)}`
+                  : "Refresh now from Supabase"
               }
               disabled={loading}
             >
               <RefreshCw
                 className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
               />
-              {loading ? "Ładuję…" : "Odśwież"}
+              {loading ? "Loading..." : "Refresh"}
               {lastRefresh && (
                 <span className="ml-1 text-[10px] text-muted-foreground">
                   {fmtTimeShort(lastRefresh)}
@@ -804,7 +804,7 @@ export default function ScoutsAdminPage() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Szukaj scouta…"
+            placeholder="Search scout..."
             className="w-full pl-8"
           />
         </div>
@@ -816,7 +816,7 @@ export default function ScoutsAdminPage() {
         </div>
       )}
 
-      {/* ========== SEK CJA 1 – LISTA SCOUTÓW (filtry + tabela/karty + Details inline) ========== */}
+      {/* ========== SECTION 1 – SCOUTS LIST (filters + table/cards + Details inline) ========== */}
       <Card className="mt-1">
         <CardHeader
           className={cn(
@@ -832,18 +832,18 @@ export default function ScoutsAdminPage() {
             className="flex w-full items-center justify-between px-4 py-4 text-left"
           >
             <div>
-              <div className={stepPillClass}>Sekcja 1 · Lista scoutów</div>
+              <div className={stepPillClass}>Section 1 · Scouts list</div>
               <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                Ranking i szczegóły pracy scoutów
+                Scout rankings and work details
               </div>
               <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                Filtry, KPI oraz szybki wgląd w listę zawodników i obserwacji
-                bez opuszczania tabeli.
+                Filters, KPI and a quick look at the player and observation list
+                without leaving the table.
               </p>
             </div>
             <div className="flex items-center gap-3 pl-4">
               <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
-                {summary.totalScouts} scoutów
+                {summary.totalScouts} scouts
               </span>
               <ChevronDown
                 className={cn(
@@ -864,7 +864,7 @@ export default function ScoutsAdminPage() {
           >
             <AccordionItem value="list" className="border-0">
               <AccordionContent id="scouts-list-panel" className="pt-4 pb-4">
-                {/* Filters (w tym search by name) */}
+                {/* Filters */}
                 <div className="mb-4">
                   <Card className="border-gray-200 shadow-sm dark:border-neutral-800">
                     <CardContent
@@ -879,12 +879,12 @@ export default function ScoutsAdminPage() {
                         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                           <div>
                             <Label className="mb-1 block text-xs text-muted-foreground">
-                              Nazwisko / imię (tylko po nazwie)
+                              Surname / first name (by name only)
                             </Label>
                             <Input
                               value={nameQ}
                               onChange={(e) => setNameQ(e.target.value)}
-                              placeholder="np. Kowalski"
+                              placeholder="e.g. Kowalski"
                             />
                           </div>
                           <div>
@@ -894,12 +894,12 @@ export default function ScoutsAdminPage() {
                             <Input
                               value={region}
                               onChange={(e) => setRegion(e.target.value)}
-                              placeholder="np. Mazowsze…"
+                              placeholder="e.g. Region..."
                             />
                           </div>
                           <div>
                             <Label className="mb-1 block text-xs text-muted-foreground">
-                              Min. zawodników
+                              Min. players
                             </Label>
                             <Input
                               type="number"
@@ -916,7 +916,7 @@ export default function ScoutsAdminPage() {
                           </div>
                           <div>
                             <Label className="mb-1 block text-xs text-muted-foreground">
-                              Min. obserwacji
+                              Min. observations
                             </Label>
                             <Input
                               type="number"
@@ -942,7 +942,7 @@ export default function ScoutsAdminPage() {
                               className="h-7 px-2 text-[11px]"
                               onClick={() => setRoleFilter("all")}
                             >
-                              Wszyscy
+                              All
                             </Button>
                             <Button
                               variant={
@@ -977,7 +977,7 @@ export default function ScoutsAdminPage() {
                                   setOnlyActive14(e.target.checked)
                                 }
                               />
-                              <span>Tylko aktywni 14 dni</span>
+                              <span>Only active 14 days</span>
                             </label>
                             <Button
                               variant="ghost"
@@ -985,7 +985,7 @@ export default function ScoutsAdminPage() {
                               className="h-8 text-[11px] text-muted-foreground hover:bg-muted"
                               onClick={resetFilters}
                             >
-                              Resetuj filtry
+                              Reset filters
                             </Button>
                           </div>
                         </div>
@@ -993,43 +993,43 @@ export default function ScoutsAdminPage() {
                         {activeFiltersCount > 0 && (
                           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
                             <span className="text-muted-foreground">
-                              Aktywne filtry ({activeFiltersCount}):
+                              Active filters ({activeFiltersCount}):
                             </span>
                             <div className="flex flex-wrap gap-1">
                               {q.trim() && (
                                 <Chip
                                   label={
-                                    `Szukaj (globalnie): “${q.trim()}` + "”"
+                                    `Search (global): "${q.trim()}"`
                                   }
                                 />
                               )}
                               {nameQ.trim() && (
-                                <Chip label={`Nazwa: ${nameQ}`} />
+                                <Chip label={`Name: ${nameQ}`} />
                               )}
                               {region.trim() && (
                                 <Chip label={`Region: ${region}`} />
                               )}
                               {minPlayers !== "" && (
                                 <Chip
-                                  label={`Min. zawodników: ${minPlayers}`}
+                                  label={`Min. players: ${minPlayers}`}
                                 />
                               )}
                               {minObs !== "" && (
                                 <Chip
-                                  label={`Min. obserwacji: ${minObs}`}
+                                  label={`Min. observations: ${minObs}`}
                                 />
                               )}
                               {roleFilter !== "all" && (
                                 <Chip
                                   label={
                                     roleFilter === "scout"
-                                      ? "Rola: Scout"
-                                      : "Rola: Scout-agent"
+                                      ? "Role: Scout"
+                                      : "Role: Scout-agent"
                                   }
                                 />
                               )}
                               {onlyActive14 && (
-                                <Chip label="Tylko aktywni 14 dni" />
+                                <Chip label="Only active 14 days" />
                               )}
                             </div>
                           </div>
@@ -1068,8 +1068,8 @@ export default function ScoutsAdminPage() {
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-dark dark:text-neutral-400">
                         {s.email && <span className="truncate">{s.email}</span>}
-                        {s.phone && <span>• {s.phone}</span>}
-                        {s.region && <span>• {s.region}</span>}
+                        {s.phone && <span>· {s.phone}</span>}
+                        {s.region && <span>· {s.region}</span>}
                       </div>
 
                       <div className="mt-3">
@@ -1106,7 +1106,7 @@ export default function ScoutsAdminPage() {
                           }
                         >
                           <ExternalLink className="mr-1 h-4 w-4" />
-                          Szczegóły
+                          Details
                         </Button>
                       </div>
 
@@ -1119,7 +1119,7 @@ export default function ScoutsAdminPage() {
                   ))}
                   {filtered.length === 0 && !loading && (
                     <div className="rounded-xl border border-gray-200 p-4 text-center text-sm text-dark dark:border-neutral-800 dark:text-neutral-400">
-                      Brak wyników dla bieżących filtrów.
+                      No results for current filters.
                     </div>
                   )}
                 </div>
@@ -1132,11 +1132,11 @@ export default function ScoutsAdminPage() {
                         {[
                           { key: "name", label: "Scout" },
                           { key: "kpi", label: "KPI" },
-                          { key: "players", label: "Zawodnicy" },
-                          { key: "obs", label: "Obserwacje" },
-                          { key: "lastActive", label: "Ostatnio aktywny" },
-                          { key: "rank", label: "Ranga" },
-                          { key: "actions", label: "Akcje", right: true },
+                          { key: "players", label: "Players" },
+                          { key: "obs", label: "Observations" },
+                          { key: "lastActive", label: "Last active" },
+                          { key: "rank", label: "Rank" },
+                          { key: "actions", label: "Actions", right: true },
                         ].map((c, i) => {
                           const active =
                             sortKey === (c.key as any) && c.key !== "actions";
@@ -1196,7 +1196,7 @@ export default function ScoutsAdminPage() {
                                     )}
                                     {s.phone && (
                                       <span className="inline-flex items-center gap-1">
-                                        • {s.phone}
+                                        · {s.phone}
                                       </span>
                                     )}
                                   </div>
@@ -1262,7 +1262,7 @@ export default function ScoutsAdminPage() {
                                 }}
                               >
                                 <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                                Szczegóły
+                                Details
                               </Button>
                             </td>
                           </tr>
@@ -1282,7 +1282,7 @@ export default function ScoutsAdminPage() {
                             colSpan={7}
                             className="p-5 text-center text-sm text-dark dark:text-neutral-400"
                           >
-                            Brak wyników dla bieżących filtrów.
+                            No results for current filters.
                           </td>
                         </tr>
                       )}
@@ -1295,7 +1295,7 @@ export default function ScoutsAdminPage() {
         </CardContent>
       </Card>
 
-      {/* ========== SEK CJA 2 – PODSUMOWANIE PANELU SCOUTÓW (osobny akordeon) ========== */}
+      {/* ========== SECTION 2 – SCOUT PANEL SUMMARY (separate accordion) ========== */}
       <Card className="mt-1">
         <CardHeader
           className={cn(
@@ -1311,20 +1311,20 @@ export default function ScoutsAdminPage() {
             className="flex w-full items-center justify-between px-4 py-4 text-left"
           >
             <div>
-              <div className={stepPillClass}>Sekcja 2 · Podsumowanie</div>
+              <div className={stepPillClass}>Section 2 · Summary</div>
               <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                Podsumowanie panelu scoutów
+                Scout panel summary
               </div>
               <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                Krótki rzut oka na łączną liczbę scoutów, zawodników i
-                obserwacji w systemie.
+                A quick look at the total number of scouts, players, and
+                observations in the system.
               </p>
             </div>
             <div className="flex items-center gap-3 pl-4">
               {lastRefresh && (
                 <div className="hidden items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-muted-foreground ring-1 ring-gray-200 backdrop-blur-sm dark:bg-neutral-900/80 dark:text-neutral-300 dark:ring-neutral-700 md:inline-flex">
                   <CalendarClock className="h-3 w-3" />
-                  <span>Ostatnia synchronizacja:</span>
+                  <span>Last sync:</span>
                   <span className="font-medium">
                     {fmtTimeShort(lastRefresh)}
                   </span>
@@ -1353,7 +1353,7 @@ export default function ScoutsAdminPage() {
                   {lastRefresh && (
                     <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-muted-foreground ring-1 ring-gray-200 backdrop-blur-sm dark:bg-neutral-900/80 dark:text-neutral-300 dark:ring-neutral-700">
                       <CalendarClock className="h-3 w-3" />
-                      <span>Ostatnia synchronizacja:</span>
+                      <span>Last sync:</span>
                       <span className="font-medium">
                         {fmtTimeShort(lastRefresh)}
                       </span>
@@ -1363,24 +1363,24 @@ export default function ScoutsAdminPage() {
 
                 <div className="grid grid-cols-2 gap-3 text-[11px] sm:grid-cols-4">
                   <SummaryTile
-                    label="Scoutów"
+                    label="Scouts"
                     value={summary.totalScouts}
-                    hint="Łączna liczba aktywnych profili w systemie"
+                    hint="Total number of active profiles in the system"
                   />
                   <SummaryTile
-                    label="Aktywnych 14 dni"
+                    label="Active 14 days"
                     value={summary.active14}
-                    hint="Scoutów z aktywnością w ostatnich 14 dniach"
+                    hint="Scouts with activity in the last 14 days"
                   />
                   <SummaryTile
-                    label="Zawodników"
+                    label="Players"
                     value={summary.totalPlayers}
-                    hint="Zawodników przypisanych do scoutów"
+                    hint="Players assigned to scouts"
                   />
                   <SummaryTile
-                    label="Obserwacji"
+                    label="Observations"
                     value={summary.totalObs}
-                    hint="Łączna liczba obserwacji w systemie"
+                    hint="Total number of observations in the system"
                   />
                 </div>
               </AccordionContent>
@@ -1388,7 +1388,7 @@ export default function ScoutsAdminPage() {
           </Accordion>
         </CardContent>
       </Card>
-    </div >
+    </div>
   );
 }
 
@@ -1461,7 +1461,7 @@ function InlineScoutDetails({ scout }: { scout: Scout }) {
         if (!mounted) return;
         setError(
           e?.message ||
-          "Nie udało się pobrać listy zawodników i obserwacji z Supabase."
+          "Failed to fetch players and observations list from Supabase."
         );
         setPlayers([]);
         setObservations([]);
@@ -1480,7 +1480,7 @@ function InlineScoutDetails({ scout }: { scout: Scout }) {
     <div className="mt-2 rounded-xl border border-dashed border-gray-300 bg-stone-50/80 p-3 text-xs text-dark shadow-sm dark:border-neutral-700 dark:bg-neutral-900/70 dark:text-neutral-200">
       {loading && (
         <p className="mb-2 text-[11px] text-muted-foreground">
-          Ładuję listę zawodników i obserwacji…
+          Loading players and observations list...
         </p>
       )}
       {error && (
@@ -1490,7 +1490,7 @@ function InlineScoutDetails({ scout }: { scout: Scout }) {
       )}
       {!loading && !error && (
         <p className="mb-2 text-[11px] text-muted-foreground">
-          Zawodnicy i obserwacje przypisane do tego scouta (dane z Supabase).
+          Players and observations assigned to this scout (Supabase data).
         </p>
       )}
 
@@ -1500,16 +1500,16 @@ function InlineScoutDetails({ scout }: { scout: Scout }) {
           <div className="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Users className="h-3.5 w-3.5" />
-              Zawodnicy ({players.length})
+              Players ({players.length})
             </span>
           </div>
           <div className="overflow-x-auto rounded-md border border-gray-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/60">
             <table className="w-full text-[11px]">
               <thead className="bg-stone-100 text-[10px] uppercase tracking-wide text-muted-foreground dark:bg-neutral-900">
                 <tr>
-                  <th className="px-2 py-1 text-left font-medium">Zawodnik</th>
-                  <th className="px-2 py-1 text-left font-medium">Klub</th>
-                  <th className="px-2 py-1 text-left font-medium">Poz.</th>
+                  <th className="px-2 py-1 text-left font-medium">Player</th>
+                  <th className="px-2 py-1 text-left font-medium">Club</th>
+                  <th className="px-2 py-1 text-left font-medium">Pos.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
@@ -1530,7 +1530,7 @@ function InlineScoutDetails({ scout }: { scout: Scout }) {
                       colSpan={3}
                       className="px-2 py-2 text-[11px] text-muted-foreground"
                     >
-                      Brak zawodników dla tego scouta.
+                      No players for this scout.
                     </td>
                   </tr>
                 )}
@@ -1544,16 +1544,16 @@ function InlineScoutDetails({ scout }: { scout: Scout }) {
           <div className="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <NotebookPen className="h-3.5 w-3.5" />
-              Obserwacje ({observations.length})
+              Observations ({observations.length})
             </span>
           </div>
           <div className="overflow-x-auto rounded-md border border-gray-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-950/60">
             <table className="w-full text-[11px]">
               <thead className="bg-stone-100 text-[10px] uppercase tracking-wide text-muted-foreground dark:bg-neutral-900">
                 <tr>
-                  <th className="px-2 py-1 text-left font-medium">Mecz</th>
-                  <th className="px-2 py-1 text-left font-medium">Zawodnik</th>
-                  <th className="px-2 py-1 text-left font-medium">Data</th>
+                  <th className="px-2 py-1 text-left font-medium">Match</th>
+                  <th className="px-2 py-1 text-left font-medium">Player</th>
+                  <th className="px-2 py-1 text-left font-medium">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
@@ -1576,7 +1576,7 @@ function InlineScoutDetails({ scout }: { scout: Scout }) {
                       colSpan={3}
                       className="px-2 py-2 text-[11px] text-muted-foreground"
                     >
-                      Brak obserwacji powiązanych z tym scoutem.
+                      No observations associated with this scout.
                     </td>
                   </tr>
                 )}

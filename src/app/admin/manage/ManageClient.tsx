@@ -56,14 +56,14 @@ import { getSupabase } from "@/lib/supabaseClient";
 type Role = "admin" | "scout" | "scout-agent";
 
 type Account = {
-  id: string; // uuid z profiles.id
+  id: string; // uuid from profiles.id
   name: string;
   email: string;
   phone?: string;
   role: Role;
   active: boolean;
-  createdAt: string; // ISO z profiles.created_at
-  lastActive?: string; // ISO z profiles.last_active
+  createdAt: string; // ISO from profiles.created_at
+  lastActive?: string; // ISO from profiles.last_active
 };
 
 type InviteChannel =
@@ -120,11 +120,11 @@ type UserStats = {
 /* -------------------------- Constants --------------------------- */
 const ROLES: Role[] = ["admin", "scout", "scout-agent"];
 const GROUP_LABEL: Record<MetricGroupKey, string> = {
-  BASE: "Kategorie bazowe",
-  GK: "Bramkarz (GK)",
-  DEF: "Obrońca (CB/FB/WB)",
-  MID: "Pomocnik (6/8/10)",
-  ATT: "Napastnik (9/7/11)",
+  BASE: "Base categories",
+  GK: "Goalkeeper (GK)",
+  DEF: "Defender (CB/FB/WB)",
+  MID: "Midfielder (6/8/10)",
+  ATT: "Forward (9/7/11)",
 };
 
 const MODAL_ROOT_ID = "global-modal-root";
@@ -137,8 +137,8 @@ function mapProfileRow(row: ProfileRow): Account {
       : "scout";
   return {
     id: row.id,
-    name: row.full_name || "Bez nazwy",
-    email: row.email || "brak-emaila@example.com",
+    name: row.full_name || "Unnamed",
+    email: row.email || "no-email@example.com",
     phone: row.phone || undefined,
     role,
     active: row.active ?? true,
@@ -221,12 +221,12 @@ export default function ManagePage() {
 
   const [metricsLoading, setMetricsLoading] = useState(false);
 
-  /* Szczegóły z Supabase dla wybranego usera */
+  /* Details from Supabase for the selected user */
   const [detailStats, setDetailStats] = useState<UserStats | null>(null);
   const [loadingDetailStats, setLoadingDetailStats] = useState(false);
   const [detailStatsError, setDetailStatsError] = useState<string | null>(null);
 
-  /* Usuwanie użytkownika – modal potwierdzenia */
+  /* User deletion – confirmation modal */
   const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
 
   /* ---------------------- Metrics from Supabase ------------------ */
@@ -303,7 +303,7 @@ export default function ManagePage() {
         if (!mounted) return;
         console.error("Error loading accounts:", e);
         setErrorAccounts(
-          e?.message || "Nie udało się pobrać listy użytkowników z Supabase."
+          e?.message || "Failed to fetch user list from Supabase."
         );
       } finally {
         if (mounted) setLoadingAccounts(false);
@@ -341,7 +341,7 @@ export default function ManagePage() {
         if (!mounted) return;
         console.error("Error loading invites:", e);
         setErrorInvites(
-          e?.message || "Nie udało się pobrać zaproszeń z Supabase."
+          e?.message || "Failed to fetch invitations from Supabase."
         );
       } finally {
         if (mounted) setLoadingInvites(false);
@@ -431,7 +431,7 @@ export default function ManagePage() {
         setDetailStats(null);
         setDetailStatsError(
           e?.message ||
-          "Nie udało się pobrać statystyk użytkownika z Supabase."
+          "Failed to fetch user statistics from Supabase."
         );
       } finally {
         if (!cancelled) setLoadingDetailStats(false);
@@ -448,7 +448,7 @@ export default function ManagePage() {
   /* -------------------------- Persistence ----------------------- */
 
   async function onChangeRole(id: string, role: Role) {
-    // optymistycznie w UI
+    // optimistically in UI
     setAccounts((prev) =>
       prev.map((a) => (a.id === id ? { ...a, role } : a))
     );
@@ -461,8 +461,8 @@ export default function ManagePage() {
       if (error) throw error;
     } catch (e: any) {
       console.error("Error updating role:", e);
-      // fallback – przeładuj
-      setErrorAccounts("Nie udało się zaktualizować roli. Odśwież listę.");
+      // fallback – reload
+      setErrorAccounts("Failed to update role. Please refresh the list.");
     }
   }
 
@@ -486,7 +486,7 @@ export default function ManagePage() {
         });
         if (!res.ok) {
           const err = await res.json();
-          throw new Error(err.error || "Błąd aktywacji przez API");
+          throw new Error(err.error || "Activation error via API");
         }
       } else {
         // Deactivation: Direct DB update is fine
@@ -504,7 +504,7 @@ export default function ManagePage() {
         prev.map((a) => (a.id === id ? { ...a, active: !nextActive } : a))
       );
       setErrorAccounts(
-        e.message || "Nie udało się zmienić statusu. Spróbuj ponownie."
+        e.message || "Failed to change status. Please try again."
       );
     }
   }
@@ -513,7 +513,7 @@ export default function ManagePage() {
     setDetail(a);
   }
 
-  // gdy accounts się zmieniają (np. rola/status), odśwież panel szczegółów
+  // when accounts change (e.g. role/status), refresh details panel
   useEffect(() => {
     if (!detail) return;
     const fresh = accounts.find((a) => a.id === detail.id);
@@ -533,7 +533,7 @@ export default function ManagePage() {
           : Math.random().toString(36).slice(2);
 
       const payload = {
-        id, // uwaga: zakłada, że możesz tworzyć profiles z własnym UUID
+        id, // note: assumes you can create profiles with your own UUID
         full_name: nName.trim(),
         email: nEmail.trim().toLowerCase(),
         phone: nPhone.trim() || null,
@@ -564,14 +564,14 @@ export default function ManagePage() {
       console.error("Error adding user:", e);
       setErrorAccounts(
         e?.message ||
-        "Nie udało się dodać użytkownika. Sprawdź konfigurację tabeli profiles."
+        "Failed to add user. Check profiles table configuration."
       );
     } finally {
       setSavingUser(false);
     }
   }
 
-  /* Usuwanie użytkownika */
+  /* User deletion */
   async function onDeleteUser(id: string) {
     setErrorAccounts(null);
     try {
@@ -583,7 +583,7 @@ export default function ManagePage() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Błąd serwera podczas usuwania użytkownika.");
+        throw new Error(errData.error || "Server error while deleting user.");
       }
 
       setAccounts((prev) => prev.filter((a) => a.id !== id));
@@ -591,10 +591,10 @@ export default function ManagePage() {
         setDetail(null);
         setDetailStats(null);
       }
-      toast.success("Użytkownik został pomyślnie usunięty.");
+      toast.success("User successfully deleted.");
     } catch (e: any) {
       console.error("Error deleting user:", e);
-      const msg = e?.message || "Nie udało się usunąć użytkownika. Możliwe, że posiada on powiązane dane (np. zawodników lub obserwacje).";
+      const msg = e?.message || "Failed to delete user. They may have linked data (e.g. players or observations).";
       setErrorAccounts(msg);
       toast.error(msg);
     } finally {
@@ -602,7 +602,7 @@ export default function ManagePage() {
     }
   }
 
-  /* Ponowne wysłanie emaila aktywacyjnego */
+  /* Resending activation email */
   async function onResendActivation(userId: string, email: string, name: string) {
     try {
       const res = await fetch("/api/auth/send-activation", {
@@ -613,23 +613,23 @@ export default function ManagePage() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Nie udało się wysłać emaila (błąd serwera)");
+        throw new Error(errData.error || "Failed to send email (server error)");
       }
 
       const data = await res.json();
 
       if (data.mailSent) {
-        toast.success("Email aktywacyjny został wysłany!");
+        toast.success("Activation email has been sent!");
       } else if (data.link) {
         // Fallback - copy link to clipboard
         copy(data.link);
-        toast("Link aktywacyjny skopiowano do schowka.", {
-          description: "(Email nie został wysłany - prawdopodobnie brak PHP_MAILER_URL lub błąd połączenia).",
+        toast("Activation link copied to clipboard.", {
+          description: "(Email was not sent - check configuration).",
         });
       }
     } catch (e: any) {
       console.error("Error resending activation:", e);
-      toast.error("Błąd: " + (e.message || "Wystąpił nieznany błąd"));
+      toast.error("Error: " + (e.message || "An unknown error occurred"));
     }
   }
 
@@ -679,7 +679,7 @@ export default function ManagePage() {
       const inv = mapInviteRow(data as InviteRow);
       setInvites((prev) => [inv, ...prev]);
 
-      // szybki share jak wcześniej:
+      // quick share as before:
       quickShare({ ...inv, url });
 
       setIName("");
@@ -689,7 +689,7 @@ export default function ManagePage() {
     } catch (e: any) {
       console.error("Error creating invite:", e);
       setErrorInvites(
-        e?.message || "Nie udało się utworzyć zaproszenia w Supabase."
+        e?.message || "Failed to create invitation in Supabase."
       );
     } finally {
       setCreatingInvite(false);
@@ -704,7 +704,7 @@ export default function ManagePage() {
     ) {
       (navigator as any)
         .share({
-          title: "Zaproszenie do S4S",
+          title: "S4S Invitation",
           text: buildInviteText(invite),
           url: invite.url,
         })
@@ -712,7 +712,7 @@ export default function ManagePage() {
       return;
     }
     if (invite.channel === "email") {
-      const subject = encodeURIComponent("Zaproszenie do S4S");
+      const subject = encodeURIComponent("S4S Invitation");
       const body = encodeURIComponent(buildInviteText(invite));
       const to = invite.email ? encodeURIComponent(invite.email) : "";
       window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_blank");
@@ -733,15 +733,15 @@ export default function ManagePage() {
     }
     if (invite.channel === "link") {
       copy(invite.url);
-      toast.success("Skopiowano link zaproszenia do schowka.");
+      toast.success("Invitation link copied to clipboard.");
     }
   }
 
   function buildInviteText(inv: Invite) {
-    const who = inv.name ? inv.name : "nowy scout";
-    const roleTxt = `rola: ${labelForRole(inv.role)}`;
-    const exp = inv.expiresAt ? ` (wygasa: ${fmtDate(inv.expiresAt)})` : "";
-    return `Cześć ${who}!\n\nZapraszam Cię do S4S (${roleTxt}).\nDołącz: ${inv.url}${exp}\n\nDzięki!`;
+    const who = inv.name ? inv.name : "new scout";
+    const roleTxt = `role: ${labelForRole(inv.role)}`;
+    const exp = inv.expiresAt ? ` (expires: ${fmtDate(inv.expiresAt)})` : "";
+    return `Hi ${who}!\n\nI invite you to S4S (${roleTxt}).\nJoin: ${inv.url}${exp}\n\nThanks!`;
   }
 
   function copy(txt: string) {
@@ -767,7 +767,7 @@ export default function ManagePage() {
       if (error) throw error;
     } catch (e: any) {
       console.error("Error revoking invite:", e);
-      setErrorInvites("Nie udało się cofnąć zaproszenia.");
+      setErrorInvites("Failed to revoke invitation.");
     }
   }
 
@@ -793,7 +793,7 @@ export default function ManagePage() {
 
   const pendingInvites = invites.filter((i) => i.status === "pending");
 
-  // statystyki na górę
+  // stats for the top
   const totalActive = accounts.filter((a) => a.active).length;
   const totalScouts = accounts.filter((a) => a.role === "scout").length;
   const totalAgents = accounts.filter((a) => a.role === "scout-agent").length;
@@ -830,7 +830,7 @@ export default function ManagePage() {
   }
   function addMetric(group: MetricGroupKey) {
     const id = safeId();
-    const label = "Nowa metryka";
+    const label = "New metric";
     const key = slugKey(label);
     const item: Metric = { id, key, label, enabled: true };
     const next = { ...mCfg, [group]: [...mCfg[group], item] };
@@ -858,9 +858,9 @@ export default function ManagePage() {
     setOpenGroups((s) => ({ ...s, [g]: !s[g] }));
   }
 
-  /* ------- Ratings helpers (Konfiguracja ocen zawodnika) ------- */
+  /* ------- Ratings helpers (Player rating configuration) ------- */
   function setAndSaveRatings(next: RatingsConfig) {
-    // gwarantujemy spójny sort_order
+    // ensuring consistent sort_order
     const withOrder = next.map((r, idx) => ({
       ...r,
       sort_order: idx,
@@ -894,7 +894,7 @@ export default function ManagePage() {
   }
 
   function addRating() {
-    const label = "Nowa ocena";
+    const label = "New rating";
 
     const item: RatingAspect = {
       id: safeRatingId(),
@@ -903,7 +903,7 @@ export default function ManagePage() {
       tooltip: "",
       enabled: true,
       sort_order: rCfg.length,
-      // domyślna grupa – dopasuj nazwę do swojego uniona w ratings.ts
+      // default group – match the name to your union in ratings.ts
       groupKey: "GENERAL" as any,
     };
 
@@ -935,11 +935,11 @@ export default function ManagePage() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Zarządzanie użytkownikami
+            User management
           </h1>
           <p className="mt-1 text-sm text-dark dark:text-neutral-300">
-            Rejestr scoutów • Zmieniaj role, aktywuj/deaktywuj, zapraszaj
-            nowych i konfiguruj metryki / oceny.
+            Scout register • Change roles, activate/deactivate, invite
+            new users and configure metrics / ratings.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -948,7 +948,7 @@ export default function ManagePage() {
             onClick={() => setInviteOpen(true)}
           >
             <Send className="mr-2 h-4 w-4" />
-            Zaproś scouta
+            Invite scout
           </Button>
           <Button
             variant="outline"
@@ -956,7 +956,7 @@ export default function ManagePage() {
             onClick={() => setAddOpen(true)}
           >
             <UserPlus className="mr-2 h-4 w-4" />
-            Dodaj ręcznie
+            Add manually
           </Button>
         </div>
       </div>
@@ -967,7 +967,7 @@ export default function ManagePage() {
           <div className="flex items-center justify-between p-3">
             <div>
               <div className="text-xs text-dark dark:text-neutral-400">
-                Aktywne konta
+                Active accounts
               </div>
               <div className="mt-1 text-xl font-semibold">
                 {totalActive} / {accounts.length}
@@ -980,7 +980,7 @@ export default function ManagePage() {
           <div className="flex items-center justify-between p-3">
             <div>
               <div className="text-xs text-dark dark:text-neutral-400">
-                Rozkład ról
+                Role distribution
               </div>
               <div className="mt-1 text-sm">
                 Scout: <b>{totalScouts}</b> • Scout Agent:{" "}
@@ -994,7 +994,7 @@ export default function ManagePage() {
           <div className="flex items-center justify-between p-3">
             <div>
               <div className="text-xs text-dark dark:text-neutral-400">
-                Oczekujące zaproszenia
+                Pending invitations
               </div>
               <div className="mt-1 text-xl font-semibold">
                 {pendingInvites.length}
@@ -1008,15 +1008,15 @@ export default function ManagePage() {
       {/* Filtry – sekcja w akordeonie */}
       <InterfaceSection
         icon={<Filter className="h-4 w-4" />}
-        title="Filtry i wyszukiwanie"
-        description="Zawężaj listę użytkowników po roli, statusie i danych kontaktowych."
+        title="Filters and search"
+        description="Filter the user list by role, status, and contact information."
         defaultOpen
       >
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
-              placeholder="Szukaj po imieniu, e-mailu lub telefonie…"
+              placeholder="Search by name, e-mail, or phone…"
               className="pl-9"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -1025,7 +1025,7 @@ export default function ManagePage() {
           <div className="grid w-full grid-cols-2 gap-2 md:w-auto md:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs text-dark dark:text-neutral-400">
-                Rola
+                Role
               </label>
               <select
                 className="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
@@ -1034,7 +1034,7 @@ export default function ManagePage() {
                   setRoleFilter((e.target.value || "") as Role | "")
                 }
               >
-                <option value="">Wszystkie</option>
+                <option value="">All</option>
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
                     {labelForRole(r)}
@@ -1053,9 +1053,9 @@ export default function ManagePage() {
                   setStatusFilter((e.target.value || "") as any)
                 }
               >
-                <option value="">Wszystkie</option>
-                <option value="active">Aktywne</option>
-                <option value="inactive">Nieaktywne</option>
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
               </select>
             </div>
           </div>
@@ -1065,8 +1065,8 @@ export default function ManagePage() {
       {/* Zaproszenia – akordeon */}
       <InterfaceSection
         icon={<Send className="h-4 w-4" />}
-        title={`Oczekujące zaproszenia (${pendingInvites.length})`}
-        description="Udostępnij link lub wyślij przez e-mail / komunikator."
+        title={`Pending invitations (${pendingInvites.length})`}
+        description="Share link or send via e-mail / messaging app."
         defaultOpen
       >
         {errorInvites && (
@@ -1078,12 +1078,12 @@ export default function ManagePage() {
           <table className="w-full text-sm">
             <thead className="bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300">
               <tr>
-                <th className="p-3 text-left font-medium">Osoba</th>
-                <th className="p-3 text-left font-medium">Rola</th>
-                <th className="p-3 text-left font-medium">Kanał</th>
-                <th className="p-3 text-left font-medium">Wysłano</th>
-                <th className="p-3 text-left font-medium">Wygasa</th>
-                <th className="p-3 text-right font-medium">Akcje</th>
+                <th className="p-3 text-left font-medium">Person</th>
+                <th className="p-3 text-left font-medium">Role</th>
+                <th className="p-3 text-left font-medium">Channel</th>
+                <th className="p-3 text-left font-medium">Sent</th>
+                <th className="p-3 text-left font-medium">Expires</th>
+                <th className="p-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1093,7 +1093,7 @@ export default function ManagePage() {
                     colSpan={6}
                     className="p-4 text-center text-xs text-dark dark:text-neutral-400"
                   >
-                    Ładowanie zaproszeń…
+                    Loading invitations…
                   </td>
                 </tr>
               )}
@@ -1106,7 +1106,7 @@ export default function ManagePage() {
                     <td className="p-3">
                       <div className="font-medium">{inv.name || "—"}</div>
                       <div className="text-xs text-dark dark:text-neutral-400">
-                        {inv.email || "brak e-maila"}
+                        {inv.email || "no e-mail"}
                       </div>
                     </td>
                     <td className="p-3 text-xs">
@@ -1133,9 +1133,9 @@ export default function ManagePage() {
                           onClick={() => {
                             copy(inv.url);
                           }}
-                          title="Kopiuj link"
+                          title="Copy link"
                         >
-                          <Copy className="mr-1 h-4 w-4" /> Kopiuj
+                          <Copy className="mr-1 h-4 w-4" /> Copy
                         </Button>
                         <Button
                           variant="outline"
@@ -1144,18 +1144,18 @@ export default function ManagePage() {
                           onClick={() =>
                             quickShare({ ...inv, channel: "system-share" })
                           }
-                          title="Udostępnij"
+                          title="Share"
                         >
-                          <Share2 className="mr-1 h-4 w-4" /> Udostępnij
+                          <Share2 className="mr-1 h-4 w-4" /> Share
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-8 border-gray-300 text-red-600 dark:border-neutral-700"
                           onClick={() => revokeInvite(inv.id)}
-                          title="Cofnij zaproszenie"
+                          title="Revoke invitation"
                         >
-                          <Trash2 className="mr-1 h-4 w-4" /> Cofnij
+                          <Trash2 className="mr-1 h-4 w-4" /> Revoke
                         </Button>
                       </div>
                     </td>
@@ -1167,7 +1167,7 @@ export default function ManagePage() {
                     colSpan={6}
                     className="p-6 text-center text-sm text-dark dark:text-neutral-400"
                   >
-                    Brak aktywnych zaproszeń — użyj „Zaproś scouta”.
+                    No active invitations — use "Invite scout".
                   </td>
                 </tr>
               )}
@@ -1179,8 +1179,8 @@ export default function ManagePage() {
       {/* Użytkownicy + szczegóły – akordeon */}
       <InterfaceSection
         icon={<Users className="h-4 w-4" />}
-        title={`Użytkownicy (${filtered.length})`}
-        description="Kliknij pozycję, aby zobaczyć szczegóły po prawej i zarządzać statusem."
+        title={`Users (${filtered.length})`}
+        description="Click an entry to see details on the right and manage status."
         defaultOpen
       >
         {errorAccounts && (
@@ -1196,12 +1196,12 @@ export default function ManagePage() {
               <table className="w-full text-sm">
                 <thead className="hidden bg-stone-100 text-dark dark:bg-neutral-900 dark:text-neutral-300 sm:table-header-group">
                   <tr>
-                    <th className="p-3 text-left font-medium">Użytkownik</th>
-                    <th className="p-3 text-left font-medium hidden md:table-cell">Kontakt</th>
-                    <th className="p-3 text-left font-medium hidden sm:table-cell">Rola</th>
+                    <th className="p-3 text-left font-medium">User</th>
+                    <th className="p-3 text-left font-medium hidden md:table-cell">Contact</th>
+                    <th className="p-3 text-left font-medium hidden sm:table-cell">Role</th>
                     <th className="p-3 text-left font-medium">Status</th>
-                    <th className="p-3 text-left font-medium hidden lg:table-cell">Utworzono</th>
-                    <th className="p-3 text-right font-medium">Akcje</th>
+                    <th className="p-3 text-left font-medium hidden lg:table-cell">Created</th>
+                    <th className="p-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1211,7 +1211,7 @@ export default function ManagePage() {
                         colSpan={6}
                         className="p-4 text-center text-xs text-dark dark:text-neutral-400"
                       >
-                        Ładowanie użytkowników…
+                        Loading users…
                       </td>
                     </tr>
                   )}
@@ -1230,7 +1230,7 @@ export default function ManagePage() {
                               <button
                                 className="text-left font-medium hover:underline"
                                 onClick={() => onOpenDetail(a)}
-                                title="Pokaż szczegóły"
+                                title="Show details"
                               >
                                 {a.name}
                               </button>
@@ -1289,11 +1289,11 @@ export default function ManagePage() {
                             </span>
                             {a.active ? (
                               <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
-                                <CheckCircle className="h-3.5 w-3.5" /> Aktywne
+                                <CheckCircle className="h-3.5 w-3.5" /> Active
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                <Ban className="h-3.5 w-3.5" /> Nieaktywne
+                                <Ban className="h-3.5 w-3.5" /> Inactive
                               </span>
                             )}
                           </div>
@@ -1302,7 +1302,7 @@ export default function ManagePage() {
                           {fmtDate(a.createdAt)}
                           <div className="opacity-70">
                             {a.lastActive
-                              ? `Ost. aktywność: ${fmtDate(a.lastActive)}`
+                              ? `Last activity: ${fmtDate(a.lastActive)}`
                               : "—"}
                           </div>
                         </td>
@@ -1314,23 +1314,23 @@ export default function ManagePage() {
                               className="h-8 border-gray-300 px-2 text-[10px] dark:border-neutral-700 sm:px-3 sm:text-sm"
                               onClick={() => onOpenDetail(a)}
                             >
-                              <Eye className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Szczegóły
+                              <Eye className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Details
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               className="h-8 border-gray-300 px-2 text-[10px] dark:border-neutral-700 sm:px-3 sm:text-sm"
                               onClick={() => onToggleActive(a.id)}
-                              title={a.active ? "Deaktywuj" : "Aktywuj"}
+                              title={a.active ? "Deactivate" : "Activate"}
                             >
                               {a.active ? (
                                 <>
-                                  <XCircle className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Deaktywuj
+                                  <XCircle className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Deactivate
                                 </>
                               ) : (
                                 <>
                                   <CheckCircle className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />{" "}
-                                  Aktywuj
+                                  Activate
                                 </>
                               )}
                             </Button>
@@ -1340,7 +1340,7 @@ export default function ManagePage() {
                                 size="sm"
                                 className="h-8 border-blue-300 px-2 text-[10px] text-blue-600 dark:border-blue-700 dark:text-blue-400 sm:px-3 sm:text-sm"
                                 onClick={() => onResendActivation(a.id, a.email, a.name)}
-                                title="Wyślij ponownie email aktywacyjny"
+                                title="Resend activation email"
                               >
                                 <Mail className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Email
                               </Button>
@@ -1350,9 +1350,9 @@ export default function ManagePage() {
                               size="sm"
                               className="h-8 border-red-200 px-2 text-[10px] text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40 sm:px-3 sm:text-sm"
                               onClick={() => setDeleteConfirm(a)}
-                              title="Usuń użytkownika"
+                              title="Delete user"
                             >
-                              <Trash2 className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Usuń
+                              <Trash2 className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> Delete
                             </Button>
                           </div>
                         </td>
@@ -1362,14 +1362,14 @@ export default function ManagePage() {
                           <td className="w-full border-t border-dashed border-gray-200 bg-stone-50/40 p-4 dark:border-neutral-800 dark:bg-neutral-900/30 lg:hidden">
                             <div className="space-y-4 text-sm">
                               <div className="flex items-center justify-between">
-                                <h4 className="font-semibold">Szczegóły konta</h4>
+                                <h4 className="font-semibold">Account details</h4>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   className="h-7 px-2 text-xs"
                                   onClick={() => setDetail(null)}
                                 >
-                                  Zamknij
+                                  Close
                                 </Button>
                               </div>
 
@@ -1387,7 +1387,7 @@ export default function ManagePage() {
                                   {detail.phone && (
                                     <div>
                                       <div className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500">
-                                        Telefon
+                                        Phone
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <Phone className="h-3.5 w-3.5 text-gray-400" />
@@ -1397,17 +1397,17 @@ export default function ManagePage() {
                                   )}
                                   <div>
                                     <div className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500">
-                                      Statystyki S4S
+                                      S4S Statistics
                                     </div>
                                     {loadingDetailStats ? (
-                                      <div className="animate-pulse text-xs text-gray-400">Ładowanie...</div>
+                                      <div className="animate-pulse text-xs text-gray-400">Loading...</div>
                                     ) : detailStats ? (
                                       <div className="mt-1 space-y-1 text-xs">
-                                        <div>Zawodnicy: <b>{detailStats.playersTotal}</b> (Aktywni: {detailStats.playersActive})</div>
-                                        <div>Obserwacje: <b>{detailStats.observationsTotal}</b> (Draft: {detailStats.observationsDraft})</div>
+                                        <div>Players: <b>{detailStats.playersTotal}</b> (Active: {detailStats.playersActive})</div>
+                                        <div>Observations: <b>{detailStats.observationsTotal}</b> (Draft: {detailStats.observationsDraft})</div>
                                       </div>
                                     ) : (
-                                      <div className="text-xs text-gray-400">Brak danych</div>
+                                      <div className="text-xs text-gray-400">No data</div>
                                     )}
                                   </div>
                                 </div>
@@ -1415,16 +1415,16 @@ export default function ManagePage() {
                                 <div className="space-y-3">
                                   <div>
                                     <div className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500">
-                                      Daty
+                                      Dates
                                     </div>
                                     <div className="space-y-0.5 text-xs text-dark/70 dark:text-neutral-400">
-                                      <div>Utworzono: {fmtDate(detail.createdAt)}</div>
-                                      <div>Aktywność: {detail.lastActive ? fmtDate(detail.lastActive) : "brak"}</div>
+                                      <div>Created: {fmtDate(detail.createdAt)}</div>
+                                      <div>Activity: {detail.lastActive ? fmtDate(detail.lastActive) : "none"}</div>
                                     </div>
                                   </div>
                                   <div>
                                     <div className="text-[11px] font-medium uppercase text-dark/50 dark:text-neutral-500">
-                                      Szybkie akcje
+                                      Quick actions
                                     </div>
                                     <div className="mt-1 flex flex-wrap gap-2">
                                       <Button
@@ -1433,7 +1433,7 @@ export default function ManagePage() {
                                         className="h-8 text-xs"
                                         onClick={() => onToggleActive(detail.id)}
                                       >
-                                        {detail.active ? "Deaktywuj" : "Aktywuj"}
+                                        {detail.active ? "Deactivate" : "Activate"}
                                       </Button>
                                       <Button
                                         variant="outline"
@@ -1441,7 +1441,7 @@ export default function ManagePage() {
                                         className="h-8 border-red-200 text-xs text-red-600 dark:border-red-900/40"
                                         onClick={() => setDeleteConfirm(detail)}
                                       >
-                                        Usuń konto
+                                        Delete account
                                       </Button>
                                     </div>
                                   </div>
@@ -1458,8 +1458,8 @@ export default function ManagePage() {
                         colSpan={6}
                         className="p-6 text-center text-sm text-dark dark:text-neutral-400"
                       >
-                        Brak wyników — zmień filtry lub dodaj nowego
-                        użytkownika.
+                        No results — change filters or add a new
+                        user.
                       </td>
                     </tr>
                   )}
@@ -1471,7 +1471,7 @@ export default function ManagePage() {
           {/* Panel szczegółów po prawej - DESKTOP ONLY */}
           <div className="hidden lg:block rounded-md border border-gray-200 bg-white p-3 text-sm shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold">Szczegóły konta</div>
+              <div className="text-sm font-semibold">Account details</div>
               {detail && (
                 <span className="text-[11px] text-dark/70 dark:text-neutral-400">
                   ID: {detail.id.slice(0, 8)}…
@@ -1481,7 +1481,7 @@ export default function ManagePage() {
 
             {!detail && (
               <div className="text-xs text-dark dark:text-neutral-400">
-                Wybierz użytkownika z listy, aby zobaczyć szczegóły konta.
+                Select a user from the list to see account details.
               </div>
             )}
 
@@ -1489,7 +1489,7 @@ export default function ManagePage() {
               <div className="space-y-4">
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-dark dark:text-neutral-400">
-                    Imię i nazwisko
+                    Full name
                   </div>
                   <div className="text-sm font-semibold">{detail.name}</div>
                 </div>
@@ -1507,7 +1507,7 @@ export default function ManagePage() {
                 {detail.phone && (
                   <div className="space-y-1">
                     <div className="text-xs font-medium text-dark dark:text-neutral-400">
-                      Telefon
+                      Phone
                     </div>
                     <div className="inline-flex items-center gap-2 text-sm">
                       <Phone className="h-3.5 w-3.5" />
@@ -1518,7 +1518,7 @@ export default function ManagePage() {
 
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-dark dark:text-neutral-400">
-                    Rola
+                    Role
                   </div>
                   <div className="inline-flex items-center gap-2">
                     <Shield className="h-3.5 w-3.5" />
@@ -1534,11 +1534,11 @@ export default function ManagePage() {
                   </div>
                   {detail.active ? (
                     <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:bg-green-900/40 dark:text-green-200">
-                      <CheckCircle className="h-3.5 w-3.5" /> Aktywne
+                      <CheckCircle className="h-3.5 w-3.5" /> Active
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                      <Ban className="h-3.5 w-3.5" /> Nieaktywne
+                      <Ban className="h-3.5 w-3.5" /> Inactive
                     </span>
                   )}
                 </div>
@@ -1546,7 +1546,7 @@ export default function ManagePage() {
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <div className="font-medium text-dark dark:text-neutral-400">
-                      Utworzono
+                      Created
                     </div>
                     <div className="mt-0.5 text-dark dark:text-neutral-300">
                       {fmtDate(detail.createdAt)}
@@ -1554,7 +1554,7 @@ export default function ManagePage() {
                   </div>
                   <div>
                     <div className="font-medium text-dark dark:text-neutral-400">
-                      Ost. aktywność
+                      Last activity
                     </div>
                     <div className="mt-0.5 text-dark dark:text-neutral-300">
                       {detail.lastActive ? fmtDate(detail.lastActive) : "—"}
@@ -1562,15 +1562,15 @@ export default function ManagePage() {
                   </div>
                 </div>
 
-                {/* Aktywność w Supabase */}
+                {/* Activity in Supabase */}
                 <div className="mt-1 space-y-2 border-t border-dashed border-gray-200 pt-2 dark:border-neutral-800">
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-xs font-medium text-dark dark:text-neutral-400">
-                      Aktywność w S4S (Supabase)
+                      Activity in S4S (Supabase)
                     </div>
                     {loadingDetailStats && (
                       <span className="text-[11px] text-dark/60 dark:text-neutral-500">
-                        Ładowanie…
+                        Loading…
                       </span>
                     )}
                   </div>
@@ -1585,38 +1585,38 @@ export default function ManagePage() {
                     <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 text-[11px]">
                       <div className="rounded-md bg-stone-100 p-2 dark:bg-neutral-900">
                         <div className="font-medium text-dark dark:text-neutral-200">
-                          Zawodnicy
+                          Players
                         </div>
                         <div className="mt-1 space-y-0.5 text-dark/80 dark:text-neutral-300">
                           <div>
-                            Łącznie: <b>{detailStats.playersTotal}</b>
+                            Total: <b>{detailStats.playersTotal}</b>
                           </div>
                           <div>
-                            Aktywni: <b>{detailStats.playersActive}</b>
+                            Active: <b>{detailStats.playersActive}</b>
                           </div>
                           <div>
-                            Kosz: <b>{detailStats.playersTrash}</b>
+                            Trash: <b>{detailStats.playersTrash}</b>
                           </div>
                         </div>
                       </div>
                       <div className="rounded-md bg-stone-100 p-2 dark:bg-neutral-900">
                         <div className="font-medium text-dark dark:text-neutral-200">
-                          Obserwacje
+                          Observations
                         </div>
                         <div className="mt-1 space-y-0.5 text-dark/80 dark:text-neutral-300">
                           <div>
-                            Łącznie: <b>{detailStats.observationsTotal}</b>
+                            Total: <b>{detailStats.observationsTotal}</b>
                           </div>
                           <div>
                             Draft: <b>{detailStats.observationsDraft}</b>
                           </div>
                           <div>
-                            Inne statusy:{" "}
+                            Other statuses:{" "}
                             <b>{detailStats.observationsOther}</b>
                           </div>
                           {detailStats.lastObservationAt && (
                             <div className="mt-1 text-[10px] text-dark/70 dark:text-neutral-400">
-                              Ost. obserwacja:{" "}
+                              Last observation:{" "}
                               {fmtDate(detailStats.lastObservationAt)}
                             </div>
                           )}
@@ -1629,15 +1629,14 @@ export default function ManagePage() {
                     !detailStats &&
                     !detailStatsError && (
                       <div className="text-[11px] text-dark/60 dark:text-neutral-500">
-                        Brak danych o zawodnikach lub obserwacjach dla tego
-                        użytkownika.
+                        No player or observation data for this user.
                       </div>
                     )}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-gray-200 pt-2 dark:border-neutral-800">
                   <div className="text-[11px] text-dark/70 dark:text-neutral-500">
-                    Zarządzaj statusem użytkownika.
+                    Manage user status.
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -1648,11 +1647,11 @@ export default function ManagePage() {
                     >
                       {detail.active ? (
                         <>
-                          <XCircle className="mr-1 h-4 w-4" /> Deaktywuj
+                          <XCircle className="mr-1 h-4 w-4" /> Deactivate
                         </>
                       ) : (
                         <>
-                          <CheckCircle className="mr-1 h-4 w-4" /> Aktywuj
+                          <CheckCircle className="mr-1 h-4 w-4" /> Activate
                         </>
                       )}
                     </Button>
@@ -1662,7 +1661,7 @@ export default function ManagePage() {
                       className="h-8 border-red-200 text-xs text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/40"
                       onClick={() => setDeleteConfirm(detail)}
                     >
-                      <Trash2 className="mr-1 h-4 w-4" /> Usuń konto
+                      <Trash2 className="mr-1 h-4 w-4" /> Delete account
                     </Button>
                     <Button
                       variant="outline"
@@ -1670,7 +1669,7 @@ export default function ManagePage() {
                       className="h-8 border-gray-300 text-xs dark:border-neutral-700"
                       onClick={() => setDetail(null)}
                     >
-                      Wyczyść wybór
+                      Clear selection
                     </Button>
                   </div>
                 </div>
@@ -1684,33 +1683,33 @@ export default function ManagePage() {
       {inviteOpen && (
         <Modal
           onClose={() => setInviteOpen(false)}
-          title="Zaproś nowego scouta"
+          title="Invite new scout"
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs text-dark dark:text-neutral-400">
-                Imię i nazwisko (opcjonalnie)
+                Full name (optional)
               </label>
               <Input
                 value={iName}
                 onChange={(e) => setIName(e.target.value)}
-                placeholder="np. Jan Kowalski"
+                placeholder="e.g. John Smith"
               />
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs text-dark dark:text-neutral-400">
-                E-mail (wymagany dla kanału e-mail)
+                E-mail (required for e-mail channel)
               </label>
               <Input
                 type="email"
                 value={iEmail}
                 onChange={(e) => setIEmail(e.target.value)}
-                placeholder="np. jan@example.com"
+                placeholder="e.g. john@example.com"
               />
             </div>
             <div>
               <label className="mb-1 block text-xs text-dark dark:text-neutral-400">
-                Rola
+                Role
               </label>
               <select
                 className="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
@@ -1726,7 +1725,7 @@ export default function ManagePage() {
             </div>
             <div>
               <label className="mb-1 block text-xs text-dark dark:text-neutral-400">
-                Kanał
+                Channel
               </label>
               <select
                 className="w-full rounded-md border border-gray-300 p-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
@@ -1738,13 +1737,13 @@ export default function ManagePage() {
                 <option value="email">E-mail</option>
                 <option value="whatsapp">WhatsApp</option>
                 <option value="messenger">Messenger</option>
-                <option value="link">Kopiuj link</option>
-                <option value="system-share">Udostępnianie systemowe</option>
+                <option value="link">Copy link</option>
+                <option value="system-share">System sharing</option>
               </select>
             </div>
             <div>
               <label className="mb-1 block text-xs text-dark dark:text-neutral-400">
-                Wygasa (dni)
+                Expires (days)
               </label>
               <Input
                 type="number"
@@ -1753,10 +1752,10 @@ export default function ManagePage() {
                 onChange={(e) =>
                   setIExpiresDays(Number(e.target.value || 0))
                 }
-                placeholder="np. 14"
+                placeholder="e.g. 14"
               />
               <div className="mt-1 text-[11px] text-dark dark:text-neutral-400">
-                0 = bez wygaśnięcia
+                0 = no expiration
               </div>
             </div>
           </div>
@@ -1767,7 +1766,7 @@ export default function ManagePage() {
               className="border-gray-300 dark:border-neutral-700"
               onClick={() => setInviteOpen(false)}
             >
-              Anuluj
+              Cancel
             </Button>
             <Button
               className="bg-gray-900 text-white hover:bg-gray-800"
@@ -1777,12 +1776,12 @@ export default function ManagePage() {
               }
               title={
                 iChannel === "email" && !iEmail.trim()
-                  ? "Podaj e-mail albo wybierz inny kanał"
+                  ? "Provide e-mail or choose another channel"
                   : ""
               }
             >
               <Send className="mr-2 h-4 w-4" />
-              {creatingInvite ? "Tworzenie…" : "Wyślij zaproszenie"}
+              {creatingInvite ? "Creating…" : "Send invitation"}
             </Button>
           </div>
         </Modal>
@@ -1791,17 +1790,17 @@ export default function ManagePage() {
       {addOpen && (
         <Modal
           onClose={() => setAddOpen(false)}
-          title="Dodaj użytkownika ręcznie"
+          title="Add user manually"
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs text-dark dark:text-neutral-400">
-                Imię i nazwisko
+                Full name
               </label>
               <Input
                 value={nName}
                 onChange={(e) => setNName(e.target.value)}
-                placeholder="np. Jan Kowalski"
+                placeholder="e.g. John Smith"
               />
             </div>
             <div className="sm:col-span-2">
@@ -1812,12 +1811,12 @@ export default function ManagePage() {
                 type="email"
                 value={nEmail}
                 onChange={(e) => setNEmail(e.target.value)}
-                placeholder="np. jan@example.com"
+                placeholder="e.g. john@example.com"
               />
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs text-dark dark:text-neutral-400">
-                Telefon (opcjonalnie)
+                Phone (optional)
               </label>
               <Input
                 value={nPhone}
@@ -1850,7 +1849,7 @@ export default function ManagePage() {
                 onClick={() => setNActive((v) => !v)}
                 className="mt-[2px] inline-flex w-full items-center justify-between rounded-md border border-gray-300 px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-950"
               >
-                <span>{nActive ? "Aktywne" : "Nieaktywne"}</span>
+                <span>{nActive ? "Active" : "Inactive"}</span>
                 {nActive ? (
                   <ToggleRight className="h-4 w-4 text-emerald-600" />
                 ) : (
@@ -1866,7 +1865,7 @@ export default function ManagePage() {
               className="border-gray-300 dark:border-neutral-700"
               onClick={() => setAddOpen(false)}
             >
-              Anuluj
+              Cancel
             </Button>
             <Button
               className="bg-gray-900 text-white hover:bg-gray-800"
@@ -1874,7 +1873,7 @@ export default function ManagePage() {
               disabled={savingUser || !nName.trim() || !nEmail.trim()}
             >
               <UserPlus className="mr-2 h-4 w-4" />
-              {savingUser ? "Zapisywanie…" : "Dodaj użytkownika"}
+              {savingUser ? "Saving…" : "Add user"}
             </Button>
           </div>
         </Modal>
@@ -1883,13 +1882,13 @@ export default function ManagePage() {
       {deleteConfirm && (
         <Modal
           onClose={() => setDeleteConfirm(null)}
-          title="Usuń użytkownika"
+          title="Delete user"
         >
           <p className="text-sm text-dark dark:text-neutral-200">
-            Na pewno chcesz usunąć konto{" "}
+            Are you sure you want to delete the account{" "}
             <span className="font-semibold">{deleteConfirm.name}</span>?
             <br />
-            Operacji nie można cofnąć.
+            This operation cannot be undone.
           </p>
           <div className="mt-4 flex items-center justify-end gap-2">
             <Button
@@ -1897,14 +1896,14 @@ export default function ManagePage() {
               className="border-gray-300 dark:border-neutral-700"
               onClick={() => setDeleteConfirm(null)}
             >
-              Anuluj
+              Cancel
             </Button>
             <Button
               className="bg-red-600 text-white hover:bg-red-700"
               onClick={() => onDeleteUser(deleteConfirm.id)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Usuń użytkownika
+              Delete user
             </Button>
           </div>
         </Modal>
@@ -2021,13 +2020,13 @@ function channelLabel(c: InviteChannel) {
   if (c === "email") return "E-mail";
   if (c === "whatsapp") return "WhatsApp";
   if (c === "messenger") return "Messenger";
-  if (c === "system-share") return "Udostępnij";
+  if (c === "system-share") return "Share";
   return "Link";
 }
 function fmtDate(iso?: string) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("pl-PL", {
+    return new Date(iso).toLocaleString("en-GB", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -2080,7 +2079,7 @@ function Modal({
             <button
               className="rounded-md p-1 text-dark hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
               onClick={onClose}
-              aria-label="Zamknij"
+              aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>

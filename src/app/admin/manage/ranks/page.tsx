@@ -56,10 +56,10 @@ const rankLabelMap: Record<RankKey, string> = {
 };
 
 const rankDescriptionMap: Record<RankKey, string> = {
-  bronze: "Start – pierwsze aktywne profile i obserwacje.",
-  silver: "Regularna praca z bazą zawodników.",
-  gold: "Zaawansowany scouting i duża aktywność.",
-  platinum: "Top tier – najbardziej aktywni użytkownicy.",
+  bronze: "Start – first active profiles and observations.",
+  silver: "Regular work with the player database.",
+  gold: "Advanced scouting and high activity.",
+  platinum: "Top tier – the most active users.",
 };
 
 const rankBadgeClass: Record<RankKey, string> = {
@@ -78,7 +78,7 @@ type RankRow = {
   min_score: number;
 };
 
-/* utils do przykładowego preview */
+/* utils for sample preview */
 function calcScore(players: number, observations: number) {
   return players * 2 + observations;
 }
@@ -92,7 +92,7 @@ function calcRankFromThresholds(
   return "bronze";
 }
 
-/* shared layout tokens – spójne z Observations table */
+/* shared layout tokens – consistent with Observations table */
 const cellPad = "p-1";
 const rowH = "h-10";
 
@@ -126,7 +126,7 @@ export default function RankSettingsPage() {
       if (error) {
         console.error("rank_thresholds load error", error);
         setError(
-          "Nie udało się pobrać aktualnych progów. Używam wartości domyślnych."
+          "Failed to fetch current thresholds. Using default values."
         );
         setLoading(false);
         return;
@@ -165,10 +165,10 @@ export default function RankSettingsPage() {
     for (const r of ORDER) {
       const val = thresholds[r] ?? 0;
       if (val < 0) {
-        return "Wartości progów nie mogą być ujemne.";
+        return "Threshold values cannot be negative.";
       }
       if (val < prevVal) {
-        return `Próg dla poziomu "${rankLabelMap[r]}" jest niższy niż dla "${prevRank && rankLabelMap[prevRank]}". Utrzymaj rosnące wartości.`;
+        return `Threshold for "${rankLabelMap[r]}" is lower than for "${prevRank && rankLabelMap[prevRank]}". Please maintain increasing values.`;
       }
       prevVal = val;
       prevRank = r;
@@ -212,13 +212,13 @@ export default function RankSettingsPage() {
     if (preset === "standard") setThresholds(STANDARD_THRESHOLDS);
     if (preset === "intensive") setThresholds(INTENSIVE_THRESHOLDS);
     setError(null);
-    setSuccess(`Zastosowano preset: ${preset}`);
+    setSuccess(`Applied preset: ${preset}`);
   };
 
   const handleReset = () => {
     setThresholds(DEFAULT_THRESHOLDS);
     setError(null);
-    setSuccess("Przywrócono domyślne progi (0 / 20 / 50 / 100).");
+    setSuccess("Restored default thresholds (0 / 20 / 50 / 100).");
   };
 
   const handleSave = async () => {
@@ -240,18 +240,18 @@ export default function RankSettingsPage() {
 
       if (error) {
         console.error("rank_thresholds save error", error);
-        setError(`Nie udało się zapisać progów: ${error.message}`);
+        setError(`Failed to save thresholds: ${error.message}`);
       } else {
-        setSuccess("Zmiany zostały zapisane.");
+        setSuccess("Changes have been saved.");
 
-        // 🔔 powiadom sidebar (AppSidebar), że progi się zmieniły
+        // 🔔 notify sidebar (AppSidebar) that thresholds changed
         if (typeof window !== "undefined") {
           window.dispatchEvent(new Event("rank-thresholds-updated"));
         }
       }
     } catch (e: any) {
       console.error(e);
-      setError("Wystąpił nieoczekiwany błąd podczas zapisu.");
+      setError("An unexpected error occurred while saving.");
     } finally {
       setSaving(false);
     }
@@ -265,11 +265,10 @@ export default function RankSettingsPage() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Poziomy scouta
+            Scout Levels
           </h1>
           <p className="mt-1 text-sm text-dark dark:text-neutral-300">
-            Ustal, od ilu punktów użytkownik otrzymuje Bronze / Silver / Gold /
-            Platinum.
+            Set the point thresholds for Bronze / Silver / Gold / Platinum levels.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -281,7 +280,7 @@ export default function RankSettingsPage() {
             disabled={saving}
           >
             <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-            Domyślne
+            Default
           </Button>
           <Button
             type="button"
@@ -292,12 +291,12 @@ export default function RankSettingsPage() {
             {saving ? (
               <>
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                Zapisuję…
+                Saving…
               </>
             ) : (
               <>
                 <Save className="mr-1.5 h-3.5 w-3.5" />
-                Zapisz
+                Save
               </>
             )}
           </Button>
@@ -305,13 +304,13 @@ export default function RankSettingsPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,2.1fr),minmax(0,1.1fr)]">
-        {/* LEFT: tabela progów – styl jak Observations table */}
+        {/* LEFT: thresholds table – style like Observations table */}
         <div className="space-y-3">
           {/* Summary + presets */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs text-muted-foreground">
-              Ustaw minimalny wynik punktowy, od którego użytkownik otrzymuje
-              dany poziom.
+              Set the minimum point score required for a user to reach a given
+              level.
             </div>
             <span className="rounded-md bg-white px-2 py-0.5 text-[11px] text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-900 dark:text-neutral-200 dark:ring-neutral-700">
               Bronze / Silver / Gold / Platinum:{" "}
@@ -322,7 +321,7 @@ export default function RankSettingsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="text-muted-foreground">Presety skali:</span>
+            <span className="text-muted-foreground">Scale presets:</span>
             <div className="flex flex-wrap gap-1.5">
               <Button
                 type="button"
@@ -367,13 +366,13 @@ export default function RankSettingsPage() {
               <thead className="bg-stone-100 text-gray-600 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:text-neutral-300">
                 <tr>
                   <th className={`${cellPad} text-left font-medium`}>
-                    Poziom
+                    Level
                   </th>
                   <th className={`${cellPad} hidden text-left font-medium sm:table-cell`}>
-                    Opis
+                    Description
                   </th>
                   <th className={`${cellPad} text-right font-medium`}>
-                    Minimalny wynik
+                    Minimum score
                   </th>
                 </tr>
               </thead>
@@ -386,7 +385,7 @@ export default function RankSettingsPage() {
                     >
                       <div className="inline-flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Ładowanie aktualnych progów…
+                        Loading current thresholds…
                       </div>
                     </td>
                   </tr>
@@ -404,7 +403,7 @@ export default function RankSettingsPage() {
                           }
                           border-gray-200 hover:bg-stone-100/70 dark:border-neutral-800 dark:hover:bg-neutral-900/60`}
                       >
-                        {/* Poziom */}
+                        {/* Level */}
                         <td className={`${cellPad} align-center`}>
                           <div className="flex items-center gap-2">
                             <span
@@ -415,7 +414,7 @@ export default function RankSettingsPage() {
                           </div>
                         </td>
 
-                        {/* Opis – ukryty na bardzo małych ekranach */}
+                        {/* Description – hidden on very small screens */}
                         <td
                           className={`${cellPad} hidden align-center sm:table-cell`}
                         >
@@ -424,7 +423,7 @@ export default function RankSettingsPage() {
                           </span>
                         </td>
 
-                        {/* Minimalny wynik + przyciski +/- */}
+                        {/* Minimum score + +/- buttons */}
                         <td
                           className={`${cellPad} align-center text-right`}
                         >
@@ -436,7 +435,7 @@ export default function RankSettingsPage() {
                               className="h-7 w-7 border-gray-300 dark:border-neutral-700"
                               onClick={() => adjustValue(rankKey, -5)}
                               disabled={saving}
-                              aria-label={`Zmniejsz próg ${rankLabelMap[rankKey]}`}
+                              aria-label={`Decrease ${rankLabelMap[rankKey]} threshold`}
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
@@ -458,7 +457,7 @@ export default function RankSettingsPage() {
                               className="h-7 w-7 border-gray-300 dark:border-neutral-700"
                               onClick={() => adjustValue(rankKey, +5)}
                               disabled={saving}
-                              aria-label={`Zwiększ próg ${rankLabelMap[rankKey]}`}
+                              aria-label={`Increase ${rankLabelMap[rankKey]} threshold`}
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
@@ -495,7 +494,7 @@ export default function RankSettingsPage() {
           )}
         </div>
 
-        {/* RIGHT: info & preview w prostym cardzie */}
+        {/* RIGHT: info & preview in a simple card */}
         <div>
           <Card className="overflow-hidden border-gray-200 shadow-sm dark:border-neutral-800">
             <CardContent className="border-gray-200 bg-white px-4 py-3 text-sm dark:border-neutral-800 dark:bg-neutral-950">
@@ -505,11 +504,11 @@ export default function RankSettingsPage() {
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-dark dark:text-neutral-50">
-                    Jak działa ranking?
+                    How does the ranking work?
                   </div>
                   <div className="mt-0.5 text-[11px] text-dark/70 dark:text-neutral-400">
-                    Szybka ściąga logiki punktów i wizualny przykład poziomu
-                    dla przykładowej aktywności.
+                    A quick guide to point logic and a visual level example for
+                    sample activity.
                   </div>
                 </div>
               </div>
@@ -517,26 +516,26 @@ export default function RankSettingsPage() {
               <div className="space-y-3 text-xs text-muted-foreground">
                 <div>
                   <p className="mb-1 font-medium text-foreground">
-                    Co liczymy do wyniku?
+                    What counts towards the score?
                   </p>
                   <ul className="list-disc space-y-1 pl-4">
                     <li>
-                      Zawodnicy: tylko rekordy w{" "}
+                      Players: only records in{" "}
                       <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
                         players
                       </code>{" "}
-                      ze statusem{" "}
+                      with status{" "}
                       <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
                         active
                       </code>
                       .
                     </li>
                     <li>
-                      Obserwacje: tylko rekordy w{" "}
+                      Observations: only records in{" "}
                       <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
                         observations
                       </code>{" "}
-                      ze statusem{" "}
+                      with status{" "}
                       <code className="rounded bg-black/5 px-1 py-0.5 text-[10px] dark:bg-white/10">
                         final
                       </code>
@@ -547,37 +546,39 @@ export default function RankSettingsPage() {
 
                 <div className="rounded-md bg-white/80 p-2.5 text-[11px] ring-1 ring-stone-200 dark:bg-neutral-950/70 dark:ring-neutral-800">
                   <p className="font-medium text-foreground">
-                    Przykład (podgląd poziomu)
+                    Example (level preview)
                   </p>
                   <p className="mt-1">
-                    Załóżmy:{" "}
-                    <strong>{samplePlayers} aktywnych zawodników</strong> i{" "}
-                    <strong>{sampleObs} obserwacji (final)</strong>.
+                    Assume: <strong>{samplePlayers} active players</strong> and{" "}
+                    <strong>{sampleObs} observations (final)</strong>.
                   </p>
                   <p className="mt-1">
                     <code className="rounded bg-black/5 px-1.5 py-0.5 text-[11px] dark:bg-white/10">
-                      wynik = 2 × {samplePlayers} + {sampleObs} = {sampleScore}{" "}
-                      pkt
+                      score = 2 × {samplePlayers} + {sampleObs} = {sampleScore}{" "}
+                      pts
                     </code>
                   </p>
                   <p className="mt-1">
-                    Przy aktualnych progach taki użytkownik ma poziom{" "}
-                    <strong>{rankLabelMap[sampleRank]}</strong>.
+                    With the current thresholds, such a user has{" "}
+                    <strong>{rankLabelMap[sampleRank]}</strong> level.
                   </p>
                 </div>
 
                 <div>
                   <p className="mb-1 font-medium text-foreground">
-                    Krótkie zasady
+                    Short rules
                   </p>
                   <ul className="list-disc space-y-1 pl-4">
                     <li>
-                      Progi powinny rosnąć: Bronze ≤ Silver ≤ Gold ≤ Platinum.
+                      Thresholds should be increasing: Bronze ≤ Silver ≤ Gold ≤
+                      Platinum.
                     </li>
-                    <li>Bronze zwykle zostaw na 0 – każdy aktywny użytkownik.</li>
                     <li>
-                      Ustaw Silver/Gold/Platinum pod realną aktywność Twojego
-                      zespołu.
+                      Usually leave Bronze at 0 – every active user.
+                    </li>
+                    <li>
+                      Set Silver/Gold/Platinum based on your team's real
+                      activity.
                     </li>
                   </ul>
                 </div>

@@ -131,36 +131,36 @@ const toBucket = (p: DetailedPos): BucketPos => {
 /* ===== Countries ===== */
 type Country = { code: string; name: string; flag: string };
 const COUNTRIES: Country[] = [
-  { code: "PL", name: "Polska", flag: "🇵🇱" },
-  { code: "DE", name: "Niemcy", flag: "🇩🇪" },
-  { code: "GB", name: "Anglia", flag: "🇬🇧" },
-  { code: "ES", name: "Hiszpania", flag: "🇪🇸" },
-  { code: "IT", name: "Włochy", flag: "🇮🇹" },
-  { code: "FR", name: "Francja", flag: "🇫🇷" },
-  { code: "NL", name: "Holandia", flag: "🇳🇱" },
-  { code: "PT", name: "Portugalia", flag: "🇵🇹" },
-  { code: "SE", name: "Szwecja", flag: "🇸🇪" },
-  { code: "NO", name: "Norwegia", flag: "🇳🇴" },
-  { code: "DK", name: "Dania", flag: "🇩🇰" },
-  { code: "BE", name: "Belgia", flag: "🇧🇪" },
-  { code: "CH", name: "Szwajcaria", flag: "🇨🇭" },
+  { code: "PL", name: "Poland", flag: "🇵🇱" },
+  { code: "DE", name: "Germany", flag: "🇩🇪" },
+  { code: "GB", name: "England", flag: "🇬🇧" },
+  { code: "ES", name: "Spain", flag: "🇪🇸" },
+  { code: "IT", name: "Italy", flag: "🇮🇹" },
+  { code: "FR", name: "France", flag: "🇫🇷" },
+  { code: "NL", name: "Netherlands", flag: "🇳🇱" },
+  { code: "PT", name: "Portugal", flag: "🇵🇹" },
+  { code: "SE", name: "Sweden", flag: "🇸🇪" },
+  { code: "NO", name: "Norway", flag: "🇳🇴" },
+  { code: "DK", name: "Denmark", flag: "🇩🇰" },
+  { code: "BE", name: "Belgium", flag: "🇧🇪" },
+  { code: "CH", name: "Switzerland", flag: "🇨🇭" },
   { code: "AT", name: "Austria", flag: "🇦🇹" },
-  { code: "CZ", name: "Czechy", flag: "🇨🇿" },
-  { code: "SK", name: "Słowacja", flag: "🇸🇰" },
-  { code: "UA", name: "Ukraina", flag: "🇺🇦" },
-  { code: "LT", name: "Litwa", flag: "🇱🇹" },
-  { code: "LV", name: "Łotwa", flag: "🇱🇻" },
+  { code: "CZ", name: "Czech Republic", flag: "🇨🇿" },
+  { code: "SK", name: "Slovakia", flag: "🇸🇰" },
+  { code: "UA", name: "Ukraine", flag: "🇺🇦" },
+  { code: "LT", name: "Lithuania", flag: "🇱🇹" },
+  { code: "LV", name: "Latvia", flag: "🇱🇻" },
   { code: "EE", name: "Estonia", flag: "🇪🇪" },
-  { code: "HU", name: "Węgry", flag: "🇭🇺" },
-  { code: "RO", name: "Rumunia", flag: "🇷🇴" },
-  { code: "HR", name: "Chorwacja", flag: "🇭🇷" },
+  { code: "HU", name: "Hungary", flag: "🇭🇺" },
+  { code: "RO", name: "Romania", flag: "🇷🇴" },
+  { code: "HR", name: "Croatia", flag: "🇭🇷" },
   { code: "RS", name: "Serbia", flag: "🇷🇸" },
-  { code: "SI", name: "Słowenia", flag: "🇸🇮" },
-  { code: "GR", name: "Grecja", flag: "🇬🇷" },
-  { code: "TR", name: "Turcja", flag: "🇹🇷" },
+  { code: "SI", name: "Slovenia", flag: "🇸🇮" },
+  { code: "GR", name: "Greece", flag: "🇬🇷" },
+  { code: "TR", name: "Turkey", flag: "🇹🇷" },
   { code: "US", name: "USA", flag: "🇺🇸" },
-  { code: "BR", name: "Brazylia", flag: "🇧🇷" },
-  { code: "AR", name: "Argentyna", flag: "🇦🇷" },
+  { code: "BR", name: "Brazil", flag: "🇧🇷" },
+  { code: "AR", name: "Argentina", flag: "🇦🇷" },
 ];
 
 /* ===== Small UI ===== */
@@ -194,12 +194,12 @@ function SavePill({
         {state === "saving" ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin md:mr-2" />
-            <span className="hidden md:inline">Autozapis…</span>
+            <span className="hidden md:inline">Autosaving…</span>
           </>
         ) : (
           <>
             <CheckCircle2 className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline">Zapisano</span>
+            <span className="hidden md:inline">Saved</span>
           </>
         )}
       </span>
@@ -265,7 +265,7 @@ function CountryCombobox({
                 <span className="truncate">{selected.name}</span>
               </>
             ) : (
-              "Wybierz kraj"
+              "Select country"
             )}
           </span>
           <ChevronDown
@@ -285,7 +285,7 @@ function CountryCombobox({
       >
         <Command>
           <CommandInput
-            placeholder="Szukaj kraju..."
+            placeholder="Search country..."
             className={cn(
               "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-stone-200 bg-background px-3 text-sm",
               "shadow-none outline-none",
@@ -294,7 +294,7 @@ function CountryCombobox({
             )}
           />
           <CommandList className="max-h-64">
-            <CommandEmpty>Brak wyników.</CommandEmpty>
+            <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {COUNTRIES.map((c) => {
                 const isActive = c.name === value;
@@ -357,7 +357,7 @@ function CountrySearchCombobox({
                 <span className="truncate">{selected.name}</span>
               </>
             ) : (
-              <span className="text-muted-foreground">Wybierz kraj</span>
+              <span className="text-muted-foreground">Select country</span>
             )}
           </span>
           <ChevronDown
@@ -375,7 +375,7 @@ function CountrySearchCombobox({
       >
         <Command>
           <CommandInput
-            placeholder="Szukaj kraju..."
+            placeholder="Search country..."
             className={cn(
               "m-2 h-9 w-[calc(100%-1rem)] rounded-md border border-stone-200 bg-background px-3 text-sm",
               "shadow-none outline-none",
@@ -384,7 +384,7 @@ function CountrySearchCombobox({
             )}
           />
           <CommandList className="max-h-64">
-            <CommandEmpty>Brak wyników.</CommandEmpty>
+            <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {COUNTRIES.map((country) => {
                 const isActive = selected?.code === country.code;
@@ -519,7 +519,7 @@ export default function AddPlayerPage() {
 
   const basicRef = useRef<HTMLDivElement | null>(null);
 
-  // domyślny kraj scouta – tylko jeśli nic nie ma
+  // default scout country – only if none set
   useEffect(() => {
     if (!SCOUT_DEFAULT_COUNTRY) return;
     setExt((prev) => {
@@ -544,9 +544,9 @@ export default function AddPlayerPage() {
     return ratingConfig.filter((r) => r.enabled !== false);
   }, [ratingConfig]);
 
-  // AUTOMATYCZNE wyliczanie trybu profilu (known / unknown)
-  // Zawodnik znany = jest imię lub nazwisko
-  // Zawodnik nieznany = brak imienia i nazwiska, ale są inne dane (np. numer, klub itd.)
+  // AUTOMATIC calculation of profile mode (known / unknown)
+  // Known player = possesses first name or last name
+  // Unknown player = lack of first name and last name, but other data exists (e.g. number, club etc.)
   useEffect(() => {
     const hasName =
       firstName.trim() !== "" && lastName.trim() !== "";
@@ -561,10 +561,10 @@ export default function AddPlayerPage() {
     let next: Choice = null;
 
     if (hasName) {
-      // jak tylko pojawi się imię lub nazwisko – traktujemy jako "znany"
+      // as soon as first name or last name appears – treated as "known"
       next = "known";
     } else if (hasAnyOtherData) {
-      // brak imienia/nazwiska, ale jest numer/rok/klub/notatka -> "nieznany"
+      // lack of first name/last name, but number/year/club/note exists -> "unknown"
       next = "unknown";
     } else {
       next = null;
@@ -582,20 +582,20 @@ export default function AddPlayerPage() {
   ]);
 
 
-  // Nazwa wyświetlana w tabeli obserwacji zawodnika
+  // Name displayed in player observation table
   const playerDisplayName = useMemo(() => {
     if (choice === "known") {
       const fn = firstName.trim();
       const ln = lastName.trim();
       const full = `${fn} ${ln}`.trim();
-      return full || "Nieznany zawodnik";
+      return full || "Unknown player";
     }
     const num = jerseyNumber.trim();
     const clubLabel = club.trim();
     if (num) {
-      return `#${num} – ${clubLabel || "Bez klubu"}`;
+      return `#${num} – ${clubLabel || "No club"}`;
     }
-    return clubLabel || "Nieznany zawodnik";
+    return clubLabel || "Unknown player";
   }, [choice, firstName, lastName, jerseyNumber, club]);
 
   const countTruthy = (vals: Array<unknown>) =>
@@ -708,7 +708,7 @@ export default function AddPlayerPage() {
     setQaMatch(composed);
   }
 
-  // Ładowanie obserwacji z globalnego dziennika
+  // Loading observations from global log
   useEffect(() => {
     let cancelled = false;
 
@@ -830,11 +830,11 @@ export default function AddPlayerPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Autozapis do Supabase – dla nowego rekordu: INSERT, potem UPDATE jak w edytorze
+  // Autosave to Supabase – for new record: INSERT, then UPDATE as in the editor
   useEffect(() => {
     let cancelled = false;
 
-    // Czy jest jakikolwiek sensowny input?
+    // Is there any meaningful input?
     const hasAnyData =
       firstName.trim() !== "" ||
       lastName.trim() !== "" ||
@@ -848,7 +848,7 @@ export default function AddPlayerPage() {
       return;
     }
 
-    // choice może ci pomóc, ale nie blokuj od razu
+    // choice may help, but don't block immediately
     const isKnown = choice === "known";
 
     setSaveError(null);
@@ -862,7 +862,7 @@ export default function AddPlayerPage() {
           const supabase = getSupabase();
           const currentYear = new Date().getFullYear();
 
-          const isKnownX = isKnown; // albo choice === "known"
+          const isKnownX = isKnown; // or choice === "known"
           let name: string;
           let clubFinal: string;
           let posBucket: BucketPos;
@@ -872,7 +872,7 @@ export default function AddPlayerPage() {
           if (isKnownX) {
             const fn = firstName.trim();
             const ln = lastName.trim();
-            name = `${fn} ${ln}`.trim() || "Bez imienia";
+            name = `${fn} ${ln}`.trim() || "No name";
             clubFinal = club.trim();
             clubCountryFinal = clubCountry.trim() || null;
             posBucket = toBucket(posDet);
@@ -888,7 +888,7 @@ export default function AddPlayerPage() {
             const c = club.trim();
             const cc = clubCountry.trim();
 
-            name = num ? `#${num} – ${c}` : c || "Nieznany zawodnik";
+            name = num ? `#${num} – ${c}` : c || "Unknown player";
             clubFinal = c;
             clubCountryFinal = cc || null;
             posBucket = toBucket(uPosDet || posDet);
@@ -931,7 +931,7 @@ export default function AddPlayerPage() {
             nationality: nationalityVal,
             photo: null,
             meta,
-            // tu ew. tenant_id, created_by itd. jeśli RLS tego wymaga
+            // tenant_id, created_by etc. if RLS requires it
           };
 
           let error;
@@ -959,7 +959,7 @@ export default function AddPlayerPage() {
             console.error("[AddPlayerPage] Supabase save error:", error);
             if (!cancelled) {
               setSaveState("idle");
-              setSaveError("Nie udało się zapisać zawodnika w Supabase.");
+              setSaveError("Failed to save player to Supabase.");
             }
             return;
           }
@@ -971,7 +971,7 @@ export default function AddPlayerPage() {
           console.error("[AddPlayerPage] Supabase save exception:", err);
           if (!cancelled) {
             setSaveState("idle");
-            setSaveError("Wystąpił błąd podczas zapisu zawodnika do Supabase.");
+            setSaveError("An error occurred while saving player to Supabase.");
           }
         }
       })();
@@ -1096,14 +1096,14 @@ export default function AddPlayerPage() {
           className="hidden h-8 px-3 text-xs md:inline-flex"
           onClick={() => router.push("/players")}
         >
-          Wróć do listy
+          Back to list
         </Button>
 
         <Button
           variant="outline"
           size="icon"
           className="inline-flex h-8 w-8 p-0 md:hidden"
-          aria-label="Wróć do listy"
+          aria-label="Back to list"
           onClick={() => router.push("/players")}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -1121,7 +1121,7 @@ export default function AddPlayerPage() {
     <div className="w-full">
       <div className="flex items-center gap-2 w-full">
         <h2 className="mt-1 text-xl font-semibold leading-none tracking-tight">
-          {playerDisplayName === "Nieznany zawodnik" ? "Dodaj zawodnika" : playerDisplayName}
+          {playerDisplayName === "Unknown player" ? "Add player" : playerDisplayName}
         </h2>
         {choice === "known" && (
           <span className="ml-auto inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[12px] font-medium text-emerald-700 ring-1 ring-emerald-100">
@@ -1129,7 +1129,7 @@ export default function AddPlayerPage() {
               className="mr-1.5 h-4 w-4 text-emerald-700"
               strokeWidth={1.4}
             />
-            Znany
+            Known
           </span>
         )}
         {choice === "unknown" && (
@@ -1138,7 +1138,7 @@ export default function AddPlayerPage() {
               className="mr-1.5 h-4 w-4 text-rose-700"
               strokeWidth={1.4}
             />
-            Nieznany
+            Unknown
           </span>
         )}
       </div>
@@ -1147,7 +1147,7 @@ export default function AddPlayerPage() {
 
   return (
     <div className="w-full space-y-4">
-      {/* Toolbar – tytuł jako node + badge statusu */}
+      {/* Toolbar – title as node + status badge */}
       <ToolbarFull title={addTitle} right={null} />
 
 
@@ -1170,13 +1170,13 @@ export default function AddPlayerPage() {
               className="flex w-full items-center justify-between text-left"
             >
               <div>
-                <div className={stepPillClass}>Krok 1 · Dane bazowe</div>
+                <div className={stepPillClass}>Step 1 · Basic data</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Podstawowe informacje
+                  Basic information
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Wypełnij po prostu pola poniżej – system sam zdecyduje, czy
-                  profil jest <b>imienny</b> czy <b>anonimowy</b>.
+                  Just fill in the fields below – the system will decide if the
+                  profile is <b>named</b> or <b>anonymous</b>.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
@@ -1205,23 +1205,23 @@ export default function AddPlayerPage() {
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                       <div>
-                        <Label className="text-sm">Imię</Label>
+                        <Label className="text-sm">First name</Label>
                         <Input
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
-                          placeholder="np. Jan"
+                          placeholder="e.g. John"
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">Nazwisko</Label>
+                        <Label className="text-sm">Last name</Label>
                         <Input
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
-                          placeholder="np. Kowalski"
+                          placeholder="e.g. Smith"
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">Rok urodzenia</Label>
+                        <Label className="text-sm">Birth year</Label>
                         <NumericField
                           value={
                             birthYear === "" ? undefined : Number(birthYear.replace(/\D/g, ""))
@@ -1233,7 +1233,7 @@ export default function AddPlayerPage() {
                             }
 
                             const next = String(Math.max(0, val));
-                            // blokada > 4 cyfr, bez podmiany na 9999
+                            // block > 4 digits, without replacing with 9999
                             if (next.length > 4) {
                               return;
                             }
@@ -1246,7 +1246,7 @@ export default function AddPlayerPage() {
 
                       <div>
                         <NumericField
-                          label="Numer na koszulce"
+                          label="Jersey number"
                           value={
                             jerseyNumber === ""
                               ? undefined
@@ -1257,20 +1257,20 @@ export default function AddPlayerPage() {
                               val == null ? "" : String(val)
                             )
                           }
-                          placeholder="np. 27"
+                          placeholder="e.g. 27"
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">Aktualny klub</Label>
+                        <Label className="text-sm">Current club</Label>
                         <Input
                           value={club}
                           onChange={(e) => setClub(e.target.value)}
-                          placeholder="np. Lech Poznań U19"
+                          placeholder="e.g. Lech Poznań U19"
                         />
                       </div>
                       <div>
                         <Label className="pb-2 text-sm">
-                          Kraj klubu / aktualnego klubu
+                          Club country / current club country
                         </Label>
                         <CountrySearchCombobox
                           value={clubCountry}
@@ -1291,12 +1291,12 @@ export default function AddPlayerPage() {
 
                       <div className="md:col-span-1">
                         <Label className="text-sm">
-                          Notatka własna (opcjonalne)
+                          Own note (optional)
                         </Label>
                         <Textarea
                           value={uNote}
                           onChange={(e) => setUNote(e.target.value)}
-                          placeholder="Krótka notatka o zawodniku, kontekst skauta…"
+                          placeholder="Short note about the player, scout context…"
                           className="mt-1"
                         />
                       </div>
@@ -1324,19 +1324,19 @@ export default function AddPlayerPage() {
               className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
-                <div className={stepPillClass}>Krok 2 · Profil boiskowy</div>
+                <div className={stepPillClass}>Step 2 · Pitch profile</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Rozszerzone informacje
+                  Extended information
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Dodatkowe dane sportowe, kontraktowe i kontaktowe – przydatne
-                  w profesjonalnym scouting report.
+                  Additional sports, contract and contact data – useful in a
+                  professional scouting report.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
                 {choice === "unknown" && (
                   <span className="hidden text-[11px] text-stone-500 sm:inline">
-                    Profil anonimowy
+                    Anonymous profile
                   </span>
                 )}
                 <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
@@ -1363,17 +1363,17 @@ export default function AddPlayerPage() {
                 <AccordionContent id="ext-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
-                      Możesz stopniowo uzupełniać te dane, gdy będziesz
-                      poznawać zawodnika lepiej.
+                      You can gradually fill in this data as you get to know the
+                      player better.
                     </p>
                   )}
 
                   <Tabs value={extView} onValueChange={(v: any) => setExtView(v)} className="w-full">
-                    {/* wrapper robi scroll */}
+                    {/* wrapper does scroll */}
                     <div
                       className={cn(
                         "relative",
-                        // jeśli chcesz pełną szerokość na mobile bez psucia paddingów karty:
+                        // if you want full width on mobile without breaking card paddings:
                         "-mx-4 px-4 md:mx-0 md:px-0",
                         "overflow-x-auto overflow-y-hidden md:overflow-visible",
                         "[-webkit-overflow-scrolling:touch]",
@@ -1382,23 +1382,23 @@ export default function AddPlayerPage() {
                     >
                       <TabsList
                         className={cn(
-                          // klucz: list ma mieć szerokość od contentu, nie 100%
+                          // key: list should have width from content, not 100%
                           "inline-flex min-w-max",
                           "gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-900",
                           "whitespace-nowrap"
                         )}
                       >
                         <TabsTrigger value="profile" className="flex-none">
-                          Profil boiskowy
+                          Pitch profile
                         </TabsTrigger>
                         <TabsTrigger value="eligibility" className="flex-none">
                           Status &amp; scouting
                         </TabsTrigger>
                         <TabsTrigger value="stats365" className="flex-none">
-                          Zdrowie i statystyki
+                          Health and statistics
                         </TabsTrigger>
                         <TabsTrigger value="contact" className="flex-none">
-                          Kontakt &amp; social
+                          Contact &amp; social
                         </TabsTrigger>
                       </TabsList>
                     </div>
@@ -1441,19 +1441,20 @@ export default function AddPlayerPage() {
               className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
-                <div className={stepPillClass}>Krok 3 · Ocena</div>
+                <div className={stepPillClass}>Step 3 · Rating</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Ocena zawodnika
+                  Player rating
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Rozbij ocenę na kategorie techniczne, mentalne i fizyczne –{" "}
-                  konfigurujesz je w module „Konfiguracja ocen zawodnika”.
+                  Break down the rating into technical, mental and physical
+                  categories – you configure them in the "Player ratings
+                  configuration" module.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
                 {choice === "unknown" && (
                   <span className="hidden text-[11px] text-stone-500 sm:inline">
-                    Profil anonimowy
+                    Anonymous profile
                   </span>
                 )}
                 <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
@@ -1480,8 +1481,9 @@ export default function AddPlayerPage() {
                 <AccordionContent id="grade-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
-                      Możesz wypełniać oceny nawet dla profilu anonimowego –
-                      ważna jest zachowana spójność z główną pozycją.
+                      You can fill in ratings even for an anonymous profile –
+                      it's important to maintain consistency with the main
+                      position.
                     </p>
                   )}
 
@@ -1493,11 +1495,11 @@ export default function AddPlayerPage() {
                       )}
                     >
                       <div>
-                        <Label className="text-sm">Notatki ogólne</Label>
+                        <Label className="text-sm">General notes</Label>
                         <Textarea
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Krótki komentarz o zawodniku…"
+                          placeholder="Short comment about the player…"
                           className="mt-1"
                         />
                       </div>
@@ -1505,13 +1507,13 @@ export default function AddPlayerPage() {
                       <div className="space-y-6">
                         {enabledRatingAspects.length === 0 && (
                           <p className="text-xs text-stone-500 dark:text-neutral-400">
-                            Brak skonfigurowanych kategorii ocen. Dodaj je w
-                            panelu „Konfiguracja ocen zawodnika”.
+                            No rating categories configured. Add them in the
+                            panel "Player ratings configuration".
                           </p>
                         )}
 
                         <RatingGroup 
-                          title="Podstawowe" 
+                          title="Basic" 
                           aspects={baseAspects} 
                           ratings={ratings}
                           setRatings={setRatings}
@@ -1519,7 +1521,7 @@ export default function AddPlayerPage() {
 
                         {effectiveBucket === "GK" && (
                           <RatingGroup
-                            title="Bramkarz (GK)"
+                            title="Goalkeeper (GK)"
                             aspects={gkAspects}
                             ratings={ratings}
                             setRatings={setRatings}
@@ -1527,7 +1529,7 @@ export default function AddPlayerPage() {
                         )}
                         {effectiveBucket === "DF" && (
                           <RatingGroup
-                            title="Obrońca (DEF)"
+                            title="Defender (DEF)"
                             aspects={defAspects}
                             ratings={ratings}
                             setRatings={setRatings}
@@ -1535,7 +1537,7 @@ export default function AddPlayerPage() {
                         )}
                         {effectiveBucket === "MF" && (
                           <RatingGroup
-                            title="Pomocnik (MID)"
+                            title="Midfielder (MID)"
                             aspects={midAspects}
                             ratings={ratings}
                             setRatings={setRatings}
@@ -1543,7 +1545,7 @@ export default function AddPlayerPage() {
                         )}
                         {effectiveBucket === "FW" && (
                           <RatingGroup
-                            title="Napastnik (ATT)"
+                            title="Forward (ATT)"
                             aspects={attAspects}
                             ratings={ratings}
                             setRatings={setRatings}
@@ -1553,8 +1555,8 @@ export default function AddPlayerPage() {
                         {!effectiveBucket &&
                           enabledRatingAspects.length > 0 && (
                             <p className="text-[11px] text-stone-500 dark:text-neutral-400">
-                              Ustaw <b>Główną pozycję</b> w kroku 1, aby
-                              zobaczyć dodatkowe kategorie oceny
+                              Set the <b>Main position</b> in step 1 to
+                              see additional rating categories
                               (GK/DEF/MID/ATT).
                             </p>
                           )}
@@ -1564,8 +1566,8 @@ export default function AddPlayerPage() {
                     {!effectiveMainPos && (
                       <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center rounded-md bg-white/70 px-4 text-center backdrop-blur-sm dark:bg-neutral-950/80">
                         <p className="mb-3 text-xs text-stone-700 dark:text-neutral-200 sm:text-sm">
-                          Aby wprowadzić oceny, najpierw uzupełnij{" "}
-                          <b>Główną pozycję</b> zawodnika w kroku 1.
+                          To enter ratings, first fill in the player's{" "}
+                          <b>Main position</b> in step 1.
                         </p>
                         <Button
                           size="sm"
@@ -1579,7 +1581,7 @@ export default function AddPlayerPage() {
                             });
                           }}
                         >
-                          Przejdź do kroku 1
+                          Go to step 1
                         </Button>
                       </div>
                     )}
@@ -1606,19 +1608,19 @@ export default function AddPlayerPage() {
               className="flex w-full items-center justify-between text-left px-4 py-4"
             >
               <div>
-                <div className={stepPillClass}>Krok 4 · Obserwacje</div>
+                <div className={stepPillClass}>Step 4 · Observations</div>
                 <div className="mt-1 text-xl font-semibold leading-none tracking-tight">
-                  Obserwacje
+                  Observations
                 </div>
                 <p className="mt-1 text-xs text-stone-500 dark:text-neutral-400">
-                  Dodawaj mecze i przypisuj je do profilu zawodnika. Możesz
-                  korzystać z globalnego dziennika obserwacji.
+                  Add matches and assign them to the player's profile. You can
+                  use the global observation log.
                 </p>
               </div>
               <div className="flex items-center gap-3 pl-4">
                 {choice === "unknown" && (
                   <span className="hidden text-[11px] text-stone-500 sm:inline">
-                    Profil anonimowy
+                    Anonymous profile
                   </span>
                 )}
                 <span className="rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
@@ -1644,8 +1646,9 @@ export default function AddPlayerPage() {
                 <AccordionContent id="obs-panel" className="pt-4 pb-5">
                   {choice === "unknown" && (
                     <p className="mb-3 text-[11px] text-stone-500 dark:text-neutral-400">
-                      Możesz tworzyć obserwacje również dla profilu anonimowego
-                      – ważne, by zachować spójność meczu i poziomu.
+                      You can also create observations for an anonymous profile
+                      – it's important to maintain consistency of the match and
+                      level.
                     </p>
                   )}
 
@@ -1666,15 +1669,15 @@ export default function AddPlayerPage() {
 
                   {false && (
                     <>
-                      <div className="space-y-8">{/* ... stary QA ... */}</div>
+                      <div className="space-y-8">{/* ... old QA ... */}</div>
                       <Dialog open={editOpen} onOpenChange={setEditOpen}>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Edytuj obserwację</DialogTitle>
+                            <DialogTitle>Edit observation</DialogTitle>
                           </DialogHeader>
                           {editingObs && (
                             <div className="space-y-4">
-                              {/* ...stary formularz edycji... */}
+                              {/* ...old edit form... */}
                             </div>
                           )}
                           <DialogFooter className="mt-4">
@@ -1683,14 +1686,14 @@ export default function AddPlayerPage() {
                               type="button"
                               onClick={() => setEditOpen(false)}
                             >
-                              Anuluj
+                              Cancel
                             </Button>
                             <Button
                               type="button"
                               className="bg-gray-900 text-white hover:bg-gray-800"
                               onClick={saveEditedObservation}
                             >
-                              Zapisz zmiany
+                              Save changes
                             </Button>
                           </DialogFooter>
                         </DialogContent>
@@ -1724,10 +1727,10 @@ function ExtContent({
   switch (view) {
     case "profile": {
       const bucketLabels: Record<BucketPos, string> = {
-        GK: "Bramkarz",
-        DF: "Obrona",
-        MF: "Pomoc",
-        FW: "Atak",
+        GK: "Goalkeeper",
+        DF: "Defense",
+        MF: "Midfield",
+        FW: "Attack",
       };
 
       const byBucket: Record<BucketPos, typeof POS_DATA> = {
@@ -1742,14 +1745,14 @@ function ExtContent({
         byBucket[bucket] = [...byBucket[bucket], opt];
       });
 
-      // Nie pokazujemy bramkarza w pozycjach alternatywnych
+      // We don't show the goalkeeper in alternative positions
       const bucketOrder: BucketPos[] = ["DF", "MF", "FW"];
 
       return (
         <div className="space-y-5">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <Label className="text-sm">Wzrost (cm)</Label>
+              <Label className="text-sm">Height (cm)</Label>
               <NumericField
                 value={ext.height === "" ? undefined : Number(ext.height)}
                 onChange={(val) =>
@@ -1758,12 +1761,12 @@ function ExtContent({
                     height: val == null ? "" : String(val),
                   }))
                 }
-                placeholder="np. 182"
+                placeholder="e.g. 182"
               />
             </div>
 
             <div>
-              <Label className="text-sm">Waga (kg)</Label>
+              <Label className="text-sm">Weight (kg)</Label>
               <NumericField
                 value={ext.weight === "" ? undefined : Number(ext.weight)}
                 onChange={(val) =>
@@ -1772,12 +1775,12 @@ function ExtContent({
                     weight: val == null ? "" : String(val),
                   }))
                 }
-                placeholder="np. 76"
+                placeholder="e.g. 76"
               />
             </div>
 
             <div>
-              <Label className="text-sm">Dominująca noga</Label>
+              <Label className="text-sm">Dominant foot</Label>
               <Select
                 value={ext.dominantFoot || undefined}
                 onValueChange={(val) =>
@@ -1785,19 +1788,19 @@ function ExtContent({
                 }
               >
                 <SelectTrigger className="w-full border-gray-300 dark:border-neutral-700 dark:bg-neutral-950">
-                  <SelectValue placeholder="Wybierz" />
+                  <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="R">Prawa (R)</SelectItem>
-                  <SelectItem value="L">Lewa (L)</SelectItem>
-                  <SelectItem value="Both">Obunożny</SelectItem>
+                  <SelectItem value="R">Right (R)</SelectItem>
+                  <SelectItem value="L">Left (L)</SelectItem>
+                  <SelectItem value="Both">Both</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div>
-            <Label className="text-sm">Pozycje alternatywne</Label>
+            <Label className="text-sm">Alternative positions</Label>
             <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-3">
               {bucketOrder.map((bucket) => {
                 const group = byBucket[bucket];
@@ -1876,7 +1879,7 @@ function ExtContent({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
               <RadioChipGroup
-                legend="Znajomość języka angielskiego"
+                legend="English language proficiency"
                 layout="grid-2"
                 value={
                   ext.english === true
@@ -1886,8 +1889,8 @@ function ExtContent({
                       : ""
                 }
                 options={[
-                  { value: "yes", label: "Tak" },
-                  { value: "no", label: "Nie" },
+                  { value: "yes", label: "Yes" },
+                  { value: "no", label: "No" },
                 ]}
                 onChange={(val) =>
                   setExt((s) => ({
@@ -1900,7 +1903,7 @@ function ExtContent({
             </div>
             <div>
               <RadioChipGroup
-                legend="Paszport UE"
+                legend="EU Passport"
                 layout="grid-2"
                 value={
                   ext.euPassport === true
@@ -1910,8 +1913,8 @@ function ExtContent({
                       : ""
                 }
                 options={[
-                  { value: "yes", label: "Tak" },
-                  { value: "no", label: "Nie" },
+                  { value: "yes", label: "Yes" },
+                  { value: "no", label: "No" },
                 ]}
                 onChange={(val) =>
                   setExt((s) => ({
@@ -1923,7 +1926,7 @@ function ExtContent({
               />
             </div>
             <div>
-              <Label className="text-sm">Kraj urodzenia</Label>
+              <Label className="text-sm">Country of birth</Label>
               <CountryCombobox
                 value={ext.birthCountry}
                 onChange={(val) =>
@@ -1935,7 +1938,7 @@ function ExtContent({
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             <div>
-              <Label className="text-sm">Status kontraktu</Label>
+              <Label className="text-sm">Contract status</Label>
               <Input
                 value={ext.contractStatus}
                 onChange={(e) =>
@@ -1944,21 +1947,21 @@ function ExtContent({
                     contractStatus: e.target.value,
                   }))
                 }
-                placeholder="np. do 2027, wolny agent…"
+                placeholder="e.g. until 2027, free agent…"
               />
             </div>
             <div>
-              <Label className="text-sm">Agencja menadżerska</Label>
+              <Label className="text-sm">Management agency</Label>
               <Input
                 value={ext.agency}
                 onChange={(e) =>
                   setExt((s) => ({ ...s, agency: e.target.value }))
                 }
-                placeholder="np. XYZ Management"
+                placeholder="e.g. XYZ Management"
               />
             </div>
             <div>
-              <Label className="text-sm">Klauzula wykupu</Label>
+              <Label className="text-sm">Release clause</Label>
               <Input
                 value={ext.releaseClause}
                 onChange={(e) =>
@@ -1967,38 +1970,38 @@ function ExtContent({
                     releaseClause: e.target.value,
                   }))
                 }
-                placeholder="Kwota, zapis, uwagi…"
+                placeholder="Amount, clause, notes…"
               />
             </div>
             <div>
               <Label className="text-sm">
-                Poziom rozgrywkowy obecnego klubu
+                League level of the current club
               </Label>
               <Input
                 value={ext.leagueLevel}
                 onChange={(e) =>
                   setExt((s) => ({ ...s, leagueLevel: e.target.value }))
                 }
-                placeholder="np. Ekstraklasa, CLJ U19, 3 liga…"
+                placeholder="e.g. Premier League, U19 CLJ, 3rd league…"
               />
             </div>
           </div>
 
           <div className="space-y-4">
             <div>
-              <Label className="text-sm">Linki do klipów / time-codes</Label>
+              <Label className="text-sm">Clip links / time-codes</Label>
               <Textarea
                 value={ext.clipsLinks}
                 onChange={(e) =>
                   setExt((s) => ({ ...s, clipsLinks: e.target.value }))
                 }
-                placeholder="Lista linków (po jednym w linii)…"
+                placeholder="List of links (one per line)…"
                 className="mt-1"
               />
             </div>
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
               <div>
-                <Label className="text-sm">Link do Transfermarkt</Label>
+                <Label className="text-sm">Transfermarkt link</Label>
                 <Input
                   value={ext.transfermarkt}
                   onChange={(e) =>
@@ -2011,7 +2014,7 @@ function ExtContent({
                 />
               </div>
               <div>
-                <Label className="text-sm">Link do Wyscout</Label>
+                <Label className="text-sm">Wyscout link</Label>
                 <Input
                   value={ext.wyscout}
                   onChange={(e) =>
@@ -2030,7 +2033,7 @@ function ExtContent({
         <div className="space-y-5">
           <div>
             <Label className="text-sm">
-              Historia urazów (jeśli dostępna)
+              Injury history (if available)
             </Label>
             <Textarea
               value={ext.injuryHistory}
@@ -2040,14 +2043,14 @@ function ExtContent({
                   injuryHistory: e.target.value,
                 }))
               }
-              placeholder="Krótki opis kontuzji, przerw, operacji…"
+              placeholder="Short description of injuries, breaks, surgeries…"
               className="mt-1"
             />
           </div>
           <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
             <div>
               <NumericField
-                label="Minuty w ostatnich 365 dniach"
+                label="Minutes in the last 365 days"
                 value={
                   ext.minutes365 === ""
                     ? undefined
@@ -2065,7 +2068,7 @@ function ExtContent({
 
             <div>
               <NumericField
-                label="Mecze jako starter"
+                label="Matches as a starter"
                 value={
                   ext.starts365 === ""
                     ? undefined
@@ -2083,7 +2086,7 @@ function ExtContent({
 
             <div>
               <NumericField
-                label="Mecze jako rezerwowy"
+                label="Matches as a substitute"
                 value={
                   ext.subs365 === "" ? undefined : Number(ext.subs365)
                 }
@@ -2099,7 +2102,7 @@ function ExtContent({
 
             <div>
               <NumericField
-                label="Gole w ostatnich 365 dniach"
+                label="Goals in the last 365 days"
                 value={
                   ext.goals365 === "" ? undefined : Number(ext.goals365)
                 }
@@ -2121,7 +2124,7 @@ function ExtContent({
         <div className="space-y-5">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             <div>
-              <Label className="text-sm">Telefon kontaktowy</Label>
+              <Label className="text-sm">Contact phone</Label>
               <Input
                 value={ext.phone}
                 onChange={(e) =>
@@ -2131,20 +2134,20 @@ function ExtContent({
               />
             </div>
             <div>
-              <Label className="text-sm">E-mail kontaktowy</Label>
+              <Label className="text-sm">Contact email</Label>
               <Input
                 type="email"
                 value={ext.email}
                 onChange={(e) =>
                   setExt((s) => ({ ...s, email: e.target.value }))
                 }
-                placeholder="mail@przyklad.pl"
+                placeholder="mail@example.com"
               />
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <Label className="text-sm">Link FB</Label>
+              <Label className="text-sm">FB link</Label>
               <Input
                 value={ext.fb}
                 onChange={(e) =>

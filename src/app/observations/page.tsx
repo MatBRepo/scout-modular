@@ -13,21 +13,21 @@ export default function ObservationsPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // 1) Ładowanie z Supabase – tylko obserwacje bieżącego użytkownika
+  // 1) Loading from Supabase – only observations of the current user
   useEffect(() => {
     let cancelled = false;
     const supabase = getSupabase();
 
     (async () => {
       try {
-        // Najpierw pobieramy zalogowanego usera
+        // First we fetch the logged in user
         const { data: authData, error: authError } =
           await supabase.auth.getUser();
         if (authError) throw authError;
 
         const user = authData?.user;
         if (!user) {
-          // brak zalogowanego usera – nic nie ładujemy
+          // no logged in user – loading nothing
           if (!cancelled) {
             setUserId(null);
             setObservations([]);
@@ -38,7 +38,7 @@ export default function ObservationsPage() {
         if (cancelled) return;
         setUserId(user.id);
 
-        // Tylko rekordy tego usera
+        // Only records for this user
         const { data, error } = await supabase
           .from("observations")
           .select("*")
@@ -50,9 +50,9 @@ export default function ObservationsPage() {
 
         setObservations((data ?? []) as Observation[]);
       } catch (err) {
-        console.error("[observations/page] Błąd ładowania z Supabase:", err);
+        console.error("[observations/page] Error loading from Supabase:", err);
         if (!cancelled) {
-          // w razie błędu pokaż pustą listę
+          // in case of error show an empty list
           setObservations([]);
         }
       } finally {
@@ -65,14 +65,14 @@ export default function ObservationsPage() {
     };
   }, []);
 
-  // 2) Zapis do Supabase (bez localStorage)
+  // 2) Save to Supabase (no localStorage)
   const handleChange = async (next: Observation[]) => {
-    // optymistycznie aktualizujemy UI
+    // optimistically updating UI
     setObservations(next);
 
     if (!userId) {
       console.warn(
-        "[observations/page] Brak userId – pomijam zapis do Supabase."
+        "[observations/page] Missing userId – skipping save to Supabase."
       );
       return;
     }
@@ -80,7 +80,7 @@ export default function ObservationsPage() {
     try {
       const supabase = getSupabase();
 
-      // Upewniamy się, że każdy rekord ma user_id bieżącego użytkownika
+      // Ensuring that every record has the correct user_id of the current user
       const payload = (next as any[]).map((row) => ({
         ...row,
         user_id: row.user_id ?? userId,
@@ -88,11 +88,11 @@ export default function ObservationsPage() {
 
       const { error } = await supabase
         .from("observations")
-        .upsert(payload, { onConflict: "id" }); // wymagany PRIMARY KEY (id)
+        .upsert(payload, { onConflict: "id" }); // PRIMARY KEY (id) required
 
       if (error) throw error;
     } catch (err) {
-      console.error("[observations/page] Błąd zapisu do Supabase:", err);
+      console.error("[observations/page] Error saving to Supabase:", err);
       // TODO: toast / komunikat w UI
     }
   };

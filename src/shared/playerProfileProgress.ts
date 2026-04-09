@@ -1,14 +1,14 @@
 // src/shared/playerProfileProgress.ts
 
 /**
- * Wspólny licznik „wypełnienia profilu” – używany:
- *  - w tabeli MyPlayersFeature (kolumna „Wypełnienie profilu”)
- *  - w headerze PlayerEditorPage („Postęp profilu”)
+ * Shared "profile completion" counter – used in:
+ *  - MyPlayersFeature table ("Profile completion" column)
+ *  - PlayerEditorPage header ("Profile progress")
  *
- * Opiera się na tym samym podziale co w edytorze:
- *  - Krok 1: dane bazowe
- *  - Krok 2: rozszerzone
- *  - Krok 3: ocena
+ * Based on the same division as in the editor:
+ *  - Step 1: basic data
+ *  - Step 2: extended
+ *  - Step 3: rating
  */
 export function computePlayerProfileProgress(player: any): number {
   const meta = player?.meta ?? {};
@@ -21,7 +21,7 @@ export function computePlayerProfileProgress(player: any): number {
   const toStr = (v: any): string =>
     v == null ? "" : typeof v === "string" ? v : String(v);
 
-  // ====== podstawowe pola (jak w PlayerEditorPage) ======
+  // ====== basic fields (as in PlayerEditorPage) ======
   const firstName = toStr(basic.firstName ?? player.firstName);
   const lastName = toStr(basic.lastName ?? player.lastName);
   const birthYear = toStr(basic.birthYear ?? player.birthDate);
@@ -29,7 +29,7 @@ export function computePlayerProfileProgress(player: any): number {
   const clubCountry = toStr(basic.clubCountry ?? player.nationality);
   const jerseyNumber = toStr(basic.jerseyNumber);
 
-  // tryb profilu (known / unknown) – najpierw meta.mode, potem heurystyka
+  // profile mode (known / unknown) – meta.mode first, then heuristics
   let choice: "known" | "unknown" | null =
     meta.mode === "known" || meta.mode === "unknown" ? meta.mode : null;
 

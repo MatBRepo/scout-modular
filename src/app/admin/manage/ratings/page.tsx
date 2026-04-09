@@ -33,11 +33,11 @@ type RatingAspectRow = {
 /* ---------- Group options ---------- */
 
 const GROUP_OPTIONS: { value: string; label: string }[] = [
-  { value: "GEN", label: "Ogólne (dla wszystkich pozycji)" },
-  { value: "GK", label: "Bramkarz (GK)" },
-  { value: "DEF", label: "Obrońca" },
-  { value: "MID", label: "Pomocnik" },
-  { value: "FW", label: "Napastnik" },
+  { value: "GEN", label: "General (for all positions)" },
+  { value: "GK", label: "Goalkeeper (GK)" },
+  { value: "DEF", label: "Defender" },
+  { value: "MID", label: "Midfielder" },
+  { value: "FW", label: "Forward" },
 ];
 
 function groupOrder(g: string): number {
@@ -53,7 +53,7 @@ function slugKey(s: string) {
 }
 
 function sortAspects(a: RatingAspectRow, b: RatingAspectRow) {
-  // najpierw grupy, potem sort_order, potem label
+  // first groups, then sort_order, then label
   const ga = groupOrder(a.group_key);
   const gb = groupOrder(b.group_key);
   if (ga !== gb) return ga - gb;
@@ -145,7 +145,7 @@ export default function RatingsSettingsPage() {
         if (!mounted) return;
         setError(
           e?.message ||
-            "Nie udało się pobrać konfiguracji ocen zawodnika (player_rating_aspects)."
+            "Failed to fetch player rating configuration (player_rating_aspects)."
         );
       } finally {
         if (mounted) setLoading(false);
@@ -177,7 +177,7 @@ export default function RatingsSettingsPage() {
     setError(null);
     const supabase = getSupabase();
     try {
-      // optymistycznie w UI
+      // optimistically in UI
       updateLocal(id, patch);
 
       const payload: any = {};
@@ -198,7 +198,7 @@ export default function RatingsSettingsPage() {
       if (error) throw error;
     } catch (e: any) {
       console.error("Error updating rating aspect:", e);
-      setError("Nie udało się zaktualizować kategorii oceny. Odśwież widok.");
+      setError("Failed to update rating category. Please refresh the view.");
     } finally {
       setSaving(false);
     }
@@ -214,7 +214,7 @@ export default function RatingsSettingsPage() {
         groupRows.length > 0
           ? Math.max(...groupRows.map((r) => r.sort_order || 0))
           : 0;
-      const label = "Nowa ocena";
+      const label = "New rating";
       const key = slugKey(label);
 
       const insertPayload = {
@@ -251,20 +251,20 @@ export default function RatingsSettingsPage() {
       });
     } catch (e: any) {
       console.error("Error adding rating aspect:", e);
-      setError("Nie udało się dodać kategorii oceny.");
+      setError("Failed to add rating category.");
     } finally {
       setSaving(false);
     }
   }
 
   async function removeAspect(id: string) {
-    if (!confirm("Na pewno chcesz usunąć tę kategorię oceny?")) return;
+    if (!confirm("Are you sure you want to delete this rating category?")) return;
     setSaving(true);
     setError(null);
     try {
       const supabase = getSupabase();
 
-      // optymistycznie w UI
+      // optimistically in UI
       setRows((prev) => prev.filter((r) => r.id !== id));
 
       const { error } = await supabase
@@ -275,13 +275,13 @@ export default function RatingsSettingsPage() {
       if (error) throw error;
     } catch (e: any) {
       console.error("Error deleting rating aspect:", e);
-      setError("Nie udało się usunąć kategorii oceny.");
+      setError("Failed to delete rating category.");
     } finally {
       setSaving(false);
     }
   }
 
-  // reorder tylko w obrębie danej grupy
+  // reorder only within a given group
   async function moveAspect(groupKey: string, id: string, dir: -1 | 1) {
     const groupRows = rows
       .filter((r) => r.group_key === groupKey)
@@ -296,7 +296,7 @@ export default function RatingsSettingsPage() {
     const b = groupRows[target];
     if (!a || !b) return;
 
-    // optymistycznie zamiana sort_order lokalnie
+    // optimistic sort_order swap locally
     const next = rows.map((r) => {
       if (r.id === a.id) return { ...r, sort_order: b.sort_order };
       if (r.id === b.id) return { ...r, sort_order: a.sort_order };
@@ -321,7 +321,7 @@ export default function RatingsSettingsPage() {
       ]);
     } catch (e: any) {
       console.error("Error reordering rating aspects:", e);
-      setError("Nie udało się zmienić kolejności. Odśwież widok.");
+      setError("Failed to change order. Please refresh the view.");
     } finally {
       setSaving(false);
     }
@@ -360,7 +360,7 @@ export default function RatingsSettingsPage() {
     ids.splice(from, 1);
     ids.splice(to, 0, sourceId);
 
-    // lokalnie ustawiamy nowe sort_order w tej grupie
+    // setting new sort_order locally in this group
     setRows((prev) => {
       const idToSort: Record<string, number> = {};
       ids.forEach((id, idx) => {
@@ -399,7 +399,7 @@ export default function RatingsSettingsPage() {
     } catch (e: any) {
       console.error("Error reordering rating aspects (drag & drop):", e);
       setError(
-        "Nie udało się zmienić kolejności (drag & drop). Odśwież widok."
+        "Failed to change order (drag & drop). Please refresh the view."
       );
     } finally {
       setSaving(false);
@@ -414,17 +414,17 @@ export default function RatingsSettingsPage() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Konfiguracja ocen zawodnika
+            Player Rating Configuration
           </h1>
           <p className="mt-1 text-sm text-dark dark:text-neutral-300">
-            Te kategorie pojawiają się w sekcji „Ocena” przy dodawaniu/edycji
-            znanego zawodnika. Możesz je grupować wg pozycji, włączać/wyłączać
-            oraz zmieniać kolejność.
+            These categories appear in the "Rating" section when adding/editing
+            a known player. You can group them by position, enable/disable them
+            , and change their order.
           </p>
         </div>
         {saving && (
           <div className="text-xs text-dark dark:text-neutral-400">
-            Zapisywanie zmian…
+            Saving changes…
           </div>
         )}
       </div>
@@ -439,7 +439,7 @@ export default function RatingsSettingsPage() {
       {loading ? (
         <Card className="border-gray-200 dark:border-neutral-800">
           <CardContent className="p-4 text-sm text-dark dark:text-neutral-400">
-            Ładowanie konfiguracji ocen zawodnika…
+            Loading player rating configuration…
           </CardContent>
         </Card>
       ) : (
@@ -456,10 +456,10 @@ export default function RatingsSettingsPage() {
                 key={groupKey}
                 icon={<Star className="h-4 w-4" />}
                 title={group.label}
-                description="Kategorie ocen przypisane do tej grupy pozycyjnej."
+                description="Rating categories assigned to this position group."
                 badge={
                   <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] text-dark ring-1 ring-gray-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-700">
-                    {activeCount}/{groupRows.length} aktywnych
+                    {activeCount}/{groupRows.length} active
                   </span>
                 }
                 defaultOpen={groupKey === "GEN"}
@@ -471,14 +471,14 @@ export default function RatingsSettingsPage() {
                     size="sm"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Dodaj kategorię
+                    Add category
                   </Button>
                 </div>
 
                 <div className="w-full overflow-x-auto rounded-md border border-gray-200 bg-white text-sm dark:border-neutral-800 dark:bg-neutral-950">
                   {groupRows.length === 0 ? (
                     <div className="p-4 text-sm text-dark dark:text-neutral-400">
-                      Brak kategorii w tej grupie — dodaj pierwszą kategorię.
+                      No categories in this group — add the first category.
                     </div>
                   ) : (
                     <table className="w-full min-w-[720px] text-sm">
@@ -486,10 +486,10 @@ export default function RatingsSettingsPage() {
                         <tr>
                           <th className="w-10 p-2 text-left font-medium">#</th>
                           <th className="w-40 p-2 text-left font-medium">
-                            Grupa
+                            Group
                           </th>
                           <th className="min-w-[220px] p-2 text-left font-medium">
-                            Etykieta
+                            Label
                           </th>
                           <th className="min-w-[160px] p-2 text-left font-medium">
                             Key
@@ -498,13 +498,13 @@ export default function RatingsSettingsPage() {
                             Tooltip
                           </th>
                           <th className="w-28 p-2 text-left font-medium">
-                            Widoczna
+                            Visible
                           </th>
                           <th className="w-28 p-2 text-left font-medium">
-                            Kolejność
+                            Order
                           </th>
                           <th className="w-28 p-2 text-right font-medium">
-                            Akcje
+                            Actions
                           </th>
                         </tr>
                       </thead>
@@ -535,7 +535,7 @@ export default function RatingsSettingsPage() {
                                 {index + 1}
                               </td>
 
-                              {/* Grupa (select – może przerzucić kategorię do innej sekcji) */}
+                              {/* Group (select – can move category to another section) */}
                               <td className="p-2">
                                 <select
                                   className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-neutral-700 dark:bg-neutral-950"
@@ -561,7 +561,7 @@ export default function RatingsSettingsPage() {
                                   onChange={(val) =>
                                     updateAspect(r.id, { label: val })
                                   }
-                                  placeholder="Etykieta kategorii…"
+                                  placeholder="Category label…"
                                 />
                               </td>
 
@@ -572,7 +572,7 @@ export default function RatingsSettingsPage() {
                                   onChange={(val) =>
                                     updateAspect(r.id, { key: slugKey(val) })
                                   }
-                                  placeholder="krótki-klucz"
+                                  placeholder="short-key"
                                 />
                               </td>
 
@@ -583,7 +583,7 @@ export default function RatingsSettingsPage() {
                                   onChange={(val) =>
                                     updateAspect(r.id, { tooltip: val || "" })
                                   }
-                                  placeholder="Opis tooltipa (opcjonalnie)…"
+                                  placeholder="Tooltip description (optional)…"
                                 />
                               </td>
 
@@ -598,8 +598,8 @@ export default function RatingsSettingsPage() {
                                   className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-stone-50 px-2 py-1 text-xs transition hover:bg-stone-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
                                   title={
                                     r.enabled
-                                      ? "Ukryj kategorię w formularzu oceny"
-                                      : "Pokaż kategorię w formularzu oceny"
+                                      ? "Hide category in rating form"
+                                      : "Show category in rating form"
                                   }
                                 >
                                   {r.enabled ? (
@@ -607,7 +607,7 @@ export default function RatingsSettingsPage() {
                                   ) : (
                                     <ToggleLeft className="h-4 w-4 text-gray-400" />
                                   )}
-                                  {r.enabled ? "Włączona" : "Wyłączona"}
+                                  {r.enabled ? "Enabled" : "Disabled"}
                                 </button>
                               </td>
 
@@ -620,7 +620,7 @@ export default function RatingsSettingsPage() {
                                       moveAspect(groupKey, r.id, -1)
                                     }
                                     disabled={index === 0}
-                                    title="Przenieś w górę"
+                                    title="Move up"
                                   >
                                     <ArrowUp className="h-3.5 w-3.5" />
                                   </button>
@@ -630,7 +630,7 @@ export default function RatingsSettingsPage() {
                                       moveAspect(groupKey, r.id, 1)
                                     }
                                     disabled={index === groupRows.length - 1}
-                                    title="Przenieś w dół"
+                                    title="Move down"
                                   >
                                     <ArrowDown className="h-3.5 w-3.5" />
                                   </button>
@@ -644,9 +644,9 @@ export default function RatingsSettingsPage() {
                                   size="sm"
                                   className="h-8 border-gray-300 text-xs text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:hover:bg-red-900/20"
                                   onClick={() => removeAspect(r.id)}
-                                  title="Usuń kategorię"
+                                  title="Delete category"
                                 >
-                                  Usuń
+                                  Delete
                                 </Button>
                               </td>
                             </tr>

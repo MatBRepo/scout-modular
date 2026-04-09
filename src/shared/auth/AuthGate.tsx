@@ -38,8 +38,8 @@ function strengthScore(pass: string) {
   return s;
 }
 const strengthLabel = (n: number) =>
-  ["Bardzo słabe", "Słabe", "Średnie", "Dobre", "Bardzo dobre"][n] ||
-  "Bardzo słabe";
+  ["Very weak", "Weak", "Medium", "Good", "Very good"][n] ||
+  "Very weak";
 
 const easeOutCustom = [0.2, 0.7, 0.2, 1] as const;
 
@@ -158,28 +158,28 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       if (error) {
         if (error.code === "email_not_confirmed") {
           setError(
-            "Adres e-mail nie został jeszcze potwierdzony. Sprawdź skrzynkę (także SPAM) i kliknij link aktywacyjny."
+            "Email address has not been confirmed yet. Check your inbox (including SPAM) and click the activation link."
           );
         } else if (
           error.code === "invalid_credentials" ||
           error.code === "invalid_grant"
         ) {
-          setError("Nieprawidłowy e-mail lub hasło.");
+          setError("Invalid email or password.");
         } else {
-          setError(error.message || "Nie udało się zalogować.");
+          setError(error.message || "Failed to log in.");
         }
         return;
       }
 
       if (!data.user) {
-        setError("Logowanie nie powiodło się – brak użytkownika w odpowiedzi.");
+        setError("Login failed – no user in response.");
         return;
       }
 
       setUser(data.user);
     } catch (err: any) {
       console.error("[AuthGate] Login error:", err);
-      setError("Nie udało się zalogować. Spróbuj ponownie.");
+      setError("Failed to log in. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -206,16 +206,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
       if (error) {
         if (error.code === "email_exists") {
-          setError("Konto z takim adresem e-mail już istnieje.");
+          setError("An account with this email address already exists.");
         } else {
-          setError(error.message || "Nie udało się utworzyć konta.");
+          setError(error.message || "Failed to create an account.");
         }
         return;
       }
 
       if (!data.user) {
         setInfo(
-          "Konto zostało utworzone. Sprawdź skrzynkę pocztową i potwierdź adres e-mail, a następnie zaloguj się."
+          "Account created. Please check your inbox and confirm your email address, then log in."
         );
         setMode("login");
         return;
@@ -230,7 +230,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           active: false, // Account starts as inactive
         });
       } catch (e) {
-        console.warn("[AuthGate] Nie udało się zapisać profilu:", e);
+        console.warn("[AuthGate] Failed to save profile:", e);
       }
 
       // Send activation email via API
@@ -246,15 +246,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         });
 
         if (!activationRes.ok) {
-          console.warn("Nie udało się wysłać emaila aktywacyjnego");
+          console.warn("Failed to send activation email");
         }
       } catch (err) {
-        console.error("Błąd wysyłania emaila aktywacyjnego:", err);
+        console.error("Error sending activation email:", err);
       }
 
       // DO NOT auto-login - show message instead
       setInfo(
-        "Konto zostało utworzone! Sprawdź swoją skrzynkę email - wysłaliśmy link aktywacyjny. Po aktywacji będziesz mógł się zalogować."
+        "Account created! Check your email - we've sent an activation link. You'll be able to log in after activation."
       );
       setMode("login");
       // Clear form
@@ -263,7 +263,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setPwd("");
     } catch (err: any) {
       console.error("[AuthGate] Register error:", err);
-      setError("Nie udało się utworzyć konta. Spróbuj ponownie.");
+      setError("Failed to create an account. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -290,7 +290,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error("[AuthGate] Google OAuth error:", error);
-        setError(error.message || "Nie udało się połączyć z Google.");
+        setError(error.message || "Failed to connect with Google.");
         setBusy(false);
         return;
       }
@@ -300,7 +300,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setBusy(false);
     } catch (err: any) {
       console.error("[AuthGate] Google OAuth error:", err);
-      setError("Nie udało się połączyć z Google. Spróbuj ponownie.");
+      setError("Failed to connect with Google. Please try again.");
       setBusy(false);
     }
   };
@@ -317,7 +317,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   // ===== 5. Ładowanie początkowe =====
   if (initialLoading) {
-    return <LoaderOverlay text="Ładowanie konta…" />;
+    return <LoaderOverlay text="Loading account…" />;
   }
 
   // ✅ IMPORTANT: nie blokuj ścieżek, które finalizują OAuth
@@ -349,15 +349,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             <div className="mb-5 text-center">
               <p className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-medium text-stone-700 shadow-sm dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span>entrisoScouting • panel logowania</span>
+                <span>entrisoScouting • login panel</span>
               </p>
 
               <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-50">
                 entrisoScouting
               </h1>
               <p className="mt-2 text-[13px] text-stone-600 dark:text-stone-300">
-                Nowoczesne środowisko do zarządzania bazą zawodników,
-                obserwacjami i raportami w jednym spójnym systemie.
+                A modern environment for managing your player database,
+                observations and reports in one consistent system.
               </p>
             </div>
 
@@ -385,7 +385,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                           : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
                           }`}
                       >
-                        Logowanie
+                        Login
                       </button>
                       <button
                         type="button"
@@ -395,7 +395,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                           : "text-stone-700 hover:text-stone-900 dark:text-stone-200 dark:hover:text-stone-50"
                           }`}
                       >
-                        Rejestracja
+                        Register
                       </button>
                     </div>
                   </div>
@@ -411,15 +411,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                     >
                       {mode === "login" ? (
                         <>
-                          Zaloguj się, aby kontynuować pracę na bazie
-                          zawodników, obserwacjach i raportach przypisanych do
-                          Twojego konta.
+                          Log in to continue working on the player database,
+                          observations, and reports assigned to your account.
                         </>
                       ) : (
                         <>
-                          Rejestrując się, tworzysz własną przestrzeń roboczą w{" "}
+                          By registering, you create your own workspace in{" "}
                           <span className="font-medium">entrisoScouting</span> —{" "}
-                          buduj bazę zawodników, dodawaj obserwacje meczowe.
+                          build a player database, add match observations.
                         </>
                       )}
                     </motion.p>
@@ -451,7 +450,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                               ref={emailInputRef}
                               type="email"
                               className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-3 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
-                              placeholder="np. jan@example.com"
+                              placeholder="e.g. john@example.com"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
                               autoComplete="email"
@@ -462,14 +461,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
                         <div>
                           <label className="mb-1 block text-[11px] text-stone-700 dark:text-stone-200">
-                            Hasło
+                            Password
                           </label>
                           <div className="relative">
                             <Lock className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
                             <Input
                               type={showPass ? "text" : "password"}
                               className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-9 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
-                              placeholder="Hasło"
+                              placeholder="Password"
                               value={pwd}
                               onChange={(e) => setPwd(e.target.value)}
                               onKeyUp={(e) =>
@@ -484,7 +483,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                               type="button"
                               onClick={() => setShowPass((s) => !s)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-stone-500 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-50"
-                              aria-label={showPass ? "Ukryj hasło" : "Pokaż hasło"}
+                              aria-label={showPass ? "Hide password" : "Show password"}
                             >
                               {showPass ? (
                                 <EyeOff className="h-4 w-4" />
@@ -496,7 +495,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                           <div className="mt-1 flex justify-between text-[10px] text-stone-500 dark:text-stone-400">
                             {capsOn && (
                               <span className="text-amber-500">
-                                Włączony Caps Lock – uważaj na wielkość liter.
+                                Caps Lock is on – watch your case sensitivity.
                               </span>
                             )}
                           </div>
@@ -529,7 +528,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                             disabled={!canSubmit || busy}
                             className="h-9 w-full rounded-md bg-stone-900 text-[11px] font-semibold uppercase tracking-wide text-stone-50 hover:bg-black disabled:opacity-60 dark:bg-stone-100 dark:text-slate-950 dark:hover:bg-white"
                           >
-                            {busy ? "Logowanie…" : "Zaloguj się"}
+                            {busy ? "Logging in..." : "Log in"}
                           </Button>
                         </div>
                       </motion.form>
@@ -547,14 +546,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                       >
                         <div>
                           <label className="mb-1 block text-[11px] text-stone-700 dark:text-stone-200">
-                            Imię i nazwisko
+                            Full name
                           </label>
                           <div className="relative">
                             <UserIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
                             <Input
                               ref={nameInputRef}
                               className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-3 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
-                              placeholder="np. Jan Kowalski"
+                              placeholder="e.g. John Doe"
                               value={name}
                               onChange={(e) => setName(e.target.value)}
                               autoComplete="name"
@@ -572,7 +571,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                               ref={emailInputRef}
                               type="email"
                               className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-3 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
-                              placeholder="np. jan@example.com"
+                              placeholder="e.g. john@example.com"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
                               autoComplete="email"
@@ -583,14 +582,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
                         <div>
                           <label className="mb-1 block text-[11px] text-stone-700 dark:text-stone-200">
-                            Hasło
+                            Password
                           </label>
                           <div className="relative">
                             <Lock className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
                             <Input
                               type={showPass ? "text" : "password"}
                               className="mx-auto flex h-10 w-[calc(100%-4px)] rounded-md border border-stone-300 bg-white/90 px-3 py-2 pl-8 pr-9 text-sm text-stone-900 placeholder:text-stone-400 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-700 dark:bg-stone-900/80 dark:text-stone-50 dark:placeholder:text-stone-500 dark:focus-visible:ring-stone-300"
-                              placeholder="min. 6 znaków"
+                              placeholder="min. 6 characters"
                               value={pwd}
                               onChange={(e) => setPwd(e.target.value)}
                               onKeyUp={(e) =>
@@ -605,7 +604,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                               type="button"
                               onClick={() => setShowPass((s) => !s)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-stone-500 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-50"
-                              aria-label={showPass ? "Ukryj hasło" : "Pokaż hasło"}
+                              aria-label={showPass ? "Hide password" : "Show password"}
                             >
                               {showPass ? (
                                 <EyeOff className="h-4 w-4" />
@@ -617,7 +616,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                           <div className="mt-1 flex justify-between text-[10px] text-stone-500 dark:text-stone-400">
                             {capsOn && (
                               <span className="text-amber-500">
-                                Włączony Caps Lock – uważaj na wielkość liter.
+                                Caps Lock is on – watch your case sensitivity.
                               </span>
                             )}
                           </div>
@@ -627,7 +626,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                             <div className="mb-1 flex items-center justify-between text-[11px] text-stone-700 dark:text-stone-200">
                               <span className="inline-flex items-center gap-1 opacity-80">
                                 <ShieldCheck className="h-3.5 w-3.5" />
-                                Siła hasła
+                                Password strength
                               </span>
                               <span className="opacity-80">
                                 {strengthLabel(passScore)}
@@ -656,8 +655,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                               })}
                             </div>
                             <p className="mt-1 text-[10px] text-stone-500 dark:text-stone-400">
-                              Dobre hasło zawiera min. 6 znaków, dużą literę,
-                              cyfrę i znak specjalny.
+                              A good password contains at least 6 characters, uppercase letter,
+                              digit, and special character.
                             </p>
                           </div>
                         </div>
@@ -689,7 +688,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                             disabled={!canSubmit || busy}
                             className="h-9 w-full rounded-md bg-stone-900 text-[11px] font-semibold uppercase tracking-wide text-stone-50 hover:bg-black disabled:opacity-60 dark:bg-stone-100 dark:text-slate-950 dark:hover:bg-white"
                           >
-                            {busy ? "Tworzenie konta…" : "Utwórz konto Scout"}
+                            {busy ? "Creating account…" : "Create Scout account"}
                           </Button>
                         </div>
                       </motion.form>
@@ -701,7 +700,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center gap-2 text-[11px] text-stone-500 dark:text-stone-400">
                     <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
-                    <span className="uppercase tracking-[0.18em]">lub</span>
+                    <span className="uppercase tracking-[0.18em]">or</span>
                     <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
                   </div>
                   <Button
@@ -725,15 +724,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                     </svg>
                     <span className="truncate">
                       {busy
-                        ? "Łączenie z Google…"
+                        ? "Connecting with Google…"
                         : mode === "login"
-                          ? "Zaloguj się przez Google"
-                          : "Utwórz konto przez Google"}
+                          ? "Log in with Google"
+                          : "Create account with Google"}
                     </span>
                   </Button>
                   <p className="text-center text-[10px] text-stone-500 dark:text-stone-400">
-                    Konto Google automatycznie tworzy lub łączy Twoje konto
-                    entrisoScouting na podstawie adresu e-mail.
+                    A Google account automatically creates or links your
+                    entrisoScouting account based on the email address.
                   </p>
                 </div>
               </motion.div>
@@ -750,11 +749,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             >
               {busy
                 ? mode === "login"
-                  ? "Logowanie…"
-                  : "Tworzenie konta…"
+                  ? "Logging in…"
+                  : "Creating account…"
                 : mode === "login"
-                  ? "Zaloguj się"
-                  : "Utwórz konto"}
+                  ? "Log in"
+                  : "Create account"}
             </Button>
           </div>
         </div>

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
         if (!userId) {
             return NextResponse.json(
-                { error: "userId jest wymagany." },
+                { error: "userId is required." },
                 { status: 400 }
             );
         }
@@ -28,9 +28,9 @@ export async function POST(req: Request) {
             .eq("id", userId);
 
         if (profileError) {
-            console.error("Błąd usuwania profilu:", profileError);
+            console.error("Error deleting profile:", profileError);
             return NextResponse.json(
-                { error: `Błąd Profilu: ${profileError.message}` },
+                { error: `Profile Error: ${profileError.message}` },
                 { status: 500 }
             );
         }
@@ -41,21 +41,21 @@ export async function POST(req: Request) {
         if (authError) {
             // Some environments might not have Auth setup or user might already be gone
             // We'll log it but if profile is gone, we might consider it partially successful
-            console.error("Błąd usuwania Auth:", authError);
+            console.error("Error deleting Auth:", authError);
             return NextResponse.json(
-                { error: `Błąd Auth: ${authError.message}` },
+                { error: `Auth Error: ${authError.message}` },
                 { status: 500 }
             );
         }
 
         return NextResponse.json({
             success: true,
-            message: "Użytkownik został pomyślnie usunięty z systemu.",
+            message: "User successfully deleted from the system.",
         });
     } catch (err: any) {
-        console.error("Fatalny błąd API delete-user:", err);
+        console.error("Fatal delete-user API error:", err);
         return NextResponse.json(
-            { error: err.message || "Wewnętrzny błąd serwera." },
+            { error: err.message || "Internal server error." },
             { status: 500 }
         );
     }

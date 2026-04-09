@@ -49,16 +49,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 /* -------------------------------- helpers -------------------------------- */
 
 function lockBodyScroll() {
-  // zapamiętaj pozycję scrolla
+  // remember scroll position
   const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
 
-  // opcjonalnie: kompensacja „znikającego” scrollbara (desktop/tablet)
+  // optionally: compensate for the "disappearing" scrollbar (desktop/tablet)
   const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
 
   document.body.dataset.scrollLock = "1";
   document.body.dataset.scrollY = String(scrollY);
 
-  // kluczowy trik na iOS: position: fixed na body + top:-scrollY
+  // key trick for iOS: position: fixed on body + top:-scrollY
   document.body.style.position = "fixed";
   document.body.style.top = `-${scrollY}px`;
   document.body.style.left = "0";
@@ -87,7 +87,7 @@ function unlockBodyScroll() {
   delete document.body.dataset.scrollLock;
   delete document.body.dataset.scrollY;
 
-  // przywróć scroll
+  // restore scroll
   window.scrollTo(0, scrollY);
 }
 
@@ -259,21 +259,21 @@ const DEFAULT_COLS = {
   date: true,
   time: true,
   mode: true,
-  status: true, // używamy tego klucza dla kolumny „Liga”
+  status: true, // we use this key for the "League" column
   players: true,
   actions: true,
 };
 type ColKey = keyof typeof DEFAULT_COLS;
 
-const COL_PL: Record<ColKey, string> = {
+const COL_LABELS: Record<ColKey, string> = {
   select: "#",
-  match: "Mecz",
-  date: "Data",
-  time: "Godzina",
-  mode: "Tryb",
-  status: "Liga", // etykieta dla kolumny z competition
-  players: "Zawodnicy",
-  actions: "Akcje",
+  match: "Match",
+  date: "Date",
+  time: "Hour",
+  mode: "Mode",
+  status: "League",
+  players: "Players",
+  actions: "Actions",
 };
 
 type SortKey = "match" | "date" | "time" | "mode" | "status" | "players";
@@ -297,7 +297,7 @@ const STEP_VISIBLE = 50;
 function fmtDate(d?: string) {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleDateString("pl-PL", {
+    return new Date(d).toLocaleDateString("en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -327,7 +327,7 @@ function toEditorXO(row: XO): EditorXO {
     position: p.position,
     overall: p.overall,
 
-    // ⬅️ zachowujemy wszystkie metryki
+    // ⬅️ keep all metrics
     base: p.base ?? {},
     gk: p.gk ?? {},
     def: p.def ?? {},
@@ -339,12 +339,12 @@ function toEditorXO(row: XO): EditorXO {
 
   const editorObj: any = {
     id: row.id,
-    match: row.match ?? "",            // ⬅️ żebyś miał też match w edytorze
+    match: row.match ?? "",            // ⬅️ so you also have the match in the editor
     reportDate: row.date || "",
     competition: row.competition ?? "",
     teamA: teamA || "",
     teamB: teamB || "",
-    conditions: row.mode ?? "live",    // ⬅️ Tryb meczu -> edytor
+    conditions: row.mode ?? "live",    // ⬅️ Match mode -> editor
     contextNote: row.note ?? "",
     note: row.note ?? "",
     players,
@@ -381,7 +381,7 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     position: p.position as PositionKey,
     overall: p.overall,
 
-    // ⬅️ przenosimy metryki z edytora
+    // ⬅️ move metrics from editor
     base: p.base ?? {},
     gk: p.gk ?? {},
     def: p.def ?? {},
@@ -402,7 +402,7 @@ function fromEditorXO(e: EditorXO, prev?: XO): XO {
     status: meta.status ?? prev?.status ?? "draft",
     bucket: meta.bucket ?? prev?.bucket ?? "active",
 
-    // ⬅️ Tryb meczu z edytora → lista
+    // ⬅️ Match mode from editor → list
     mode: (anyE.conditions ?? prev?.mode ?? "live") as Mode,
 
     competition: anyE.competition ?? prev?.competition ?? null,
@@ -524,12 +524,12 @@ export default function ObservationsFeature({
 
 
   useEffect(() => {
-    // lock tylko gdy OTWARTE filtry na mobile
+    // lock only when filters are OPEN on mobile
     if (isMobile && filtersOpen) {
       lockBodyScroll();
       return () => unlockBodyScroll();
     }
-    // jeśli filtry zamknięte, upewnij się że odblokowane
+    // if filters are closed, make sure they are unlocked
     if (isMobile && !filtersOpen) {
       unlockBodyScroll();
     }
@@ -550,7 +550,7 @@ export default function ObservationsFeature({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [isMultiSelect, setIsMultiSelect] = useState(false);
 
-  // --- NEW: transient inline status note (zostawione, choć kolumna statusu to teraz liga) ---
+  // --- NEW: transient inline status note (left, although the status column is now league) ---
   const [statusNote, setStatusNote] = useState<Record<number, string>>({});
   function flashStatus(id: number, nextStatus: Observation["status"]) {
     setStatusNote((prev) => ({
@@ -831,7 +831,7 @@ export default function ObservationsFeature({
     onChange(next as unknown as Observation[]);
   }
 
-  // (pozostawione – jeśli będziesz znów mieć kolumnę statusu)
+  // (left – if you have the status column again)
   function toggleStatusInline(id: number) {
     let nextStatusForNote: Observation["status"] = "draft";
     const next = rows.map((x) => {
@@ -851,7 +851,7 @@ export default function ObservationsFeature({
       "date",
       "time",
       "mode",
-      "competition", // Liga
+      "competition", // League
       "bucket",
       "players",
     ];
@@ -861,7 +861,7 @@ export default function ObservationsFeature({
       r.date ?? "",
       r.time ?? "",
       r.mode ?? "live",
-      r.competition ?? "", // Liga
+      r.competition ?? "", // League
       r.bucket ?? "active",
       r.players?.length ?? 0,
     ]);
@@ -883,13 +883,13 @@ export default function ObservationsFeature({
   function exportExcel() {
     const headers = [
       "ID",
-      "Mecz",
-      "Data",
-      "Godzina",
-      "Tryb",
-      "Liga", // nagłówek w XLS
-      "Kosz",
-      "Zawodnicy",
+      "Match",
+      "Date",
+      "Hour",
+      "Mode",
+      "League",
+      "Trash",
+      "Players",
     ];
     const rowsX = filtered.map((r) => [
       r.id,
@@ -897,7 +897,7 @@ export default function ObservationsFeature({
       r.date ?? "",
       r.time ?? "",
       r.mode ?? "live",
-      r.competition ?? "", // Liga
+      r.competition ?? "", // League
       r.bucket ?? "active",
       r.players?.length ?? 0,
     ]);
@@ -932,20 +932,20 @@ export default function ObservationsFeature({
     if (q.trim())
       chips.push({
         key: "q",
-        label: `Szukaj: “${q.trim()}”`,
+        label: `Search: “${q.trim()}”`,
         clear: () => setQ(""),
       });
     if (matchFilter.trim())
       chips.push({
         key: "match",
-        label: `Mecz: ${matchFilter.trim()}`,
+        label: `Match: ${matchFilter.trim()}`,
         clear: () => setMatchFilter(""),
       });
     if (modeFilter)
       chips.push({
         key: "mode",
         label:
-          "Tryb: " +
+          "Mode: " +
           (modeFilter === "live"
             ? "Live"
             : modeFilter === "tv"
@@ -957,19 +957,19 @@ export default function ObservationsFeature({
     if (lifecycleFilter)
       chips.push({
         key: "status",
-        label: lifecycleFilter === "final" ? "Finalne" : "Szkice",
+        label: lifecycleFilter === "final" ? "Final" : "Drafts",
         clear: () => setLifecycleFilter(""),
       });
     if (dateFrom)
       chips.push({
         key: "from",
-        label: `Od: ${fmtDate(dateFrom)}`,
+        label: `From: ${fmtDate(dateFrom)}`,
         clear: () => setDateFrom(""),
       });
     if (dateTo)
       chips.push({
         key: "to",
-        label: `Do: ${fmtDate(dateTo)}`,
+        label: `To: ${fmtDate(dateTo)}`,
         clear: () => setDateTo(""),
       });
     return chips;
@@ -1095,8 +1095,8 @@ export default function ObservationsFeature({
       <button
         className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
         onClick={onClear}
-        aria-label="Wyczyść filtr"
-        title="Wyczyść filtr"
+        aria-label="Clear filter"
+        title="Clear filter"
       >
         <X className="h-4 w-4" />
       </button>
@@ -1129,7 +1129,7 @@ export default function ObservationsFeature({
             <div className="flex items-start gap-3 w-full min-h-9">
               {/* Left: Title */}
               <span className="font-semibold text-xl md:text-2xl shrink-0 leading-none h-9 flex items-center">
-                {loading ? <Skeleton className="h-7 w-40" /> : "Obserwacje"}
+                {loading ? <Skeleton className="h-7 w-40" /> : "Observations"}
               </span>
 
               {/* Center: Removed redundant active filter chips (desktop) */}
@@ -1139,7 +1139,7 @@ export default function ObservationsFeature({
           right={
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
-                {/* PRIMARY: Dodaj obserwację – mobile: full width, desktop: auto */}
+                {/* PRIMARY: Add observation – mobile: full width, desktop: auto */}
                 <Button
                   type="button"
                   onClick={addNew}
@@ -1151,7 +1151,7 @@ export default function ObservationsFeature({
                   ) : (
                     <>
                       <AddObservationIcon className="mr-2 h-4 w-4" />
-                      Dodaj obserwację
+                      Add observation
                     </>
                   )}
                 </Button>
@@ -1168,9 +1168,9 @@ export default function ObservationsFeature({
                       ref={searchRef}
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
-                      placeholder={loading ? "" : "Szukaj po meczu lub zawodnikach… (/) "}
+                      placeholder={loading ? "" : "Search by match or players… (/) "}
                       className={`${controlH} w-full pl-8 pr-3 text-sm`}
-                      aria-label="Szukaj w obserwacjach"
+                      aria-label="Search in observations"
                       disabled={loading}
                     />
                     {loading && (
@@ -1180,13 +1180,13 @@ export default function ObservationsFeature({
                     )}
                   </div>
 
-                  {/* Filtry */}
+                  {/* Filters */}
                   <div className="relative inline-flex shrink-0">
                     <span
                       className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 
              dark:bg-neutral-950 dark:text-neutral-300"
                     >
-                      Filtry
+                      Filters
                     </span>
 
                     <Button
@@ -1201,7 +1201,7 @@ export default function ObservationsFeature({
                       }}
                       aria-pressed={filtersOpen}
                       type="button"
-                      title="Filtry"
+                      title="Filters"
                       disabled={loading}
                     >
                       {loading ? (
@@ -1229,7 +1229,7 @@ export default function ObservationsFeature({
                       setFiltersOpen(false);
                       // colsOpen opened from menu item
                     }}
-                    aria-label="Więcej"
+                    aria-label="More"
                     aria-pressed={moreOpen}
                     type="button"
                     disabled={loading}
@@ -1254,7 +1254,7 @@ export default function ObservationsFeature({
                 <button
                   className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
                   onClick={c.clear}
-                  aria-label="Wyczyść filtr"
+                  aria-label="Clear filter"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -1270,10 +1270,10 @@ export default function ObservationsFeature({
                 setQ("");
               }}
               className="ml-1 inline-flex items-center gap-1 rounded-md bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700 ring-1 ring-stone-200 hover:bg-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 dark:bg-stone-800 dark:text-stone-200 dark:ring-stone-700"
-              title="Wyczyść wszystkie filtry"
+              title="Clear all filters"
               type="button"
             >
-              Wyczyść wszystkie
+              Clear all
             </button>
           </div>
         )}
@@ -1294,19 +1294,19 @@ export default function ObservationsFeature({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-3 flex items-center justify-between">
-                  <div className="text-sm font-semibold">Filtry</div>
+                  <div className="text-sm font-semibold">Filters</div>
                   <Button
                     variant="outline"
                     size="sm"
                     className="border-gray-300 dark:border-neutral-700"
                     onClick={() => setFiltersOpen(false)}
                   >
-                    Zamknij
+                    Close
                   </Button>
                 </div>
 
                 <div className="mb-3">
-                  <Label className="text-xs">Mecz (kto vs kto)</Label>
+                  <Label className="text-xs">Match (who vs who)</Label>
                   <Input
                     value={matchFilter}
                     onChange={(e) => setMatchFilter(e.target.value)}
@@ -1315,7 +1315,7 @@ export default function ObservationsFeature({
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Data od</Label>
+                    <Label className="text-xs">Date from</Label>
                     <Input
                       type="date"
                       value={dateFrom}
@@ -1324,7 +1324,7 @@ export default function ObservationsFeature({
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Data do</Label>
+                    <Label className="text-xs">Date to</Label>
                     <Input
                       type="date"
                       value={dateTo}
@@ -1335,7 +1335,7 @@ export default function ObservationsFeature({
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Tryb</Label>
+                    <Label className="text-xs">Mode</Label>
                     <select
                       value={modeFilter}
                       onChange={(e) =>
@@ -1343,7 +1343,7 @@ export default function ObservationsFeature({
                       }
                       className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-950"
                     >
-                      <option value="">— dowolny —</option>
+                      <option value="">— any —</option>
                       <option value="live">Live</option>
                       <option value="tv">TV</option>
                       <option value="mix">Mix</option>
@@ -1360,8 +1360,8 @@ export default function ObservationsFeature({
                       }
                       className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none dark:border-neutral-700 dark:bg-neutral-950"
                     >
-                      <option value="">— dowolny —</option>
-                      <option value="final">Finalna</option>
+                      <option value="">— any —</option>
+                      <option value="final">Final</option>
                     </select>
                   </div>
                 </div>
@@ -1379,13 +1379,13 @@ export default function ObservationsFeature({
                       setQ("");
                     }}
                   >
-                    Wyczyść
+                    Clear
                   </Button>
                   <Button
                     className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
                     onClick={() => setFiltersOpen(false)}
                   >
-                    Zastosuj
+                    Apply
                   </Button>
                 </div>
               </div>
@@ -1399,7 +1399,7 @@ export default function ObservationsFeature({
               className="rounded-md border border-gray-200 bg-white p-4 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
             >
               <div className="mb-3">
-                <Label className="text-xs">Mecz (kto vs kto)</Label>
+                <Label className="text-xs">Match (who vs who)</Label>
                 <Input
                   value={matchFilter}
                   onChange={(e) => setMatchFilter(e.target.value)}
@@ -1408,7 +1408,7 @@ export default function ObservationsFeature({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Data od</Label>
+                  <Label className="text-xs">Date from</Label>
                   <Input
                     type="date"
                     value={dateFrom}
@@ -1417,7 +1417,7 @@ export default function ObservationsFeature({
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Data do</Label>
+                  <Label className="text-xs">Date to</Label>
                   <Input
                     type="date"
                     value={dateTo}
@@ -1428,7 +1428,7 @@ export default function ObservationsFeature({
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Tryb</Label>
+                  <Label className="text-xs">Mode</Label>
                   <select
                     value={modeFilter}
                     onChange={(e) =>
@@ -1436,7 +1436,7 @@ export default function ObservationsFeature({
                     }
                     className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                   >
-                    <option value="">— dowolny —</option>
+                    <option value="">— any —</option>
                     <option value="live">Live</option>
                     <option value="tv">TV</option>
                     <option value="mix">Mix</option>
@@ -1453,9 +1453,9 @@ export default function ObservationsFeature({
                     }
                     className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:outline-none focus-visible:ring focus-visible:ring-indigo-500/60 dark:border-neutral-700 dark:bg-neutral-950"
                   >
-                    <option value="">— dowolny —</option>
-                    <option value="draft">Szkic</option>
-                    <option value="final">Finalna</option>
+                    <option value="">— any —</option>
+                    <option value="draft">Draft</option>
+                    <option value="final">Final</option>
                   </select>
                 </div>
               </div>
@@ -1473,13 +1473,13 @@ export default function ObservationsFeature({
                     setQ("");
                   }}
                 >
-                  Wyczyść
+                  Clear
                 </Button>
                 <Button
                   className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
                   onClick={() => setFiltersOpen(false)}
                 >
-                  Zastosuj
+                  Apply
                 </Button>
               </div>
             </AnchoredPopover>
@@ -1501,9 +1501,9 @@ export default function ObservationsFeature({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-1 flex items-center justify-between px-1 gap-2">
-                  <div className="text-sm font-semibold">Więcej</div>
+                  <div className="text-sm font-semibold">More</div>
                   <div className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
-                    W koszu: {trashCount}
+                    In trash: {trashCount}
                   </div>
                   <Button
                     variant="outline"
@@ -1511,7 +1511,7 @@ export default function ObservationsFeature({
                     className="border-gray-300 dark:border-neutral-700"
                     onClick={() => setMoreOpen(false)}
                   >
-                    Zamknij
+                    Close
                   </Button>
                 </div>
 
@@ -1534,7 +1534,7 @@ export default function ObservationsFeature({
                       onCheckedChange={() => { }}
                     />
                     <span className="font-medium">
-                      Zaznacz kilka (multiselect)
+                      Select multiple (multiselect)
                     </span>
                   </button>
 
@@ -1546,7 +1546,7 @@ export default function ObservationsFeature({
                       setColsOpen(true);
                     }}
                   >
-                    <ColumnsIcon className="h-4 w-4" /> Kolumny
+                    <ColumnsIcon className="h-4 w-4" /> Columns
                   </button>
 
                   <button
@@ -1556,7 +1556,7 @@ export default function ObservationsFeature({
                       setMoreOpen(false);
                     }}
                   >
-                    <Users className="h-4 w-4" /> Aktywne
+                    <Users className="h-4 w-4" /> Active
                   </button>
                   <button
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -1566,7 +1566,7 @@ export default function ObservationsFeature({
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
-                    <span>Kosz</span>
+                    <span>Trash</span>
                     <span className="ml-auto inline-flex min-w-[20px] items-center justify-center rounded-full bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
                       {trashCount}
                     </span>
@@ -1581,7 +1581,7 @@ export default function ObservationsFeature({
                       }}
                     >
                       <XCircle className="h-4 w-4" />
-                      <span>Opróżnij kosz</span>
+                      <span>Empty trash</span>
                     </button>
                   )}
 
@@ -1594,7 +1594,7 @@ export default function ObservationsFeature({
                           exportCSV();
                         }}
                       >
-                        <FileDown className="h-4 w-4" /> Eksport CSV
+                        <FileDown className="h-4 w-4" /> CSV Export
                       </button>
                       <button
                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -1603,7 +1603,7 @@ export default function ObservationsFeature({
                           exportExcel();
                         }}
                       >
-                        <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                        <FileSpreadsheet className="h-4 w-4" /> Excel Export
                       </button>
                     </>
                   )}
@@ -1624,7 +1624,7 @@ export default function ObservationsFeature({
                   Menu
                 </span>
                 <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
-                  W koszu: {trashCount}
+                  In trash: {trashCount}
                 </span>
               </div>
 
@@ -1645,7 +1645,7 @@ export default function ObservationsFeature({
                   className="h-4 w-4 pointer-events-none"
                   onCheckedChange={() => { }}
                 />
-                <span>Zaznacz kilka</span>
+                <span>Select multiple</span>
               </button>
 
               {/* Kolumny opens a separate popover anchored to the dots */}
@@ -1656,7 +1656,7 @@ export default function ObservationsFeature({
                   setColsOpen(true);
                 }}
               >
-                <ColumnsIcon className="h-4 w-4" /> Kolumny
+                <ColumnsIcon className="h-4 w-4" /> Columns
               </button>
 
               <button
@@ -1666,7 +1666,7 @@ export default function ObservationsFeature({
                   setMoreOpen(false);
                 }}
               >
-                <Users className="h-4 w-4" /> Aktywne
+                <Users className="h-4 w-4" /> Active
               </button>
               <button
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
@@ -1676,7 +1676,7 @@ export default function ObservationsFeature({
                 }}
               >
                 <Trash2 className="h-4 w-4" />
-                <span>Kosz</span>
+                <span>Trash</span>
                 <span className="ml-auto inline-flex min-w-[20px] items-center justify-center rounded-full bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
                   {trashCount}
                 </span>
@@ -1691,7 +1691,7 @@ export default function ObservationsFeature({
                   }}
                 >
                   <XCircle className="h-4 w-4" />
-                  <span>Opróżnij kosz</span>
+                  <span>Empty trash</span>
                 </button>
               )}
 
@@ -1705,7 +1705,7 @@ export default function ObservationsFeature({
                   exportCSV();
                 }}
               >
-                <FileDown className="h-4 w-4" /> Eksport CSV
+                <FileDown className="h-4 w-4" /> CSV Export
               </button>
               <button
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
@@ -1714,7 +1714,7 @@ export default function ObservationsFeature({
                   exportExcel();
                 }}
               >
-                <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                <FileSpreadsheet className="h-4 w-4" /> Excel Export
               </button>
               */}
             </AnchoredPopover>
@@ -1736,14 +1736,14 @@ export default function ObservationsFeature({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="text-sm font-semibold">Kolumny</div>
+                  <div className="text-sm font-semibold">Columns</div>
                   <Button
                     variant="outline"
                     size="sm"
                     className="border-gray-300 dark:border-neutral-700"
                     onClick={() => setColsOpen(false)}
                   >
-                    Zamknij
+                    Close
                   </Button>
                 </div>
 
@@ -1755,7 +1755,7 @@ export default function ObservationsFeature({
                       className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
                       <span className="text-gray-800 dark:text-neutral-100">
-                        {COL_PL[key]}
+                        {COL_LABELS[key]}
                       </span>
                       <Checkbox
                         checked={visibleCols[key]}
@@ -1781,7 +1781,7 @@ export default function ObservationsFeature({
               className="rounded-md border border-gray-200 bg-white p-3 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
             >
               <div className="mb-2 text-xs font-medium text-dark dark:text-neutral-400">
-                Widoczność kolumn
+                Column visibility
               </div>
               {Object.keys(DEFAULT_COLS).map((k) => {
                 const key = k as keyof typeof DEFAULT_COLS;
@@ -1791,7 +1791,7 @@ export default function ObservationsFeature({
                     className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                   >
                     <span className="text-gray-800 dark:text-neutral-100">
-                      {COL_PL[key]}
+                      {COL_LABELS[key]}
                     </span>
                     <Checkbox
                       checked={visibleCols[key]}
@@ -1824,7 +1824,7 @@ export default function ObservationsFeature({
                   <th className={`${cn(cellPad, "pl-5")} w-10 text-left font-medium`}>
                     <Checkbox
                       disabled={loading}
-                      aria-label="Zaznacz wszystkie"
+                      aria-label="Select all"
                       checked={
                         loading || filtered.length === 0
                           ? false
@@ -1845,36 +1845,36 @@ export default function ObservationsFeature({
                 )}
                 {visibleCols.match && (
                   <th className={`${cn(cellPad, !isMultiSelect && "pl-5")} text-left`}>
-                    <SortHeader k="match">Mecz</SortHeader>
+                    <SortHeader k="match">Match</SortHeader>
                   </th>
                 )}
                 {visibleCols.date && (
                   <th className={`${cellPad} hidden text-left sm:table-cell`}>
-                    <SortHeader k="date">Data</SortHeader>
+                    <SortHeader k="date">Date</SortHeader>
                   </th>
                 )}
                 {visibleCols.time && (
                   <th className={`${cellPad} hidden text-left sm:table-cell`}>
-                    <SortHeader k="time">Godzina</SortHeader>
+                    <SortHeader k="time">Hour</SortHeader>
                   </th>
                 )}
                 {visibleCols.mode && (
                   <th className={`${cellPad} hidden text-left sm:table-cell`}>
-                    <SortHeader k="mode">Tryb</SortHeader>
+                    <SortHeader k="mode">Mode</SortHeader>
                   </th>
                 )}
                 {visibleCols.status && (
                   <th className={`${cellPad} text-left`}>
-                    <SortHeader k="status">Liga</SortHeader>
+                    <SortHeader k="status">League</SortHeader>
                   </th>
                 )}
                 {visibleCols.players && (
                   <th className={`${cellPad} hidden text-left sm:table-cell`}>
-                    <SortHeader k="players">Zawodnicy</SortHeader>
+                    <SortHeader k="players">Players</SortHeader>
                   </th>
                 )}
                 {visibleCols.actions && (
-                  <th className={`${cellPad} text-right font-medium pr-4`}>Akcje</th>
+                  <th className={`${cellPad} text-right font-medium pr-4`}>Actions</th>
                 )}
               </tr>
             </thead>
@@ -1914,7 +1914,7 @@ export default function ObservationsFeature({
                       {visibleCols.select && isMultiSelect && (
                         <td className={cn(cellPad, "pl-5")}>
                           <Checkbox
-                            aria-label={`Zaznacz obserwację #${r.id}`}
+                            aria-label={`Select observation #${r.id}`}
                             checked={selected.has(r.id as number)}
                             onCheckedChange={(v) => {
                               const copy = new Set(selected);
@@ -2000,12 +2000,12 @@ export default function ObservationsFeature({
                                     setEditing(r);
                                     setPageMode("editor");
                                   }}
-                                  aria-label="Edytuj"
+                                  aria-label="Edit"
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent side="top">Edytuj</TooltipContent>
+                              <TooltipContent side="top">Edit</TooltipContent>
                             </Tooltip>
 
                             {/* Kosz / Przywróć z potwierdzeniem Tak / Nie dla Kosza */}
@@ -2020,7 +2020,7 @@ export default function ObservationsFeature({
                                     className="h-9 px-2 text-xs bg-rose-600 text-white hover:bg-rose-700 focus-visible:outline-none"
                                     onClick={() => moveToTrash(r.id as number)}
                                   >
-                                    Tak
+                                    Yes
                                   </Button>
                                   <Button
                                     size="sm"
@@ -2028,7 +2028,7 @@ export default function ObservationsFeature({
                                     className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
                                     onClick={() => setConfirmTrashId(null)}
                                   >
-                                    Nie
+                                    No
                                   </Button>
                                 </div>
                               ) : (
@@ -2042,13 +2042,13 @@ export default function ObservationsFeature({
                                         e.stopPropagation();
                                         setConfirmTrashId(r.id as number);
                                       }}
-                                      aria-label="Przenieś do kosza"
+                                      aria-label="Move to trash"
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent side="top">
-                                    Przenieś do kosza
+                                    Move to trash
                                   </TooltipContent>
                                 </Tooltip>
                               )
@@ -2063,13 +2063,13 @@ export default function ObservationsFeature({
                                       e.stopPropagation();
                                       restoreFromTrash(r.id as number);
                                     }}
-                                    aria-label="Przywróć z kosza"
+                                    aria-label="Restore from trash"
                                   >
                                     <Undo2 className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="top">
-                                  Przywróć z kosza
+                                  Restore from trash
                                 </TooltipContent>
                               </Tooltip>
                             )}
@@ -2086,7 +2086,7 @@ export default function ObservationsFeature({
                     colSpan={Object.values(visibleCols).filter(Boolean).length || 1}
                     className={`${cellPad} text-center text-sm text-dark dark:text-neutral-400`}
                   >
-                    Brak wyników dla bieżących filtrów.
+                    No results for current filters.
                   </td>
                 </tr>
               )}
@@ -2099,7 +2099,7 @@ export default function ObservationsFeature({
               ref={loadMoreRef}
               className="flex w-full items-center justify-center py-3 text-[11px] text-stone-500 dark:text-neutral-400"
             >
-              Ładowanie kolejnych obserwacji…
+              Loading more observations…
             </div>
           )}
 
@@ -2110,7 +2110,7 @@ export default function ObservationsFeature({
           <div className="mt-4 flex flex-col items-center gap-2 sm:hidden px-4">
             <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-3 py-1.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-800 dark:text-neutral-300 dark:ring-neutral-700">
               <MoveHorizontal className="h-4 w-4" />
-              <span>Przewiń tabelę w bok, aby zobaczyć więcej</span>
+              <span>Scroll sideways for more</span>
             </div>
           </div>
         )}
@@ -2127,8 +2127,8 @@ export default function ObservationsFeature({
                   setSelected(new Set());
                   setIsMultiSelect(false);
                 }}
-                aria-label="Wyczyść zaznaczenie"
-                title="Wyczyść zaznaczenie"
+                aria-label="Clear selection"
+                title="Clear selection"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -2138,7 +2138,7 @@ export default function ObservationsFeature({
               </span>
 
               <span className="hidden sm:inline text-sm text-gray-800 dark:text-neutral-100">
-                zaznaczone
+                selected
               </span>
 
               <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-neutral-800" />
@@ -2151,8 +2151,8 @@ export default function ObservationsFeature({
                 <Button
                   className="h-8 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
                   onClick={bulkTrash}
-                  aria-label="Przenieś do kosza"
-                  title="Przenieś do kosza"
+                  aria-label="Move to trash"
+                  title="Move to trash"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -2160,8 +2160,8 @@ export default function ObservationsFeature({
                 <Button
                   className="h-8 w-8 rounded-md bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
                   onClick={bulkRestore}
-                  aria-label="Przywróć"
-                  title="Przywróć"
+                  aria-label="Restore"
+                  title="Restore"
                 >
                   <Undo2 className="h-4 w-4" />
                 </Button>

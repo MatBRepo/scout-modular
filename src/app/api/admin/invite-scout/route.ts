@@ -11,18 +11,18 @@ export async function POST(req: Request) {
 
         if (!email || !name) {
             return NextResponse.json(
-                { error: "Email i nazwa są wymagane." },
+                { error: "Email and name are required." },
                 { status: 400 }
             );
         }
 
         const supabaseAdmin = getSupabaseAdmin();
 
-        // 1. Sprawdź czy użytkownik już istnieje (opcjonalnie, ale profile i tak musimy stworzyć)
-        // Supabase generateLink stworzy użytkownika w Auth jeśli nie istnieje.
+        // 1. Check if user already exists (optional, but we must create a profile anyway)
+        // Supabase generateLink will create the user in Auth if they don't exist.
 
-        // 2. Generuj magic link
-        // Zauważ: generateLink zwraca link, który wygasa i jest jednorazowy.
+        // 2. Generate magic link
+        // Note: generateLink returns a link that expires and is one-time use.
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
             type: "magiclink",
             email: email,
@@ -31,23 +31,23 @@ export async function POST(req: Request) {
                     full_name: name,
                     role: role,
                 },
-                // Możesz ustawić redirectTo jeśli chcesz
+                // You can set redirectTo if you want
                 // redirectTo: `${new URL(req.url).origin}/auth/callback`,
             },
         });
 
         if (linkError) {
-            console.error("Błąd generowania linku:", linkError);
+            console.error("Error generating link:", linkError);
             return NextResponse.json(
-                { error: `Błąd Supabase: ${linkError.message}` },
+                { error: `Supabase error: ${linkError.message}` },
                 { status: 500 }
             );
         }
 
         const magicLink = linkData.properties.action_link;
 
-        // 3. (Opcjonalnie) Stwórz profil w tabeli profiles jeśli jeszcze go nie ma
-        // Czasem triggery to robią, ale lepiej upewnić się ręcznie jeśli system tego wymaga.
+        // 3. (Optional) Create profile in profiles table if it doesn't exist yet
+        // Sometimes triggers do this, but it's better to ensure manually if the system requires it.
         const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
             id: linkData.user.id,
             full_name: name,
@@ -57,10 +57,10 @@ export async function POST(req: Request) {
         });
 
         if (profileError) {
-            console.warn("Błąd tworzenia profilu (użytkownik auth stworzony):", profileError);
+            console.warn("Error creating profile (auth user created):", profileError);
         }
 
-        // 4. Wyślij e-mail przez PHP mailer
+        // 4. Send e-mail via PHP mailer
         const phpMailerUrl = process.env.PHP_MAILER_URL;
         let mailSent = false;
         let mailError = null;
@@ -86,23 +86,23 @@ export async function POST(req: Request) {
                 }
             } catch (err: any) {
                 mailError = err.message;
-                console.error("Błąd połączenia z PHP Mailer:", err);
+                console.error("Error connecting to PHP Mailer:", err);
             }
         } else {
-            console.warn("PHP_MAILER_URL nie jest skonfigurowany. Link wygenerowany, ale e-mail nie został wysłany.");
+            console.warn("PHP_MAILER_URL is not configured. Link generated, but e-mail not sent.");
         }
 
         return NextResponse.json({
             success: true,
             mailSent,
             mailError,
-            // Zwracamy link w odpowiedzi jako fallback dla admina (do ręcznego skopiowania)
+            // Returning link in response as fallback for admin (for manual copy)
             link: magicLink,
         });
     } catch (err: any) {
-        console.error("Fatalny błąd API invite-scout:", err);
+        console.error("Fatal invite-scout API error:", err);
         return NextResponse.json(
-            { error: err.message || "Wewnętrzny błąd serwera." },
+            { error: err.message || "Internal server error." },
             { status: 500 }
         );
     }

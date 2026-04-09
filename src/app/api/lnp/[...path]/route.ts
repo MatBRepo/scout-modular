@@ -7,10 +7,10 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   const url = new URL(req.url);
   const target = new URL(`${BASE}/${pathParts.join("/")}`);
 
-  // przenieś query string
+  // transfer query string
   target.search = url.search;
 
-  // przenieś nagłówki (bez hosta)
+  // transfer headers (without host)
   const headers = new Headers(req.headers);
   headers.delete("host");
 
@@ -19,7 +19,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   const init: RequestInit = {
     method,
     headers,
-    // body tylko dla metod z body
+    // body only for methods with body
     body:
       method === "GET" || method === "HEAD"
         ? undefined
@@ -31,7 +31,7 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   try {
     const res = await fetch(target, init);
 
-    // Skopiuj status + content-type
+    // Copy status + content-type
     const outHeaders = new Headers();
     const ct = res.headers.get("content-type");
     if (ct) outHeaders.set("content-type", ct);

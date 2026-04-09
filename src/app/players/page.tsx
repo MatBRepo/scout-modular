@@ -6,14 +6,14 @@ import MyPlayersFeature from "@/features/players/MyPlayersFeature";
 import type { Player, Observation } from "@/shared/types";
 import { getSupabase } from "@/lib/supabaseClient";
 
-export const dynamic = "force-dynamic"; // żeby nie było statycznego prerenderu
+export const dynamic = "force-dynamic"; // so there is no static prerender
 
 export default function Page() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1) Ładowanie graczy + obserwacji z Supabase
+  // 1) Loading players + observations from Supabase
   useEffect(() => {
     let cancelled = false;
     const supabase = getSupabase();
@@ -30,7 +30,7 @@ export default function Page() {
             .order("id", { ascending: true }),
           supabase
             .from("observations")
-            .select("*") // pełne dane, żeby MyPlayersFeature miał dostęp do players[], user_id itd.
+            .select("*") // full data, so MyPlayersFeature has access to players[], user_id etc.
             .order("created_at", { ascending: false }),
         ]);
 
@@ -47,7 +47,7 @@ export default function Page() {
         setObservations((obsData ?? []) as Observation[]);
       } catch (err) {
         console.error(
-          "[players/page] Błąd ładowania z Supabase:",
+          "[players/page] Error loading from Supabase:",
           err,
         );
         if (!cancelled) {
@@ -64,30 +64,30 @@ export default function Page() {
     };
   }, []);
 
-  // 2) Zmiana listy graczy → zapis do Supabase
+  // 2) Player list change → save to Supabase
   const handleChangePlayers = async (next: Player[]) => {
-    // optymistycznie aktualizujemy UI
+    // optimistically updating UI
     setPlayers(next);
 
     try {
       const supabase = getSupabase();
       const { error } = await supabase
         .from("players")
-        .upsert(next, { onConflict: "id" }); // wymaga PRIMARY KEY(id)
+        .upsert(next, { onConflict: "id" }); // requires PRIMARY KEY(id)
 
       if (error) {
         throw error;
       }
     } catch (err) {
       console.error(
-        "[players/page] Błąd zapisu graczy do Supabase:",
+        "[players/page] Error saving players to Supabase:",
         err,
       );
       // TODO: toast/alert
     }
   };
 
-  // 3) Obsługa szybkich obserwacji (QuickObservation) → insert/update w Supabase
+  // 3) Handling quick observations (QuickObservation) → insert/update in Supabase
   const handleQuickAddObservation = async (obs: Observation) => {
     try {
       const supabase = getSupabase();
@@ -95,7 +95,7 @@ export default function Page() {
       const exists = observations.some((o) => o.id === obs.id);
 
       if (exists) {
-        // UPDATE istniejącej obserwacji (np. przypisanie do innego zawodnika)
+        // UPDATE of existing observation (e.g. assigning to another player)
         const { id, ...rest } = obs as any;
 
         const { data, error } = await supabase
@@ -113,8 +113,8 @@ export default function Page() {
           ),
         );
       } else {
-        // NOWA obserwacja (z QuickObservation lub duplikat)
-        // ignorujemy lokalne id (Date.now()), pozwalamy DB wygenerować swoje
+        // NEW observation (from QuickObservation or duplicate)
+        // ignoring local id (Date.now()), letting DB generate its own
         const { id: _ignore, ...rest } = obs as any;
 
         const { data, error } = await supabase
@@ -125,7 +125,7 @@ export default function Page() {
 
         if (error) throw error;
 
-        // dodajemy na początek listy
+        // adding to the beginning of the list
         setObservations((prev) => [
           data as Observation,
           ...prev,
@@ -133,7 +133,7 @@ export default function Page() {
       }
     } catch (err) {
       console.error(
-        "[players/page] Błąd zapisu obserwacji w Supabase:",
+        "[players/page] Error saving observation to Supabase:",
         err,
       );
       // TODO: toast/alert

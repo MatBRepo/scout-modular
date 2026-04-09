@@ -11,7 +11,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Trophy, Sparkles, ArrowUpRight } from "lucide-react";
 import { getSupabase } from "@/lib/supabaseClient";
 
-/* ==== Types & helpers (spójne z AppSidebar) ==== */
+/* ==== Types & helpers (consistent with AppSidebar) ==== */
 type Rank = "bronze" | "silver" | "gold" | "platinum";
 
 const DEFAULT_RANK_THRESHOLDS: Record<Rank, number> = {
@@ -52,10 +52,10 @@ const rankLabel = (r: Rank) =>
     : "Bronze";
 
 const rankSubtitle: Record<Rank, string> = {
-  bronze: "Pierwsze kroki w systemie",
-  silver: "Regularna praca w bazie",
-  gold: "Zaawansowany poziom scoutingu",
-  platinum: "Top tier – elita użytkowników",
+  bronze: "First steps in the system",
+  silver: "Regular work in the database",
+  gold: "Advanced scouting level",
+  platinum: "Top tier – user elite",
 };
 
 function rankTrophyColor(r: Rank) {
@@ -126,7 +126,7 @@ export function useRankUpModal() {
         }
       }
 
-      // 2) counts (tylko "pełne"): players.active + observations.final
+      // 2) counts (only "full"): players.active + observations.final
       const [playersRes, obsRes] = await Promise.all([
         supabase
           .from("players")
@@ -164,7 +164,7 @@ export function useRankUpModal() {
     };
   }, []);
 
-  /* ---- Check after change (np. po dodaniu zawodnika / obserwacji) ---- */
+  /* ---- Check after change (e.g. after adding player / observation) ---- */
   const checkRankAfterChange = useCallback(async () => {
     const supabase = getSupabase();
     const { data: auth } = await supabase.auth.getUser();
@@ -269,51 +269,51 @@ export function useRankUpModal() {
                     <div className="flex-1 space-y-1">
                       <div className="inline-flex items-center gap-2 rounded-full bg-neutral-900/80 px-2 py-0.5 text-[11px] text-stone-300 ring-1 ring-neutral-700/80">
                         <Sparkles className="h-3 w-3 text-amber-300" />
-                        <span>Gratulacje! Awans na nowy poziom</span>
+                        <span>Congratulations! Promotion to a new level</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
-                        <span>Osiągnąłeś poziom</span>
+                        <span>You reached the level</span>
                         <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-indigo-200 ring-1 ring-indigo-500/40">
                           {rankLabel(info.toRank)}
                         </span>
                       </div>
                       <p className="text-xs text-stone-300">
-                        {rankSubtitle[info.toRank]} – Twoja aktywność w
-                        systemie rośnie, więc odblokowujesz wyższy poziom
-                        zaufania i jakości danych.
+                        {rankSubtitle[info.toRank]} – Your activity in the
+                        system is growing, so you are unlocking a higher level
+                        of trust and data quality.
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-2 rounded-xl bg-neutral-900/80 p-3 ring-1 ring-neutral-800/80">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-stone-400">Poprzedni poziom</span>
+                      <span className="text-stone-400">Previous level</span>
                       <span className="font-medium text-stone-100">
                         {rankLabel(info.fromRank)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-stone-400">Nowy poziom</span>
+                      <span className="text-stone-400">New level</span>
                       <span className="font-semibold text-amber-200">
                         {rankLabel(info.toRank)}
                       </span>
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-4 text-[11px] text-stone-300">
                       <div>
-                        <span className="text-stone-400">Aktualny wynik: </span>
+                        <span className="text-stone-400">Current score: </span>
                         <span className="font-semibold">{info.score} pkt</span>
                       </div>
                       <div className="flex gap-3">
                         <span>
                           🧍‍♂️ {info.playersCount}{" "}
                           <span className="text-stone-400 text-[10px]">
-                            aktywnych
+                            active
                           </span>
                         </span>
                         <span>
                           📝 {info.obsCount}{" "}
                           <span className="text-stone-400 text-[10px]">
-                            obserwacji
+                            observations
                           </span>
                         </span>
                       </div>
@@ -326,13 +326,13 @@ export function useRankUpModal() {
                       onClick={closeModal}
                       className="inline-flex items-center gap-1 rounded-full bg-neutral-900/80 px-3 py-1.5 text-xs font-medium text-stone-100 ring-1 ring-neutral-700/80 hover:bg-neutral-800"
                     >
-                      Zamknij
+                      Close
                     </button>
                     <a
                       href="/players"
                       className="inline-flex items-center gap-1 text-xs font-medium text-indigo-200 hover:text-indigo-100"
                     >
-                      Zobacz progres w panelu
+                      See progress in the panel
                       <ArrowUpRight className="h-3 w-3" />
                     </a>
                   </div>

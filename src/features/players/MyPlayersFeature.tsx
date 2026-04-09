@@ -93,27 +93,27 @@ function lockBodyScroll() {
   if (typeof window === "undefined") return;
 
   __bodyLockCount += 1;
-  if (__bodyLockCount > 1) return; // już zablokowane
+  if (__bodyLockCount > 1) return; // already locked
 
   const body = document.body;
   const html = document.documentElement;
 
   const scrollY = window.scrollY || window.pageYOffset || 0;
 
-  // zapisz stan
+  // save state
   body.dataset.scrollLockY = String(scrollY);
   body.dataset.scrollLockOverflow = body.style.overflow || "";
   body.dataset.scrollLockPosition = body.style.position || "";
   body.dataset.scrollLockTop = body.style.top || "";
   body.dataset.scrollLockWidth = body.style.width || "";
 
-  // blokada (najlepsza na iOS: body fixed + top)
+  // block (best on iOS: body fixed + top)
   body.style.overflow = "hidden";
   body.style.position = "fixed";
   body.style.top = `-${scrollY}px`;
   body.style.width = "100%";
 
-  // opcjonalnie: ogranicz "bounce" na mobile
+  // optionally: limit "bounce" on mobile
   html.style.overscrollBehavior = "contain";
 }
 
@@ -121,7 +121,7 @@ function unlockBodyScroll() {
   if (typeof window === "undefined") return;
 
   __bodyLockCount = Math.max(0, __bodyLockCount - 1);
-  if (__bodyLockCount > 0) return; // nadal coś otwarte
+  if (__bodyLockCount > 0) return; // something is still open
 
   const body = document.body;
   const html = document.documentElement;
@@ -185,7 +185,7 @@ function MobileSheet({
             className="border-gray-300 dark:border-neutral-700"
             onClick={onClose}
           >
-            Zamknij
+            Close
           </Button>
         </div>
         {children}
@@ -347,16 +347,16 @@ const DEFAULT_COLS = {
 type ColKey = keyof typeof DEFAULT_COLS;
 
 const COL_LABELS: Record<ColKey, string> = {
-  photo: "Miniatury",
-  select: "Zaznacz",
-  name: "Nazwa",
-  club: "Klub",
-  pos: "Pozycja",
-  age: "Wiek",
-  progress: "Profil",
-  rating: "Ocena z obserwacji",
-  obs: "Obserwacje",
-  actions: "Akcje",
+  photo: "Thumbnails",
+  select: "Select",
+  name: "Name",
+  club: "Club",
+  pos: "Position",
+  age: "Age",
+  progress: "Profile",
+  rating: "Observation rating",
+  obs: "Observations",
+  actions: "Actions",
 };
 
 type KnownScope = "known" | "unknown" | "all";
@@ -386,7 +386,7 @@ type PlayerRow = Player & {
   _avgRating: number | null;
 };
 
-// ile wierszy „dociąga” jedno doładowanie
+// how many rows one loading "pulls"
 const PAGE_SIZE = 50;
 
 /* ========= helpers dla observation/player ========= */
@@ -457,7 +457,7 @@ function findPlayerEntryInObservation(
 function observationIncludesPlayer(o: ObservationWithOwner, p: PlayerWithOwner) {
   const targetNames = buildTargetNames(p);
 
-  // 1) legacy / szybkie powiązanie: obserwacje.player (tekst)
+  // 1) legacy / quick connection: observations.player (text)
   if (targetNames.size > 0 && targetNames.has(normalizeName(o.player))) {
     return true;
   }
@@ -626,7 +626,7 @@ export default function MyPlayersFeature({
   // Filtrowanie po właścicielu — user_id/profile_id
   const ownedPlayers = useMemo(() => {
     const base = players as PlayerWithOwner[];
-    // jeśli żaden rekord nie ma user_id/profile_id → nie filtrujemy
+    // if no record has user_id/profile_id → we do not filter
     const hasOwnerMeta = base.some((p) => p.user_id || p.profile_id);
     if (!authUserId || !hasOwnerMeta) {
       return base;
@@ -642,18 +642,18 @@ export default function MyPlayersFeature({
       (o) => o.user_id || o.userId || o.profile_id || o.profileId,
     );
 
-    // Brak użytkownika z auth
+    // No authenticated user
     if (!authUserId) {
-      // jeśli nie ma meta — lepiej pokazać wszystko, niż pustkę
+      // if there is no meta — better to show all than nothing
       return hasOwnerMeta ? [] : base;
     }
 
-    // Brak meta właściciela → zakładamy, że lista jest już przefiltrowana po stronie serwera
+    // No owner meta → we assume the list is already filtered on the server side
     if (!hasOwnerMeta) {
       return base;
     }
 
-    // Standardowy tryb: filtrujemy tylko obserwacje tego użytkownika
+    // Standard mode: we only filter this user's observations
     return base.filter((o) => {
       const uid = o.user_id ?? o.userId ?? null;
       const pid = o.profile_id ?? o.profileId ?? null;
@@ -682,7 +682,7 @@ export default function MyPlayersFeature({
       return;
     }
 
-    // mapowanie global_id -> wszystkie lokalne players.id
+    // mapping global_id -> all local players.id
     const globalToLocalIds = new Map<number, number[]>();
     for (const p of pls) {
       const gid = p.global_id;
@@ -698,7 +698,7 @@ export default function MyPlayersFeature({
       try {
         setRatingStatsLoading(true);
 
-        // Budujemy .or() ręcznie, żeby obsłużyć player_id OR global_id
+        // We build .or() manually to handle player_id OR global_id
         const filters: string[] = [];
         if (playerIds.length) {
           filters.push(`player_id.in.(${playerIds.join(",")})`);
@@ -713,7 +713,7 @@ export default function MyPlayersFeature({
             "player_id, global_id, rating, observation_id, observations!inner(id, user_id, status, bucket)",
           )
           .eq("observations.user_id", authUserId)
-          // opcjonalnie: tylko finalne obserwacje w aktywnym koszyku
+          // optionally: only final observations in the active bucket
           .eq("observations.status", "final")
           .eq("observations.bucket", "active");
 
@@ -746,7 +746,7 @@ export default function MyPlayersFeature({
         >();
 
         (data as Row[]).forEach((row) => {
-          // Ustal docelowe local player_id:
+          // Set target local player_id:
           let pid: number | null = null;
 
           if (typeof row.player_id === "number") {
@@ -754,7 +754,7 @@ export default function MyPlayersFeature({
           } else if (typeof row.global_id === "number") {
             const locals = globalToLocalIds.get(row.global_id);
             if (locals && locals.length > 0) {
-              // jeżeli jest kilka lokalnych, weź pierwszego
+              // if there are several local ones, take the first one
               pid = locals[0];
             }
           }
@@ -843,7 +843,7 @@ export default function MyPlayersFeature({
   const [chipsOpen, setChipsOpen] = useState(false);
   const chipsHoverTimer = useRef<number | null>(null);
 
-  // „Pagination” → infinity scroll: numer „paczki”
+  // „Pagination” → infinity scroll: number of the "package"
   const [page, setPage] = useState(1);
 
   // Quick creator fields
@@ -863,7 +863,7 @@ export default function MyPlayersFeature({
   const tableWrapRef = useRef<HTMLDivElement | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
 
-  // sentinel do infinity scroll
+  // sentinel for infinity scroll
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   /* URL param -> tab sync; default = all */
@@ -888,7 +888,7 @@ export default function MyPlayersFeature({
 
   // Base with obs count + known flag + progress + avg rating
   // Rating – PRIORYTETY:
-  // 1) observation_ratings (DB, per użytkownik) – zapisane średnie z występów
+  // 1) observation_ratings (DB, per user) – saved averages from appearances
   // 2) fallback: średnia z obserwacji (players[].ratings / overall)
   // 3) fallback: meta.ratings na obiekcie zawodnika
   const withObsCount = useMemo<PlayerRow[]>(() => {
@@ -902,15 +902,15 @@ export default function MyPlayersFeature({
       let obsCount = stats?.obsCount ?? 0;
       let avgRating: number | null = stats?.avg ?? null;
 
-      // jeśli nie mamy danych z observation_ratings → fallback do logiki opartej o same obserwacje
+      // if we don't have data from observation_ratings → fallback to logic based on observations only
       if (!stats) {
-        // wszystkie obserwacje, które faktycznie zawierają zawodnika
+        // all observations that actually contain the player
         const relatedObs = obs.filter((o) =>
           observationIncludesPlayer(o, p),
         );
         obsCount = relatedObs.length;
 
-        // 2) średnia z obserwacji (to co widzisz w "Obserwacje zawodnika")
+        // 2) average from observations (what you see in "Player observations")
         const obsRatings: number[] = [];
         for (const o of relatedObs) {
           const r = extractOverallRatingForPlayer(o, p);
@@ -921,7 +921,7 @@ export default function MyPlayersFeature({
             ? obsRatings.reduce((a, b) => a + b, 0) / obsRatings.length
             : null;
 
-        // 3) meta.ratings (tylko jeśli nie ma nic innego)
+        // 3) meta.ratings (only if there's nothing else)
         const metaRatings = collectRatingsFromPlayerMeta(p);
         const fromMeta =
           metaRatings.length > 0
@@ -1007,7 +1007,7 @@ export default function MyPlayersFeature({
         case "rating": {
           const aVal = typeof a._avgRating === "number" ? a._avgRating : null;
           const bVal = typeof b._avgRating === "number" ? b._avgRating : null;
-          // Brak oceny zawsze na końcu niezależnie od kierunku sortowania
+          // No rating always at the end regardless of the sorting direction
           if (aVal == null && bVal == null) return 0;
           if (aVal == null) return 1;
           if (bVal == null) return -1;
@@ -1028,7 +1028,7 @@ export default function MyPlayersFeature({
     [filtered, page],
   );
 
-  // clamp page gdy zmienia się lista
+  // clamp page when the list changes
   useEffect(() => {
     const maxPage = Math.max(1, Math.ceil(Math.max(total, 1) / PAGE_SIZE));
     if (page > maxPage) setPage(maxPage);
@@ -1036,7 +1036,7 @@ export default function MyPlayersFeature({
 
   const hasMore = visible.length < total;
 
-  // IntersectionObserver: dociąganie kolejnych paczek
+  // IntersectionObserver: pulling consecutive packages
   useEffect(() => {
     if (!hasMore) return;
     const el = loadMoreRef.current;
@@ -1161,14 +1161,14 @@ export default function MyPlayersFeature({
   function exportExcel() {
     const headers = [
       "ID",
-      "Nazwa",
-      "Klub",
-      "Pozycja",
-      "Wiek",
+      "Name",
+      "Club",
+      "Position",
+      "Age",
       "Status",
-      "Śr. ocena",
-      "Obserwacje",
-      "Profil %",
+      "Avg. rating",
+      "Observations",
+      "Profile %",
     ];
     const rows = filtered.map((p: any) => [
       p.id,
@@ -1295,7 +1295,7 @@ export default function MyPlayersFeature({
     if (q.trim()) {
       chips.push({
         key: "q",
-        label: `Szukaj: “${q.trim()}”`,
+        label: `Search: “${q.trim()}”`,
         clear: () => {
           setQ("");
           setPage(1);
@@ -1308,7 +1308,7 @@ export default function MyPlayersFeature({
     );
     const allSelected = visiblePositions.length === POS.length;
     if (!allSelected) {
-      const posLabel = `Poz.: ${visiblePositions.join(", ")}`;
+      const posLabel = `Pos.: ${visiblePositions.join(", ")}`;
       chips.push({
         key: "pos",
         label: posLabel,
@@ -1322,7 +1322,7 @@ export default function MyPlayersFeature({
     if (club.trim()) {
       chips.push({
         key: "club",
-        label: `Klub: ${club.trim()}`,
+        label: `Club: ${club.trim()}`,
         clear: () => {
           setClub("");
           setPage(1);
@@ -1333,7 +1333,7 @@ export default function MyPlayersFeature({
     if (ageMin !== "") {
       chips.push({
         key: "ageMin",
-        label: `Wiek ≥ ${ageMin}`,
+        label: `Age ≥ ${ageMin}`,
         clear: () => {
           setAgeMin("");
           setPage(1);
@@ -1344,7 +1344,7 @@ export default function MyPlayersFeature({
     if (ageMax !== "") {
       chips.push({
         key: "ageMax",
-        label: `Wiek ≤ ${ageMax}`,
+        label: `Age ≤ ${ageMax}`,
         clear: () => {
           setAgeMax("");
           setPage(1);
@@ -1355,7 +1355,7 @@ export default function MyPlayersFeature({
     if (knownScope !== "all") {
       chips.push({
         key: "knownScope",
-        label: knownScope === "known" ? "Typ: Znani" : "Typ: Nieznani",
+        label: knownScope === "known" ? "Type: Known" : "Type: Unknown",
         clear: () => {
           changeKnownScope("all");
           setPage(1);
@@ -1515,8 +1515,8 @@ export default function MyPlayersFeature({
       <button
         className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
         onClick={onClear}
-        aria-label="Wyczyść filtr"
-        title="Wyczyść filtr"
+        aria-label="Clear filter"
+        title="Clear filter"
       >
         <X className="h-4 w-4" />
       </button>
@@ -1548,8 +1548,8 @@ export default function MyPlayersFeature({
   if (!authUserId) {
     return (
       <div className="w-full rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
-        Nie udało się powiązać listy zawodników z zalogowanym
-        kontem. Spróbuj odświeżyć stronę lub zalogować się ponownie.
+        Failed to link the player list with the logged-in
+        account. Try refreshing the page or logging in again.
       </div>
     );
   }
@@ -1562,7 +1562,7 @@ export default function MyPlayersFeature({
             <div className="flex w-full min-h-9 items-start gap-3">
               {/* Left: Title */}
               <span className="flex h-9 shrink-0 items-center text-xl font-semibold leading-none md:text-2xl">
-                {loading ? <Skeleton className="h-7 w-48" /> : "Baza zawodników"}
+                {loading ? <Skeleton className="h-7 w-48" /> : "Player database"}
               </span>
 
               {/* Center: Spacer */}
@@ -1576,8 +1576,8 @@ export default function MyPlayersFeature({
                 {/* Dodaj zawodnika */}
                 <Button
                   type="button"
-                  title="Skrót: N"
-                  aria-label="Dodaj zawodnika"
+                  title="Shortcut: N"
+                  aria-label="Add player"
                   onClick={() => router.push("/players/new")}
                   className={`${controlH} w-full sm:w-auto primary inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none`}
                   disabled={loading}
@@ -1587,7 +1587,7 @@ export default function MyPlayersFeature({
                   ) : (
                     <>
                       <AddPlayerIcon className="h-4 w-4" />
-                      <span>Dodaj zawodnika</span>
+                      <span>Add player</span>
                     </>
                   )}
                 </Button>
@@ -1607,9 +1607,9 @@ export default function MyPlayersFeature({
                         setQ(e.target.value);
                         setPage(1);
                       }}
-                      placeholder={loading ? "" : "Szukaj po nazwisku/klubie… (/)"}
+                      placeholder={loading ? "" : "Search by surname/club… (/)"}
                       className={`${controlH} w-full pl-8 pr-3 text-sm`}
-                      aria-label="Szukaj w bazie zawodników"
+                      aria-label="Search in player database"
                       disabled={loading}
                     />
                     {loading && (
@@ -1619,10 +1619,10 @@ export default function MyPlayersFeature({
                     )}
                   </div>
 
-                  {/* Filtry */}
+                  {/* Filters */}
                   <div className="relative inline-flex">
                     <span className="pointer-events-none absolute -top-2 left-3 rounded-full bg-white px-1.5 text-[10px] font-medium text-stone-500 dark:bg-neutral-950 dark:text-neutral-300">
-                      Filtry
+                      Filters
                     </span>
                     <Button
                       ref={filterBtnRef}
@@ -1636,7 +1636,7 @@ export default function MyPlayersFeature({
                         setMoreOpen(false);
                         setMoreSheetOpen(false);
                       }}
-                      title="Filtry"
+                      title="Filters"
                       disabled={loading}
                     >
                       {loading ? (
@@ -1655,11 +1655,11 @@ export default function MyPlayersFeature({
                     </Button>
                   </div>
 
-                  {/* Więcej (3 kropki) */}
+                  {/* More (3 dots) */}
                   <Button
                     ref={moreBtnRef as any}
                     type="button"
-                    aria-label="Więcej"
+                    aria-label="More"
                     aria-pressed={moreOpen}
                     onClick={() => {
                       if (isMobile) {
@@ -1699,7 +1699,7 @@ export default function MyPlayersFeature({
               <div className="w-full p-3 text-sm">
                 <div className="mb-2 flex items-center justify-between">
                   <div className="text-xs font-semibold text-gray-900 dark:text-neutral-300">
-                    Filtry
+                    Filters
                   </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1719,16 +1719,16 @@ export default function MyPlayersFeature({
                           changeKnownScope("all");
                           setPage(1);
                         }}
-                        title="Wyczyść wszystko"
-                        aria-label="Wyczyść wszystko"
+                        title="Clear all"
+                        aria-label="Clear all"
                       >
                         <Eraser className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">
-                          Wyczyść
+                          Clear
                         </span>
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>Wyczyść filtry</TooltipContent>
+                    <TooltipContent>Clear filters</TooltipContent>
                   </Tooltip>
                 </div>
 
@@ -1755,13 +1755,13 @@ export default function MyPlayersFeature({
 
                 <div className="mb-3">
                   <Label className="text-xs text-gray-900 dark:text-neutral-300">
-                    Typ zawodnika
+                    Player type
                   </Label>
                   <div className="mt-1 flex gap-1 rounded-md bg-stone-100 p-0.5 dark:bg-neutral-900">
                     {[
-                      { id: "all", label: "Wszyscy" },
-                      { id: "known", label: "Znani" },
-                      { id: "unknown", label: "Nieznani" },
+                      { id: "all", label: "All" },
+                      { id: "known", label: "Known" },
+                      { id: "unknown", label: "Unknown" },
                     ].map((item) => (
                       <button
                         key={item.id}
@@ -1780,7 +1780,7 @@ export default function MyPlayersFeature({
 
                 <div className="mb-2">
                   <Label className="text-xs text-gray-900 dark:text-neutral-300">
-                    Klub
+                    Club
                   </Label>
                   <Input
                     value={club}
@@ -1795,7 +1795,7 @@ export default function MyPlayersFeature({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs text-gray-900 dark:text-neutral-300">
-                      Wiek min
+                      Min age
                     </Label>
                     <Input
                       type="number"
@@ -1820,7 +1820,7 @@ export default function MyPlayersFeature({
                   </div>
                   <div>
                     <Label className="text-xs text-gray-900 dark:text-neutral-300">
-                      Wiek max
+                      Max age
                     </Label>
                     <Input
                       type="number"
@@ -1848,7 +1848,7 @@ export default function MyPlayersFeature({
                 {activeChips.length > 0 && (
                   <div className="mt-3 border-t border-gray-200 pt-2 dark:border-neutral-800">
                     <div className="mb-1 text-[11px] font-semibold text-gray-900 dark:text-neutral-300">
-                      Aktywne
+                      Active
                     </div>
                     <div className="flex flex-wrap items-center gap-1">
                       {activeChips.map((c) => (
@@ -1867,7 +1867,7 @@ export default function MyPlayersFeature({
                     className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
                     onClick={() => setFiltersOpen(false)}
                   >
-                    Zastosuj
+                    Apply
                   </Button>
                 </div>
               </div>
@@ -1883,14 +1883,14 @@ export default function MyPlayersFeature({
             >
               <div className="w-full p-3">
                 <div className="mb-2 text-xs font-medium text-gray-900 dark:text-neutral-400">
-                  Widoczność kolumn
+                  Column visibility
                 </div>
                 {Object.keys(DEFAULT_COLS).map((k) => {
                   const key = k as ColKey;
                   return (
                     <label
                       key={key}
-                      className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
+                      className="flex cursor-pointer items-center justify-between px-2 py-1 text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
                     >
                       <span className="text-gray-800 dark:text-neutral-100">
                         {COL_LABELS[key]}
@@ -1910,7 +1910,7 @@ export default function MyPlayersFeature({
               </div>
             </AnchoredPopover>
 
-            {/* More popover – with trash count + "Opróżnij kosz" */}
+            {/* More popover – with trash count + "Empty trash" */}
             <AnchoredPopover
               open={moreOpen}
               onClose={() => setMoreOpen(false)}
@@ -1925,7 +1925,7 @@ export default function MyPlayersFeature({
                     Menu
                   </span>
                   <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
-                    W koszu: {trashCount}
+                    In trash: {trashCount}
                   </span>
                 </div>
 
@@ -1941,7 +1941,7 @@ export default function MyPlayersFeature({
                   }}
                 >
                   <Checkbox checked={isMultiSelect} className="h-4 w-4 pointer-events-none" onCheckedChange={() => { }} />
-                  <span>Zaznacz kilka</span>
+                  <span>Multi-select</span>
                 </button>
 
                 <button
@@ -1959,7 +1959,7 @@ export default function MyPlayersFeature({
                   ) : (
                     <Eye className="h-4 w-4" />
                   )}
-                  <span>{visibleCols.photo ? "Ukryj miniatury" : "Pokaż miniatury"}</span>
+                  <span>{visibleCols.photo ? "Hide thumbnails" : "Show thumbnails"}</span>
                 </button>
 
                 <button
@@ -1970,7 +1970,7 @@ export default function MyPlayersFeature({
                     setPage(1);
                   }}
                 >
-                  <Users className="h-4 w-4" /> Aktywni
+                  <Users className="h-4 w-4" /> Active
                 </button>
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
@@ -1981,7 +1981,7 @@ export default function MyPlayersFeature({
                   }}
                 >
                   <Trash2 className="h-4 w-4" />
-                  <span>Kosz</span>
+                  <span>Trash</span>
                   <span className="ml-auto inline-flex min-w-[20px] items-center justify-center rounded-full bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
                     {trashCount}
                   </span>
@@ -1996,7 +1996,7 @@ export default function MyPlayersFeature({
                     }}
                   >
                     <XCircle className="h-4 w-4" />
-                    <span>Opróżnij kosz</span>
+                    <span>Empty trash</span>
                   </button>
                 )}
 
@@ -2010,7 +2010,7 @@ export default function MyPlayersFeature({
                     exportCSV();
                   }}
                 >
-                  <FileDown className="h-4 w-4" /> Eksport CSV
+                  <FileDown className="h-4 w-4" /> CSV Export
                 </button>
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-900"
@@ -2034,7 +2034,7 @@ export default function MyPlayersFeature({
             <MobileSheet
               open={filtersOpen}
               onClose={() => setFiltersOpen(false)}
-              title="Filtry"
+              title="Filters"
             >
               <div className="mb-3 grid grid-cols-2 gap-2">
                 {POS.map((pKey) => (
@@ -2058,12 +2058,12 @@ export default function MyPlayersFeature({
               </div>
 
               <div className="mb-4">
-                <Label className="text-xs">Typ zawodnika</Label>
+                <Label className="text-xs">Player type</Label>
                 <div className="mt-1.5 flex gap-1 rounded-md bg-stone-100 p-1 dark:bg-neutral-800">
                   {[
-                    { id: "all", label: "Wszyscy" },
-                    { id: "known", label: "Znani" },
-                    { id: "unknown", label: "Nieznani" },
+                    { id: "all", label: "All" },
+                    { id: "known", label: "Known" },
+                    { id: "unknown", label: "Unknown" },
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -2081,7 +2081,7 @@ export default function MyPlayersFeature({
               </div>
 
               <div className="mb-3">
-                <Label className="text-xs">Klub</Label>
+                <Label className="text-xs">Club</Label>
                 <Input
                   value={club}
                   onChange={(e) => {
@@ -2093,7 +2093,7 @@ export default function MyPlayersFeature({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Wiek min</Label>
+                  <Label className="text-xs">Min age</Label>
                   <Input
                     type="number"
                     min={0}
@@ -2116,7 +2116,7 @@ export default function MyPlayersFeature({
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Wiek max</Label>
+                  <Label className="text-xs">Max age</Label>
                   <Input
                     type="number"
                     min={0}
@@ -2143,7 +2143,7 @@ export default function MyPlayersFeature({
               {activeChips.length > 0 && (
                 <div className="mt-3 border-t border-gray-200 pt-2 dark:border-neutral-800">
                   <div className="mb-1 text-[11px] font-semibold text-gray-900 dark:text-neutral-300">
-                    Aktywne
+                    Active
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
                     {activeChips.map((c) => (
@@ -2157,7 +2157,7 @@ export default function MyPlayersFeature({
                         <button
                           className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-neutral-800"
                           onClick={c.clear}
-                          aria-label="Wyczyść filtr"
+                          aria-label="Clear filter"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -2186,29 +2186,29 @@ export default function MyPlayersFeature({
                     setPage(1);
                   }}
                 >
-                  Wyczyść
+                  Clear
                 </Button>
                 <Button
                   className="bg-gray-900 text-white hover:bg-gray-800 focus-visible:ring focus-visible:ring-indigo-500/60"
                   onClick={() => setFiltersOpen(false)}
                 >
-                  Zastosuj
+                  Apply
                 </Button>
               </div>
             </MobileSheet>
 
-            {/* Więcej */}
+            {/* More */}
             <MobileSheet
               open={moreSheetOpen}
               onClose={() => setMoreSheetOpen(false)}
-              title="Więcej"
+              title="More"
             >
               <div className="mb-1 flex items-center justify-between gap-2 px-1">
                 <div className="text-xs font-medium text-stone-500 dark:text-neutral-400">
-                  Stan kosza
+                  Trash status
                 </div>
                 <div className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
-                  W koszu: {trashCount}
+                  In trash: {trashCount}
                 </div>
               </div>
 
@@ -2225,7 +2225,7 @@ export default function MyPlayersFeature({
                   }}
                 >
                   <Checkbox checked={isMultiSelect} className="h-4 w-4 pointer-events-none" onCheckedChange={() => { }} />
-                  <span className="font-medium">Zaznacz kilka (multiselect)</span>
+                  <span className="font-medium">Multi-select</span>
                 </button>
                 <button
                   className={`flex w-full items-center gap-2 px-3 py-3 text-left text-sm transition-colors ${visibleCols.photo
@@ -2242,7 +2242,7 @@ export default function MyPlayersFeature({
                   ) : (
                     <Eye className="h-4 w-4" />
                   )}
-                  <span className="font-medium">{visibleCols.photo ? "Ukryj miniatury" : "Pokaż miniatury"}</span>
+                  <span className="font-medium">{visibleCols.photo ? "Hide thumbnails" : "Show thumbnails"}</span>
                 </button>
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -2252,7 +2252,7 @@ export default function MyPlayersFeature({
                     setPage(1);
                   }}
                 >
-                  <Users className="h-4 w-4" /> Aktywni
+                  <Users className="h-4 w-4" /> Active
                 </button>
                 <button
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -2263,7 +2263,7 @@ export default function MyPlayersFeature({
                   }}
                 >
                   <Trash2 className="h-4 w-4" />
-                  <span>Kosz</span>
+                  <span>Trash</span>
                   <span className="ml-auto inline-flex min-w-[20px] items-center justify-center rounded-full bg-rose-50 px-1.5 text-[11px] font-semibold text-rose-600 dark:bg-rose-950/40 dark:text-rose-200">
                     {trashCount}
                   </span>
@@ -2278,7 +2278,7 @@ export default function MyPlayersFeature({
                     }}
                   >
                     <XCircle className="h-4 w-4" />
-                    <span>Opróżnij kosz</span>
+                    <span>Empty trash</span>
                   </button>
                 )}
 
@@ -2291,7 +2291,7 @@ export default function MyPlayersFeature({
                         exportCSV();
                       }}
                     >
-                      <FileDown className="h-4 w-4" /> Eksport CSV
+                      <FileDown className="h-4 w-4" /> CSV Export
                     </button>
                     <button
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-neutral-800"
@@ -2300,18 +2300,18 @@ export default function MyPlayersFeature({
                         exportExcel();
                       }}
                     >
-                      <FileSpreadsheet className="h-4 w-4" /> Eksport Excel
+                      <FileSpreadsheet className="h-4 w-4" /> Excel Export
                     </button>
                   </>
                 )}
               </div>
             </MobileSheet>
 
-            {/* Kolumny */}
+            {/* Columns */}
             <MobileSheet
               open={colsSheetOpen}
               onClose={() => setColsSheetOpen(false)}
-              title="Kolumny"
+              title="Columns"
             >
               <div className="rounded-md border border-gray-200 dark:border-neutral-800">
                 {Object.keys(DEFAULT_COLS).map((k) => {
@@ -2352,8 +2352,8 @@ export default function MyPlayersFeature({
                     setSelected(new Set());
                     setIsMultiSelect(false);
                   }}
-                  aria-label="Wyczyść zaznaczenie i zamknij tryb"
-                  title="Wyczyść zaznaczenie i zamknij tryb"
+                  aria-label="Clear selection and close mode"
+                  title="Clear selection and close mode"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -2361,15 +2361,15 @@ export default function MyPlayersFeature({
                   {selected.size}
                 </span>
                 <span className="hidden text-sm text-gray-800 dark:text-neutral-100 sm:inline">
-                  zaznaczone
+                  selected
                 </span>
                 <span className="mx-1 h-6 w-px bg-gray-200 dark:bg-neutral-800" />
                 {anyActiveSelected && scope === "active" ? (
                   <Button
                     className="h-8 w-8 rounded-md bg-rose-600 p-0 text-white hover:bg-rose-700 focus-visible:ring-2 focus-visible:ring-rose-500/60"
                     onClick={bulkTrash}
-                    aria-label="Przenieś do kosza"
-                    title="Przenieś do kosza"
+                    aria-label="Move to trash"
+                    title="Move to trash"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -2377,8 +2377,8 @@ export default function MyPlayersFeature({
                   <Button
                     className="h-8 w-8 rounded-md bg-emerald-600 p-0 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/60"
                     onClick={bulkRestore}
-                    aria-label="Przywróć"
-                    title="Przywróć"
+                    aria-label="Restore"
+                    title="Restore"
                   >
                     <Undo2 className="h-4 w-4" />
                   </Button>
@@ -2448,19 +2448,19 @@ export default function MyPlayersFeature({
                   <div className="mt-4 flex flex-col items-center gap-2 sm:hidden px-4">
                     <div className="inline-flex items-center gap-2 rounded-md bg-stone-100 px-3 py-1.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200 dark:bg-neutral-800 dark:text-neutral-300 dark:ring-neutral-700">
                       <MoveHorizontal className="h-4 w-4" />
-                      <span>Przewiń tabelę w bok, aby zobaczyć więcej</span>
+                      <span>Scroll table sideways to see more</span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Sentinel do infinite scroll */}
+              {/* Sentinel for infinite scroll */}
               {hasMore && (
                 <div
                   ref={loadMoreRef}
                   className="mt-3 flex justify-center py-2 text-xs text-gray-500 dark:text-neutral-400"
                 >
-                  Ładuję kolejne wiersze…
+                  Loading more rows…
                 </div>
               )}
             </>
@@ -2609,7 +2609,7 @@ function PlayersTable({
     if (known) return null;
     return (
       <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-        nieznany
+        unknown
       </span>
     );
   };
@@ -2675,54 +2675,54 @@ function PlayersTable({
                       setSelected(set);
                     }
                   }}
-                  aria-label="Zaznacz wszystkie widoczne"
+                  aria-label="Select all visible"
                 />
               </th>
             )}
             {visibleCols.name && (
               <th className={`${getCellClass('name')} text-left`}>
-                <SortHeader k="name">Nazwa</SortHeader>
+                <SortHeader k="name">Name</SortHeader>
               </th>
             )}
             {visibleCols.club && (
               <th className={`${getCellClass('club')} text-left`}>
-                <SortHeader k="club">Klub</SortHeader>
+                <SortHeader k="club">Club</SortHeader>
               </th>
             )}
             {visibleCols.pos && (
               <th className={`${getCellClass('pos')} text-left`}>
-                <SortHeader k="pos">Pozycja</SortHeader>
+                <SortHeader k="pos">Position</SortHeader>
               </th>
             )}
             {visibleCols.age && (
               <th className={`${getCellClass('age')} text-left`}>
-                <SortHeader k="age">Wiek</SortHeader>
+                <SortHeader k="age">Age</SortHeader>
               </th>
             )}
             {visibleCols.progress && (
               <th className={`${getCellClass('progress')} text-left`}>
                 <SortHeader k="progress">
-                  Wypełnienie profilu
+                  Profile completeness
                 </SortHeader>
               </th>
             )}
             {visibleCols.rating && (
               <th className={`${getCellClass('rating')} text-left`}>
                 <SortHeader k="rating">
-                  Ocena z obserwacji
+                  Observation rating
                 </SortHeader>
               </th>
             )}
             {visibleCols.obs && (
               <th className={`${getCellClass('obs')} text-left`}>
-                <SortHeader k="obs">Obserwacje</SortHeader>
+                <SortHeader k="obs">Observations</SortHeader>
               </th>
             )}
             {visibleCols.actions && (
               <th
                 className={`${getCellClass('actions')} text-right font-medium pr-4`}
               >
-                Akcje
+                Actions
               </th>
             )}
           </tr>
@@ -2778,12 +2778,12 @@ function PlayersTable({
                               </div>
                             )
                           ) : jersey ? (
-                            // NIEZNANY + jest numer koszulki
+                            // UNKNOWN + shirt number exists
                             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-sm font-semibold text-gray-800 ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800 dark:text-neutral-100">
                               {jersey}
                             </div>
                           ) : (
-                            // NIEZNANY + brak numeru → koszulka
+                            // UNKNOWN + no number → jersey
                             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200 text-xs ring-1 ring-black/5 transition group-hover:shadow-sm dark:bg-neutral-800">
                               <PlayerOnlyTshirt
                                 className="h-6 w-6"
@@ -2808,7 +2808,7 @@ function PlayersTable({
                             else copy.delete(r.id as number);
                             setSelected(copy);
                           }}
-                          aria-label={`Zaznacz ${r.name}`}
+                          aria-label={`Select ${r.name}`}
                         />
                       </td>
                     )}
@@ -2905,8 +2905,8 @@ function PlayersTable({
                                 }}
                                 aria-label={
                                   r._known
-                                    ? "Edytuj"
-                                    : "Uzupełnij dane"
+                                    ? "Edit"
+                                    : "Complete data"
                                 }
                               >
                                 {r._known ? (
@@ -2918,8 +2918,8 @@ function PlayersTable({
                             </TooltipTrigger>
                             <TooltipContent>
                               {r._known
-                                ? "Edytuj"
-                                : "Uzupełnij dane"}
+                                ? "Edit"
+                                : "Complete data"}
                             </TooltipContent>
                           </Tooltip>
 
@@ -2934,20 +2934,20 @@ function PlayersTable({
                                     onTrash(r.id as number);
                                     setConfirmTrashId(null);
                                   }}
-                                >
-                                  Tak
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setConfirmTrashId(null);
-                                  }}
-                                >
-                                  Nie
-                                </Button>
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-9 px-2 text-xs border-gray-300 dark:border-neutral-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setConfirmTrashId(null);
+                                    }}
+                                  >
+                                    No
+                                  </Button>
                               </div>
                             ) : (
                               <Tooltip>
@@ -2962,13 +2962,13 @@ function PlayersTable({
                                         r.id as number,
                                       );
                                     }}
-                                    aria-label="Przenieś do kosza"
+                                    aria-label="Move to trash"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  Przenieś do kosza
+                                  Move to trash
                                 </TooltipContent>
                               </Tooltip>
                             )
@@ -2983,13 +2983,13 @@ function PlayersTable({
                                     e.stopPropagation();
                                     onRestore(r.id as number);
                                   }}
-                                  aria-label="Przywróć"
+                                  aria-label="Restore"
                                 >
                                   <Undo2 className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                Przywróć
+                                Restore
                               </TooltipContent>
                             </Tooltip>
                           )}
@@ -3009,7 +3009,7 @@ function PlayersTable({
                     }
                     className={`${cellPad} text-center text-sm text-gray-900 dark:text-neutral-400`}
                   >
-                    Brak wyników dla bieżących filtrów.
+                    No results for current filters.
                   </td>
                 </tr>
               )}
@@ -3112,7 +3112,7 @@ function QuickObservation({
     useState<SaveState>("idle");
   const tRef = useRef<number | null>(null);
 
-  // prosty wizualny "autosave" bez localStorage / Supabase
+  // simple visual "autosave" without localStorage / Supabase
   useEffect(() => {
     setSaveState("saving");
     window.clearTimeout(tRef.current || undefined);
@@ -3161,7 +3161,7 @@ function QuickObservation({
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-neutral-800">
         <div className="min-w-0">
           <div className="text-xs uppercase tracking-wide text-gray-700 dark:text-neutral-400">
-            Szybka obserwacja
+            Quick observation
           </div>
           <div className="truncate text-sm font-semibold text-gray-900 dark:text-neutral-100">
             {player.name}
@@ -3176,8 +3176,8 @@ function QuickObservation({
                 }`}
             >
               {saveState === "saving"
-                ? "Zapisywanie…"
-                : "Zapisano szkic lokalnie"}
+                ? "Saving…"
+                : "Saved locally"}
             </span>
           )}
           <Button
@@ -3186,7 +3186,7 @@ function QuickObservation({
             onClick={onBack}
           >
             <ArrowLeft className="mr-0 h-4 w-4 md:mr-2" />
-            Wróć
+            Back
           </Button>
         </div>
       </div>
@@ -3205,14 +3205,14 @@ function QuickObservation({
               className="h-9 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
               <PlusSquare className="mr-0 h-4 w-4 md:mr-2" />
-              Nowa
+              New
             </TabsTrigger>
             <TabsTrigger
               value="existing"
               className="h-9 px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-neutral-800"
             >
               <Download className="mr-0 h-4 w-4 md:mr-2" />
-              Istniejąca
+              Existing
             </TabsTrigger>
           </TabsList>
 
@@ -3223,16 +3223,16 @@ function QuickObservation({
           >
             <div className="rounded-md border border-gray-200 p-4 dark:border-neutral-800">
               <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">
-                Mecz
+                Match
               </div>
               <div className="mb-3 text-xs text-gray-700 dark:text-neutral-400">
-                Wpisz drużyny — pole „Mecz” składa się
-                automatycznie.
+                Enter teams — the "Match" field is composed
+                automatically.
               </div>
 
               <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
                 <div>
-                  <Label>Drużyna A</Label>
+                  <Label>Team A</Label>
                   <Input
                     value={teamA}
                     onChange={(e) =>
@@ -3241,7 +3241,7 @@ function QuickObservation({
                         teamB,
                       )
                     }
-                    placeholder="np. Lech U19"
+                    placeholder="e.g. Lech U19"
                     className="mt-1"
                   />
                 </div>
@@ -3251,7 +3251,7 @@ function QuickObservation({
                 </div>
 
                 <div>
-                  <Label>Drużyna B</Label>
+                  <Label>Team B</Label>
                   <Input
                     value={teamB}
                     onChange={(e) =>
@@ -3260,7 +3260,7 @@ function QuickObservation({
                         e.target.value,
                       )
                     }
-                    placeholder="np. Wisła U19"
+                    placeholder="e.g. Wisła U19"
                     className="mt-1"
                   />
                 </div>
@@ -3272,7 +3272,7 @@ function QuickObservation({
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Data meczu</Label>
+                  <Label>Match date</Label>
                   <Input
                     type="date"
                     value={qaDate}
@@ -3283,7 +3283,7 @@ function QuickObservation({
                   />
                 </div>
                 <div>
-                  <Label>Godzina meczu</Label>
+                  <Label>Match time</Label>
                   <Input
                     type="time"
                     value={qaTime}
@@ -3296,7 +3296,7 @@ function QuickObservation({
               </div>
 
               <div className="mt-3 text-xs text-gray-800 dark:text-neutral-300">
-                Mecz:{" "}
+                Match:{" "}
                 <span className="font-medium">
                   {qaMatch || "—"}
                 </span>
@@ -3308,7 +3308,7 @@ function QuickObservation({
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-md border border-gray-200 p-4 dark:border-neutral-800">
-                <Label>Tryb</Label>
+                <Label>Mode</Label>
                 <div className="mt-2 inline-flex overflow-hidden rounded-md border border-gray-200 dark:border-neutral-700">
                   {(["live", "tv"] as const).map((m) => (
                     <button
@@ -3347,7 +3347,7 @@ function QuickObservation({
                         : "bg-white text-gray-700 hover:bg-stone-100 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                         }`}
                     >
-                      {s === "draft" ? "Szkic" : "Finalna"}
+                      {s === "draft" ? "Draft" : "Final"}
                     </button>
                   ))}
                 </div>
@@ -3357,16 +3357,16 @@ function QuickObservation({
             <div className="sticky bottom-0 -mx-4 mt-1 border-t border-gray-200 bg-white/90 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-neutral-800 dark:bg-neutral-950/80">
               <div className="flex items-center justify-end gap-2">
                 <div className="mr-auto hidden text-[11px] text-gray-600 dark:text-neutral-400 sm:block">
-                  Skróty:{" "}
-                  <span className="font-medium">Enter</span> — Zapisz,{" "}
-                  <span className="font-medium">Esc</span> — Wróć
+                  Shortcuts:{" "}
+                  <span className="font-medium">Enter</span> — Save,{" "}
+                  <span className="font-medium">Esc</span> — Back
                 </div>
                 <Button
                   variant="outline"
                   className="border-gray-300 dark:border-neutral-700"
                   onClick={onBack}
                 >
-                  Anuluj
+                  Cancel
                 </Button>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -3375,13 +3375,13 @@ function QuickObservation({
                       onClick={handleSave}
                       disabled={!canSave}
                     >
-                      Zapisz
+                      Save
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {canSave
-                      ? "Zapisz nową obserwację"
-                      : "Uzupełnij: Drużyna A/B i Datę"}
+                      ? "Save new observation"
+                      : "Complete: Team A/B and Date"}
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -3398,7 +3398,7 @@ function QuickObservation({
               <Input
                 value={obsQuery}
                 onChange={(e) => setObsQuery(e.target.value)}
-                placeholder="Szukaj po meczu, zawodniku, dacie…"
+                placeholder="Search by match, player, date…"
                 className="flex-1"
               />
             </div>
@@ -3411,16 +3411,16 @@ function QuickObservation({
                       #
                     </th>
                     <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                      Mecz
+                      Match
                     </th>
                     <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                      Zawodnik
+                      Player
                     </th>
                     <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                      Data
+                      Date
                     </th>
                     <th className="w-px whitespace-nowrap p-2 text-left font-medium">
-                      Tryb
+                      Mode
                     </th>
                     <th className="w-px whitespace-nowrap p-2 text-left font-medium">
                       Status
@@ -3480,8 +3480,8 @@ function QuickObservation({
                             }`}
                         >
                           {o.status === "final"
-                            ? "Finalna"
-                            : "Szkic"}
+                            ? "Final"
+                            : "Draft"}
                         </span>
                       </td>
                     </tr>
@@ -3493,7 +3493,7 @@ function QuickObservation({
                         colSpan={6}
                         className="p-6 text-center text-sm text-gray-800 dark:text-neutral-400"
                       >
-                        Brak obserwacji dla podanych kryteriów.
+                        No observations for the given criteria.
                       </td>
                     </tr>
                   )}
@@ -3508,7 +3508,7 @@ function QuickObservation({
                 onClick={onBack}
               >
                 <ArrowLeft className="mr-0 h-4 w-4 md:mr-2" />
-                Wróć
+                Back
               </Button>
               <div className="flex items-center gap-2">
                 <Tooltip>
@@ -3519,11 +3519,11 @@ function QuickObservation({
                       disabled={obsSelectedId == null}
                       onClick={onDuplicate}
                     >
-                      Skopiuj do zawodnika
+                      Copy to player
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Utwórz kopię wskazanej obserwacji
+                    Create a copy of the selected observation
                   </TooltipContent>
                 </Tooltip>
                 <Tooltip>
@@ -3533,11 +3533,11 @@ function QuickObservation({
                       disabled={obsSelectedId == null}
                       onClick={onReassign}
                     >
-                      Przypisz do zawodnika
+                      Assign to player
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Zmień przypisanie bez kopiowania
+                    Change assignment without copying
                   </TooltipContent>
                 </Tooltip>
               </div>

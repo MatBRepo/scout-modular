@@ -11,15 +11,13 @@ export default function NotFound() {
           <SearchX className="h-6 w-6" />
         </div>
 
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400 dark:text-stone-500">
-          Błąd 404
+          Error 404
         </p>
-        <h1 className="mt-2 text-xl font-semibold text-stone-900 dark:text-stone-50">
-          Nie znaleziono strony
+          Page not found
         </h1>
         <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
-          Strona, której szukasz, nie istnieje, została przeniesiona
-          lub adres zawiera błąd.
+          The page you are looking for does not exist, has been moved
+          or the address contains an error.
         </p>
 
         <div className="mt-6 flex flex-wrap flex-col items-center gap-2 sm:flex-row sm:justify-center">
@@ -30,7 +28,7 @@ export default function NotFound() {
           >
             <Link href="/">
               <Home className="mr-2 h-4 w-4" />
-              Przejdź do strony głównej
+              Go to home page
             </Link>
           </Button>
 
@@ -41,13 +39,13 @@ export default function NotFound() {
           >
             <Link href="/players">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Wróć do listy zawodników
+              Back to players list
             </Link>
           </Button>
         </div>
 
         <p className="mt-4 text-[11px] text-stone-400 dark:text-stone-500">
-          Jeśli problem się powtarza, skontaktuj się z administratorem systemu.
+          If the problem persists, contact the system administrator.
         </p>
       </div>
     </div>

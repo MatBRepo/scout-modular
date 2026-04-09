@@ -481,15 +481,15 @@ export default function CommentLayer({
                 <div className="mb-1 flex items-center justify-between">
                   <div className="text-[11px] text-dark dark:text-neutral-400">
                     {(displayName || currentUser?.name)
-                      ? `Komentujesz jako: ${displayName || currentUser?.name}`
-                      : "Komentujesz jako: —"}
+                      ? `Commenting as: ${displayName || currentUser?.name}`
+                      : "Commenting as: —"}
                   </div>
                   <button
                     onClick={() => setAskName(true)}
                     className="rounded-md text-[11px] text-dark underline-offset-2 hover:underline dark:text-neutral-300"
                     type="button"
                   >
-                    Ustaw nazwę
+                    Set name
                   </button>
                 </div>
                 <textarea
@@ -497,12 +497,12 @@ export default function CommentLayer({
                   rows={3}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Dodaj komentarz…"
+                  placeholder="Add comment…"
                   className="w-full resize-none rounded-md border border-gray-300 p-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-950"
                 />
                 <div className="mt-2 flex justify-end gap-2">
                   <button className="rounded-md border px-3 py-1 text-sm dark:border-neutral-700" onClick={cancelCreate}>
-                    Anuluj
+                    Cancel
                   </button>
                   <button
                     className={`rounded-md px-3 py-1 text-sm text-white ${
@@ -511,7 +511,7 @@ export default function CommentLayer({
                     disabled={!draft.trim()}
                     onClick={confirmCreate}
                   >
-                    Dodaj
+                    Add
                   </button>
                 </div>
               </div>
@@ -531,8 +531,8 @@ export default function CommentLayer({
             {/* Pin */}
             <button
               type="button"
-              aria-label="Komentarz"
-              title="Przeciągnij, aby przenieść. Kliknij, aby otworzyć."
+              aria-label="Comment"
+              title="Drag to move. Click to open."
               onMouseEnter={() => setHoverThreadId(root.id)}
               onMouseLeave={() => setHoverThreadId((c) => (c === root.id ? null : c))}
               onMouseDown={(e) => startDrag(e, root.id, root.x ?? 0, root.y ?? 0)}
@@ -582,7 +582,7 @@ export default function CommentLayer({
                     left={placed.left}
                     top={placed.top}
                     body={root.body}
-                    author={root.author_name || "Gość"}
+                    author={root.author_name || "Guest"}
                     createdAt={root.created_at}
                   />
                 );
@@ -768,7 +768,7 @@ function ThreadCard({
       style={{ position: "fixed", left, top, zIndex: 70, pointerEvents: "auto" }}
       className="w-[320px] max-w-[86vw] rounded-md border border-gray-300 bg-white p-2 shadow-xl dark:border-neutral-700 dark:bg-neutral-900"
       role="dialog"
-      aria-label="Komentarz"
+      aria-label="Comment"
     >
       {/* Header / root */}
       <div className="mb-2 flex items-start gap-2">
@@ -777,7 +777,7 @@ function ThreadCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-[11px] text-dark dark:text-neutral-400">
-            {root.author_name || "Gość"} · {new Date(root.created_at).toLocaleString()}
+            {root.author_name || "Guest"} · {new Date(root.created_at).toLocaleString()}
           </div>
           <div className="text-sm">{root.body}</div>
         </div>
@@ -786,9 +786,9 @@ function ThreadCard({
             <button
               onClick={() => setConfirmDel(true)}
               className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-              title="Usuń wątek"
+              title="Delete thread"
             >
-              Usuń
+              Delete
             </button>
           ) : (
             <>
@@ -797,23 +797,23 @@ function ThreadCard({
                   await onDelete();
                 }}
                 className="rounded-md px-2 py-1 text-xs text-white bg-rose-600 hover:bg-rose-700"
-                title="Tak, usuń"
+                title="Yes, delete"
               >
-                Tak
+                Yes
               </button>
               <button
                 onClick={() => setConfirmDel(false)}
                 className="rounded-md px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                title="Nie"
+                title="No"
               >
-                Nie
+                No
               </button>
             </>
           )}
           <button
             onClick={onClose}
             className="rounded-md px-2 py-1 text-xs text-dark hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-            title="Zamknij"
+            title="Close"
           >
             ×
           </button>
@@ -828,7 +828,7 @@ function ThreadCard({
             value={activeView}
             onChange={(e) => changeView(e.target.value as ViewKind)}
             className="rounded-md border border-gray-300 bg-white px-1.5 py-1 dark:border-neutral-700 dark:bg-neutral-950"
-            title="Widok"
+            title="View"
           >
             <option value="desktop">Desktop</option>
             <option value="tablet">Tablet</option>
@@ -840,7 +840,7 @@ function ThreadCard({
             value={currentPreset.id}
             onChange={(e) => changePreset(e.target.value)}
             className="min-w-[150px] max-w-[180px] flex-1 truncate rounded-md border border-gray-300 bg-white px-1.5 py-1 dark:border-neutral-700 dark:bg-neutral-950"
-            title="Preset rozdzielczości"
+            title="Resolution preset"
           >
             {presetList.map((p) => (
               <option key={p.id} value={p.id}>
@@ -854,25 +854,25 @@ function ThreadCard({
             value={meta.orientation ?? "portrait"}
             onChange={(e) => changeOrientation(e.target.value as Orientation)}
             className="rounded-md border border-gray-300 bg-white px-1.5 py-1 dark:border-neutral-700 dark:bg-neutral-950"
-            title="Orientacja"
+            title="Orientation"
           >
-            <option value="portrait">Pion</option>
-            <option value="landscape">Poziom</option>
+            <option value="portrait">Portrait</option>
+            <option value="landscape">Landscape</option>
           </select>
 
           {/* Note */}
           <input
             type="text"
-            placeholder="Notatka"
+            placeholder="Note"
             value={meta.note ?? ""}
             onChange={(e) => changeNote(e.target.value)}
             className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-1.5 py-1 dark:border-neutral-700 dark:bg-neutral-950"
-            title="Notatka (opcjonalnie)"
+            title="Note (optional)"
           />
 
           {saving !== "idle" && (
             <span className="text-[11px] text-dark dark:text-neutral-400">
-              {saving === "saving" ? "Zapisywanie…" : "Zapisano"}
+              {saving === "saving" ? "Saving…" : "Saved"}
             </span>
           )}
         </div>
@@ -884,7 +884,7 @@ function ThreadCard({
           {replies.map((r) => (
             <div key={r.id}>
               <div className="text-[11px] text-dark dark:text-neutral-400">
-                {r.author_name || "Gość"} · {new Date(r.created_at).toLocaleString()}
+                {r.author_name || "Guest"} · {new Date(r.created_at).toLocaleString()}
               </div>
               <div>{r.body}</div>
             </div>
@@ -907,7 +907,7 @@ function ReplyBox({ onReply }: { onReply: (text: string) => Promise<void> }) {
         rows={2}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Napisz odpowiedź…"
+        placeholder="Write a reply…"
         className="flex-1 resize-none rounded-md border border-gray-300 p-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-950"
       />
       <button
@@ -921,7 +921,7 @@ function ReplyBox({ onReply }: { onReply: (text: string) => Promise<void> }) {
           canSend ? "bg-gray-900 hover:bg-gray-800" : "bg-gray-400 opacity-70"
         }`}
       >
-        Wyślij
+        Send
       </button>
     </div>
   );
@@ -968,7 +968,7 @@ function HelperPanel({
     >
       <div className="mb-2 flex items-center justify-between">
         <div className="font-semibold">
-          Komentarze{" "}
+          Comments{" "}
           <span className="ml-2 text-xs text-dark dark:text-neutral-300">
             D:{counts.desktop} · T:{counts.tablet} · M:{counts.mobile}
           </span>
@@ -978,7 +978,7 @@ function HelperPanel({
           onClick={() => setCollapsed((v) => !v)}
           className="rounded-md px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
           aria-expanded={!collapsed}
-          title={collapsed ? "Pokaż instrukcje" : "Zwiń panel"}
+          title={collapsed ? "Show instructions" : "Collapse panel"}
         >
           <svg
             width="14"
@@ -996,20 +996,20 @@ function HelperPanel({
       {!collapsed && (
         <ol className="mb-3 list-decimal space-y-1 pl-5 text-xs text-gray-700 dark:text-neutral-300">
           <li>
-            <b>Desktop:</b> przytrzymaj{" "}
-            <code className="rounded-md bg-gray-100 px-1 py-0.5 dark:bg-neutral-800">Alt</code> i kliknij — dodasz pinezkę.
+            <b>Desktop:</b> hold{" "}
+            <code className="rounded-md bg-gray-100 px-1 py-0.5 dark:bg-neutral-800">Alt</code> and click — to add a pin.
           </li>
           <li>
-            <b>Mobile/Tablet:</b> włącz <i>Dodaj pinezkę</i>, a następnie tapnij w miejscu komentarza.
+            <b>Mobile/Tablet:</b> enable <i>Add pin</i>, then tap where you want to comment.
           </li>
-          <li>Kliknij pinezkę, aby otworzyć wątek, dodać odpowiedź lub przeciągnij, by przenieść.</li>
+          <li>Click a pin to open thread, reply, or drag to move.</li>
         </ol>
       )}
 
       <div className="mb-2 text-xs text-dark dark:text-neutral-300">
-        Jako: {displayName || "—"}{" "}
-        <button onClick={onAskName} className="ml-2 rounded-md px-1 text-[11px] underline-offset-2 hover:underline" title="Ustaw nazwę komentującego">
-          Zmień
+        As: {displayName || "—"}{" "}
+        <button onClick={onAskName} className="ml-2 rounded-md px-1 text-[11px] underline-offset-2 hover:underline" title="Set display name">
+          Change
         </button>
       </div>
 
@@ -1023,7 +1023,7 @@ function HelperPanel({
               }`}
               onClick={() => onView(v)}
               aria-pressed={view === v}
-              title={`Widok: ${v}`}
+              title={`View: ${v}`}
             >
               {v === "desktop" ? "Desktop" : v === "tablet" ? "Tablet" : "Mobile"}
             </button>
@@ -1035,9 +1035,9 @@ function HelperPanel({
           className={`rounded-md px-3 py-1.5 text-xs font-medium ${
             addMode ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-800 dark:bg-neutral-800 dark:text-neutral-100"
           }`}
-          title="Tryb dodawania pinezek (Mobile/Tablet)"
+          title="Pin add mode (Mobile/Tablet)"
         >
-          {addMode ? "Dodaj pinezkę: WŁ" : "Dodaj pinezkę"}
+          {addMode ? "Add pin: ON" : "Add pin"}
         </button>
       </div>
     </div>
@@ -1059,17 +1059,17 @@ function NameModal({
   return (
     <div className="fixed inset-0 z-[200] grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true">
       <div className="w-[360px] max-w-[92vw] rounded-md border border-gray-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
-        <div className="mb-2 text-sm font-semibold">Twoje imię (widoczne przy komentarzach)</div>
+        <div className="mb-2 text-sm font-semibold">Your name (visible near comments)</div>
         <input
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="np. Jan K."
+          placeholder="e.g. John D."
           className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 dark:border-neutral-700 dark:bg-neutral-950"
         />
         <div className="mt-3 flex justify-end gap-2">
           <button className="rounded-md border px-3 py-1 text-sm dark:border-neutral-700" onClick={onCancel}>
-            Anuluj
+            Cancel
           </button>
           <button
             disabled={!can}
@@ -1078,7 +1078,7 @@ function NameModal({
               can ? "bg-gray-900 hover:bg-gray-800" : "bg-gray-400 opacity-70"
             }`}
           >
-            Zapisz
+            Save
           </button>
         </div>
       </div>
