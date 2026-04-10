@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import ObservationsFeature from "@/features/observations/Observations";
 import type { Observation } from "@/shared/types";
 import { getSupabase } from "@/lib/supabaseClient";
@@ -12,6 +13,9 @@ export default function ObservationsPage() {
   const [observations, setObservations] = useState<Observation[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const scoutId = searchParams?.get("scoutId");
 
   // 1) Loading from Supabase – only observations of the current user
   useEffect(() => {
@@ -36,13 +40,15 @@ export default function ObservationsPage() {
         }
 
         if (cancelled) return;
-        setUserId(user.id);
 
-        // Only records for this user
+        const targetUserId = scoutId || user.id;
+        setUserId(targetUserId);
+
+        // Fetch records for the target user (either specific scout or current user)
         const { data, error } = await supabase
           .from("observations")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", targetUserId)
           .order("id", { ascending: true });
 
         if (error) throw error;
@@ -63,7 +69,7 @@ export default function ObservationsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [scoutId]);
 
   // 2) Save to Supabase (no localStorage)
   const handleChange = async (next: Observation[]) => {

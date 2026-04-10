@@ -587,6 +587,7 @@ export default function MyPlayersFeature({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const scoutId = searchParams?.get("scoutId");
   const isMobile = useIsMobile();
 
   // === Supabase auth: only own records (user_id/profile_id) ===
@@ -620,6 +621,9 @@ export default function MyPlayersFeature({
   // Filtering by owner — user_id/profile_id
   const ownedPlayers = useMemo(() => {
     const base = players as PlayerWithOwner[];
+    if (scoutId) {
+      return base;
+    }
     // if no record has user_id/profile_id → we don't filter
     const hasOwnerMeta = base.some((p) => p.user_id || p.profile_id);
     if (!authUserId || !hasOwnerMeta) {
@@ -628,10 +632,13 @@ export default function MyPlayersFeature({
     return base.filter(
       (p) => p.user_id === authUserId || p.profile_id === authUserId,
     );
-  }, [players, authUserId]);
+  }, [players, authUserId, scoutId]);
 
   const ownedObservations = useMemo(() => {
     const base = observations as ObservationWithOwner[];
+    if (scoutId) {
+      return base;
+    }
     const hasOwnerMeta = base.some(
       (o) => o.user_id || o.userId || o.profile_id || o.profileId,
     );
@@ -653,7 +660,7 @@ export default function MyPlayersFeature({
       const pid = o.profile_id ?? o.profileId ?? null;
       return uid === authUserId || pid === authUserId;
     });
-  }, [observations, authUserId]);
+  }, [observations, authUserId, scoutId]);
 
   // ===== RATING STATS from observation_ratings (per user) =====
   const [ratingStatsMap, setRatingStatsMap] = useState<

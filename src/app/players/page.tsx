@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import MyPlayersFeature from "@/features/players/MyPlayersFeature";
 import type { Player, Observation } from "@/shared/types";
 import { getSupabase } from "@/lib/supabaseClient";
@@ -13,6 +14,9 @@ export default function Page() {
   const [observations, setObservations] = useState<Observation[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const searchParams = useSearchParams();
+  const scoutId = searchParams?.get("scoutId");
+
   // 1) Loading players + observations from Supabase
   useEffect(() => {
     let cancelled = false;
@@ -20,18 +24,20 @@ export default function Page() {
 
     (async () => {
       try {
+        let playersQuery = supabase.from("players").select("*");
+        let obsQuery = supabase.from("observations").select("*");
+
+        if (scoutId) {
+          playersQuery = playersQuery.eq("user_id", scoutId);
+          obsQuery = obsQuery.eq("user_id", scoutId);
+        }
+
         const [
           { data: playersData, error: playersError },
           { data: obsData, error: obsError },
         ] = await Promise.all([
-          supabase
-            .from("players")
-            .select("*")
-            .order("id", { ascending: true }),
-          supabase
-            .from("observations")
-            .select("*") // full data, so MyPlayersFeature has access to players[], user_id etc.
-            .order("created_at", { ascending: false }),
+          playersQuery.order("id", { ascending: true }),
+          obsQuery.order("created_at", { ascending: false }),
         ]);
 
         if (cancelled) return;
@@ -62,7 +68,7 @@ export default function Page() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [scoutId]);
 
   // 2) Player list change → save to Supabase
   const handleChangePlayers = async (next: Player[]) => {
